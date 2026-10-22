@@ -316,6 +316,8 @@ fn gated_filler_words_for_language(lang: &str) -> &'static [&'static str] {
         "en" => &["um", "ah", "eh"],
         "de" => &["äh", "ähm"],
         "fr" => &["euh"],
+        // Danish hesitation sounds; "hmm" and similar are already universal.
+        "da" => &["øh", "øhm", "æh", "æhm"],
         _ => &[],
     }
 }
@@ -557,6 +559,29 @@ mod tests {
         let text = "Well, uhm, I think, uh. that's right";
         let result = filter_transcription_output(text, "en", &None);
         assert_eq!(result, "Well, I think, that's right");
+    }
+
+    #[test]
+    fn test_filter_danish_filler_words() {
+        let text = "Øh, jeg tror øhm at vi æh skal mødes æhm i morgen.";
+        let result = filter_transcription_output(text, "da", &None);
+        assert_eq!(result, "Jeg tror at vi skal mødes i morgen.");
+    }
+
+    #[test]
+    fn test_danish_fillers_are_whole_words_only() {
+        // "øh" inside a word, or a Danish word that merely starts with it, stays.
+        let text = "Han sagde døh og øhmede lidt, før han gik.";
+        let result = filter_transcription_output(text, "da", &None);
+        assert_eq!(result, "Han sagde døh og øhmede lidt, før han gik.");
+    }
+
+    #[test]
+    fn test_danish_fillers_need_danish_evidence() {
+        // Gated: without Danish as the output language they are left alone.
+        let text = "Æh, hvad?";
+        let result = filter_transcription_output(text, "en", &None);
+        assert_eq!(result, "Æh, hvad?");
     }
 
     #[test]

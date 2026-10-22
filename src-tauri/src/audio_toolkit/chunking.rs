@@ -20,14 +20,53 @@ use super::vad::SpeechScorer;
 
 const RATE: usize = constants::WHISPER_SAMPLE_RATE as usize;
 
-const TARGET_SECONDS: f64 = 30.0;
-/// Audio up to this many samples is decoded in one piece; longer audio is cut.
-const MAX_CHUNK_SAMPLES: usize = 40 * RATE;
-const MIN_CHUNK_SAMPLES: usize = 5 * RATE;
-/// Live, a cut is only final once this much audio past its window is scored:
-/// then no cut it allows can leave a short rest, so live cuts match the plan
-/// for the whole clip.
-const LOOKAHEAD_SAMPLES: usize = MIN_CHUNK_SAMPLES;
+/// How long chunks are, in samples of 16 kHz audio.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChunkPlan {
+    /// Cuts prefer pauses about this far into a chunk.
+    pub target_seconds: f64,
+    /// No chunk is longer; audio up to this long is decoded in one piece.
+    pub max_chunk_samples: usize,
+    /// No chunk is shorter, unless the whole clip is.
+    pub min_chunk_samples: usize,
+    /// Live, a cut is only final once this much audio past its window is
+    /// scored: then no cut it allows can leave a short rest, so live cuts
+    /// match the plan for the whole clip.
+    pub lookahead_samples: usize,
+    /// When the recording stops, a rest up to this long is decoded in one
+    /// piece rather than cut again.
+    pub whole_rest_samples: usize,
+}
+
+impl ChunkPlan {
+    /// Handy's long-form plan: about 30 s, never cutting 40 s or less.
+    pub const HANDY: Self = Self {
+        target_seconds: 30.0,
+        max_chunk_samples: 40 * RATE,
+        min_chunk_samples: 5 * RATE,
+        lookahead_samples: 5 * RATE,
+        whole_rest_samples: 40 * RATE,
+    };
+
+    /// WalkieTalkey's live plan (DESK-46): 10 to 20 s chunks cut only in
+    /// pauses, keeping the 5 s minimum, so at release only a short rest is
+    /// left whatever the total length. The rest (at most 20 s plus the
+    /// lookahead) is one piece: it fits one Whisper window, so it costs one
+    /// encoder pass.
+    pub const LIVE_DA: Self = Self {
+        target_seconds: 15.0,
+        max_chunk_samples: 20 * RATE,
+        min_chunk_samples: 5 * RATE,
+        lookahead_samples: 5 * RATE,
+        whole_rest_samples: 25 * RATE,
+    };
+}
+
+impl Default for ChunkPlan {
+    fn default() -> Self {
+        Self::HANDY
+    }
+}
 
 // Silero's `get_speech_timestamps` defaults, as `VadSession::run` applies them.
 const THRESHOLD: f32 = 0.5;
@@ -118,17 +157,26 @@ fn cut_candidates(segments: &[Range<usize>], samples: usize) -> Vec<CutCandidate
 }
 
 /// Greedy, left to right from `from`: each cut is the best-scoring pause
-/// 5-40 s after the previous one, preferring long pauses near 30 s and ones
-/// that leave at least 5 s after them. With no pause, it is a hard cut at 40 s,
-/// or halfway when that would leave under 5 s. Audio of 40 s or less is never
-/// cut. `candidates` must be in order.
-fn plan_cuts(candidates: &[CutCandidate], samples: usize, from: usize) -> Vec<usize> {
+/// min-max after the previous one (5-40 s in Handy's plan), preferring long
+/// pauses near the target and ones that leave at least the minimum after
+/// them. With no pause, it is a hard cut at the maximum, or halfway when that
+/// would leave under the minimum. Audio of the maximum or less is never cut.
+/// `candidates` must be in order.
+fn plan_cuts(
+    plan: &ChunkPlan,
+    candidates: &[CutCandidate],
+    samples: usize,
+    from: usize,
+) -> Vec<usize> {
+    let max_chunk = plan.max_chunk_samples;
+    let min_chunk = plan.min_chunk_samples;
+    let target = plan.target_seconds;
     let mut cuts = Vec::new();
     let mut start = from;
     // Each window starts after the last, so earlier candidates never return.
     let mut first = 0;
-    while samples - start > MAX_CHUNK_SAMPLES {
-        while first < candidates.len() && candidates[first].cut < start + MIN_CHUNK_SAMPLES {
+    while samples - start > max_chunk {
+        while first < candidates.len() && candidates[first].cut < start + min_chunk {
             first += 1;
         }
         // A pause that leaves under 5 s is only used when no other pause will do.
@@ -136,16 +184,16 @@ fn plan_cuts(candidates: &[CutCandidate], samples: usize, from: usize) -> Vec<us
         let mut fallback: Option<(usize, f64)> = None;
         for candidate in candidates[first..]
             .iter()
-            .take_while(|candidate| candidate.cut <= start + MAX_CHUNK_SAMPLES)
+            .take_while(|candidate| candidate.cut <= start + max_chunk)
         {
             let position = (candidate.cut - start) as f64 / RATE as f64;
-            let off_target = if position > TARGET_SECONDS {
-                0.1 * (position - TARGET_SECONDS)
+            let off_target = if position > target {
+                0.1 * (position - target)
             } else {
-                0.05 * (TARGET_SECONDS - position)
+                0.05 * (target - position)
             };
             let score = candidate.gap_seconds.min(1.0) - off_target;
-            if samples - candidate.cut >= MIN_CHUNK_SAMPLES
+            if samples - candidate.cut >= min_chunk
                 && best.is_none_or(|(_, best)| score > best)
             {
                 best = Some((candidate.cut, score));
@@ -154,10 +202,10 @@ fn plan_cuts(candidates: &[CutCandidate], samples: usize, from: usize) -> Vec<us
                 fallback = Some((candidate.cut, score));
             }
         }
-        let hard_cut = if samples - start < MAX_CHUNK_SAMPLES + MIN_CHUNK_SAMPLES {
+        let hard_cut = if samples - start < max_chunk + min_chunk {
             start + (samples - start) / 2
         } else {
-            start + MAX_CHUNK_SAMPLES
+            start + max_chunk
         };
         start = best.or(fallback).map_or(hard_cut, |(cut, _)| cut);
         cuts.push(start);
@@ -178,6 +226,7 @@ pub type MakeScorer = Box<dyn Fn() -> Result<Box<dyn SpeechScorer>> + Send>;
 /// audio is still decoded, as it would be without chunking.
 pub struct Chunker {
     make_scorer: MakeScorer,
+    plan: ChunkPlan,
     /// Made the first time audio has to be scored, so a clip short enough to
     /// be one chunk never loads a VAD.
     scorer: Option<Box<dyn SpeechScorer>>,
@@ -199,8 +248,14 @@ impl Chunker {
     /// `make_scorer` must make a fresh scorer: scores carry on from what it
     /// saw before.
     pub fn new(make_scorer: MakeScorer) -> Self {
+        Self::with_plan(make_scorer, ChunkPlan::HANDY)
+    }
+
+    /// A chunker cutting to `plan` (WalkieTalkey: [`ChunkPlan::LIVE_DA`]).
+    pub fn with_plan(make_scorer: MakeScorer, plan: ChunkPlan) -> Self {
         Self {
             make_scorer,
+            plan,
             scorer: None,
             frame_samples: 0,
             uncut: false,
@@ -227,7 +282,8 @@ impl Chunker {
         } else {
             self.pending.extend_from_slice(&pcm);
         }
-        if self.uncut || self.len - self.start <= MAX_CHUNK_SAMPLES + LOOKAHEAD_SAMPLES {
+        let ready = self.plan.max_chunk_samples + self.plan.lookahead_samples;
+        if self.uncut || self.len - self.start <= ready {
             return Vec::new();
         }
         // Plan over whole frames only; a partial one waits for the rest.
@@ -246,10 +302,15 @@ impl Chunker {
         }
         // One plan, committed while each cut's whole window plus the lookahead
         // is scored.
-        let cuts = plan_cuts(&cut_candidates(&segments, scored), scored, self.start);
+        let cuts = plan_cuts(
+            &self.plan,
+            &cut_candidates(&segments, scored),
+            scored,
+            self.start,
+        );
         let mut chunks = Vec::new();
         for cut in cuts {
-            if scored - self.start <= MAX_CHUNK_SAMPLES + LOOKAHEAD_SAMPLES {
+            if scored - self.start <= ready {
                 break;
             }
             chunks.push(self.take_until(cut));
@@ -261,12 +322,16 @@ impl Chunker {
     /// more is pushed after.
     pub fn finish(&mut self) -> Vec<Vec<f32>> {
         let mut chunks = Vec::new();
-        if !self.uncut && self.len - self.start > MAX_CHUNK_SAMPLES {
+        if !self.uncut && self.len - self.start > self.plan.whole_rest_samples {
             match self.score(true) {
                 Ok(_) => {
                     let segments = speech_segments(&self.probs, self.frame_samples, self.len);
-                    let cuts =
-                        plan_cuts(&cut_candidates(&segments, self.len), self.len, self.start);
+                    let cuts = plan_cuts(
+                        &self.plan,
+                        &cut_candidates(&segments, self.len),
+                        self.len,
+                        self.start,
+                    );
                     for cut in cuts {
                         chunks.push(self.take_until(cut));
                     }
@@ -400,7 +465,7 @@ mod tests {
     fn plan(seconds: f64, pauses: &[(f64, f64)]) -> Vec<f64> {
         let samples = s(seconds);
         let segments = speech_segments(&probs_with_pauses(seconds, pauses), FRAME, samples);
-        plan_cuts(&cut_candidates(&segments, samples), samples, 0)
+        plan_cuts(&ChunkPlan::HANDY, &cut_candidates(&segments, samples), samples, 0)
             .into_iter()
             .map(|cut| (cut as f64 / RATE as f64 * 10.0).round() / 10.0)
             .collect()
@@ -597,6 +662,84 @@ mod tests {
         }
         assert_eq!(lengths(&chunker.finish()), vec![pcm.len()]);
         assert_eq!(counts.made.load(Ordering::Relaxed), 0);
+    }
+
+    /// A chunker with WalkieTalkey's live plan (DESK-46).
+    fn live_da_chunker() -> Chunker {
+        let make = || Ok(Box::new(ScriptedScorer {
+            scored: Arc::new(AtomicUsize::new(0)),
+            calls: 0,
+            fail_on: None,
+        }) as Box<dyn SpeechScorer>);
+        Chunker::with_plan(Box::new(make), ChunkPlan::LIVE_DA)
+    }
+
+    /// Speech with a short pause every `every` seconds, like dictation.
+    fn dictation(seconds: f64, every: f64) -> Vec<f32> {
+        let pauses: Vec<(f64, f64)> = (1..)
+            .map(|i| i as f64 * every)
+            .take_while(|&at| at + 0.6 < seconds)
+            .map(|at| (at, at + 0.6))
+            .collect();
+        clip(&probs_with_pauses(seconds, &pauses))
+    }
+
+    /// Feeds `pcm` as the phone and the recorder do, in 200 ms pieces.
+    fn feed_live(chunker: &mut Chunker, pcm: &[f32]) -> Vec<Vec<f32>> {
+        let mut chunks = Vec::new();
+        for piece in pcm.chunks(s(0.2)) {
+            chunks.extend(chunker.push(piece));
+        }
+        chunks
+    }
+
+    #[test]
+    fn live_da_plan_cuts_two_minutes_into_10_to_20_second_chunks() {
+        let pcm = dictation(120.0, 7.0);
+        let mut chunker = live_da_chunker();
+        let live = feed_live(&mut chunker, &pcm);
+        assert!(live.len() >= 5, "most of 2 min is decoded while talking, got {}", live.len());
+        for chunk in &live {
+            let secs = chunk.len() as f64 / RATE as f64;
+            assert!((10.0..=20.0).contains(&secs), "chunk of {secs:.1}s");
+        }
+        let rest = chunker.finish();
+        assert_eq!(rest.len(), 1, "one piece is left at release");
+        let mut all = live;
+        all.extend(rest);
+        assert_eq!(all.concat(), pcm, "every sample once, in order");
+    }
+
+    #[test]
+    fn live_da_plan_leaves_one_short_rest_whatever_the_length() {
+        for seconds in [15.0, 24.0, 37.0, 60.0, 120.0, 183.0, 300.0] {
+            for every in [3.0, 5.5, 8.0] {
+                let pcm = dictation(seconds, every);
+                let mut chunker = live_da_chunker();
+                feed_live(&mut chunker, &pcm);
+                let rest = chunker.finish();
+                assert_eq!(rest.len(), 1, "{seconds}s with pauses every {every}s");
+                let rest_secs = rest[0].len() as f64 / RATE as f64;
+                assert!(
+                    rest_secs <= 25.0,
+                    "{seconds}s with pauses every {every}s left {rest_secs:.1}s"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn live_da_plan_keeps_a_short_dictation_whole() {
+        let pcm = dictation(15.0, 6.0);
+        let mut chunker = live_da_chunker();
+        assert!(feed_live(&mut chunker, &pcm).is_empty());
+        assert_eq!(lengths(&chunker.finish()), vec![pcm.len()]);
+    }
+
+    #[test]
+    fn handy_plan_is_the_default() {
+        assert_eq!(ChunkPlan::default(), ChunkPlan::HANDY);
+        assert_eq!(ChunkPlan::HANDY.max_chunk_samples, 40 * RATE);
     }
 
     #[test]

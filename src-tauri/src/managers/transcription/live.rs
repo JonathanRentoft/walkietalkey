@@ -57,12 +57,16 @@ impl<'a> LiveSession<'a> {
             }
             LiveDecode::Chunked => {
                 info!("Live long-form chunking started (model '{}')", model_id);
+                // WalkieTalkey (DESK-46): 10-20 s chunks, each with the end of
+                // the previous chunk's text as its context prompt.
                 LiveDecoder::Chunked(Box::new(ChunkedDecode::new(
                     tm,
                     tm.engine.cancel_mark(),
                     setup.run_options.clone(),
                     model_id,
                     settings.vad_backend,
+                    crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,
+                    info.supports_initial_prompt,
                 )))
             }
         };

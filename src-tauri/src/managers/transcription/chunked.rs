@@ -7,7 +7,7 @@ use log::info;
 use transcribe_cpp::{RunOptions, Transcript};
 
 use super::TranscriptionManager;
-use crate::audio_toolkit::chunking::Chunker;
+use crate::audio_toolkit::chunking::{ChunkPlan, Chunker};
 use crate::engine_supervisor::{CancelMark, EngineError};
 use crate::managers::audio::create_detector;
 use crate::settings::VadBackend;
@@ -21,6 +21,9 @@ pub(super) struct ChunkedDecode<'a> {
     run_options: RunOptions,
     model_id: String,
     chunker: Chunker,
+    /// Each chunk gets the end of the previous chunk's text as its context
+    /// prompt (DESK-46), when the model takes one.
+    context_prompts: bool,
     transcripts: Vec<Transcript>,
     /// The first run that failed or was cancelled; nothing more is decoded
     /// after it.
@@ -34,6 +37,8 @@ impl<'a> ChunkedDecode<'a> {
         run_options: RunOptions,
         model_id: &str,
         backend: VadBackend,
+        plan: ChunkPlan,
+        context_prompts: bool,
     ) -> Self {
         // The VAD is only loaded if the audio turns out long enough to cut.
         let app_handle = tm.app_handle.clone();
@@ -42,7 +47,11 @@ impl<'a> ChunkedDecode<'a> {
             mark,
             run_options,
             model_id: model_id.to_string(),
-            chunker: Chunker::new(Box::new(move || create_detector(backend, &app_handle))),
+            chunker: Chunker::with_plan(
+                Box::new(move || create_detector(backend, &app_handle)),
+                plan,
+            ),
+            context_prompts,
             transcripts: Vec::new(),
             failure: None,
         }
@@ -57,7 +66,16 @@ impl<'a> ChunkedDecode<'a> {
         model_id: &str,
         backend: VadBackend,
     ) -> Result<Vec<Transcript>, EngineError> {
-        let mut decode = Self::new(tm, mark, run_options, model_id, backend);
+        // A whole clip keeps Handy's plan: it has no talking time to hide in.
+        let mut decode = Self::new(
+            tm,
+            mark,
+            run_options,
+            model_id,
+            backend,
+            ChunkPlan::HANDY,
+            false,
+        );
         decode.push(audio);
         decode.finish()
     }
@@ -114,9 +132,16 @@ impl<'a> ChunkedDecode<'a> {
             }
             let audio_secs = chunk.len() as f64 / 16_000.0;
             let started = Instant::now();
+            let mut run_options = self.run_options.clone();
+            if self.context_prompts {
+                run_options.prompt = crate::pipeline::da::context::chunk_prompt(
+                    self.transcripts.last().map(|t| t.text.as_str()),
+                    self.run_options.language.as_deref(),
+                );
+            }
             match self
                 .tm
-                .run_batch(self.mark, chunk, &self.run_options, &self.model_id)
+                .run_batch(self.mark, chunk, &run_options, &self.model_id)
             {
                 Ok(transcript) => {
                     self.transcripts.push(transcript);

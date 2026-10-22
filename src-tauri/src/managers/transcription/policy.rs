@@ -47,11 +47,16 @@ pub enum BatchDecode {
 }
 
 /// Streaming wins: a streaming model handles long audio itself. Otherwise
-/// long audio is chunked unless the model keeps its accuracy on it.
+/// the recording is chunked while it goes.
+///
+/// WalkieTalkey (DESK-46): long-form models (Whisper, so Edda) are chunked
+/// live too. Their own long-form decode only starts at release and takes the
+/// whole recording's time then; chunking while the user talks leaves only the
+/// last short chunk for after release, whatever the length.
 pub fn live_decode(model: ModelTraits, long_form_chunking: bool) -> LiveDecode {
     if model.streaming {
         LiveDecode::Stream
-    } else if long_form_chunking && !model.long_form {
+    } else if long_form_chunking {
         LiveDecode::Chunked
     } else {
         LiveDecode::None
@@ -65,5 +70,42 @@ pub fn batch_decode(model: ModelTraits, long_form_chunking: bool) -> BatchDecode
         BatchDecode::Chunked
     } else {
         BatchDecode::Whole
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const WHISPER: ModelTraits = ModelTraits {
+        streaming: false,
+        long_form: true,
+    };
+    const PARAKEET_BATCH: ModelTraits = ModelTraits {
+        streaming: false,
+        long_form: false,
+    };
+    const STREAMING: ModelTraits = ModelTraits {
+        streaming: true,
+        long_form: false,
+    };
+
+    #[test]
+    fn whisper_is_chunked_while_talking() {
+        // DESK-46: Edda (Whisper) decodes chunk by chunk during the recording.
+        assert_eq!(live_decode(WHISPER, true), LiveDecode::Chunked);
+        assert_eq!(live_decode(PARAKEET_BATCH, true), LiveDecode::Chunked);
+    }
+
+    #[test]
+    fn streaming_models_stream_and_chunking_can_be_turned_off() {
+        assert_eq!(live_decode(STREAMING, true), LiveDecode::Stream);
+        assert_eq!(live_decode(WHISPER, false), LiveDecode::None);
+    }
+
+    #[test]
+    fn batch_keeps_handys_rules() {
+        assert_eq!(batch_decode(WHISPER, true), BatchDecode::Whole);
+        assert_eq!(batch_decode(PARAKEET_BATCH, true), BatchDecode::Chunked);
     }
 }
