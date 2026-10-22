@@ -581,7 +581,8 @@ fn default_whats_new_last_seen_version() -> String {
 }
 
 fn default_selected_language() -> String {
-    "auto".to_string()
+    // WalkieTalkey: Danish forced (DESK-70).
+    "da".to_string()
 }
 
 fn default_overlay_position() -> OverlayPosition {
@@ -908,10 +909,11 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
 pub const SETTINGS_STORE_PATH: &str = "settings_store.json";
 
 pub fn get_default_settings() -> AppSettings {
+    // WalkieTalkey: hold fn on a Mac (DESK-20), Right Ctrl on Windows (DESK-21).
     #[cfg(target_os = "windows")]
-    let default_shortcut = "ctrl+space";
+    let default_shortcut = "ctrl_right";
     #[cfg(target_os = "macos")]
-    let default_shortcut = "option+space";
+    let default_shortcut = "fn";
     #[cfg(target_os = "linux")]
     let default_shortcut = "ctrl+space";
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -962,9 +964,10 @@ pub fn get_default_settings() -> AppSettings {
     AppSettings {
         settings_schema_version: default_settings_schema_version(),
         bindings,
-        shortcut_activation: ShortcutActivation::default(),
+        // WalkieTalkey: hold to talk (DESK-22); sounds on by default (DESK-23).
+        shortcut_activation: ShortcutActivation::PushToTalk,
         hold_threshold_ms: default_hold_threshold_ms(),
-        audio_feedback: false,
+        audio_feedback: true,
         audio_feedback_volume: default_audio_feedback_volume(),
         sound_theme: default_sound_theme(),
         start_hidden: default_start_hidden(),
@@ -980,7 +983,8 @@ pub fn get_default_settings() -> AppSettings {
         clamshell_microphone: None,
         selected_output_device: None,
         translate_to_english: false,
-        selected_language: "auto".to_string(),
+        // WalkieTalkey: Danish forced (DESK-70).
+        selected_language: "da".to_string(),
         overlay_position: default_overlay_position(),
         debug_mode: false,
         log_level: default_log_level(),
@@ -1701,15 +1705,17 @@ mod tests {
         );
     }
 
+    /// WalkieTalkey's default is hold to talk (DESK-22), not Handy's
+    /// hold-or-toggle; a settings file without a legacy key keeps it.
     #[test]
-    fn shortcut_activation_defaults_to_hold_or_toggle_without_legacy_key() {
+    fn shortcut_activation_defaults_to_push_to_talk_without_legacy_key() {
         let mut settings = get_default_settings();
         let raw = serde_json::json!({ "selected_model": "" });
 
         apply_settings_migrations(&mut settings, &raw);
         assert_eq!(
             settings.shortcut_activation,
-            ShortcutActivation::HoldOrToggle
+            ShortcutActivation::PushToTalk
         );
     }
 

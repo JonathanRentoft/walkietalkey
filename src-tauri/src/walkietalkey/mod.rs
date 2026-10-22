@@ -25,3 +25,34 @@ pub fn startup(app: &AppHandle) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::settings::{get_default_settings, ModelUnloadTimeout, ShortcutActivation};
+
+    #[test]
+    fn default_key_is_fn_on_mac_and_right_ctrl_on_windows() {
+        let settings = get_default_settings();
+        let binding = &settings.bindings["transcribe"];
+        #[cfg(target_os = "macos")]
+        assert_eq!(binding.current_binding, "fn", "DESK-20");
+        #[cfg(target_os = "windows")]
+        assert_eq!(binding.current_binding, "ctrl_right", "DESK-21");
+        assert_eq!(binding.current_binding, binding.default_binding);
+        assert!(binding.current_binding.parse::<handy_keys::Hotkey>().is_ok());
+    }
+
+    #[test]
+    fn default_dictation_behaviour_follows_the_spec() {
+        let settings = get_default_settings();
+        assert_eq!(settings.shortcut_activation, ShortcutActivation::PushToTalk, "DESK-22");
+        assert_eq!(settings.hold_threshold_ms, 300, "DESK-26");
+        assert!(settings.audio_feedback, "DESK-23: sounds on by default");
+        assert_eq!(settings.selected_language, "da", "DESK-70");
+        assert_eq!(settings.app_language, "da", "DESK-03");
+        assert_eq!(settings.model_unload_timeout, ModelUnloadTimeout::Never, "DESK-45");
+        assert!(settings.long_form_chunking, "DESK-46");
+        assert!(settings.filler_word_removal_enabled, "DESK-44");
+        assert!(!settings.post_process_enabled, "cleanup is WalkieTalkey's own mode");
+    }
+}
