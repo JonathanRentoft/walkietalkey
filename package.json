@@ -1,7 +1,14 @@
 {
-  "name": "handy-app",
+  "name": "walkietalkey",
   "private": true,
-  "version": "0.9.8",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*",
+    "phone",
+    "relay",
+    "site"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",

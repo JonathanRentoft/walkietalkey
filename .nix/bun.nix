@@ -737,6 +737,11 @@
     url = "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-4.7.0.tgz";
     hash = "sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==";
   };
+  "@walkietalkey/phone" = copyPathToStore ./phone;
+  "@walkietalkey/protocol" = copyPathToStore ./packages/protocol;
+  "@walkietalkey/relay" = copyPathToStore ./relay;
+  "@walkietalkey/site" = copyPathToStore ./site;
+  "@walkietalkey/ui" = copyPathToStore ./packages/ui;
   "acorn-jsx@5.3.2" = fetchurl {
     url = "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz";
     hash = "sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==";
