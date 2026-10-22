@@ -392,7 +392,7 @@ pub(crate) async fn process_transcription_output(
 }
 
 impl ShortcutAction for TranscribeAction {
-    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+    fn start(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str) {
         let start_time = Instant::now();
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
@@ -425,7 +425,7 @@ impl ShortcutAction for TranscribeAction {
         }
 
         let binding_id = binding_id.to_string();
-        RECORDING_SESSION.fetch_add(1, Ordering::SeqCst);
+        let session = RECORDING_SESSION.fetch_add(1, Ordering::SeqCst) + 1;
         let tray_started = Instant::now();
         set_tray_state(app, TrayIconState::Recording);
         let tray_elapsed = tray_started.elapsed();
@@ -469,10 +469,34 @@ impl ShortcutAction for TranscribeAction {
         // doesn't stream (or whose capability is not known yet) gets the compact
         // pill instead of an oversized transparent live window.
         let overlay_started = Instant::now();
-        match settings.overlay_style {
-            OverlayStyle::Live if model_supports_streaming => utils::show_streaming_overlay(app),
-            OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(app),
-            OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
+        let show_overlay = {
+            let app = app.clone();
+            let style = settings.overlay_style;
+            move || match style {
+                OverlayStyle::Live if model_supports_streaming => {
+                    utils::show_streaming_overlay(&app)
+                }
+                OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(&app),
+                OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
+            }
+        };
+        // WalkieTalkey (DESK-23): in hold mode the pill (and below, the start
+        // sound) appear once the key has been held for the threshold, so quick
+        // taps and fn shortcuts stay silent. Recording itself starts now.
+        let reveal_delay = crate::walkietalkey::keys::reveal_delay(&settings);
+        match reveal_delay {
+            None => show_overlay(),
+            Some(delay) => {
+                let rm_reveal = Arc::clone(&rm);
+                crate::walkietalkey::keys::reveal_at(
+                    start_time + delay,
+                    move || {
+                        RECORDING_SESSION.load(Ordering::SeqCst) == session
+                            && rm_reveal.is_recording()
+                    },
+                    show_overlay,
+                );
+            }
         }
         // Everything above runs before capture can begin, so each span here is
         // added keypress->capture latency.
@@ -525,6 +549,14 @@ impl ShortcutAction for TranscribeAction {
                     debug!("Microphone is receiving samples; recording is ready");
                     utils::emit_recording_ready(&app_clone);
 
+                    // WalkieTalkey (DESK-23): the start sound waits for the
+                    // hold threshold too; a tap ends the recording before it.
+                    if let Some(delay) = reveal_delay {
+                        std::thread::sleep(
+                            (start_time + delay).saturating_duration_since(Instant::now()),
+                        );
+                    }
+
                     // The start chime is a readiness cue, so it must follow the
                     // first real input callback rather than Stream::play() or a
                     // fixed delay. The helper returns immediately when feedback
@@ -546,6 +578,14 @@ impl ShortcutAction for TranscribeAction {
         if recording_error.is_none() {
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
+            // WalkieTalkey (DESK-26): fn is also a modifier, so another key
+            // pressed with it (fn+Delete, fn+arrows) cancels silently.
+            if crate::walkietalkey::keys::is_modifier_only(shortcut_str) {
+                let rm_watch = Arc::clone(&rm);
+                crate::walkietalkey::keys::cancel_on_other_key(app.clone(), move || {
+                    RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_watch.is_recording()
+                });
+            }
         } else {
             // Starting failed (for example due to blocked microphone permissions).
             // Revert UI state so we don't stay stuck in the recording overlay.
