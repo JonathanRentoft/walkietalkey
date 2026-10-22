@@ -80,9 +80,50 @@ pub fn data_dir() -> Option<&'static PathBuf> {
     PORTABLE_DATA_DIR.get().and_then(|v| v.as_ref())
 }
 
+/// WalkieTalkey: outside portable mode the data folder is named after the app
+/// (DESK-02), not after the bundle id. On Windows it is in Local AppData, so
+/// models never roam with a domain profile and two computers never share
+/// settings or a relay room (SEC-10).
+static NAMED_DATA_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+const NAMED_DATA_DIR_NAME: &str = "WalkieTalkey";
+
+fn platform_data_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var_os("HOME")
+            .map(|home| PathBuf::from(home).join("Library").join("Application Support"))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+    }
+}
+
+/// The data folder: the portable `Data/` dir, or `WalkieTalkey` in the
+/// platform's data folder. `None` only if neither can be found.
+pub fn named_data_dir() -> Option<&'static PathBuf> {
+    if let Some(dir) = data_dir() {
+        return Some(dir);
+    }
+    NAMED_DATA_DIR
+        .get_or_init(|| {
+            let dir = platform_data_dir()?.join(NAMED_DATA_DIR_NAME);
+            std::fs::create_dir_all(&dir).ok()?;
+            Some(dir)
+        })
+        .as_ref()
+}
+
 /// Portable-aware replacement for `app.path().app_data_dir()`.
 pub fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
-    if let Some(dir) = data_dir() {
+    if let Some(dir) = named_data_dir() {
         Ok(dir.clone())
     } else {
         app.path().app_data_dir()
@@ -91,7 +132,7 @@ pub fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
 
 /// Portable-aware replacement for `app.path().app_log_dir()`.
 pub fn app_log_dir(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
-    if let Some(dir) = data_dir() {
+    if let Some(dir) = named_data_dir() {
         Ok(dir.join("logs"))
     } else {
         app.path().app_log_dir()
@@ -108,7 +149,7 @@ pub fn resolve_app_data(app: &tauri::AppHandle, relative: &str) -> Result<PathBu
 /// Returns an absolute path in portable mode (so the store plugin writes to
 /// the portable Data dir) or the original relative path otherwise.
 pub fn store_path(relative: &str) -> PathBuf {
-    if let Some(dir) = data_dir() {
+    if let Some(dir) = named_data_dir() {
         dir.join(relative)
     } else {
         PathBuf::from(relative)

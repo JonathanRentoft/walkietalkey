@@ -1,11 +1,11 @@
 [package]
-name = "handy"
-version = "0.9.8"
-description = "Handy"
-authors = ["cjpais"]
+name = "walkietalkey"
+version = "0.1.0"
+description = "WalkieTalkey: Danish dictation, speech to text on your own computer"
+authors = ["The WalkieTalkey contributors"]
 edition = "2021"
-license = "MIT"
-default-run = "handy"
+license = "Apache-2.0"
+default-run = "walkietalkey"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.

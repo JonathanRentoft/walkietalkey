@@ -665,9 +665,9 @@ fn default_post_process_enabled() -> bool {
 }
 
 fn default_app_language() -> String {
-    tauri_plugin_os::locale()
-        .map(|l| l.replace('_', "-"))
-        .unwrap_or_else(|| "en".to_string())
+    // WalkieTalkey: Danish is the default UI language (DESK-03), whatever the
+    // system locale. English stays in the codebase for later.
+    "da".to_string()
 }
 
 fn default_show_tray_icon() -> bool {

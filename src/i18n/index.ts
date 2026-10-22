@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { locale } from "@tauri-apps/plugin-os";
 import { LANGUAGE_METADATA } from "./languages";
+import { WALKIETALKEY_UI_LANGUAGES } from "@/walkietalkey/i18n";
 import { commands } from "@/bindings";
 import {
   getLanguageDirection,
@@ -19,7 +20,8 @@ const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
 const resources: Record<string, { translation: Record<string, unknown> }> = {};
 for (const [path, module] of Object.entries(localeModules)) {
   const langCode = path.match(/\.\/locales\/(.+)\/translation\.json/)?.[1];
-  if (langCode) {
+  // WalkieTalkey ships a Danish UI with English kept for later (DESK-03).
+  if (langCode && WALKIETALKEY_UI_LANGUAGES.includes(langCode)) {
     resources[langCode] = { translation: module.default };
   }
 }
@@ -85,11 +87,11 @@ export const getSupportedLanguage = (
   return supported ? supported.code : null;
 };
 
-// Initialize i18n with English as default
+// Initialize i18n with Danish as default (DESK-03)
 // Language will be synced from settings after init
 i18n.use(initReactI18next).init({
   resources,
-  lng: "en",
+  lng: "da",
   fallbackLng: "en",
   interpolation: {
     escapeValue: false, // React already escapes values
