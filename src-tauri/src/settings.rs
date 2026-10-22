@@ -148,10 +148,11 @@ pub enum OverlayStyle {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelUnloadTimeout {
+    /// WalkieTalkey keeps the speech model loaded by default (DESK-45).
+    #[default]
     Never,
     Immediately,
     Min2,
-    #[default]
     Min5,
     Min10,
     Min15,

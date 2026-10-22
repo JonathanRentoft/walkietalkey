@@ -27,6 +27,7 @@ mod transcription_coordinator;
 mod tray;
 mod tray_i18n;
 mod utils;
+pub mod walkietalkey;
 
 pub use cli::CliArgs;
 #[cfg(debug_assertions)]
@@ -214,6 +215,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
     app_handle.manage(tray::TrayState::new());
+
+    // WalkieTalkey: model loaded at start, relay, managed settings (DESK-05).
+    walkietalkey::startup(app_handle);
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
