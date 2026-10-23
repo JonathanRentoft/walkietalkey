@@ -19,7 +19,7 @@ on:
       asset-prefix:
         required: false
         type: string
-        default: "handy"
+        default: "walkietalkey"
       asset-name-pattern:
         required: false
         type: string
@@ -29,6 +29,13 @@ on:
         type: boolean
         default: false
       sign-binaries:
+        required: false
+        type: boolean
+        default: false
+      # WalkieTalkey: Tauri updater signatures (our own key, DESK-110) are
+      # separate from Apple and Windows code signing, which only run when
+      # their secrets exist.
+      sign-updater:
         required: false
         type: boolean
         default: false
@@ -446,6 +453,27 @@ jobs:
           chmod +x "$tools_dir/linuxdeploy-${arch}.AppImage"
           "$tools_dir/linuxdeploy-${arch}.AppImage" --appimage-extract-and-run --version
 
+      # WalkieTalkey: build-time config overlay. Without the updater key (pull
+      # requests) no updater artifacts are made; Windows code signing runs only
+      # when its secret exists (the route is the owner's decision 18.2).
+      - name: Tauri config overlay
+        id: overlay
+        shell: bash
+        env:
+          SIGN_UPDATER: ${{ inputs.sign-updater }}
+          WINDOWS_SIGN_COMMAND: ${{ contains(inputs.platform, 'windows') && inputs.sign-binaries && secrets.WINDOWS_SIGN_COMMAND || '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          overlay = {"bundle": {}}
+          if os.environ.get("SIGN_UPDATER") != "true":
+              overlay["bundle"]["createUpdaterArtifacts"] = False
+          if os.environ.get("WINDOWS_SIGN_COMMAND"):
+              overlay["bundle"]["windows"] = {"signCommand": os.environ["WINDOWS_SIGN_COMMAND"]}
+          json.dump(overlay, open("src-tauri/tauri.ci.conf.json", "w"))
+          PY
+          echo "args=--config src-tauri/tauri.ci.conf.json" >> "$GITHUB_OUTPUT"
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
@@ -460,8 +488,8 @@ jobs:
           AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
           AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
           AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           # The Vulkan loader and Wayland client library must come from the host
           # graphics stack. Bundling Ubuntu's copies ahead of the system libraries can
           # prevent a newer distro's Vulkan ICD or Mesa stack from loading.
@@ -477,7 +505,7 @@ jobs:
           releaseName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
           releaseId: ${{ inputs.release-id }}
           assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
-          args: ${{ inputs.build-args }}
+          args: ${{ inputs.build-args }} ${{ steps.overlay.outputs.args }}
 
       # tauri-action uploads release assets before returning. All AppImage
       # filtering therefore happens inside linuxdeploy above; this verifies the
@@ -742,9 +770,9 @@ jobs:
           function Assert-PackageContents {
             param([string]$Root, [string]$Label)
 
-            $handy = Get-ChildItem $Root -Filter "handy.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            $handy = Get-ChildItem $Root -Filter "walkietalkey.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if (-not $handy) {
-              throw "$Label package is missing handy.exe"
+              throw "$Label package is missing walkietalkey.exe"
             }
             foreach ($dll in $stagedDlls) {
               if (-not (Get-ChildItem $Root -Filter $dll.Name -Recurse -ErrorAction SilentlyContinue)) {
@@ -755,7 +783,7 @@ jobs:
             $deviceOutput = (& $handy.FullName --list-devices | Out-String)
             $deviceOutput | Write-Host
             if ($LASTEXITCODE -ne 0) {
-              throw "$Label handy.exe --list-devices failed"
+              throw "$Label walkietalkey.exe --list-devices failed"
             }
             if ("${{ inputs.target }}" -like "aarch64*" -and $deviceOutput -match "kind=(vulkan|cuda|metal|gpu)") {
               throw "$Label Windows ARM64 package unexpectedly exposed a GPU compute device"

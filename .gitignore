@@ -61,3 +61,4 @@ walkietalkey-kit*.zip
 .wrangler/
 .astro/
 .vitest-cache/
+src-tauri/tauri.ci.conf.json
