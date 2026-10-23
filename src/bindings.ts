@@ -748,6 +748,18 @@ async wtCheckUpdates() : Promise<void> {
     await TAURI_INVOKE("wt_check_updates");
 },
 /**
+ * DESK-31: transcribes the bundled 10-second Danish clip with the selected
+ * model (warm) and says whether to offer the fast model.
+ */
+async wtMeasureSpeed() : Promise<Result<SpeedVerdict, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_measure_speed") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -1443,6 +1455,15 @@ export type ShortcutActivation =
 "hold_or_toggle"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type SpeedVerdict = { seconds: number; 
+/**
+ * Offer the fast model instead of Edda.
+ */
+offer_fast_model: boolean; 
+/**
+ * The one sentence the UI shows when it offers the fast model.
+ */
+reason: string | null }
 /**
  * Phase of the streaming overlay card, emitted to drive its UI state.
  */

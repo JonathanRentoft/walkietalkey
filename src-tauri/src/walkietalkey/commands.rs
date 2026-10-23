@@ -145,3 +145,39 @@ pub fn wt_set_paused(app: AppHandle, paused: bool) {
 pub fn wt_check_updates(app: AppHandle) {
     super::updates::check_now(&app);
 }
+
+/// DESK-31: transcribes the bundled 10-second Danish clip with the selected
+/// model (warm) and says whether to offer the fast model.
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_measure_speed(app: AppHandle) -> Result<super::speed::SpeedVerdict, String> {
+    use std::sync::Arc;
+    use tauri::Manager;
+
+    let clip = app
+        .path()
+        .resolve("resources/speed-check/da-fleurs-10s.wav", tauri::path::BaseDirectory::Resource)
+        .map_err(|e| e.to_string())?;
+    let samples = crate::audio_toolkit::read_wav_samples(&clip).map_err(|e| e.to_string())?;
+    let tm = app
+        .try_state::<Arc<crate::managers::transcription::TranscriptionManager>>()
+        .map(|tm| Arc::clone(&tm))
+        .ok_or("Talemodellen er ikke klar endnu")?;
+    let seconds = tauri::async_runtime::spawn_blocking(move || -> Result<f64, String> {
+        let model = crate::settings::get_settings(&app).selected_model;
+        if !tm.is_model_loaded() {
+            tm.load_model(&model).map_err(|e| e.to_string())?;
+        }
+        // The first run warms the GPU; the second is the one measured.
+        tm.transcribe(samples.clone()).map_err(|e| e.to_string())?;
+        let started = std::time::Instant::now();
+        tm.transcribe(samples).map_err(|e| e.to_string())?;
+        Ok(started.elapsed().as_secs_f64())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let fast_model = crate::catalog::CATALOG
+        .iter()
+        .any(|m| m.id.starts_with("walkietalkey/ekko-v1-tiny-gguf/"));
+    Ok(super::speed::verdict(seconds, fast_model))
+}

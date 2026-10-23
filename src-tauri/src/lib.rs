@@ -797,6 +797,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_history_copy,
             walkietalkey::commands::wt_set_paused,
             walkietalkey::commands::wt_check_updates,
+            walkietalkey::commands::wt_measure_speed,
             commands::check_apple_intelligence_available,
             commands::initialize_enigo,
             commands::initialize_shortcuts,
