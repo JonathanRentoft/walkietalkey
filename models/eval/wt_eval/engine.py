@@ -40,17 +40,21 @@ class TranscribeCli:
         with tempfile.TemporaryDirectory() as td:
             listing = Path(td) / "clips.list"
             listing.write_text("".join(f"{w}\n" for w in wavs), encoding="utf-8")
-            proc = subprocess.run(self.command(model, listing, language),
-                                  capture_output=True, text=True)
+            proc = subprocess.run(self.command(model, listing, language), capture_output=True)
+        # With segment timestamps a Whisper segment boundary can split a
+        # multi-byte character, so the engine may print invalid UTF-8; keep the
+        # rest and let the replacement character count as an error.
+        stdout = proc.stdout.decode("utf-8", errors="replace")
+        stderr = proc.stderr.decode("utf-8", errors="replace")
         rows = {}
-        for line in proc.stdout.splitlines():
+        for line in stdout.splitlines():
             if not line.startswith("{"):
                 continue
             row = json.loads(line)
             if "file" in row:
                 rows[row["file"]] = row
         if proc.returncode != 0 and not rows:
-            raise RuntimeError(f"transcribe-cli failed ({proc.returncode}): {proc.stderr[-2000:]}")
+            raise RuntimeError(f"transcribe-cli failed ({proc.returncode}): {stderr[-2000:]}")
         results = []
         for w in wavs:
             row = rows.get(str(w))

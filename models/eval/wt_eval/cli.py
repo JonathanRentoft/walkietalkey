@@ -132,6 +132,10 @@ def cmd_run(a: argparse.Namespace) -> int:
     }
     (out / "run.json").write_text(json.dumps(meta, indent=2) + "\n")
     for m in a.model:
+        done = out / f"{m.name}.jsonl"
+        if a.resume and done.is_file() and len(done.read_text(encoding="utf-8").splitlines()) == len(clips):
+            print(f"{m.name}: kept ({len(clips)} rows from an earlier run)", file=sys.stderr, flush=True)
+            continue
         engine = TranscribeCli(cli=Path(a.cli), backend=a.backend, timestamps=m.timestamps, threads=a.threads)
         print(f"{m.name}: {len(clips)} clips ...", file=sys.stderr, flush=True)
         results = engine.transcribe(m.path, [c.wav for c in clips], language=a.language)
@@ -165,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--backend", default="auto")
     r.add_argument("--threads", type=int)
     r.add_argument("--out", required=True, type=Path)
+    r.add_argument("--resume", action="store_true",
+                   help="keep <out>/<model>.jsonl files that already have a row for every clip")
     r.set_defaults(func=cmd_run)
     s = sub.add_parser("score", help="recompute summary.json/summary.md from the per-clip rows")
     s.add_argument("out", type=Path)

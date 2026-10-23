@@ -55,6 +55,24 @@ def test_auto_timestamps_omits_the_flag_like_the_app(tmp_path):
     assert "--threads" not in args
 
 
+BROKEN_UTF8_CLI = r'''#!{python}
+import sys
+args = sys.argv[1:]
+listing = args[args.index("--batch") + 1]
+path = open(listing).read().split()[0]
+# A Whisper segment boundary can split a multi-byte character ("ø" = c3 b8).
+sys.stdout.buffer.write(b'{{"file": "' + path.encode() + b'", "text": "h\xc3 \xb8st"}}\n')
+'''
+
+
+def test_invalid_utf8_from_the_engine_is_replaced_not_fatal(tmp_path):
+    cli = tmp_path / "transcribe-cli"
+    cli.write_text(BROKEN_UTF8_CLI.format(python=sys.executable))
+    cli.chmod(cli.stat().st_mode | stat.S_IEXEC)
+    results = TranscribeCli(cli=cli).transcribe(tmp_path / "m.gguf", [tmp_path / "a.wav"], language="da")
+    assert results[0].text == "h� �st"
+
+
 def test_failed_file_becomes_empty_text_with_error(tmp_path):
     cli = make_fake_cli(tmp_path)
     engine = TranscribeCli(cli=cli)

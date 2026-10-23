@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WalkieTalkey Danish accuracy harness (spec 15.1), one command:
 #
-#   models/eval/run.sh [--limit N] [--clips-dir DIR] [--backend metal|cpu|auto] [--out DIR]
+#   models/eval/run.sh [--limit N] [--clips-dir DIR] [--backend metal|cpu|auto] [--out DIR] [--resume]
 #
 # Fetches and builds what is missing (transcribe.cpp 0.4.0, FLEURS da_dk test,
 # Edda Q8_0 converted from the original, Handy's Whisper turbo Q8_0, Ekko v1
@@ -17,13 +17,14 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO="$(cd "$HERE/../.." && pwd)"
 WORK="${WT_WORK_DIR:-$REPO/_kit/work}"
 TCPP="$WORK/src/transcribe.cpp-0.4.0"
-LIMIT=""; CLIPS_DIR=""; BACKEND="auto"; OUT=""
+LIMIT=""; CLIPS_DIR=""; BACKEND="auto"; OUT=""; RESUME=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --limit) LIMIT="$2"; shift 2 ;;
     --clips-dir) CLIPS_DIR="$2"; shift 2 ;;
     --backend) BACKEND="$2"; shift 2 ;;
     --out) OUT="$2"; shift 2 ;;
+    --resume) RESUME=(--resume); shift ;;
     -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -75,5 +76,5 @@ fi
 cd "$HERE"
 UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$WORK/venvs/wt-harness}" \
   uv run --frozen python -m wt_eval run --cli "$CLI" --backend "$BACKEND" \
-  "${MODELS[@]}" "${SOURCE[@]}" --out "$OUT"
+  "${MODELS[@]}" "${SOURCE[@]}" --out "$OUT" ${RESUME[@]+"${RESUME[@]}"}
 echo "results: $OUT/summary.md"

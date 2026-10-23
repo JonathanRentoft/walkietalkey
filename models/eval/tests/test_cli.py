@@ -80,6 +80,22 @@ def test_clips_dir_is_used_instead_of_fleurs(tmp_path):
     assert summary["models"]["good"]["clips"] == 1
 
 
+def test_resume_keeps_finished_models(tmp_path):
+    cli, fleurs = setup(tmp_path)
+    out = tmp_path / "out"
+    main(["run", "--cli", str(cli), "--fleurs-dir", str(fleurs), "--out", str(out),
+          "--model", f"good={tmp_path / 'good.gguf'}"])
+    marker = "kept from the first run"
+    rows = (out / "good.jsonl").read_text().replace("God dag.", marker, 1)
+    (out / "good.jsonl").write_text(rows)
+    rc = main(["run", "--cli", str(cli), "--fleurs-dir", str(fleurs), "--out", str(out), "--resume",
+               "--model", f"good={tmp_path / 'good.gguf'}", "--model", f"bad={tmp_path / 'bad.gguf'}"])
+    assert rc == 0
+    assert marker in (out / "good.jsonl").read_text()
+    summary = json.loads((out / "summary.json").read_text())
+    assert set(summary["models"]) == {"good", "bad"}
+
+
 def test_score_recomputes_summary_from_rows(tmp_path):
     cli, fleurs = setup(tmp_path)
     out = tmp_path / "out"
