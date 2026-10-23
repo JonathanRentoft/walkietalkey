@@ -321,7 +321,9 @@ export function SceneCleanup(_props: SceneProps) {
               {clean ? "Renskrevet" : "Det du sagde"}
             </span>
             <span className="wt-sc-card-meta">
-              {clean ? "Lokal oprydning" : "Rå tale"}
+              {/* TODO(copy): was "Lokal oprydning"; self-corrections come from the optional AI cleanup (review
+                  finding 17) */}
+              {clean ? "AI-oprydning" : "Rå tale"}
             </span>
           </div>
           <p
@@ -456,15 +458,6 @@ function DevBox(p: { name: string; active: boolean; st: string }) {
           <AppIcon size={22} />
           <span>Tekst klar til at indsætte</span>
         </div>
-        <div
-          className={cx(
-            "wt-sc-dev-hist",
-            on && !p.active && "wt-sc-dev-hist--in",
-          )}
-        >
-          <Ico d={ICON.book} size={12} />
-          <span>Gemt i historikken</span>
-        </div>
       </div>
       <div className="wt-sc-dev-base" />
       <span className="wt-sc-dev-name">
@@ -475,7 +468,8 @@ function DevBox(p: { name: string; active: boolean; st: string }) {
   );
 }
 
-/* Til den computer du sidder ved: the active one gets the text, the other keeps it in its history. */
+/* Til den computer du sidder ved: the active one gets the text, the other gets nothing. (The design system's version
+   showed "Gemt i historikken" on the other computer, which is not what the app does: spec 12.1, review finding 6.) */
 const DEV_STEPS: Steps = [
   ["idle", 900],
   ["send", 1000],
