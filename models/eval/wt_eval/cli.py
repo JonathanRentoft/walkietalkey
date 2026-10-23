@@ -15,7 +15,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .datasets import Clip, load_clips_dir, load_fleurs
+from .datasets import Clip, load_clips_dir, load_fleurs, prepare_audio
 from .engine import TranscribeCli
 from .normalize import normalize
 from .punctuation import count_marks, needs_pnc, word_count
@@ -114,7 +114,7 @@ def write_summary(out: Path) -> dict:
 
 def cmd_run(a: argparse.Namespace) -> int:
     if a.clips_dir:
-        clips = load_clips_dir(a.clips_dir, a.limit)
+        clips = prepare_audio(load_clips_dir(a.clips_dir, a.limit), Path(a.out) / "audio-16k")
         dataset = {"name": "clips-dir", "path": str(a.clips_dir)}
     else:
         clips = load_fleurs(a.fleurs_dir, a.limit)

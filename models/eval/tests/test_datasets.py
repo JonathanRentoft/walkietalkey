@@ -3,7 +3,25 @@ from pathlib import Path
 
 import pytest
 
-from wt_eval.datasets import Clip, load_clips_dir, load_fleurs, wav_info
+from wt_eval.datasets import Clip, load_clips_dir, load_fleurs, prepare_audio, wav_info
+
+
+def test_prepare_audio_converts_only_what_the_engine_cannot_read(tmp_path):
+    good = tmp_path / "good.wav"
+    write_wav(good)  # 16 kHz mono PCM16
+    stereo = tmp_path / "stereo.wav"
+    write_wav(stereo, rate=48000, channels=2, frames=4800)
+    clips = [Clip("good", good, "a", 0.1), Clip("stereo", stereo, "b", 0.1)]
+    calls = []
+
+    def fake_convert(src: Path, dst: Path) -> None:
+        calls.append((src, dst))
+        write_wav(dst)
+
+    out = prepare_audio(clips, tmp_path / "cache", convert=fake_convert)
+    assert out[0] == clips[0]
+    assert out[1].wav == tmp_path / "cache" / "stereo.wav" and out[1].reference == "b"
+    assert calls == [(stereo, tmp_path / "cache" / "stereo.wav")]
 
 
 def write_wav(path: Path, *, rate=16000, channels=1, bits=16, fmt=1, frames=1600):

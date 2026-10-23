@@ -87,6 +87,31 @@ def load_fleurs(fleurs_dir: Path, limit: int | None = None) -> list[Clip]:
     return _spread(clips, limit)
 
 
+def ffmpeg_convert(src: Path, dst: Path) -> None:
+    """Any audio ffmpeg reads -> 16 kHz mono 16-bit PCM WAV."""
+    import subprocess
+
+    subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(src),
+                    "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(dst)], check=True)
+
+
+def prepare_audio(clips: list[Clip], cache: Path, convert=ffmpeg_convert) -> list[Clip]:
+    """transcribe-cli reads 16 kHz mono WAV (16-bit PCM or 32-bit float); any
+    other clip is converted once into `cache` and the converted copy is used."""
+    out = []
+    for clip in clips:
+        info = wav_info(clip.wav)
+        if info.rate == 16000 and info.channels == 1 and (info.format, info.bits) in ((1, 16), (3, 32)):
+            out.append(clip)
+            continue
+        cache.mkdir(parents=True, exist_ok=True)
+        dst = cache / f"{clip.id}.wav"
+        if not dst.exists():
+            convert(clip.wav, dst)
+        out.append(Clip(id=clip.id, wav=dst, reference=clip.reference, seconds=clip.seconds))
+    return out
+
+
 def load_clips_dir(folder: Path, limit: int | None = None) -> list[Clip]:
     """Every <name>.wav with a <name>.txt next to it (UTF-8 reference text)."""
     folder = Path(folder).resolve()

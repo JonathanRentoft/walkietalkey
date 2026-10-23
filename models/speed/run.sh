@@ -49,6 +49,25 @@ for model in "${MODELS[@]}"; do
       --warmup 1 --iters 5 "${CLIP_FILES[@]}" | tee -a "$OUT/results.jsonl"
   done
 done
+# Upstream-comparable numbers: transcribe.cpp's own transcribe-bench with its
+# defaults (language detection, timestamps auto; 1 warm-up, 3 runs) on its jfk
+# (11.0 s) and dots (35.3 s) samples, the setup behind the M4 Max and Ryzen
+# tables in transcribe.cpp's docs/models/whisper-large-v3-turbo.md.
+TBENCH="$WORK/src/transcribe.cpp-0.4.0/build-release/bin/transcribe-bench"
+SAMPLES="$WORK/src/transcribe.cpp-0.4.0/samples"
+if [[ -x "$TBENCH" ]]; then
+  for model in "${MODELS[@]}"; do
+    [[ -f "$model" && "$model" != *ekko* ]] || continue
+    for backend in metal cpu; do
+      [[ "$(uname -s)" == "Darwin" || "$backend" == "cpu" ]] || continue
+      for s in jfk dots; do
+        "$TBENCH" --model "$model" --sample "$SAMPLES/$s.wav" --backend "$backend" --iters 3 --warmup 1 --quiet \
+          | python3 -c 'import json,os,sys; d=json.load(sys.stdin); print(json.dumps({"model": os.path.basename(d["model_path"]), "sample": os.path.basename(d["sample_path"]), "seconds": d["sample_duration_s"], "backend": d["backend"], "wall_mean_ms": d["summary"]["wall_ms"]["mean"], "compute_mean_ms": d["summary"]["total_ms"]["mean"], "rtf_wall": d["rtf_wall_mean"]}))' \
+          | tee -a "$OUT/upstream-bench.jsonl"
+      done
+    done
+  done
+fi
 echo "end $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$OUT/times.txt"
 
 python3 - "$OUT/results.jsonl" > "$OUT/summary.md" <<'PY'
