@@ -15,7 +15,7 @@ test-utils = []
 p256 = { version = "0.13", features = ["ecdsa", "ecdh", "pkcs8"] }
 hkdf = "0.12"
 hmac = "0.12"
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 sha2 = "0.10"
 getrandom = "0.2"
 base64 = "0.22"
