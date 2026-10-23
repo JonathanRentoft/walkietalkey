@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // WalkieTalkey relay (spec section 8). Deploy to any Cloudflare account with `bunx wrangler deploy`.
+  "name": "walkietalkey-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  // RELAY-11: per IP, 10 new rooms and 10 joins per minute, checked in the Worker before any
+  // Durable Object is touched. namespace_id is any number unique within the account.
+  "ratelimits": [
+    { "name": "CREATE_LIMITER", "namespace_id": "4801", "simple": { "limit": 10, "period": 60 } },
+    { "name": "JOIN_LIMITER", "namespace_id": "4802", "simple": { "limit": 10, "period": 60 } }
+  ],
+  // RELAY-13: keep only our own log lines (hashed room ids, close codes, counts). Invocation
+  // logs would store request URLs, which contain raw room ids.
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "invocation_logs": false },
+    "traces": { "enabled": false }
+  },
+  "env": {
+    // Local integration tests only (`wrangler dev --env integration`); never deployed. Same
+    // relay, but per-IP limits high enough for many test rooms from 127.0.0.1 per minute.
+    "integration": {
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+      },
+      "ratelimits": [
+        { "name": "CREATE_LIMITER", "namespace_id": "4801", "simple": { "limit": 1000, "period": 60 } },
+        { "name": "JOIN_LIMITER", "namespace_id": "4802", "simple": { "limit": 1000, "period": 60 } }
+      ]
+    }
+  }
+}

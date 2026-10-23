@@ -1,6 +1,32 @@
 {
   "name": "@walkietalkey/protocol",
   "version": "0.1.0",
+  "description": "WalkieTalkey wire protocol: control messages, end-to-end encrypted device frames, pairing and test vectors (WebCrypto only).",
+  "license": "Apache-2.0",
   "private": true,
-  "license": "Apache-2.0"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts",
+    "./test-vectors.json": "./test-vectors.json",
+    "./scripted-phone": "./scripts/scripted-phone.ts",
+    "./relay-socket": "./scripts/relay-socket.ts",
+    "./wav": "./scripts/wav.ts"
+  },
+  "files": [
+    "src",
+    "scripts",
+    "test-vectors.json"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "phone": "bun scripts/scripted-phone.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "fast-check": "^4.10.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
 }
