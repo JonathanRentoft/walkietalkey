@@ -4,7 +4,7 @@
  * and resumed on the first touch, because browsers only start audio after a user gesture.
  */
 import workletUrl from "./capture-worklet.js?url";
-import { PcmPipeline } from "./pcm";
+import { PcmPipeline, type BlockSink } from "./pcm";
 
 export class MicDeniedError extends Error {
   constructor() {
@@ -26,8 +26,11 @@ export class MicError extends Error {
 export interface RecorderLike {
   /** Call synchronously in the first pointerdown: creates and resumes the AudioContext. */
   prime(): void;
-  /** Starts the microphone; `onBlock` gets every 200 ms block. Throws MicDeniedError or MicError. */
-  start(onBlock: (block: Uint8Array) => void): Promise<void>;
+  /**
+   * Starts the microphone; `onBlock` gets every 200 ms block with its RMS (for the level meter).
+   * Throws MicDeniedError or MicError.
+   */
+  start(onBlock: BlockSink): Promise<void>;
   /** Stops and delivers the last (shorter) block before resolving. */
   stop(): Promise<void>;
   /** Stops without delivering anything more. */
@@ -65,7 +68,7 @@ export class Recorder implements RecorderLike {
       });
   }
 
-  async start(onBlock: (block: Uint8Array) => void): Promise<void> {
+  async start(onBlock: BlockSink): Promise<void> {
     this.teardown();
     const gen = ++this.generation;
     this.prime();

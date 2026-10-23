@@ -248,10 +248,14 @@ The phone sends `audio_start`, one `audio_chunk` per 200 ms block while recordin
 `audio_end`. It keeps every block in memory until the session's `result` arrives. After a
 reconnect it resends the whole session: `audio_start`, chunks of up to 10 blocks, at most 25
 frames per second, `audio_end`, each frame re-encrypted with a fresh counter and nonce (old frames
-are never replayed). The computer keys blocks by (phone, session, block index), drops
-duplicates, reports missing indices with `audio_end` and keeps delivering late blocks; the
-application waits up to 5 s for them (DESK-61). The computer remembers answered sessions for
-15 minutes and answers a resend of one with the same result instead of transcribing it twice.
+are never replayed). It also resends every open session that has not failed when the relay sends
+`peer {online: true}` for the computer: a computer's socket that went quiet still counts as live
+for up to 75 s (RELAY-10), so frames routed to it in that time are lost. A resend asked for while
+one is running runs once more afterwards. The computer keys blocks by (phone, session, block
+index), drops duplicates, reports missing indices with `audio_end` and keeps delivering late
+blocks; the application waits up to 5 s for them (DESK-61). The computer remembers answered
+sessions for 15 minutes and answers a resend of one with the same result instead of
+transcribing it twice.
 
 ## 9. Counters (spec 9.4)
 
@@ -277,9 +281,9 @@ application waits up to 5 s for them (DESK-61). The computer remembers answered 
 | 4404 | room not found   | auth/join to an unknown room; malformed room id; room deleted (phones on `delete_room` and on housekeeping)                                                                |
 | 4409 | room exists      | create intent for an existing room                                                                                                                                         |
 | 4413 | frame too large  | binary message > 65,536 bytes; text message > 4,096 characters                                                                                                             |
-| 4429 | rate limited     | > 50 messages per second on one socket; per-IP create/join limit in the Worker                                                                                             |
+| 4429 | rate limited     | > 50 messages per second on one socket; per-IP create/join limit in the Worker; a 33rd socket in one room                                                                  |
 | 1000 | normal           | `leave`; the owner's socket after `delete_room`                                                                                                                            |
-| 1001 | going away       | the relay closed a socket that went quiet for more than 75 s (RELAY-10)                                                                                                    |
+| 1001 | going away       | the relay closed a socket that went quiet for more than 75 s (RELAY-10), or one that did not authenticate within 30 s                                                      |
 | 1008 | policy violation | malformed control message or frame; invalid agreement key in `join`                                                                                                        |
 
 Before closing for a reason of its own, the relay sends `error {code, msg}` with one of:
@@ -333,16 +337,21 @@ written as one `buffered` row when the next frame would take it past 262,144 byt
 batch disconnects, and 2 s after the batch's last frame. Row format: frames concatenated, each
 prefixed with its length as uint32 big-endian. A row expires 10 minutes after its first frame.
 When the recipient authenticates it gets the unexpired rows in order, then the unflushed batch,
-and the delivered rows are deleted. Above 25 MB in a room, the oldest buffered dictation is
-dropped (the oldest rows up to and including the first row that ends a dictation, repeated
-until the new row fits) and the senders of the new batch get `error buffer_full`. Buffering
-works in both directions (a `result` for an offline phone waits too).
+and the delivered rows are deleted. Above 25 MB in a room, the oldest buffered dictations are
+dropped whole: the oldest rows up to and including the first row that ends a dictation, and
+only then is the fit checked again (repeated until the new row fits), so no dictation is left
+without its beginning. The senders of the dropped rows (sender id, bytes 2..18 of each frame)
+get `error buffer_full`. Buffering works in both directions (a `result` for an offline phone
+waits too).
 
 ### 11.5 Limits (RELAY-11)
 
 Device frames ≤ 65,536 bytes (4413); 50 messages per second per socket, token bucket with a
 burst of 50, counting every message that reaches the object (4429); 8 devices per room; at most
-16 open admissions per room; `exp` of an admission is clamped to now + 10 minutes. Per IP: 10
+32 open sockets per room, authenticated or not (a 33rd is accepted and closed at once with 4429);
+a socket that has not authenticated 30 s after connecting is closed with 1001 (checked when a
+socket connects and when a message arrives); at most 16 open admissions per room; `exp` of an
+admission is clamped to now + 10 minutes. Per IP: 10
 `create` and 10 `join` connections per minute through the Workers Rate Limiting binding (keyed
 by SHA-256 of the IP), checked in the Worker before any Durable Object.
 
@@ -431,8 +440,9 @@ corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `re
    message, so a socket that just connected or is busy streaming is not treated as asleep.
 9. **Buffer details** the spec leaves open: row format (length-prefixed frames), expiry 10
    minutes after a row's first frame, "oldest dictation" = oldest rows up to the first row that
-   contains an `audio_end`/`audio_cancel`, `buffer_full` goes to the senders of the batch that
-   overflowed, and buffering applies in both directions.
+   contains an `audio_end`/`audio_cancel` (the fit is checked only after such a row),
+   `buffer_full` goes to the senders of the dropped rows, and buffering applies in both
+   directions.
 10. **Several sockets per device** are allowed; frames go to every live one.
 11. **Admissions:** `exp` is clamped to now + 10 minutes; an `exp` in the past gets
     `error admission_expired`; at most 16 open admissions per room. A join by a device that is

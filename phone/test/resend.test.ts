@@ -271,6 +271,115 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     expect(s.cancelled).toBe(true);
   });
 
+  it("the computer comes back (peer online): an ended session goes again on the same connection", async () => {
+    const { link, streamer, s } = setup();
+    await streamer.start(s);
+    for (const b of blocks(3)) await streamer.addBlock(s, b);
+    await streamer.end(s);
+    // Everything went to the computer's quiet old socket and was lost; the phone's socket is fine.
+    const before = link.sent.length;
+    await streamer.peerReturned([s]);
+    expect(link.sent.slice(before).map((x) => x.p.type)).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_end",
+    ]);
+    expect(link.sent.slice(before).every((x) => x.conn === 1)).toBe(true);
+    expect(link.sent.at(-1)!.p).toMatchObject({ chunks: 3 });
+    expect(s.endSent).toBe(true);
+  });
+
+  it("a session still being recorded goes again and then stays live", async () => {
+    const { link, streamer, s } = setup();
+    await streamer.start(s);
+    for (const b of blocks(4)) await streamer.addBlock(s, b);
+    const before = link.sent.length;
+    await streamer.peerReturned([s]);
+    await streamer.addBlock(s, new Uint8Array(BLOCK_BYTES));
+    await streamer.end(s);
+    const again = link.sent.slice(before);
+    expect(again.map((x) => x.p.type)).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+    ]);
+    const firsts = again
+      .filter((x) => x.p.type === "audio_chunk")
+      .map((x) => (x.p as { firstIndex: number }).firstIndex);
+    expect(firsts).toEqual([0, 4]);
+    expect(again.at(-1)!.p).toMatchObject({ chunks: 5 });
+  });
+
+  it("skips sessions that failed, were cancelled or have a result", async () => {
+    const { link, streamer } = setup();
+    const done = newSession("room", 0);
+    const cancelled = newSession("room", 0);
+    const failed = newSession("room", 0);
+    for (const x of [done, cancelled, failed]) {
+      await streamer.start(x);
+      await streamer.addBlock(x, new Uint8Array(BLOCK_BYTES));
+      await streamer.end(x);
+    }
+    done.result = { ok: true };
+    await streamer.cancel(cancelled);
+    failed.failed = true;
+    const before = link.sent.length;
+    await streamer.peerReturned([done, cancelled, failed]);
+    expect(link.sent.length).toBe(before);
+    expect(failed.conn).toBe(1);
+  });
+
+  it("a resend in flight when the computer comes back runs once more afterwards", async () => {
+    const { link, streamer, s } = setup();
+    await streamer.start(s);
+    link.drop();
+    for (const b of blocks(12)) await streamer.addBlock(s, b);
+    await streamer.end(s);
+    link.reconnect();
+    const first = streamer.resendOpen([s]);
+    expect(s.resending).toBe(true);
+    const second = streamer.peerReturned([s]);
+    await Promise.all([first, second]);
+    expect(link.types(2)).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+    ]);
+    expect(s.resending).toBe(false);
+  });
+
+  it("a reconnect during a resend sends the whole session on the new connection", async () => {
+    const { link, streamer, s } = setup();
+    await streamer.start(s);
+    link.drop();
+    for (const b of blocks(25)) await streamer.addBlock(s, b);
+    await streamer.end(s);
+    link.reconnect();
+    const first = streamer.resendOpen([s]);
+    // The new socket dies at once and the next one authenticates while the first resend runs.
+    link.drop();
+    link.reconnect();
+    const second = streamer.resendOpen([s]);
+    await Promise.all([first, second]);
+    expect(link.types(3)).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+    ]);
+    expect(chunkIndices(link, 3)).toEqual(
+      Array.from({ length: 25 }, (_, i) => i),
+    );
+    expect(s.conn).toBe(3);
+  });
+
   it("starts nothing on the wire while disconnected, then sends it all after the reconnect", async () => {
     const { link, streamer, s } = setup();
     link.drop();

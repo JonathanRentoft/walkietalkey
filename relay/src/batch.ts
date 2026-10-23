@@ -28,7 +28,7 @@ export function decodeBatch(blob: ArrayBuffer | Uint8Array): Uint8Array[] {
   return out;
 }
 
-/** Whether a batch contains a frame that ends a dictation (audio_end 0x22 or audio_cancel 0x23). */
-export function batchEndsDictation(blob: ArrayBuffer | Uint8Array): boolean {
-  return decodeBatch(blob).some((f) => f[1] === 0x22 || f[1] === 0x23);
+/** Whether one of the frames ends a dictation (audio_end 0x22 or audio_cancel 0x23). */
+export function frameListEndsDictation(frames: readonly Uint8Array[]): boolean {
+  return frames.some((f) => f[1] === 0x22 || f[1] === 0x23);
 }

@@ -114,3 +114,17 @@ button.wt-app-dev {
     transition: none;
   }
 }
+
+/* PhoneApp level meter (PHONE-21): with the `level` prop the bars follow the microphone. Each bar
+   rises from flat (0.14, as a muted meter) towards its own peak by --wt-level, 0 silence to 1
+   loud, and eases between the 200 ms levels instead of running the canned talk animation. */
+.wt-app-meter--level .wt-bars--meter:not(.wt-bars--off) .wt-bar {
+  animation: none;
+  transform: scaleY(calc(0.14 + (var(--hi) - 0.14) * var(--wt-level, 0)));
+  transition: transform 0.18s var(--ease-glide);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-app-meter--level .wt-bars--meter:not(.wt-bars--off) .wt-bar {
+    transition: none;
+  }
+}

@@ -12,6 +12,7 @@ import {
   type DevicePayload,
   type PairingPayload,
 } from "@walkietalkey/protocol";
+import { meterLevel } from "../audio/pcm";
 import type { RecorderLike } from "../audio/recorder";
 import { MicDeniedError, MicError } from "../audio/recorder";
 import type { Platform } from "../lib/platform";
@@ -57,6 +58,8 @@ export const RESULT_TIMEOUT_MS = 10 * 60 * 1000;
 export const NO_CONNECTION_GRACE_MS = 3000;
 /** PHONE-40: how long to wait for presence answers. */
 export const PRESENCE_WAIT_MS = 1000;
+/** PHONE-40: how long the target choice waits for each link's fresh state (auth, failure or pong). */
+export const LINKS_SETTLE_MS = 3000;
 
 export interface ComputerView {
   roomId: string;
@@ -93,6 +96,11 @@ export interface Snapshot {
   pairing: PairingState;
   /** The target's socket has been down for a while (or the phone is offline). */
   noConnection: boolean;
+  /**
+   * PHONE-21: the microphone level while recording, 0 (silence) to 1 (loud), from the RMS of the
+   * latest 200 ms block; 0 when not recording.
+   */
+  level: number;
 }
 
 export interface ControllerDeps {
@@ -135,6 +143,7 @@ export class PhoneController {
   private noticeId = 0;
   private pairing: PairingState = { state: "idle" };
   private noConnection = false;
+  private level = 0;
   private noConnTimer: ReturnType<typeof setTimeout> | null = null;
   private maxTimer: ReturnType<typeof setTimeout> | null = null;
   private recChain: Promise<unknown> = Promise.resolve();
@@ -142,6 +151,7 @@ export class PhoneController {
   private snapshot: Snapshot;
   private readonly listeners = new Set<() => void>();
   private choosing = false;
+  private chooseAgain = false;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -177,6 +187,10 @@ export class PhoneController {
       notices: this.notices,
       pairing: this.pairing,
       noConnection: this.noConnection,
+      level:
+        this.machine.phase === "rec" || this.machine.phase === "cancel"
+          ? this.level
+          : 0,
     };
   }
 
@@ -266,6 +280,10 @@ export class PhoneController {
         break;
       case "peer":
         if (isTarget) this.dispatch({ type: "peer", online: e.online });
+        // PHONE-32: the computer is back. Its old socket may have looked live at the relay for up
+        // to 75 s after it went to sleep and swallowed what was sent, so open sessions go again.
+        if (e.online && e.announced)
+          void entry.streamer.peerReturned(this.sessionsOf(roomId));
         break;
       case "authenticated":
         void entry.streamer.resendOpen(this.sessionsOf(roomId));
@@ -381,6 +399,7 @@ export class PhoneController {
     const entry = this.rooms.get(s.roomId);
     if (!entry) return;
     this.sessions.set(sid, s);
+    this.level = 0;
     this.trimFailed();
     void entry.streamer.start(s);
     const now = this.now();
@@ -395,9 +414,10 @@ export class PhoneController {
     this.recChain = this.recChain.then(async () => {
       if (s.cancelled || s.ended) return;
       try {
-        await this.deps.recorder.start(
-          (block) => void entry.streamer.addBlock(s, block),
-        );
+        await this.deps.recorder.start((block, rms) => {
+          void entry.streamer.addBlock(s, block);
+          this.showLevel(sid, rms);
+        });
       } catch (e) {
         if (this.machine.sessionId !== sid) return;
         if (e instanceof MicDeniedError) this.dispatch({ type: "mic_denied" });
@@ -408,6 +428,20 @@ export class PhoneController {
           });
       }
     });
+  }
+
+  /** PHONE-21: the level meter follows the microphone, one update per 200 ms block. */
+  private showLevel(sid: string, rms: number): void {
+    const phase = this.machine.phase;
+    if (
+      this.machine.sessionId !== sid ||
+      (phase !== "rec" && phase !== "cancel")
+    )
+      return;
+    const level = meterLevel(rms);
+    if (level === this.level) return;
+    this.level = level;
+    this.changed();
   }
 
   private finishCapture(sid: string): void {
@@ -573,39 +607,55 @@ export class PhoneController {
   }
 
   private async chooseOnForeground(): Promise<void> {
-    if (this.rooms.size < 2 || this.choosing) return;
+    if (this.rooms.size < 2) return;
+    // A foreground during a choice (the one at start, say) gets a choice of its own afterwards.
+    if (this.choosing) {
+      this.chooseAgain = true;
+      return;
+    }
     this.choosing = true;
     try {
-      await Promise.all(
-        [...this.rooms.values()].map((r) => r.link.whenSettled(3000)),
-      );
-      const entries = [...this.rooms.values()];
-      const candidates: Candidate[] = entries.map((r) => ({
-        roomId: r.record.roomId,
-        online: r.link.connected && r.link.peerOnline,
-        lastUsedAt: r.record.lastUsedAt,
-      }));
-      const answers = new Map<string, PresenceAnswer | null>();
-      if (needsPresence(candidates)) {
-        await Promise.all(
-          entries
-            .filter((r) => r.link.connected && r.link.peerOnline)
-            .map(async (r) =>
-              answers.set(r.record.roomId, await this.askPresence(r)),
-            ),
-        );
-      }
-      const choice = chooseTarget(candidates, answers);
-      const phase = this.machine.phase;
-      const busy =
-        phase === "rec" ||
-        phase === "cancel" ||
-        phase === "send" ||
-        phase === "offline";
-      if (choice && choice !== this.target && !busy) this.setTarget(choice);
+      do {
+        this.chooseAgain = false;
+        await this.chooseOnce();
+      } while (this.chooseAgain && this.rooms.size >= 2);
     } finally {
       this.choosing = false;
     }
+  }
+
+  private async chooseOnce(): Promise<void> {
+    // The sockets may have died in the background: wait for every link's fresh state first.
+    await Promise.all(
+      [...this.rooms.values()].map((r) => r.link.whenSettled(LINKS_SETTLE_MS)),
+    );
+    const entries = [...this.rooms.values()];
+    // A link with no outcome yet (no authentication, no pong) does not count as online.
+    const live = (r: RoomEntry) =>
+      r.link.settled && r.link.connected && r.link.peerOnline;
+    const candidates: Candidate[] = entries.map((r) => ({
+      roomId: r.record.roomId,
+      online: live(r),
+      lastUsedAt: r.record.lastUsedAt,
+    }));
+    const answers = new Map<string, PresenceAnswer | null>();
+    if (needsPresence(candidates)) {
+      await Promise.all(
+        entries
+          .filter(live)
+          .map(async (r) =>
+            answers.set(r.record.roomId, await this.askPresence(r)),
+          ),
+      );
+    }
+    const choice = chooseTarget(candidates, answers);
+    const phase = this.machine.phase;
+    const busy =
+      phase === "rec" ||
+      phase === "cancel" ||
+      phase === "send" ||
+      phase === "offline";
+    if (choice && choice !== this.target && !busy) this.setTarget(choice);
   }
 
   private async askPresence(r: RoomEntry): Promise<PresenceAnswer | null> {

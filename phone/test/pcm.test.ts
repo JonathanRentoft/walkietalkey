@@ -6,6 +6,8 @@ import {
   PcmPipeline,
   floatToPcm16,
   int16ToLeBytes,
+  meterLevel,
+  pcm16Rms,
 } from "../src/audio/pcm";
 
 /** Splits `total` into pseudo-random chunk sizes, the way an AudioWorklet batches arrive. */
@@ -193,5 +195,39 @@ describe("PcmPipeline (capture rate to 200 ms PCM16 blocks)", () => {
       w += b.length;
     }
     expect(joined).toEqual(int16ToLeBytes(pcm));
+  });
+});
+
+describe("the microphone level (PHONE-21)", () => {
+  it("is the RMS of each 200 ms block, 0 to 1 of full scale", () => {
+    expect(pcm16Rms(new Int16Array(BLOCK_SAMPLES))).toBe(0);
+    const square = new Int16Array(BLOCK_SAMPLES);
+    for (let i = 0; i < square.length; i++) square[i] = i % 2 ? 16384 : -16384;
+    expect(pcm16Rms(square)).toBeCloseTo(0.5, 6);
+    const full = new Int16Array(BLOCK_SAMPLES).fill(-32768);
+    expect(pcm16Rms(full)).toBe(1);
+  });
+
+  it("comes with every block from the pipeline: silence, then a tone", () => {
+    const levels: number[] = [];
+    const p = new PcmPipeline(48000, (_b, level) => levels.push(level));
+    p.push(new Float32Array(48000 * 0.4));
+    p.push(sine(440, 48000, 48000 * 0.4, 0.5));
+    p.finish();
+    expect(levels.length).toBe(4);
+    expect(levels[0]).toBe(0);
+    // A sine of amplitude 0.5 has an RMS of 0.5 / sqrt(2).
+    expect(levels[3]!).toBeCloseTo(0.5 / Math.SQRT2, 2);
+  });
+
+  it("maps to the meter on a decibel scale: -60 dBFS and below is flat, -12 dBFS is full", () => {
+    const db = (d: number) => 10 ** (d / 20);
+    expect(meterLevel(0)).toBe(0);
+    expect(meterLevel(db(-80))).toBe(0);
+    expect(meterLevel(db(-60))).toBeCloseTo(0, 6);
+    expect(meterLevel(db(-36))).toBeCloseTo(0.5, 6);
+    expect(meterLevel(db(-12))).toBeCloseTo(1, 6);
+    expect(meterLevel(1)).toBe(1);
+    expect(meterLevel(Number.NaN)).toBe(0);
   });
 });

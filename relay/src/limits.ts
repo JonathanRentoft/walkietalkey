@@ -1,5 +1,9 @@
 /** Relay limits and timings (spec section 8, RELAY-08/10/11/12). */
 export const MAX_DEVICES_PER_ROOM = 8;
+/** Open sockets per room, authenticated or not (8 devices with a few sockets each fit easily). */
+export const MAX_SOCKETS_PER_ROOM = 32;
+/** A socket that has not authenticated this long after connecting is closed. */
+export const PENDING_TIMEOUT_MS = 30_000;
 export const MAX_FRAMES_PER_SECOND = 50;
 /** Longest control message accepted (characters). The largest real one (join) is ~420. */
 export const MAX_CONTROL_CHARS = 4096;

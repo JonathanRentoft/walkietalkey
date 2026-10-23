@@ -213,7 +213,11 @@ export async function joinRoom(
 
 export type LinkEvent =
   | { type: "status"; connected: boolean }
-  | { type: "peer"; online: boolean }
+  /**
+   * The computer's status: from the member list in `ok` (`announced: false`), or from a relay
+   * `peer` message (`announced: true`), which also comes when the computer reconnects.
+   */
+  | { type: "peer"; online: boolean; announced: boolean }
   | { type: "payload"; payload: DevicePayload }
   | { type: "removed"; code: number }
   | { type: "relay_error"; code: string }
@@ -239,6 +243,12 @@ export interface LinkOptions {
 }
 
 const DEFAULT_BACKOFF = [1000, 2000, 5000, 10_000, 30_000];
+/**
+ * Back in the foreground, a socket that still counts as connected must answer a ping this fast,
+ * or it is given up and replaced at once (iOS suspends home-screen apps; their sockets can die
+ * without the page noticing).
+ */
+export const FOREGROUND_PONG_TIMEOUT_MS = 1500;
 
 export class RoomLink implements StreamLink {
   readonly room: LinkRoom;
@@ -246,7 +256,10 @@ export class RoomLink implements StreamLink {
   connected = false;
   peerOnline = false;
   removed = false;
-  /** At least one connection attempt has finished (for the foreground target choice). */
+  /**
+   * The latest connection check has an outcome: an authentication, a failed attempt, or a pong.
+   * reconnectNow() starts a new check (for the foreground target choice, PHONE-40).
+   */
   settled = false;
   private readonly opts: LinkOptions;
   private readonly WS: WebSocketCtor;
@@ -311,7 +324,7 @@ export class RoomLink implements StreamLink {
     }
   }
 
-  /** Resolves once the first connection attempt has finished, or after `timeoutMs`. */
+  /** Resolves once the latest connection check has an outcome, or after `timeoutMs`. */
   whenSettled(timeoutMs: number): Promise<void> {
     if (this.settled || this.removed) return Promise.resolve();
     return new Promise((resolve) => {
@@ -328,11 +341,15 @@ export class RoomLink implements StreamLink {
     for (const w of this.settledWaiters.splice(0)) w();
   }
 
-  /** Back in the foreground or back online: reconnect now, or check that the socket still lives. */
+  /**
+   * Back in the foreground or back online: reconnect now, or check that the socket still lives.
+   * whenSettled() then waits for this check, not for an earlier one.
+   */
   reconnectNow(): void {
     if (this.stopped || this.removed) return;
+    this.settled = false;
     if (this.connected) {
-      this.checkAlive(5000);
+      this.checkAlive(FOREGROUND_PONG_TIMEOUT_MS, true);
       return;
     }
     this.clearRetry();
@@ -390,7 +407,7 @@ export class RoomLink implements StreamLink {
     this.startPing();
     this.markSettled();
     this.emit({ type: "status", connected: true });
-    this.emit({ type: "peer", online: this.peerOnline });
+    this.emit({ type: "peer", online: this.peerOnline, announced: false });
     this.emit({ type: "authenticated", connId: this.connId });
     for (const m of h.early.splice(0)) this.incoming(ws, m);
   }
@@ -418,10 +435,11 @@ export class RoomLink implements StreamLink {
     if (msg.t === "pong") {
       if (this.pongTimer) clearTimeout(this.pongTimer);
       this.pongTimer = null;
+      this.markSettled();
     } else if (msg.t === "peer") {
       if (msg.id !== this.computerId) return;
       this.peerOnline = msg.online;
-      this.emit({ type: "peer", online: msg.online });
+      this.emit({ type: "peer", online: msg.online, announced: true });
     } else if (msg.t === "error") {
       this.emit({ type: "relay_error", code: msg.code });
     }
@@ -494,20 +512,33 @@ export class RoomLink implements StreamLink {
     this.pongTimer = null;
   }
 
-  /** RELAY-10: the exact ping; no pong in time means the socket is dead. */
-  checkAlive(timeoutMs = this.opts.pongTimeoutMs ?? 10_000): void {
+  /**
+   * RELAY-10: the exact ping; no pong in time means the socket is dead. With `reconnectAtOnce`
+   * (the foreground check) a dead socket is replaced without waiting for the backoff.
+   */
+  checkAlive(
+    timeoutMs = this.opts.pongTimeoutMs ?? 10_000,
+    reconnectAtOnce = false,
+  ): void {
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const giveUp = () => {
+      this.abandon();
+      if (!reconnectAtOnce) return;
+      this.clearRetry();
+      void this.connect();
+    };
     try {
       ws.send(PING_MESSAGE);
     } catch {
-      this.abandon();
+      giveUp();
       return;
     }
-    if (this.pongTimer) return;
+    // Any pong answers every ping in flight; the latest deadline is the one that counts.
+    if (this.pongTimer) clearTimeout(this.pongTimer);
     this.pongTimer = setTimeout(() => {
       this.pongTimer = null;
-      if (this.ws === ws) this.abandon();
+      if (this.ws === ws) giveUp();
     }, timeoutMs);
   }
 

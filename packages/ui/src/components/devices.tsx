@@ -13,7 +13,7 @@ import {
   type Steps,
 } from "../lib/hooks";
 import type { Palette } from "../lib/palettes";
-import { cx, fill, fmt } from "../lib/util";
+import { cx, fill, fmt, type Style } from "../lib/util";
 import { DictationPill } from "./DictationPill";
 import { Logo } from "./Logo";
 import { GradientBars } from "./surfaces";
@@ -398,11 +398,24 @@ export interface PhoneAppProps {
   detailsHref?: string;
   /** Extension: makes the computer chip a button, to pick another computer (PHONE-41). */
   onDeviceClick?: () => void;
+  /**
+   * Extension: the microphone level while recording, 0 (silence) to 1 (loud), for example from
+   * the RMS of each 200 ms block (PHONE-21). The meter's bars follow it, so silence shows a flat
+   * meter; without it the bars move on their own. With reduced motion the level moves in a few
+   * calm steps and the bars do not ease.
+   */
+  level?: number;
   className?: string;
   style?: CSSProperties;
 }
 
 const LONG = new Set<PhoneAppState>(["offline", "failed", "error", "paused"]);
+
+/** The meter level as the CSS variable --wt-level: clamped, and in thirds with reduced motion. */
+function meterLevel(level: number, reduced: boolean): string {
+  const l = Number.isFinite(level) ? Math.min(1, Math.max(0, level)) : 0;
+  return (reduced ? Math.round(l * 3) / 3 : l).toFixed(2);
+}
 
 /** The WalkieTalkey phone app: one big hold button. */
 export function PhoneApp(props: PhoneAppProps) {
@@ -414,6 +427,9 @@ export function PhoneApp(props: PhoneAppProps) {
   const template = (L as unknown as Record<string, string>)[st] ?? L.idle;
   const label = fill(st in PHONE_LABELS ? template : L.idle, vars);
   const recording = st === "rec" || st === "cancel";
+  const reduced = useReducedMotion();
+  const level =
+    props.level === undefined ? null : meterLevel(props.level, reduced);
   const face = (
     <>
       <span className="wt-app-ring" aria-hidden />
@@ -498,7 +514,11 @@ export function PhoneApp(props: PhoneAppProps) {
           </span>
         )}
       </div>
-      <div className="wt-app-meter" aria-hidden>
+      <div
+        className={cx("wt-app-meter", level !== null && "wt-app-meter--level")}
+        style={level !== null ? ({ "--wt-level": level } as Style) : undefined}
+        aria-hidden
+      >
         <GradientBars
           variant="meter"
           bars={17}

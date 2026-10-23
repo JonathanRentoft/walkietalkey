@@ -23,6 +23,30 @@ export function int16ToLeBytes(samples: Int16Array): Uint8Array {
   return out;
 }
 
+/** RMS of PCM16 samples as a fraction of full scale (0 silence, 1 a full-scale square wave). */
+export function pcm16Rms(samples: Int16Array): number {
+  if (samples.length === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const v = samples[i]! / 32768;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / samples.length);
+}
+
+/** Below this the meter lies flat (room noise, a muted microphone). */
+const METER_FLOOR_DB = -60;
+/** At and above this the meter is full (loud speech close to the phone). */
+const METER_TOP_DB = -12;
+
+/** PHONE-21: a block's RMS on the level meter, 0 to 1 on a decibel scale. */
+export function meterLevel(rms: number): number {
+  if (!(rms > 0)) return 0;
+  const db = 20 * Math.log10(rms);
+  const l = (db - METER_FLOOR_DB) / (METER_TOP_DB - METER_FLOOR_DB);
+  return Math.min(1, Math.max(0, l));
+}
+
 const KERNEL_RES = 256;
 
 /**
@@ -130,14 +154,17 @@ export class Downsampler {
   }
 }
 
+/** A finished 200 ms block (PCM16 little-endian) and its RMS (pcm16Rms, for the level meter). */
+export type BlockSink = (block: Uint8Array, rms: number) => void;
+
 /** Cuts PCM16 into 200 ms blocks of exactly 3,200 samples; only the final flush may be shorter. */
 export class BlockFramer {
   private cur = new Int16Array(BLOCK_SAMPLES);
   private n = 0;
   private count = 0;
-  private readonly onBlock: (block: Uint8Array) => void;
+  private readonly onBlock: BlockSink;
 
-  constructor(onBlock: (block: Uint8Array) => void) {
+  constructor(onBlock: BlockSink) {
     this.onBlock = onBlock;
   }
 
@@ -155,7 +182,7 @@ export class BlockFramer {
       this.n += take;
       o += take;
       if (this.n === BLOCK_SAMPLES) {
-        this.onBlock(int16ToLeBytes(this.cur));
+        this.onBlock(int16ToLeBytes(this.cur), pcm16Rms(this.cur));
         this.n = 0;
       }
     }
@@ -164,17 +191,18 @@ export class BlockFramer {
   /** Emits the partial last block, if any samples are left. */
   flush(): void {
     if (this.n === 0) return;
-    this.onBlock(int16ToLeBytes(this.cur.subarray(0, this.n)));
+    const last = this.cur.subarray(0, this.n);
+    this.onBlock(int16ToLeBytes(last), pcm16Rms(last));
     this.n = 0;
   }
 }
 
-/** Capture-rate float mono in, 200 ms PCM16 blocks out. */
+/** Capture-rate float mono in, 200 ms PCM16 blocks out, each with its RMS. */
 export class PcmPipeline {
   private readonly ds: Downsampler;
   private readonly framer: BlockFramer;
 
-  constructor(inRate: number, onBlock: (block: Uint8Array) => void) {
+  constructor(inRate: number, onBlock: BlockSink) {
     this.ds = new Downsampler(inRate);
     this.framer = new BlockFramer(onBlock);
   }
