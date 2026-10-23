@@ -1,0 +1,84 @@
+[package]
+name = "wt-native"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "WalkieTalkey desktop platform layer: OS secret store, private clipboard, notifications, managed settings, presence and elevation checks (macOS and Windows)"
+publish = false
+
+# Versions follow what src-tauri already links (objc2 0.6, objc2-* 0.3, windows 0.61,
+# winreg 0.55, security-framework 3.7, windows-sys 0.61 through the keyring store), so the
+# app compiles each of them once.
+
+[dependencies]
+log = "0.4"
+thiserror = "2"
+zeroize = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# `exception` lets the notification code turn an Objective-C exception into an error. The
+# app's objc2 already has it enabled (objc2-exception-helper is in its lockfile).
+objc2 = { version = "0.6", features = ["exception"] }
+block2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSBundle",
+  "NSDictionary",
+  "NSError",
+  "NSObject",
+  "NSString",
+  "NSValue",
+] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "CFBase",
+  "CFDictionary",
+  "CFNumber",
+  "CFPreferences",
+  "CFString",
+] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = [
+  "std",
+  "CGEventSource",
+  "CGEventTypes",
+  "CGSession",
+] }
+objc2-user-notifications = { version = "0.3", default-features = false, features = [
+  "std",
+  "bitflags",
+  "block2",
+  "UNNotification",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationResponse",
+  "UNNotificationSettings",
+  "UNNotificationSound",
+  "UNNotificationTrigger",
+  "UNUserNotificationCenter",
+] }
+# SecItem* generic passwords in the login keychain (SEC-09).
+security-framework = "3.7"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61.3", features = [
+  "Data_Xml_Dom",
+  "Foundation",
+  "UI_Notifications",
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_Ole",
+  "Win32_System_RemoteDesktop",
+  "Win32_System_StationsAndDesktops",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }
+windows-core = "0.61"
+winreg = "0.55"
+# Credential Manager through the keyring store, with its `persistence=local` modifier
+# (CRED_PERSIST_LOCAL_MACHINE, SEC-10). `search` is off: it would only pull in regex.
+keyring-core = "1"
+windows-native-keyring-store = { version = "1.1", default-features = false }
