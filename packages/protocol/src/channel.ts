@@ -19,11 +19,15 @@ export interface PairChannelOptions {
  * with persisted counters, checks recipient, sender and replay, and (de)serializes payloads.
  */
 export class PairChannel {
-  private constructor(
-    private readonly opts: PairChannelOptions,
-    private readonly counter: SendCounter,
-    private readonly guard: ReplayGuard,
-  ) {}
+  private readonly opts: PairChannelOptions;
+  private readonly counter: SendCounter;
+  private readonly guard: ReplayGuard;
+
+  private constructor(opts: PairChannelOptions, counter: SendCounter, guard: ReplayGuard) {
+    this.opts = opts;
+    this.counter = counter;
+    this.guard = guard;
+  }
 
   static async open(opts: PairChannelOptions): Promise<PairChannel> {
     const counter = await SendCounter.open(opts.store, counterKey(opts.selfId, opts.peerId));

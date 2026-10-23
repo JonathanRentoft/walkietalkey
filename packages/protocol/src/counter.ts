@@ -47,13 +47,14 @@ export class SendCounter {
   private nextValue: bigint;
   private reservedEnd: bigint;
   private chain: Promise<unknown> = Promise.resolve();
+  private readonly store: CounterStore;
+  private readonly key: string;
+  private readonly blockSize: bigint;
 
-  private constructor(
-    private readonly store: CounterStore,
-    private readonly key: string,
-    private readonly blockSize: bigint,
-    storedEnd: bigint,
-  ) {
+  private constructor(store: CounterStore, key: string, blockSize: bigint, storedEnd: bigint) {
+    this.store = store;
+    this.key = key;
+    this.blockSize = blockSize;
     this.nextValue = storedEnd + 1n;
     // Nothing of the new block is reserved yet in this run.
     this.reservedEnd = storedEnd;
@@ -83,11 +84,15 @@ export class SendCounter {
 
 /** Rejects any counter not higher than the last accepted one from that sender, across restarts. */
 export class ReplayGuard {
-  private constructor(
-    private readonly store: CounterStore,
-    private readonly key: string,
-    private last: bigint,
-  ) {}
+  private readonly store: CounterStore;
+  private readonly key: string;
+  private last: bigint;
+
+  private constructor(store: CounterStore, key: string, last: bigint) {
+    this.store = store;
+    this.key = key;
+    this.last = last;
+  }
 
   static async open(store: CounterStore, key: string): Promise<ReplayGuard> {
     return new ReplayGuard(store, key, await store.loadLastAccepted(key));
