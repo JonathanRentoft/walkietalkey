@@ -197,8 +197,8 @@ affects timing).
 The references have 3.16 marks per 25 words. For comparison, the originals'
 own numbers on this split: Edda 7.34 % (5-beam search, leaderboard
 normalisation), Ekko v1 Tiny 9.36 % (RyeAI's normalisation), Whisper turbo
-13.60 % (transcribe.cpp's normalisation). Edda was trained on FLEURS da_dk
-_train_: the test split is held out but in its domain, which favours it here;
+13.60 % (transcribe.cpp's normalisation). Edda was trained on FLEURS `da_dk`
+_train_ split: the test split is held out but in its domain, which favours it here;
 the owner's own dictations (`--clips-dir`) are the real test.
 
 **Punctuation after DESK-41** (`wt_eval.pnc_after`, Ekko PnC through

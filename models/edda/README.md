@@ -117,7 +117,7 @@ almost all deletions, and the original Transformers model does the same.
 Cutting the audio at pauses (Silero VAD) and decoding each speech segment on its
 own brings it back to about 10 %. Feed it one utterance per window.
 
-Edda was trained on FLEURS da_dk _train_; the test split is held out but is in
+Edda was trained on the FLEURS `da_dk` _train_ split; the test split is held out but is in
 its domain. The original's own result on this test set is 7.34 % WER (beam
 search with 5 beams, leaderboard normalisation).
 
