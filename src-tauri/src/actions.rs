@@ -400,6 +400,10 @@ impl ShortcutAction for TranscribeAction {
         let tm = app.state::<Arc<TranscriptionManager>>();
         let rm = app.state::<Arc<AudioRecordingManager>>();
 
+        // WalkieTalkey (DESK-87): open the cleanup provider's connection while
+        // the user talks.
+        crate::walkietalkey::cleanup::warm(app);
+
         // Load ASR model and VAD model in parallel
         let kickoff_started = Instant::now();
         tm.initiate_model_load();
@@ -657,6 +661,8 @@ impl ShortcutAction for TranscribeAction {
         let cancel_generation = rm.cancel_generation();
         // WalkieTalkey (DESK-27): outputs go in the order recordings end.
         let ticket = crate::walkietalkey::sequence::take_ticket();
+        // "Kun når jeg holder Shift med" (DESK-80): Shift held at release.
+        let shift_held = crate::walkietalkey::cleanup::shift_held();
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone(), Arc::clone(&tm));
@@ -761,7 +767,8 @@ impl ShortcutAction for TranscribeAction {
                                 crate::walkietalkey::dictation::process(
                                     &ah,
                                     &transcription,
-                                    false,
+                                    true,
+                                    shift_held,
                                 ),
                                 || rm.was_cancelled_since(cancel_generation),
                             )

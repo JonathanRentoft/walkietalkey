@@ -291,6 +291,98 @@ mod tests {
         assert!(p.headers().unwrap().contains_key("x-api-key"));
     }
 
+    /// A fake OpenAI-compatible server: answers every request with a chat
+    /// completion that echoes the dictation in upper case, records the
+    /// requests, and counts TCP connections.
+    async fn fake_server() -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::{Arc, Mutex};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/v1", listener.local_addr().unwrap());
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let connections = Arc::new(AtomicUsize::new(0));
+        let (reqs, conns) = (Arc::clone(&requests), Arc::clone(&connections));
+        tokio::spawn(async move {
+            loop {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                conns.fetch_add(1, Ordering::SeqCst);
+                let reqs = Arc::clone(&reqs);
+                tokio::spawn(async move {
+                    let mut buf = Vec::new();
+                    loop {
+                        let mut chunk = [0u8; 8192];
+                        let n = match socket.read(&mut chunk).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(n) => n,
+                        };
+                        buf.extend_from_slice(&chunk[..n]);
+                        // One request per loop: headers, then Content-Length body.
+                        let Some(end) = buf.windows(4).position(|w| w == b"\r\n\r\n") else { continue };
+                        let head = String::from_utf8_lossy(&buf[..end]).to_string();
+                        let len = head
+                            .lines()
+                            .find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse::<usize>().unwrap()))
+                            .unwrap_or(0);
+                        if buf.len() < end + 4 + len {
+                            continue;
+                        }
+                        let body = String::from_utf8_lossy(&buf[end + 4..end + 4 + len]).to_string();
+                        buf.drain(..end + 4 + len);
+                        reqs.lock().unwrap().push(format!("{head}\n\n{body}"));
+                        let answer = if head.starts_with("POST") {
+                            let value: Value = serde_json::from_str(&body).unwrap();
+                            let user = value["messages"][1]["content"].as_str().unwrap_or("").to_string();
+                            let text = user.replace("<dictation>", "").replace("</dictation>", "").trim().to_uppercase();
+                            json!({"choices": [{"message": {"content": text}}]}).to_string()
+                        } else {
+                            json!({"data": []}).to_string()
+                        };
+                        let response = format!(
+                            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: keep-alive\r\n\r\n{}",
+                            answer.len(),
+                            answer
+                        );
+                        if socket.write_all(response.as_bytes()).await.is_err() {
+                            return;
+                        }
+                    }
+                });
+            }
+        });
+        (url, requests, connections)
+    }
+
+    #[tokio::test]
+    async fn calls_reach_the_endpoint_with_the_key_and_reuse_the_warm_connection() {
+        let (url, requests, connections) = fake_server().await;
+        let provider = HttpProvider {
+            id: "custom".into(),
+            label: "Testudbyder".into(),
+            base_url: url,
+            model: "fake-model".into(),
+            api_key: Some("sk-local".into()),
+            format: Format::OpenAi,
+        };
+        provider.warm();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let first = provider.complete("sys", "<dictation>\nvi ses\n</dictation>").await.unwrap();
+        let second = provider.complete("sys", "<dictation>\nhej\n</dictation>").await.unwrap();
+        assert_eq!(first, "VI SES");
+        assert_eq!(second, "HEJ");
+        let requests = requests.lock().unwrap().clone();
+        assert_eq!(requests.len(), 3, "warm-up plus two calls");
+        assert!(requests[0].starts_with("GET /v1/models"));
+        assert!(requests[1].starts_with("POST /v1/chat/completions"));
+        assert!(requests[1].to_ascii_lowercase().contains("authorization: bearer sk-local"));
+        assert!(requests[1].contains("\"temperature\":0"));
+        assert_eq!(
+            connections.load(std::sync::atomic::Ordering::SeqCst),
+            1,
+            "the warm connection is reused (DESK-87)"
+        );
+    }
+
     #[test]
     fn localhost_endpoints_are_not_cloud() {
         let mut p = openai("llama3");

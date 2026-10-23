@@ -31,8 +31,9 @@ impl Finished {
     }
 }
 
-/// Steps 6 and 7 for a recognised text.
-pub async fn process(app: &AppHandle, transcription: &str, shift_held: bool) -> Finished {
+/// Steps 6 and 7 for a recognised text. A key dictation's cleanup may have
+/// run chunk by chunk already (DESK-47).
+pub async fn process(app: &AppHandle, transcription: &str, key_dictation: bool, shift_held: bool) -> Finished {
     let settings = store::get(app);
     let local_text = output::local_text(transcription, &settings);
     if local_text.trim().is_empty() {
@@ -43,7 +44,7 @@ pub async fn process(app: &AppHandle, transcription: &str, shift_held: bool) -> 
             cleanup_fell_back: false,
         };
     }
-    match cleanup::clean(app, &local_text, shift_held).await {
+    match cleanup::clean(app, &local_text, key_dictation, shift_held).await {
         CleanupOutcome::NotUsed => Finished {
             final_text: local_text.clone(),
             local_text,

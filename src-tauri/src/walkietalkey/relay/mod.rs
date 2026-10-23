@@ -248,6 +248,8 @@ pub struct PhoneJoined {
 
 fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session: SessionId) {
     let paused = super::tray::is_paused();
+    // DESK-87: a phone recording warms the cleanup connection too.
+    super::cleanup::warm(app);
     let side = if paused {
         None
     } else {
@@ -347,7 +349,7 @@ async fn transcribe_and_deliver(
             return ResultOutcome::Failed(ResultReason::Error);
         }
     };
-    let finished = super::dictation::process(app, &text, false).await;
+    let finished = super::dictation::process(app, &text, false, false).await;
     if finished.final_text.trim().is_empty() {
         return ResultOutcome::Failed(ResultReason::NoSpeech);
     }

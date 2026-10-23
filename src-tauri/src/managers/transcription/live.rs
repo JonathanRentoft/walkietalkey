@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use log::{debug, error, info};
 use transcribe_cpp::StreamOptions;
 
-use super::chunked::ChunkedDecode;
+use super::chunked::{ChunkObserver, ChunkedDecode};
 use super::policy::LiveDecode;
 use super::{
     effective_language_for_model, emit_stream_text, join_chunks, lock_perf, run_setup,
@@ -40,6 +40,7 @@ impl<'a> LiveSession<'a> {
         mode: LiveDecode,
         info: &LoadedInfo,
         model_id: &str,
+        on_chunk: Option<ChunkObserver>,
     ) -> Option<Self> {
         if mode == LiveDecode::None {
             return None;
@@ -73,6 +74,7 @@ impl<'a> LiveSession<'a> {
                     settings.vad_backend,
                     crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,
                     info.supports_initial_prompt,
+                    on_chunk,
                 )))
             }
         };

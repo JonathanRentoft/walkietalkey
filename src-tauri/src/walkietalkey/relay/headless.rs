@@ -130,7 +130,7 @@ pub fn run(app: &AppHandle, relay_url: &str, phone_app_url: &str, count: usize, 
                     .and_then(|r| r.ok());
                     let outcome = match &text {
                         Some(text) => {
-                            let finished = crate::walkietalkey::dictation::process(&app, text, false).await;
+                            let finished = crate::walkietalkey::dictation::process(&app, text, false, false).await;
                             print(json!({
                                 "event": "transcript",
                                 "text": finished.final_text,

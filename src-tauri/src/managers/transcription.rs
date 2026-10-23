@@ -29,7 +29,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_specta::Event;
 use transcribe_cpp::{Backend, RunOptions, Task, Transcript};
 
-mod chunked;
+pub(crate) mod chunked;
 mod live;
 pub mod policy;
 
@@ -814,7 +814,9 @@ impl TranscriptionManager {
             ModelTraits::of(&info),
             get_settings(&self.app_handle).long_form_chunking,
         );
-        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id) else {
+        // WalkieTalkey (DESK-47): AI cleanup follows the key recording's chunks.
+        let on_chunk = crate::walkietalkey::cleanup::key_chunk_observer(&self.app_handle);
+        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id, on_chunk) else {
             // Nothing to decode live: the recording is transcribed in batch.
             self.router.clear();
             drain_until_finalize(rx);
@@ -879,7 +881,7 @@ impl TranscriptionManager {
             drain_until_finalize(rx);
             return;
         }
-        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id) else {
+        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id, None) else {
             drain_until_finalize(rx);
             return;
         };

@@ -29,6 +29,7 @@ pub mod output;
 pub mod pill;
 pub mod presence;
 pub mod relay;
+pub mod secrets;
 pub mod sequence;
 pub mod settings;
 pub mod speed;

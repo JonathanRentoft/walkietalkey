@@ -12,6 +12,10 @@ use crate::engine_supervisor::{CancelMark, EngineError};
 use crate::managers::audio::create_detector;
 use crate::settings::VadBackend;
 
+/// WalkieTalkey (DESK-47): told each chunk's text as soon as it is decoded,
+/// so AI cleanup can run while the user is still talking.
+pub(crate) type ChunkObserver = std::sync::Arc<dyn Fn(&str) + Send + Sync>;
+
 /// Cuts audio at pauses as it arrives and decodes each chunk once its cut is
 /// certain, so a recording has only its last chunk left when it stops.
 pub(super) struct ChunkedDecode<'a> {
@@ -24,6 +28,7 @@ pub(super) struct ChunkedDecode<'a> {
     /// Each chunk gets the end of the previous chunk's text as its context
     /// prompt (DESK-46), when the model takes one.
     context_prompts: bool,
+    on_chunk: Option<ChunkObserver>,
     transcripts: Vec<Transcript>,
     /// The first run that failed or was cancelled; nothing more is decoded
     /// after it.
@@ -39,6 +44,7 @@ impl<'a> ChunkedDecode<'a> {
         backend: VadBackend,
         plan: ChunkPlan,
         context_prompts: bool,
+        on_chunk: Option<ChunkObserver>,
     ) -> Self {
         // The VAD is only loaded if the audio turns out long enough to cut.
         let app_handle = tm.app_handle.clone();
@@ -52,6 +58,7 @@ impl<'a> ChunkedDecode<'a> {
                 plan,
             ),
             context_prompts,
+            on_chunk,
             transcripts: Vec::new(),
             failure: None,
         }
@@ -75,6 +82,7 @@ impl<'a> ChunkedDecode<'a> {
             backend,
             ChunkPlan::HANDY,
             false,
+            None,
         );
         decode.push(audio);
         decode.finish()
@@ -151,6 +159,9 @@ impl<'a> ChunkedDecode<'a> {
                 .run_batch(self.mark, chunk, &run_options, &self.model_id)
             {
                 Ok(transcript) => {
+                    if let Some(on_chunk) = &self.on_chunk {
+                        on_chunk(&transcript.text);
+                    }
                     self.transcripts.push(transcript);
                     // Real-time factor: audio seconds decoded per second of
                     // wall clock. Floored so a near-instant decode reports a
