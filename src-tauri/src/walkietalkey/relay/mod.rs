@@ -4,6 +4,7 @@
 //! as they arrive (DESK-61) and answered with a result that never carries the
 //! text (DESK-64), and presence answers (DESK-63).
 
+pub mod headless;
 pub mod session;
 
 use std::collections::HashMap;

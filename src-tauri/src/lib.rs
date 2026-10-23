@@ -514,6 +514,27 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         }
     }
 
+    // WalkieTalkey --phone-receive: the desktop side of the phone e2e test.
+    if args.phone_receive {
+        let tm = app.state::<Arc<TranscriptionManager>>();
+        let model_id = args
+            .model
+            .clone()
+            .unwrap_or_else(|| get_settings(app).selected_model);
+        if let Err(e) = tm.load_model_with_device(&model_id, args.device_index) {
+            eprintln!("error: load_model('{}') failed: {}", model_id, e);
+            return 1;
+        }
+        let wt = crate::walkietalkey::store::get(app);
+        return crate::walkietalkey::relay::headless::run(
+            app,
+            args.relay_url.as_deref().unwrap_or(&wt.relay_url),
+            args.phone_app_url.as_deref().unwrap_or(&wt.phone_app_url),
+            args.count.unwrap_or(1),
+            std::time::Duration::from_secs(args.timeout_secs.unwrap_or(300)),
+        );
+    }
+
     let Some(wav) = args.transcribe_file.clone() else {
         return 0;
     };
@@ -831,8 +852,10 @@ pub fn run(cli_args: CliArgs) {
 
     // The headless path must run as its own instance (see the single-instance
     // note below), not forward to an already-running app.
-    let headless_mode =
-        cli_args.transcribe_file.is_some() || cli_args.list_devices || cli_args.list_models;
+    let headless_mode = cli_args.transcribe_file.is_some()
+        || cli_args.list_devices
+        || cli_args.list_models
+        || cli_args.phone_receive;
 
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()

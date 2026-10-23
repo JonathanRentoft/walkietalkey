@@ -68,4 +68,26 @@ pub struct CliArgs {
     /// final text.
     #[arg(long)]
     pub live: bool,
+
+    /// WalkieTalkey end-to-end test (DESK-61): receive phone dictations
+    /// headlessly. Prints the pairing URL as a JSON line, then each
+    /// transcript, and exits after --count dictations.
+    #[arg(long)]
+    pub phone_receive: bool,
+
+    /// Relay for --phone-receive (default: the settings' relay).
+    #[arg(long, value_name = "URL")]
+    pub relay_url: Option<String>,
+
+    /// Phone app URL for the pairing link (default: the settings').
+    #[arg(long, value_name = "URL")]
+    pub phone_app_url: Option<String>,
+
+    /// Dictations to receive before exiting (--phone-receive).
+    #[arg(long, value_name = "N")]
+    pub count: Option<usize>,
+
+    /// Give up after this many seconds (--phone-receive, default 300).
+    #[arg(long, value_name = "SECONDS")]
+    pub timeout_secs: Option<u64>,
 }
