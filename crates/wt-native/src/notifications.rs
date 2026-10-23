@@ -163,8 +163,7 @@ fn xml_escape(text: &str) -> String {
 
 #[cfg(target_os = "macos")]
 pub(crate) mod imp {
-    use std::sync::mpsc;
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::{mpsc, OnceLock};
     use std::time::Duration;
 
     use block2::RcBlock;
@@ -273,10 +272,8 @@ pub(crate) mod imp {
     /// Installs the delegate once. The center keeps only a weak reference, so the delegate
     /// lives for the rest of the process.
     fn ensure_delegate(center: &UNUserNotificationCenter) {
+        // Runs the installation once; concurrent callers wait for it.
         static INSTALLED: OnceLock<()> = OnceLock::new();
-        // Serialises the first installation; `OnceLock` alone cannot hold the !Send delegate.
-        static INSTALLING: Mutex<()> = Mutex::new(());
-        let _guard = INSTALLING.lock().unwrap_or_else(|p| p.into_inner());
         INSTALLED.get_or_init(|| {
             let delegate = Delegate::new();
             center.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));

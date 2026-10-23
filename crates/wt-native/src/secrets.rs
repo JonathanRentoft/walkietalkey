@@ -157,13 +157,20 @@ mod imp {
         let entry = entry(service, account)?;
         entry.set_secret(secret).map_err(map)?;
         // SEC-10: prove what was written. An Enterprise credential would roam to the user's
-        // other domain computers, so it is removed again rather than kept.
-        let persistence = entry
-            .get_attributes()
-            .map_err(map)?
-            .get("persistence")
-            .cloned()
-            .unwrap_or_default();
+        // other domain computers, so it is removed again rather than kept. The store warns
+        // that a read right after a persistence change can fail, hence the short retry.
+        let mut attempt = 0;
+        let attributes = loop {
+            match entry.get_attributes() {
+                Ok(attributes) => break attributes,
+                Err(_) if attempt < 3 => {
+                    attempt += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                Err(err) => return Err(map(err)),
+            }
+        };
+        let persistence = attributes.get("persistence").cloned().unwrap_or_default();
         if persistence.eq_ignore_ascii_case("Local") {
             Ok(())
         } else {

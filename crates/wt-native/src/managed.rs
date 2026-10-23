@@ -340,7 +340,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     mod macos {
         use objc2_core_foundation::{
-            CFArray, CFBoolean, CFNumber, CFPreferencesAppSynchronize, CFPreferencesSetAppValue,
+            CFArray, CFBoolean, CFNumber, CFPreferencesAppValueIsForced, CFPreferencesCopyAppValue,
             CFString,
         };
 
@@ -372,27 +372,25 @@ mod tests {
             assert_eq!(from_cf(&array), None);
         }
 
-        /// A value the user wrote is not forced, so it is not managed (DESK-101).
+        /// A value the user set is visible through CFPreferencesCopyAppValue but not
+        /// forced, so it is not managed (DESK-101). Uses the user's global `AppleLocale`
+        /// (every app domain falls back to the global domain), so nothing is written.
         #[test]
         fn user_values_are_not_managed() {
             let domain = "com.walkietalkey.wt-native-test";
             let cf_domain = CFString::from_str(domain);
-            let key = CFString::from_str("RelayUrl");
-            let value = CFString::from_str("wss://user.example");
-            // SAFETY: a CFString is a property-list value; key and domain are valid strings.
-            unsafe { CFPreferencesSetAppValue(&key, Some(value.as_ref()), &cf_domain) };
-            assert!(CFPreferencesAppSynchronize(&cf_domain));
-            let found = read_domain(domain, &["RelayUrl"]);
-            // SAFETY: as above; `None` removes the value again.
-            unsafe { CFPreferencesSetAppValue(&key, None, &cf_domain) };
-            CFPreferencesAppSynchronize(&cf_domain);
-            // cfprefsd leaves the emptied plist behind.
-            if let Some(home) = std::env::var_os("HOME") {
-                let plist = std::path::Path::new(&home)
-                    .join("Library/Preferences")
-                    .join(format!("{domain}.plist"));
-                let _ = std::fs::remove_file(plist);
+            let key = CFString::from_str("AppleLocale");
+            let visible = CFPreferencesCopyAppValue(&key, &cf_domain);
+            let Some(visible) = visible else {
+                eprintln!("AppleLocale is not set here; nothing to compare");
+                return;
+            };
+            if CFPreferencesAppValueIsForced(&key, &cf_domain) {
+                eprintln!("AppleLocale is managed here; nothing to compare");
+                return;
             }
+            assert!(from_cf(&visible).is_some(), "a plain string value");
+            let found = read_domain(domain, &["AppleLocale"]);
             assert!(found.is_empty(), "{found:?}");
         }
     }
