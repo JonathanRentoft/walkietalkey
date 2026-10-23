@@ -28,6 +28,7 @@ pub mod notify;
 pub mod output;
 pub mod pill;
 pub mod settings;
+pub mod speed;
 pub mod store;
 pub mod tray;
 pub mod updates;
