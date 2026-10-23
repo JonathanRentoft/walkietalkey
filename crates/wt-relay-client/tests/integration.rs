@@ -435,6 +435,55 @@ async fn pairing_streaming_and_result() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
+async fn a_paired_phone_can_pair_again_and_still_dictate() {
+    let dir = temp_dir("repair");
+    let mut computer = Computer::start(&dir.join("store.json")).await;
+    let mut phone = Phone::spawn("Re-pair phone").await;
+    let phone_id = computer.pair(&mut phone, json!({})).await;
+    computer
+        .until(10, |e| {
+            matches!(e, RelayEvent::PhonePaired { .. }).then_some(())
+        })
+        .await;
+
+    // The same phone (same device keys) scans a new code: new pair keys and
+    // counters on both sides, announced again (SEC-01, spec 5.3 step 6).
+    assert_eq!(computer.pair(&mut phone, json!({})).await, phone_id);
+    computer
+        .until(10, |e| {
+            matches!(e, RelayEvent::PhonePaired { phone, .. } if *phone == phone_id).then_some(())
+        })
+        .await;
+    assert_eq!(computer.store.load_phones().unwrap().len(), 1);
+
+    let pcm = test_pcm(10);
+    let wav = write_wav(&dir, "sent.wav", &pcm);
+    let stream = phone
+        .cmd(json!({"cmd": "stream", "wav": wav.to_str().unwrap()}), 30)
+        .await;
+    assert_eq!(stream["ok"], json!(true), "{stream}");
+    let (from, session, received, _) = computer.receive_session(15).await;
+    assert_eq!(from, phone_id);
+    assert_same_wav(&dir, &wav, &received);
+    computer
+        .client
+        .send_result(phone_id, session, ResultOutcome::Ok)
+        .await
+        .unwrap();
+    let r = phone
+        .cmd(
+            json!({"cmd": "wait_result", "sessionId": stream["sessionId"], "timeoutMs": 10000}),
+            15,
+        )
+        .await;
+    assert_eq!(r["result"], json!({"ok": true}), "{r}");
+    computer.client.delete_room().await.unwrap();
+    computer.client.shutdown().await;
+    phone.quit().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
 async fn offline_computer_gets_buffered_audio_in_order() {
     let dir = temp_dir("offline");
     let store_path = dir.join("store.json");

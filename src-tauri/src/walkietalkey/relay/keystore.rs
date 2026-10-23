@@ -78,10 +78,23 @@ impl DesktopKeyStore {
     }
 
     fn persist(&self, state: &FileState) -> Result<(), StoreError> {
+        use std::io::Write;
         let bytes = serde_json::to_vec_pretty(state).map_err(store_err)?;
         let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, bytes).map_err(store_err)?;
-        std::fs::rename(&tmp, &self.path).map_err(store_err)
+        let mut file = std::fs::File::create(&tmp).map_err(store_err)?;
+        file.write_all(&bytes).map_err(store_err)?;
+        // A crash may skip counter numbers but never reuse one (spec 9.4):
+        // the new state is on disk before it replaces the old one.
+        file.sync_all().map_err(store_err)?;
+        drop(file);
+        std::fs::rename(&tmp, &self.path).map_err(store_err)?;
+        // The rename itself, where the platform lets a folder be synced.
+        if let Some(dir) = self.path.parent() {
+            if let Ok(dir) = std::fs::File::open(dir) {
+                let _ = dir.sync_all();
+            }
+        }
+        Ok(())
     }
 }
 

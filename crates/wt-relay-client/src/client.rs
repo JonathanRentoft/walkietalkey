@@ -1104,16 +1104,19 @@ impl Actor {
             warn!("member_joined with an id that does not match its key");
             return;
         }
-        if let Some(known) = self.phones.get(&id) {
-            if known.stored.agreement_spki == agree {
-                return; // the same event again (not acknowledged before a reconnect)
-            }
-        }
+        // A pairing code this join answers comes first: a phone that is paired
+        // already may pair again with the same device keys, and then has new
+        // pair keys and counters (SEC-01, spec 5.3 step 6).
         let found = self
             .pairings
             .iter()
             .position(|p| verify_join_mac(&p.secret, &room_id, &pub_key, &agree, mac));
         let Some(pos) = found else {
+            if let Some(known) = self.phones.get(&id) {
+                if known.stored.agreement_spki == agree {
+                    return; // the same event again (not acknowledged before a reconnect)
+                }
+            }
             let reason = if self.pairings.is_empty() {
                 RejectReason::NoPairingInProgress
             } else {

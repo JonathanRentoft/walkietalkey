@@ -174,8 +174,11 @@ with the `ok` lost; the phone then tries `auth` once.
 ### 7.4 Owner events
 
 `member_joined` and `member_left` are stored in `owner_events` and delivered on every owner
-`auth` until the owner answers `event_ack {eid}`. Delivery is at least once; the computer
-ignores a `member_joined` it has already processed (same agreement key).
+`auth` until the owner answers `event_ack {eid}`. Delivery is at least once. The computer
+first checks a `member_joined` against its open pairing codes: a join MAC that verifies is a
+new pairing, also for a phone that is paired already with the same device keys (it re-pairs:
+new pair keys, counters from 1). Only when no open code verifies and the agreement key is the
+one already stored is the event a re-delivery, ignored quietly.
 
 ### 7.5 Pairing on the computer
 
