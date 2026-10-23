@@ -7,7 +7,7 @@ MacBook Pro (Apple M1 Pro, 32 GB, macOS 26.6).
 
 | Model | Role | Engine | File we ship | Licence | Status |
 |---|---|---|---|---|---|
-| Edda v0.2 (Alexandra Institute) | Danish speech recognition, default (DESK-30) | transcribe.cpp 0.4 | `edda-v0.2-Q8_0.gguf`, 886 MB | Apache-2.0 + CoRal restrictions | Converted and validated; publishing waits on decision 18.7 |
+| Edda v0.2 (Alexandra Institute) | Danish speech recognition, default (DESK-30) | transcribe.cpp 0.4 | `edda-v0.2-Q8_0.gguf`, 886 MB | Apache-2.0 + CoRal restrictions | Converted and validated; 7.17 % WER on FLEURS da. Decode with timestamps off and one utterance per window. Publishing waits on decision 18.7 |
 | Ekko v1 Tiny (RyeAI) | Fast model for slow PCs (DESK-35) | transcribe.cpp 0.4 | `ekko-v1-tiny-Q8_0.gguf`, 134 MB | NVIDIA Open Model License + CC BY 4.0 + CoRal restrictions | Licence allows it; converted and validated; same FT Speech question as Edda |
 | Ekko PnC v2 (RyeAI) | Punctuation and capitalisation (DESK-41) | ONNX Runtime via `crates/ekko-pnc` | `pnc.int8.onnx` + `tokenizer.json` + `config.json`, 25 MB | CC BY 4.0 + CoRal restrictions | Rust port reproduces the reference exactly |
 | Silero VAD v6.2 | Voice activity detection | transcribe.cpp 0.4 | bundled in the app | MIT | Unchanged from Handy |
@@ -31,6 +31,10 @@ matches the original exactly (below). The GGUF metadata cannot switch this off
 (`Auto` resolves to segment timestamps for every Whisper file), so the app must
 pass `TimestampKind::None` for Edda; `models/manifest.json` records it as the
 model's `runOptions`, and the draft catalog entry sets `timestamps: false`.
+On all 930 FLEURS test clips this doubles Edda's WER, from 7.17 % (off) to
+14.54 % (on); Whisper turbo barely moves (13.06 % and 13.29 %). With segment
+timestamps on, transcribe-cli can also print invalid UTF-8 (a segment boundary
+splitting a multi-byte character), which the harness now tolerates.
 
 ## Edda v0.2: conversion and validation (DESK-29)
 
@@ -174,7 +178,42 @@ Unit tests: `cd models/eval && uv run --group dev pytest` (88 tests).
   whole set, and the share of clips with fewer than 1 mark per 25 words, which
   is exactly the DESK-41 trigger (`marks * 25 < words`, never for empty text).
 
-<!-- WER -->
+### Results: FLEURS da_dk test, all 930 clips
+
+Q8_0 files, transcribe.cpp 0.4.0 on Metal, language forced to Danish, greedy.
+Run on 23 October 2026, 02:12 to 04:58 with pauses (GPU job log in
+`_kit/work/runs/gpu-jobs.log`; parts ran next to other jobs of ours, which only
+affects timing).
+
+| Model | Timestamps | WER | 95 % CI | Subst. | Del. | Ins. | Marks per 25 words | Clips under 1 mark per 25 words (DESK-41 trigger) |
+|---|---|---:|---|---:|---:|---:|---:|---:|
+| **Edda v0.2 Q8_0** | off | **7.17 %** | 6.64 to 7.74 | 1,046 | 293 | 130 | 1.98 | 377 (40.5 %) |
+| Edda v0.2 Q8_0 | on (stock Handy) | 14.54 % | 12.72 to 16.94 | 1,243 | 880 | 858 | 1.79 | 445 (47.8 %) |
+| Whisper large-v3-turbo Q8_0 (Handy) | off | 13.06 % | 12.28 to 13.71 | 2,069 | 285 | 322 | 3.22 | 6 (0.6 %) |
+| Whisper large-v3-turbo Q8_0 (Handy) | on (stock Handy) | 13.29 % | 12.53 to 13.94 | 2,083 | 297 | 344 | 3.17 | 7 (0.8 %) |
+| Ekko v1 Tiny Q8_0 | n/a (RNN-T) | 10.11 % | 9.47 to 10.76 | 1,442 | 412 | 219 | 0.00 | 929 (99.9 %) |
+
+The references have 3.16 marks per 25 words. For comparison, the originals'
+own numbers on this split: Edda 7.34 % (5-beam search, leaderboard
+normalisation), Ekko v1 Tiny 9.36 % (RyeAI's normalisation), Whisper turbo
+13.60 % (transcribe.cpp's normalisation). Edda was trained on FLEURS da_dk
+*train*: the test split is held out but in its domain, which favours it here;
+the owner's own dictations (`--clips-dir`) are the real test.
+
+**Punctuation after DESK-41** (`wt_eval.pnc_after`, Ekko PnC through
+`crates/ekko-pnc` on every clip under the threshold):
+
+| Model | Clips that got PnC | Marks per 25 words before, after | Clips still under the threshold | Clips ending in . ? ! |
+|---|---:|---|---:|---:|
+| Edda v0.2 Q8_0 | 377 | 1.98, 3.18 | 3 | 918 of 930 |
+| Whisper turbo Q8_0 | 6 | 3.22, 3.23 | 3 | 929 of 930 |
+| Ekko v1 Tiny Q8_0 | 929 | 0.00, 3.14 | 5 | 910 of 930 |
+
+So Edda leaves 4 in 10 clips without punctuation of its own (its FT Speech
+training transcripts are unpunctuated), and DESK-41 closes the gap: after PnC
+all three models punctuate about as densely as the references. Ekko v1 Tiny
+always needs PnC, as the spec expects.
+
 
 ## Raw speed (DESK-31, DESK-43)
 
@@ -257,7 +296,6 @@ measured here). Each segment costs one encoder pass (about 0.9 s on Metal on
 this Mac), but segments are decoded while the user is still talking
 (DESK-46), so only the last one adds to the wait.
 
-<!-- SPEED -->
 
 ## Licence terms
 
@@ -403,7 +441,7 @@ WT_WORK_DIR="$WORK" models/eval/run.sh              # WER and punctuation, all m
 models/speed/run.sh "$WORK"                         # raw speed, Metal and CPU
 WT_EKKO_PNC_DIR="$WORK/models-final/ekko-pnc" \
   cargo test -p ekko-pnc --manifest-path crates/ekko-pnc/Cargo.toml
-models/tools/check_manifest.py --dir "$WORK/models-final"
+python3 models/tools/check_manifest.py --dir "$WORK/models-final"
 models/upload.sh --dry-run --dir "$WORK/models-final"   # the real upload is not run
 ```
 

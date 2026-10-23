@@ -104,9 +104,18 @@ Checked on this conversion before anything else (`models/edda/validate.sh`):
 FLEURS da_dk test (930 clips), language forced to Danish, greedy decoding, our
 normaliser (lower case, punctuation stripped, numbers as spoken Danish):
 
-| Model | WER |
+| Model | WER (95 % CI) |
 |---|---:|
-| Edda v0.2 Q8_0, timestamps off | (filled in from models/eval) |
+| Edda v0.2 Q8_0, timestamps off | 7.17 % (6.64 to 7.74) |
+| Edda v0.2 Q8_0, timestamps on | 14.54 % |
+| Whisper large-v3-turbo Q8_0, for comparison | 13.06 % |
+
+**One utterance per window.** Decoded greedily (transcribe.cpp has no beam
+search), Edda tends to end its transcript at the first sentence boundary in a
+window: on windows of two or three FLEURS sentences its WER rises to 15 to 22 %,
+almost all deletions, and the original Transformers model does the same.
+Cutting the audio at pauses (Silero VAD) and decoding each speech segment on its
+own brings it back to about 10 %. Feed it one utterance per window.
 
 Edda was trained on FLEURS da_dk *train*; the test split is held out but is in
 its domain. The original's own result on this test set is 7.34 % WER (beam
