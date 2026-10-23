@@ -12,7 +12,7 @@ default = []
 test-utils = []
 
 [dependencies]
-p256 = { version = "0.13", features = ["ecdsa", "ecdh", "pkcs8"] }
+p256 = { version = "0.14", features = ["ecdsa", "ecdh", "pkcs8"] }
 hkdf = "0.12"
 hmac = "0.12"
 aes-gcm = "0.10"
