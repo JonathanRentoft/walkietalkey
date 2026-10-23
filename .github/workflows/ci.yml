@@ -126,6 +126,8 @@ jobs:
       - name: Relay client
         working-directory: crates/wt-relay-client
         run: cargo test
+      - name: Relay client against a local relay (pairing, re-pairing, streaming, buffering)
+        run: bash crates/wt-relay-client/scripts/integration.sh
       - name: Native platform layer
         working-directory: crates/wt-native
         run: cargo test
