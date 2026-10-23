@@ -1,0 +1,61 @@
+---
+/* SITE-02 Sikkerhed: the architecture and threat model of spec 9 and 13 in plain Danish, and private reporting of
+   vulnerabilities through GitHub (SECURITY.md, spec 14.3). */
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { PAGES, REPO_URL, SECURITY_REPORT_URL } from "../lib/site";
+
+// TODO(copy): every row (spec 13)
+const threats: [string, string, string][] = [
+  ["Nogen aflytter forbindelsen mellem telefon, relæ og computer", "TLS og derudover kryptering med AES-256-GCM fra telefon til computer.", "Relæet kan se, hvornår der sendes, og hvor store beskederne er."],
+  ["Relæet eller dem, der driver det, bliver kompromitteret", "Relæet har ingen nøgler og kan ikke bytte nøgler ud, når du parrer. Det kan holde beskeder tilbage, men ikke læse eller forfalske dem.", "At relæet holder op med at virke."],
+  ["Nogen fotograferer parringskoden eller finder parringslinket i browserens historik", "Koden gælder i 10 minutter og kun én gang. Linket fjernes fra historikken. Computeren spørger Var det dig? ved hver ny telefon, og du fjerner den med ét tryk.", "En person, der har fysisk adgang til din ulåste computer."],
+  ["Telefonen bliver stjålet", "Telefonens lås beskytter nøglen, og du fjerner telefonen på computeren på få sekunder.", "Dikteringer, som tyven når at lave, før du fjerner den."],
+  ["Den, der leverer telefonappen i browseren, sender kode, der læser lyden, før den krypteres", "iPhone-appen har sin kode indbygget og henter intet fra nettet. Webappen bygges automatisk fra den åbne kode. Virksomheder kan selv levere telefonappen.", "Som ved alle webapps stoler du på den, der leverer siden."],
+  ["En falsk opdatering", "Opdateringer er signeret med vores egen nøgle og med styresystemets signatur (Apple-notarisering og Authenticode).", "En kompromitteret computer hos ejeren med signeringsnøglerne."],
+  ["Skadelig kode i et bidrag", "Beskyttet hovedgren, gennemgang af hvert bidrag, automatiske test og tjek af licenser og kendte sårbarheder.", "Sårbarheder, som ingen opdager ved gennemgangen."],
+  ["Teksten i udklipsholderen havner på andre enheder eller i udklipshistorikken", "På Mac skrives teksten kun til denne Mac. På Windows holdes den ude af udklipshistorikken og skyens udklipsholder.", "Andre apps på samme computer, der læser udklipsholderen."],
+  ["En AI-udbyder misbruger teksten", "Slået fra, indtil du selv slår det til. Du kan se, hvad der blev sendt, og vælge en udbyder, der kører på din egen computer.", "Udbyderens adfærd, når du har slået det til."],
+];
+---
+<Base page="security">
+  <!-- TODO(copy): the whole page -->
+  <PageHero current="security" eyebrow="Sikkerhed" title="Sådan er det bygget" lead="Krypteret fra telefon til computer, ingen konto, og nøgler der aldrig forlader dine enheder. Her er arkitekturen, og hvad den beskytter mod." palette="flint" />
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <h2>Fra telefon til computer</h2>
+      <p>Telefonen optager lyden i små stykker på et femtedel sekund. Hvert stykke krypteres med AES-256-GCM med en nøgle, som kun telefonen og computeren kender, og sendes gennem relæet til computeren, der dekrypterer og skriver det ud. Relæet sender kun krypterede beskeder videre mellem enheder i samme rum.</p>
+      <p>Relæet ser rummenes id'er, enhedernes offentlige nøgler, IP-adresser, tidspunkter og hvor store beskederne er. Det ser aldrig lyd, tekst, navne på enheder eller nøglerne til krypteringen.</p>
+
+      <h2>Nøgler</h2>
+      <ul>
+        <li>Hver enhed laver sine egne nøglepar (P-256), første gang den starter. Den private del forlader aldrig enheden. På Mac ligger den i nøgleringen, på Windows i Credential Manager, og på telefonen som en nøgle, der ikke kan læses ud.</li>
+        <li>Hvert par af telefon og computer får sine egne nøgler, én til hver retning. Fjerner du én telefon, påvirker det ikke de andre.</li>
+        <li>Hver besked har et tæller-nummer, så en gammel besked, der sendes igen, bliver afvist.</li>
+      </ul>
+
+      <h2>Parring uden konto</h2>
+      <p>Koden på computeren indeholder to engangshemmeligheder. Den ene viser telefonen til relæet for at komme ind; relæet gemmer kun et fingeraftryk af den. Den anden sendes aldrig nogen steder. Telefonen og computeren bruger den til at blande ind i deres fælles nøgle og til at tjekke, at ingen har byttet telefonens nøgler ud på vejen. Et relæ, der prøvede, ville blive afvist af computeren.</p>
+      <p>Koden gælder i 10 minutter og kun én gang. Hver ny telefon udløser spørgsmålet Var det dig? på computeren.</p>
+
+      <h2>Opdateringer</h2>
+      <p>Opdateringer er signeret med vores egen opdateringsnøgle, og appen tjekker signaturen, før den installerer.</p>
+
+      <h2>Hvad den beskytter mod, og hvad ikke</h2>
+    </div>
+    <div class="table">
+      <table class="threats">
+        <thead><tr><th scope="col">Trussel</th><th scope="col">Beskyttelse</th><th scope="col">Ikke beskyttet</th></tr></thead>
+        <tbody>
+          {threats.map(([t, p, n]) => <tr><td>{t}</td><td data-label="Beskyttelse">{p}</td><td data-label="Ikke beskyttet">{n}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h2>Fandt du en sårbarhed</h2>
+      <p>Meld den privat gennem GitHub: åbn <a href={REPO_URL + "/security"}>Security</a> i projektet, og tryk på knappen Report a vulnerability, eller åbn <a href={SECURITY_REPORT_URL}>formularen til at melde en sårbarhed</a>. Skriv aldrig om sårbarheder i offentlige issues. Vi svarer inden for 7 dage.</p>
+      <p>Koden er åben, så du kan selv læse den. Se <a href={PAGES.oss.path}>Open source</a>.</p>
+    </div>
+  </main>
+</Base>

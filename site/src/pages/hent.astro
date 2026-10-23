@@ -1,0 +1,59 @@
+---
+/* SITE-02 Hent: both platforms are always shown; a small script marks the one that fits the visitor's computer.
+   Both link to the latest GitHub release. */
+import { ShinyButton } from "@walkietalkey/ui";
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
+---
+<Base page="hent">
+  <!-- TODO(copy): eyebrow, title, lead -->
+  <PageHero current="hent" eyebrow="Hent" title="Hent WalkieTalkey" lead="Gratis og open source. Appen henter den danske talemodel første gang, og derefter bliver talen til tekst på din egen computer." />
+  <main class="container page-body" id="indhold">
+    <div class="cards">
+      <section class="card" data-platform="mac" aria-labelledby="mac">
+        <!-- TODO(copy): badge and card text -->
+        <span class="badge-rec">Passer til din computer</span>
+        <h2 id="mac">Mac</h2>
+        <p>macOS 13 Ventura eller nyere. Lavet til Mac med Apple Silicon; Mac med Intel virker også, men testes mindre.</p>
+        <p>Hold fn nede, tal, og slip.</p>
+        <ShinyButton href={RELEASES_URL} size="lg">Hent til Mac</ShinyButton>
+      </section>
+      <section class="card" data-platform="win" aria-labelledby="win">
+        <!-- TODO(copy): badge and card text -->
+        <span class="badge-rec">Passer til din computer</span>
+        <h2 id="win">Windows</h2>
+        <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
+        <p>Hold højre Ctrl nede, tal, og slip. Du kan vælge en anden tast.</p>
+        <ShinyButton href={RELEASES_URL} size="lg">Hent til Windows</ShinyButton>
+      </section>
+    </div>
+
+    <div class="prose">
+      <!-- TODO(copy): the rest of the page -->
+      <p class="muted" style="margin-top: var(--space-6)">Begge knapper fører til den seneste udgivelse på GitHub, hvor du vælger filen til din computer. Du skal bruge 8 GB RAM og omkring 2 GB fri plads til talemodellen. <a href={REPO_URL + "/releases"}>Se alle udgivelser</a>.</p>
+
+      <h2>Når appen er installeret</h2>
+      <ol class="steps-list">
+        <li><strong>Åbn WalkieTalkey.</strong> Appen henter den danske talemodel, omkring 890 MB. Det sker kun én gang.</li>
+        <li><strong>Giv adgang til mikrofonen.</strong> Appen forklarer hvorfor, før din computer spørger.</li>
+        <li><strong>Vælg tasten.</strong> På Mac beder appen om Inputovervågning, så den kan se, når du holder fn nede. På Windows er det højre Ctrl.</li>
+        <li><strong>Prøv det.</strong> Hold tasten nede, og sig: Hej, det her er min første diktering.</li>
+      </ol>
+
+      <h2>Telefonen</h2>
+      <p>Telefonappen kører i browseren på iPhone (iOS 17 eller nyere) og Android (10 eller nyere med Chrome). Åbn <a href={PHONE_APP_URL}>app.walkietalkey.com</a> på telefonen, og føj WalkieTalkey til hjemmeskærmen. Par den derefter med computeren under Indstillinger › Telefon › Par en telefon.</p>
+
+      <h2>Nye versioner</h2>
+      <p>Appen søger selv efter opdateringer og installerer dem, næste gang du starter den. Vil du prøve nye versioner før andre, kan du vælge kanalen beta under Indstillinger › Opdateringer.</p>
+    </div>
+  </main>
+</Base>
+
+<script>
+  /* Marks the card that fits this computer. Both stay visible either way. */
+  const ua = navigator.userAgent;
+  const touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1; /* iPadOS presents itself as a Mac */
+  const os = /Windows NT/.test(ua) ? "win" : /Macintosh|Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua) && !touchMac ? "mac" : null;
+  if (os) document.querySelector(`[data-platform="${os}"]`)?.setAttribute("data-recommended", "true");
+</script>

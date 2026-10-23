@@ -1,0 +1,6 @@
+/* Everything a page needs: the font, the tokens, the component styles from the design system and
+   the few rules for states the product needs beyond the design system (extensions.css). */
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./components.css";
+@import "./extensions.css";
