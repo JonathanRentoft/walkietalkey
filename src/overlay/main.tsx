@@ -1,7 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { listen } from "@tauri-apps/api/event";
-import RecordingOverlay from "./RecordingOverlay";
+// WalkieTalkey draws the DictationPill instead of Handy's overlay (DESK-55);
+// Handy's RecordingOverlay.tsx stays in the tree for upstream merges.
+import { PillOverlay } from "@/walkietalkey/pill/PillOverlay";
 import {
   applyTheme,
   getStoredTheme,
@@ -20,6 +22,6 @@ listen<Theme>("theme-changed", (event) => applyTheme(event.payload));
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <RecordingOverlay />
+    <PillOverlay />
   </React.StrictMode>,
 );
