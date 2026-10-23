@@ -48,8 +48,20 @@ final class ShellNavigatorTests: XCTestCase {
         var nav = ShellNavigator()
         _ = nav.webViewCreated()
         nav.pageFinishedLoading()
-        nav.pageFailedLoading()
+        nav.pageFailedLoading(domain: NSURLErrorDomain, code: NSURLErrorResourceUnavailable)
+        XCTAssertEqual(nav.state, .notReady)
         XCTAssertEqual(nav.startDictation(), .load(ShellRoutes.startURL))
+    }
+
+    func testInterruptedLoadsDoNotMakeTheLoadedPageUnready() {
+        var nav = ShellNavigator()
+        _ = nav.webViewCreated()
+        nav.pageFinishedLoading()
+        // A load replaced by another one, and a link the shell cancelled because it opens in Safari.
+        nav.pageFailedLoading(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
+        nav.pageFailedLoading(domain: "WebKitErrorDomain", code: 102)
+        XCTAssertEqual(nav.state, .ready)
+        XCTAssertEqual(nav.startDictation(), .evaluate(ShellRoutes.startScript))
     }
 
     func testWebContentCrashReloadsTheRoot() {

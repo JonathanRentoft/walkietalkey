@@ -40,8 +40,17 @@ struct ShellNavigator {
         if state != .noWebView { state = .ready }
     }
 
-    mutating func pageFailedLoading() {
+    /// A load failed. A cancelled load was replaced by another navigation, which reports for itself,
+    /// and a link cancelled by policy (it opens in Safari) leaves the page as it was.
+    mutating func pageFailedLoading(domain: String, code: Int) {
+        if Self.isInterruption(domain: domain, code: code) { return }
         if state != .noWebView { state = .notReady }
+    }
+
+    static func isInterruption(domain: String, code: Int) -> Bool {
+        (domain == NSURLErrorDomain && code == NSURLErrorCancelled)
+            // WebKitErrorFrameLoadInterruptedByPolicyChange
+            || (domain == "WebKitErrorDomain" && code == 102)
     }
 
     /// The web content process went away (memory pressure): start the app again.
