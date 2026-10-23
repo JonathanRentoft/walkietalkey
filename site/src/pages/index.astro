@@ -1,6 +1,8 @@
 ---
 /* Forside = ForsideKomplet (design system components/ForsideKomplet/preview.html is the spec). Text, order and
-   components are the preview's. Only what moves with JavaScript is an island; the rest is static HTML. */
+   components are the preview's, except where the preview's copy claimed more than the app does (review findings 6
+   and 17, marked TODO(copy)) and the contact, which is GitHub until the domain's e-mail works (finding 18). Only what
+   moves with JavaScript is an island; the rest is static HTML. */
 import {
   FlipWords, GradientBackground, GradientFrame, LiquidBackground, Logo, RelayDemo, ShinyButton, ShowcaseCard,
 } from "@walkietalkey/ui";
@@ -11,7 +13,7 @@ import Privacy from "../components/home/Privacy";
 import Qr from "../components/home/Qr";
 import Header from "../components/Header.astro";
 import Base from "../layouts/Base.astro";
-import { CONTACT_EMAIL, PAGES, REPO_URL } from "../lib/site";
+import { CONTACT_URL, PAGES, REPO_URL } from "../lib/site";
 
 const files: [string, boolean, string][] = [
   ["src-tauri", true, "Appen på din computer"], ["src", true, "Brugerfladen"], ["relay", true, "Krypteret relæ til telefonen"], ["phone", true, "Webappen til telefonen"],
@@ -48,15 +50,18 @@ const files: [string, boolean, string][] = [
       <section class="block container" aria-labelledby="funktioner">
         <div class="head">
           <div><p class="eyebrow muted">Funktioner</p><h2 class="h2" id="funktioner">Lavet til den måde,<br />du taler på</h2></div>
-          <p class="lead muted">Du taler, som du plejer. WalkieTalkey sætter tegn, retter dine omformuleringer og staver dine egne ord rigtigt.</p>
+          <!-- TODO(copy): self-corrections need the optional AI cleanup, which is off by default (review finding 17) -->
+          <p class="lead muted">Du taler, som du plejer. WalkieTalkey sætter tegn og staver dine egne ord rigtigt. Slår du AI-oprydning til, retter den også dine omformuleringer.</p>
         </div>
+        <!-- TODO(copy): the text of the "renskriv" card (AI cleanup, review finding 17) and the "enheder" card (only the
+             computer you use gets the text, as Privatliv and Sådan virker det say; review finding 6) -->
         <div class="bento">
           <ShowcaseCard client:visible className="s7" scene="fn" surface="liquid" palette="morgengry" ratio="16 / 10" title="Hold fn, tal, slip" text="Statuspillen lytter, mens du taler, og renskriver, når du slipper. Teksten ligger klar til ⌘V." />
           <ShowcaseCard client:visible className="s5" scene="telefon" surface="motion" palette="nat" placement="phone" ratio="5 / 6" theme="dark" title="Eller tal ind i telefonen" text="Hold knappen, tal, slip. Teksten lander på den computer, du sidder ved." />
-          <ShowcaseCard client:visible className="s4" scene="renskriv" surface="gradient" palette="rav" title="Den retter dig, når du retter dig selv" text={"\"Onsdag, nej, torsdag\" bliver bare til torsdag. Fyldord forsvinder."} />
+          <ShowcaseCard client:visible className="s4" scene="renskriv" surface="gradient" palette="rav" title="Den retter dig, når du retter dig selv" text={"Slår du AI-oprydning til, bliver \"onsdag, nej, torsdag\" bare til torsdag. Fyldord forsvinder også uden den."} />
           <ShowcaseCard client:visible className="s4" scene="sprog" surface="rows" palette="morgengry" title="Dansk og engelsk i samme sætning" text="Sådan som udviklere og konsulenter faktisk taler." />
           <ShowcaseCard client:visible className="s4" scene="notifikation" surface="strips" palette="flint" title="Lander som en notifikation" text="Du vælger selv, hvor teksten skal stå." />
-          <ShowcaseCard client:visible className="s6" scene="enheder" surface="gradient" palette="morgengry" ratio="16 / 10" title="Til den computer, du sidder ved" text="Den computer, du bruger, får teksten. De andre gemmer den i historikken." />
+          <ShowcaseCard client:visible className="s6" scene="enheder" surface="gradient" palette="morgengry" ratio="16 / 10" title="Til den computer, du sidder ved" text="Den computer, du bruger, får teksten. De andre får den ikke." />
           <ShowcaseCard client:visible className="s6" scene="ordliste" surface="barfield" palette="rav" ratio="16 / 10" title="Dine ord, stavet rigtigt" text="Kundenavne, fagord og produktnavne fra din egen ordliste." />
         </div>
       </section>
@@ -113,7 +118,7 @@ const files: [string, boolean, string][] = [
             <p class="eyebrow" style="color: var(--on-gradient)">Virksomheder</p>
             <h2 class="h2">Gratis for alle, også for jer</h2>
             <p class="lead">I må bruge WalkieTalkey frit i hele virksomheden. Vil I have hjælp til at sætte det op, er det betalt hjælp, ikke en licens.</p>
-            <div class="ctas" style="justify-content: flex-start"><ShinyButton variant="ink" size="lg" href={"mailto:" + CONTACT_EMAIL}>Skriv til os</ShinyButton></div>
+            <div class="ctas" style="justify-content: flex-start"><ShinyButton variant="ink" size="lg" href={CONTACT_URL}>Skriv til os</ShinyButton></div>
           </div>
           <ul>
             <li><Check />Udrulning til alle computere med færdige indstillinger</li>
@@ -131,7 +136,8 @@ const files: [string, boolean, string][] = [
             <details open><summary>Er det virkelig gratis?</summary><p>Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den.</p></details>
             <details><summary>Hvor bliver min stemme af?</summary><p>Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den.</p></details>
             <details><summary>Hvilken talemodel bruger I?</summary><p>Edda, en dansk udgave af Whisper, der er trænet på over 2.600 timers dansk tale. Den kører på din egen computer.</p></details>
-            <details><summary>Kan den forstå, når jeg blander dansk og engelsk?</summary><p>Ja, og din ordliste hjælper med fagord og navne. Oprydningen retter også, når du siger "nej, jeg mente".</p></details>
+            <!-- TODO(copy): the answer names the optional AI cleanup (review finding 17) -->
+            <details><summary>Kan den forstå, når jeg blander dansk og engelsk?</summary><p>Ja, og din ordliste hjælper med fagord og navne. Slår du AI-oprydning til, retter den også, når du siger "nej, jeg mente".</p></details>
           </div>
         </div>
       </section>

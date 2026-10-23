@@ -12,7 +12,9 @@ const threats: [string, string, string][] = [
   ["Nogen fotograferer parringskoden eller finder parringslinket i browserens historik", "Koden gælder i 10 minutter og kun én gang. Linket fjernes fra historikken. Computeren spørger Var det dig? ved hver ny telefon, og du fjerner den med ét tryk.", "En person, der har fysisk adgang til din ulåste computer."],
   ["Telefonen bliver stjålet", "Telefonens lås beskytter nøglen, og du fjerner telefonen på computeren på få sekunder.", "Dikteringer, som tyven når at lave, før du fjerner den."],
   ["Den, der leverer telefonappen i browseren, sender kode, der læser lyden, før den krypteres", "iPhone-appen har sin kode indbygget og henter intet fra nettet. Webappen bygges automatisk fra den åbne kode. Virksomheder kan selv levere telefonappen.", "Som ved alle webapps stoler du på den, der leverer siden."],
-  ["En falsk opdatering", "Opdateringer er signeret med vores egen nøgle og med styresystemets signatur (Apple-notarisering og Authenticode).", "En kompromitteret computer hos ejeren med signeringsnøglerne."],
+  /* TODO(copy): only the signature the releases have today (review finding 5). Once a release is signed and notarised
+     by Apple and signed with Authenticode, say so here again. */
+  ["En falsk opdatering", "Opdateringer er signeret med vores egen nøgle. Appen tjekker signaturen, før den installerer. Signering fra Apple og Microsoft kommer senere.", "En kompromitteret computer hos ejeren med signeringsnøglerne."],
   ["Skadelig kode i et bidrag", "Beskyttet hovedgren, gennemgang af hvert bidrag, automatiske test og tjek af licenser og kendte sårbarheder.", "Sårbarheder, som ingen opdager ved gennemgangen."],
   ["Teksten i udklipsholderen havner på andre enheder eller i udklipshistorikken", "På Mac skrives teksten kun til denne Mac. På Windows holdes den ude af udklipshistorikken og skyens udklipsholder.", "Andre apps på samme computer, der læser udklipsholderen."],
   ["En AI-udbyder misbruger teksten", "Slået fra, indtil du selv slår det til. Du kan se, hvad der blev sendt, og vælge en udbyder, der kører på din egen computer.", "Udbyderens adfærd, når du har slået det til."],
@@ -40,6 +42,8 @@ const threats: [string, string, string][] = [
 
       <h2>Opdateringer</h2>
       <p>Opdateringer er signeret med vores egen opdateringsnøgle, og appen tjekker signaturen, før den installerer.</p>
+      <!-- TODO(copy): unsigned first releases (review finding 5) -->
+      <p>De første udgaver er endnu ikke signeret af Apple og Microsoft, så din computer advarer, første gang du åbner appen. Under <a href={PAGES.hent.path}>Hent</a> står, hvad du så gør.</p>
 
       <h2>Hvad den beskytter mod, og hvad ikke</h2>
     </div>

@@ -4,17 +4,31 @@
     This is the only placeholder on the site; replace the value once the owner has decided. */
 export const OPERATOR = "[Operatør: afventer ejerens beslutning]";
 
-/** SITE-05: contact on the domain, forwarded with Cloudflare Email Routing. No contact form. */
-export const CONTACT_EMAIL = "kontakt@walkietalkey.com";
-
 export const REPO_URL = "https://github.com/JonathanRentoft/walkietalkey";
 export const RELEASES_URL = `${REPO_URL}/releases/latest`;
 export const SECURITY_REPORT_URL = `${REPO_URL}/security/advisories/new`;
+export const DISCUSSIONS_URL = `${REPO_URL}/discussions`;
 export const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 export const TRADEMARKS_URL = `${REPO_URL}/blob/main/TRADEMARKS.md`;
 export const CONTRIBUTING_URL = `${REPO_URL}/blob/main/CONTRIBUTING.md`;
-export const PHONE_APP_URL = "https://app.walkietalkey.com";
+
+/* walkietalkey.com is not registered yet (review finding 18), so nothing on the site may send a visitor there. Once
+   the owner has the domain:
+   - SITE_URL is already right: canonical and Open Graph URLs use it (also astro.config.mjs);
+   - PHONE_APP_URL becomes https://app.walkietalkey.com and RELAY_URL wss://relay.walkietalkey.com (SITE-03), once
+     those hosts answer;
+   - CONTACT_URL becomes "mailto:kontakt@walkietalkey.com" once Cloudflare Email Routing forwards it (SITE-05), and the
+     pages that name "Discussions på GitHub" or GitHub's private form in their text get their copy back. */
+
+/** The site's own address, the one constant behind every canonical and Open Graph URL. */
 export const SITE_URL = "https://walkietalkey.com";
+/** The phone app (Pages project walkietalkey-app), the desktop app's default PhoneAppUrl. */
+export const PHONE_APP_URL = "https://walkietalkey-app.pages.dev";
+/** The public relay (Worker walkietalkey-relay), the desktop app's default RelayUrl. */
+export const RELAY_URL = "wss://walkietalkey-relay.jonathan0912.workers.dev";
+/** SITE-05: no contact form. Until the domain's e-mail works, questions go to GitHub Discussions, and anything that
+    must stay private goes through GitHub's private form (SECURITY_REPORT_URL). */
+export const CONTACT_URL = DISCUSSIONS_URL;
 
 export interface PageInfo {
   path: string;

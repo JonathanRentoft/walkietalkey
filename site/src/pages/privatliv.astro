@@ -1,10 +1,12 @@
 ---
 /* PRIV-02: the table of spec 12.1 in plain Danish, the operator of the public relay and the website, Cloudflare as
-   processor, and how to reach the operator. The operator is the owner's open decision 18.1 (OPERATOR in lib/site.ts). */
+   processor, and how to reach the operator. The operator is the owner's open decision 18.1 (OPERATOR in lib/site.ts).
+   Until the domain's e-mail works (review finding 18), the operator is reached through GitHub: Discussions for
+   questions, and GitHub's private form for anything about a person's own data. */
 import PageHero from "../components/PageHero.astro";
 import { Check } from "../components/home/Icons";
 import Base from "../layouts/Base.astro";
-import { CONTACT_EMAIL, OPERATOR, PAGES } from "../lib/site";
+import { DISCUSSIONS_URL, OPERATOR, PAGES, SECURITY_REPORT_URL } from "../lib/site";
 
 // TODO(copy): every row of the table (spec 12.1)
 const rows: [string, string, string, string][] = [
@@ -35,7 +37,8 @@ const rows: [string, string, string, string][] = [
 
       <!-- TODO(copy): the sections below -->
       <h2>Hvem står bag</h2>
-      <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. Det er den dataansvarlige for de få data, der findes på relæet og hjemmesiden. Du kan skrive til <a href={"mailto:" + CONTACT_EMAIL}>{CONTACT_EMAIL}</a>.</p>
+      <!-- TODO(copy): the contact through GitHub, until the domain's e-mail works (review finding 18) -->
+      <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. Det er den dataansvarlige for de få data, der findes på relæet og hjemmesiden. Spørgsmål kan du stille i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>. Vil du skrive privat, så brug <a href={SECURITY_REPORT_URL}>GitHubs private formular</a>, og skriv Privatliv i titlen.</p>
       <p>Relæet og hjemmesiden kører hos Cloudflare (Workers, Durable Objects og Pages). Cloudflare er databehandler: de behandler IP-adresser og tidspunkter for forbindelser på operatørens vegne og efter operatørens instruks.</p>
 
       <h2>Hvilke data findes hvor</h2>
@@ -73,7 +76,8 @@ const rows: [string, string, string, string][] = [
       <p>En virksomhed, der ikke vil have, at noget passerer servere, vi driver, kan køre sit eget relæ og sin egen udgave af telefonappen og hente talemodellerne fra sin egen server. Søgning efter opdateringer går stadig til GitHub, medmindre virksomheden slår automatiske opdateringer fra og installerer dem selv. Se <a href={PAGES.business.path}>Virksomheder</a>.</p>
 
       <h2>Dine rettigheder</h2>
-      <p>Der er ingen konto, så vi kender hverken dit navn eller din e-mail, og vi kan ikke knytte relæets data til dig. Har du spørgsmål om dine data, så skriv til <a href={"mailto:" + CONTACT_EMAIL}>{CONTACT_EMAIL}</a>. Du kan også klage til Datatilsynet.</p>
+      <!-- TODO(copy): the private contact through GitHub (review finding 18) -->
+      <p>Der er ingen konto, så vi kender hverken dit navn eller din e-mail, og vi kan ikke knytte relæets data til dig. Har du spørgsmål om dine data, så skriv til os privat gennem <a href={SECURITY_REPORT_URL}>GitHubs private formular</a> med Privatliv i titlen. Du kan også klage til Datatilsynet.</p>
       <p class="muted">Senest opdateret 23. oktober 2026.</p>
     </div>
   </main>

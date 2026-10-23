@@ -1,10 +1,14 @@
 ---
 /* SITE-02 Hent: both platforms are always shown; a small script marks the one that fits the visitor's computer.
-   Both link to the latest GitHub release. */
+   Both link to the latest GitHub release. Until the Apple and Windows signing secrets exist, the release builds are
+   not signed by Apple or Microsoft (OSS-21), so each card says what the visitor will see (review finding 20). Remove
+   the .unsigned notes with the first signed release. */
 import { ShinyButton } from "@walkietalkey/ui";
 import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
 import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
+
+const phoneHost = new URL(PHONE_APP_URL).host;
 ---
 <Base page="hent">
   <!-- TODO(copy): eyebrow, title, lead -->
@@ -17,6 +21,8 @@ import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
         <h2 id="mac">Mac</h2>
         <p>macOS 13 Ventura eller nyere. Lavet til Mac med Apple Silicon; Mac med Intel virker også, men testes mindre.</p>
         <p>Hold fn nede, tal, og slip.</p>
+        <!-- TODO(copy): unsigned Mac builds (Gatekeeper) -->
+        <p class="unsigned">De første udgaver er endnu ikke signeret af Apple. Første gang du åbner appen, advarer din Mac. Gå så til Systemindstillinger › Anonymitet og sikkerhed, og tryk Åbn alligevel.</p>
         <ShinyButton href={RELEASES_URL} size="lg">Hent til Mac</ShinyButton>
       </section>
       <section class="card" data-platform="win" aria-labelledby="win">
@@ -25,6 +31,8 @@ import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
         <h2 id="win">Windows</h2>
         <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
         <p>Hold højre Ctrl nede, tal, og slip. Du kan vælge en anden tast.</p>
+        <!-- TODO(copy): unsigned Windows builds (SmartScreen) -->
+        <p class="unsigned">De første udgaver er endnu ikke signeret af Microsoft. Viser Windows en advarsel fra SmartScreen, så tryk Flere oplysninger › Kør alligevel.</p>
         <ShinyButton href={RELEASES_URL} size="lg">Hent til Windows</ShinyButton>
       </section>
     </div>
@@ -42,7 +50,7 @@ import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
       </ol>
 
       <h2>Telefonen</h2>
-      <p>Telefonappen kører i browseren på iPhone (iOS 17 eller nyere) og Android (10 eller nyere med Chrome). Åbn <a href={PHONE_APP_URL}>app.walkietalkey.com</a> på telefonen, og føj WalkieTalkey til hjemmeskærmen. Par den derefter med computeren under Indstillinger › Telefon › Par en telefon.</p>
+      <p>Telefonappen kører i browseren på iPhone (iOS 17 eller nyere) og Android (10 eller nyere med Chrome). Åbn <a href={PHONE_APP_URL}>{phoneHost}</a> på telefonen, og føj WalkieTalkey til hjemmeskærmen. Par den derefter med computeren under Indstillinger › Telefon › Par en telefon.</p>
 
       <h2>Nye versioner</h2>
       <p>Appen søger selv efter opdateringer og installerer dem, næste gang du starter den. Vil du prøve nye versioner før andre, kan du vælge kanalen beta under Indstillinger › Opdateringer.</p>
