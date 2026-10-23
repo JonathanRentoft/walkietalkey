@@ -1104,10 +1104,14 @@ impl Actor {
             } else {
                 RejectReason::BadMac
             };
-            warn!("refusing a phone whose join MAC does not verify");
             if self.phones.contains_key(&id) {
-                self.forget_phone(&id);
+                // A failed re-pair of a phone that is already paired: keep the existing pairing,
+                // so a forged member_joined cannot unpair a phone.
+                warn!("ignoring a re-pair whose join MAC does not verify");
+                self.emit(RelayEvent::PhoneRejected { phone: id, reason });
+                return;
             }
+            warn!("refusing a phone whose join MAC does not verify");
             let _ = send_control(sink, &ControlMessage::Revoke { id }).await;
             self.emit(RelayEvent::PhoneRejected { phone: id, reason });
             return;
