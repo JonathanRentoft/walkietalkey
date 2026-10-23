@@ -617,6 +617,23 @@ async openAppDataDir() : Promise<Result<null, string>> {
 }
 },
 /**
+ * The WalkieTalkey settings in effect, with the managed locks.
+ */
+async wtGetSettings() : Promise<WtSettingsView> {
+    return await TAURI_INVOKE("wt_get_settings");
+},
+/**
+ * Stores the user's WalkieTalkey settings; locked fields are ignored.
+ */
+async wtUpdateSettings(settings: WtSettings) : Promise<Result<WtSettingsView, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_update_settings", { settings }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -1056,10 +1073,54 @@ export type ChineseScript =
  * Keep whatever script the model produced.
  */
 "as_transcribed" | "simplified" | "traditional"
+/**
+ * "Ryd op med AI" (DESK-80; managed `CleanupMode`).
+ */
+export type CleanupMode = 
+/**
+ * Fra.
+ */
+"off" | 
+/**
+ * Når der er noget at rette.
+ */
+"when-needed" | 
+/**
+ * Altid.
+ */
+"always" | 
+/**
+ * Kun når jeg holder Shift med.
+ */
+"shift"
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
+/**
+ * History retention (DESK-91; managed `HistoryRetentionDays`).
+ */
+export type HistoryRetention = 
+/**
+ * Gem ikke.
+ */
+"dont_keep" | 
+/**
+ * 1 dag.
+ */
+"day" | 
+/**
+ * 14 dage.
+ */
+"two_weeks" | 
+/**
+ * 90 dage.
+ */
+"ninety_days" | 
+/**
+ * Altid.
+ */
+"forever"
 export type HistoryUpdatePayload = { action: "added"; entry: HistoryEntry } | { action: "updated"; entry: HistoryEntry } | { action: "deleted"; id: number } | { action: "toggled"; id: number }
 /**
  * Result of changing keyboard implementation
@@ -1108,6 +1169,18 @@ export type ModelUnloadTimeout =
  * WalkieTalkey keeps the speech model loaded by default (DESK-45).
  */
 "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
+/**
+ * Where a key dictation goes (DESK-50, DESK-51; managed `OutputMode`).
+ */
+export type OutputMode = 
+/**
+ * Indsæt automatisk.
+ */
+"paste" | 
+/**
+ * Kun udklipsholder.
+ */
+"clipboard"
 export type OverlayPosition = "top" | "bottom"
 /**
  * Which recording overlay to display. `Minimal` and `Live` share one base
@@ -1133,7 +1206,27 @@ export type PostProcessApiFormat =
  */
 "anthropic"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean; api_format?: PostProcessApiFormat }
+/**
+ * The "Tegnsætning" setting.
+ */
+export type PunctuationMode = 
+/**
+ * Automatisk: only when the text lacks punctuation.
+ */
+"automatic" | 
+/**
+ * Altid.
+ */
+"always" | 
+/**
+ * Aldrig.
+ */
+"never"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+/**
+ * "Når jeg siger X, skriv Y".
+ */
+export type Replacement = { from: string; to: string }
 /**
  * A retired ONNX model found on disk.
  */
@@ -1230,8 +1323,79 @@ export type StreamWorkKind = "transcribing" | "polishing"
 export type Theme = "system" | "light" | "dark"
 export type TranscribeAcceleratorSetting = "auto" | "cpu" | "gpu"
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
+/**
+ * Update channel (DESK-112; managed `UpdateChannel`).
+ */
+export type UpdateChannel = "stable" | "beta"
 export type VadBackend = "silero" | "earshot"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
+export type WtSettings = { output_mode: OutputMode; punctuation: PunctuationMode; 
+/**
+ * "Del med mine andre enheder" (DESK-54): off keeps the clipboard on
+ * this computer only.
+ */
+share_clipboard_with_devices: boolean; 
+/**
+ * "Vis teksten i notifikationen" (DESK-56).
+ */
+show_text_in_notifications: boolean; 
+/**
+ * "Vis aldrig" for the pill (DESK-55); its position is Handy's
+ * overlay_position.
+ */
+pill_hidden: boolean; 
+/**
+ * Show the pill for phone dictations too (DESK-58, optional).
+ */
+pill_for_phone: boolean; replacements: Replacement[]; 
+/**
+ * The built-in "Udviklerord" pack (DESK-67).
+ */
+developer_words: boolean; 
+/**
+ * Company word list, a path or an https URL (managed only, DESK-68).
+ */
+vocabulary_source: string | null; cleanup_mode: CleanupMode; 
+/**
+ * Provider id: apple, openai, anthropic, groq, cerebras, openrouter, custom.
+ */
+cleanup_provider: string | null; cleanup_model: string | null; 
+/**
+ * For `custom` (any OpenAI-compatible endpoint, Azure OpenAI, Ollama).
+ */
+cleanup_base_url: string | null; 
+/**
+ * Providers the user has agreed to send text to (DESK-82).
+ */
+cleanup_consented: string[]; 
+/**
+ * Managed `AllowCloudCleanup`: false allows only on-device cleanup.
+ */
+allow_cloud_cleanup: boolean; relay_url: string; phone_app_url: string; 
+/**
+ * Managed `AllowPhonePairing`.
+ */
+allow_phone_pairing: boolean; 
+/**
+ * Managed `ModelBaseUrl`; `None` is our Hugging Face organisation.
+ */
+model_base_url: string | null; history_retention: HistoryRetention; 
+/**
+ * "Gem lyd til fejlfinding" (DESK-92), at most 7 days.
+ */
+keep_audio_for_debugging: boolean; auto_update: boolean; update_channel: UpdateChannel; onboarding_resume_step: string | null }
+/**
+ * The settings and their locks, as the settings screens get them.
+ */
+export type WtSettingsView = { settings: WtSettings; 
+/**
+ * Locked field names: show a lock and "Styret af din organisation".
+ */
+locked: string[]; 
+/**
+ * A managed API key is in use for cleanup (its value is never shown).
+ */
+managed_api_key: boolean }
 
 /** tauri-specta globals **/
 

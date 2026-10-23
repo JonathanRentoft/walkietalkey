@@ -14,6 +14,7 @@ use crate::settings::get_settings;
 /// Runs once the managers exist. Loads the speech model right away, so the
 /// first dictation after starting is as fast as the rest (DESK-45).
 pub mod bench;
+pub mod catalog;
 pub mod cleanup;
 pub mod clipboard;
 pub mod commands;
@@ -27,6 +28,7 @@ pub mod settings;
 pub mod store;
 
 pub fn startup(app: &AppHandle) {
+    select_default_model(app);
     let settings = get_settings(app);
     if !settings.selected_model.is_empty() {
         if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
@@ -36,6 +38,27 @@ pub fn startup(app: &AppHandle) {
             );
             tm.initiate_model_load();
         }
+    }
+}
+
+/// Edda is the default model (DESK-30): picked when nothing is selected yet
+/// and its file is installed (downloaded, or imported with "Importér
+/// modelfil").
+fn select_default_model(app: &AppHandle) {
+    let mut settings = get_settings(app);
+    if !settings.selected_model.is_empty() {
+        return;
+    }
+    let Some(mm) = app.try_state::<Arc<crate::managers::model::ModelManager>>() else {
+        return;
+    };
+    if mm
+        .get_model_info(catalog::DEFAULT_MODEL_ID)
+        .is_some_and(|model| model.is_downloaded)
+    {
+        info!("Selecting {} as the default model", catalog::DEFAULT_MODEL_ID);
+        settings.selected_model = catalog::DEFAULT_MODEL_ID.to_string();
+        crate::settings::write_settings(app, settings);
     }
 }
 
@@ -53,6 +76,20 @@ mod tests {
         assert_eq!(binding.current_binding, "ctrl_right", "DESK-21");
         assert_eq!(binding.current_binding, binding.default_binding);
         assert!(binding.current_binding.parse::<handy_keys::Hotkey>().is_ok());
+    }
+
+    #[test]
+    fn edda_is_in_the_catalog_and_ranked_first() {
+        let edda = crate::catalog::CATALOG
+            .iter()
+            .find(|m| m.id == super::catalog::DEFAULT_MODEL_ID)
+            .expect("Edda in the catalog");
+        assert!(edda.recommended);
+        assert_eq!(edda.recommended_rank, Some(0));
+        // Handy's own models are still offered under "Andre modeller" (DESK-34).
+        assert!(crate::catalog::CATALOG
+            .iter()
+            .any(|m| m.id.starts_with("handy-computer/whisper-large-v3-turbo-gguf/")));
     }
 
     #[test]

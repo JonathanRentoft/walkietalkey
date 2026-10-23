@@ -270,7 +270,8 @@ impl From<&CatalogModel> for ModelDescriptor {
         let default_filename = default_quant_file(&files, Some(&m.quant))
             .map(|f| f.filename.clone())
             .unwrap_or_default();
-        let ranking = HANDY_RANKING.iter().find(|(id, _, _)| *id == m.id);
+        let ranking = crate::walkietalkey::catalog::ranking(&m.id)
+            .or_else(|| HANDY_RANKING.iter().find(|(id, _, _)| *id == m.id));
         let results = ROOT.results.get(&m.id);
 
         ModelDescriptor {
@@ -312,12 +313,19 @@ impl From<&CatalogModel> for ModelDescriptor {
 /// stays out of [`ModelDescriptor`] (mirrors, results) can
 /// be looked up separately.
 static ROOT: Lazy<CatalogRoot> = Lazy::new(|| {
-    let root: CatalogRoot = serde_json::from_str(include_str!("catalog.json"))
+    let mut root: CatalogRoot = serde_json::from_str(include_str!("catalog.json"))
         .expect("bundled catalog.json is valid JSON matching the catalog schema");
     assert_eq!(
         root.schema, SCHEMA,
         "bundled catalog.json has an unsupported schema"
     );
+    // WalkieTalkey: the Danish models are an overlay in front of the package
+    // catalog, which stays a verbatim copy.
+    let overlay: CatalogRoot = serde_json::from_str(crate::walkietalkey::catalog::CATALOG_JSON)
+        .expect("WalkieTalkey's catalog.json matches the catalog schema");
+    assert_eq!(overlay.schema, SCHEMA, "WalkieTalkey's catalog.json schema");
+    root.models.splice(0..0, overlay.models);
+    root.results.extend(overlay.results);
     root
 });
 
@@ -488,9 +496,14 @@ mod tests {
                 .unwrap_or_else(|| panic!("ranked model {id} is not in the catalog"));
             assert!(model.is_offered(), "ranked model {id} is not offered");
         }
+        // WalkieTalkey's own ranking adds its recommended models.
+        let walkietalkey = crate::walkietalkey::catalog::RANKING
+            .iter()
+            .filter(|(_, _, r)| *r)
+            .count();
         assert_eq!(
             CATALOG.iter().filter(|d| d.recommended).count(),
-            HANDY_RANKING.iter().filter(|(_, _, r)| *r).count()
+            HANDY_RANKING.iter().filter(|(_, _, r)| *r).count() + walkietalkey
         );
     }
 
