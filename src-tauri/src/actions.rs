@@ -578,6 +578,11 @@ impl ShortcutAction for TranscribeAction {
         if recording_error.is_none() {
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
+            // WalkieTalkey (DESK-24): at most 5 minutes, with a countdown.
+            let rm_limit = Arc::clone(&rm);
+            crate::walkietalkey::limits::watch(app.clone(), start_time, move || {
+                RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_limit.is_recording()
+            });
             // WalkieTalkey (DESK-26): fn is also a modifier, so another key
             // pressed with it (fn+Delete, fn+arrows) cancels silently.
             if crate::walkietalkey::keys::is_modifier_only(shortcut_str) {

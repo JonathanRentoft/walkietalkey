@@ -21,6 +21,7 @@ pub mod commands;
 pub mod dictation;
 pub mod history;
 pub mod keys;
+pub mod limits;
 pub mod managed;
 pub mod output;
 pub mod pill;

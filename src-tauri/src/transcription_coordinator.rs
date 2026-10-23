@@ -180,6 +180,8 @@ enum Command {
     Input(InputEvent),
     Cancel { recording_was_active: bool },
     ProcessingFinished,
+    /// WalkieTalkey (DESK-24): the recording reached its maximum length.
+    ForceStop,
 }
 
 /// Decide whether a key-up should be deferred (so auto-repeat can cancel it)
@@ -492,6 +494,18 @@ impl CoordinatorState {
         }
     }
 
+    /// The recording reached its limit: stop and transcribe it, whatever the
+    /// mode. A pending deferred release is dropped; the key's real release
+    /// arrives later as an input to the busy pipeline.
+    fn on_force_stop(&mut self) -> Option<Effect> {
+        let Stage::Recording(binding_id) = &self.stage else {
+            return None;
+        };
+        let binding_id = binding_id.clone();
+        self.pending_release = None;
+        Some(self.begin_processing(binding_id.clone(), binding_id))
+    }
+
     fn on_processing_finished(&mut self) -> Option<Effect> {
         self.stage = Stage::Idle;
         self.hold = None;
@@ -605,6 +619,11 @@ impl TranscriptionCoordinator {
                                 run_effect(&app, &mut state, effect);
                             }
                         }
+                        Command::ForceStop => {
+                            if let Some(effect) = state.on_force_stop() {
+                                run_effect(&app, &mut state, effect);
+                            }
+                        }
                     }
                 }
                 debug!("Transcription coordinator exited");
@@ -683,6 +702,13 @@ impl TranscriptionCoordinator {
             })
             .is_err()
         {
+            warn!("Transcription coordinator channel closed");
+        }
+    }
+
+    /// WalkieTalkey (DESK-24): stop the recording at its maximum length.
+    pub fn force_stop(&self) {
+        if self.tx.send(Command::ForceStop).is_err() {
             warn!("Transcription coordinator channel closed");
         }
     }
@@ -1464,6 +1490,37 @@ mod tests {
             state.on_input(input(mode, true), t0 + ms(500)),
             Some(Effect::Start { .. })
         ));
+    }
+
+    /// WalkieTalkey (DESK-24): at the 5-minute limit the recording is
+    /// stopped and transcribed whatever the mode; the key's later release is
+    /// then just a busy-pipeline input.
+    #[test]
+    fn force_stop_ends_a_recording_in_every_mode() {
+        for mode in [
+            ShortcutActivation::PushToTalk,
+            ShortcutActivation::Toggle,
+            ShortcutActivation::HoldOrToggle,
+        ] {
+            let mut state = CoordinatorState::new();
+            let t0 = Instant::now();
+            state.on_input(input(mode, true), t0);
+            assert!(
+                matches!(state.on_force_stop(), Some(Effect::Stop { .. })),
+                "{mode:?}"
+            );
+            assert_eq!(state.stage, Stage::Processing);
+            // The physical release after the limit changes nothing.
+            assert!(state.on_input(input(mode, false), t0 + ms(301_000)).is_none());
+            assert!(state.on_grace_expired().is_none());
+        }
+    }
+
+    #[test]
+    fn force_stop_without_a_recording_does_nothing() {
+        let mut state = CoordinatorState::new();
+        assert!(state.on_force_stop().is_none());
+        assert_eq!(state.stage, Stage::Idle);
     }
 
     /// Push-to-talk: a hold of at least the threshold stops and transcribes.
