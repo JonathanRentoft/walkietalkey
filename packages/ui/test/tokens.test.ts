@@ -5,7 +5,9 @@ import { generate, type TokensJson } from "../scripts/tokens-lib";
 import * as tokens from "../src/tokens";
 
 const root = resolve(__dirname, "..") + "/";
-const json = JSON.parse(readFileSync(root + "tokens/tokens.json", "utf8")) as TokensJson;
+const json = JSON.parse(
+  readFileSync(root + "tokens/tokens.json", "utf8"),
+) as TokensJson;
 const css = readFileSync(root + "src/styles/tokens.css", "utf8");
 
 /** Returns the declarations of the first rule whose selector list starts with `selector`. */
@@ -22,7 +24,9 @@ describe("tokens.css", () => {
 
   it("is exactly what the generator makes from tokens.json (run bun run gen:tokens)", () => {
     expect(css).toBe(generate(json).css);
-    expect(readFileSync(root + "src/tokens.ts", "utf8")).toBe(generate(json).ts);
+    expect(readFileSync(root + "src/tokens.ts", "utf8")).toBe(
+      generate(json).ts,
+    );
   });
 
   it("covers the light theme on :root and on [data-theme=light]", () => {
@@ -56,20 +60,29 @@ describe("tokens.css", () => {
     expect(light).toContain("--ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);");
     expect(light).toContain("--grain-opacity: 0.14;");
     expect(light).toContain('--font-sans: "Albert Sans", ui-sans-serif');
-    expect(light).toContain("--type-display-xl: 600 72px/0.98 var(--font-sans);");
+    expect(light).toContain(
+      "--type-display-xl: 600 72px/0.98 var(--font-sans);",
+    );
     expect(light).toContain("--type-display-xl-tracking: -0.035em;");
   });
 
   it("themes the shadows and the focus ring", () => {
-    expect(light).toContain("--focus-ring: 0 0 0 2px #faf8f4, 0 0 0 4px #1b1a19;");
-    expect(dark).toContain("--focus-ring: 0 0 0 2px #131211, 0 0 0 4px #f4f1ec;");
+    expect(light).toContain(
+      "--focus-ring: 0 0 0 2px #faf8f4, 0 0 0 4px #1b1a19;",
+    );
+    expect(dark).toContain(
+      "--focus-ring: 0 0 0 2px #131211, 0 0 0 4px #f4f1ec;",
+    );
     expect(dark).toContain("--shadow-float:");
   });
 });
 
 describe("tokens.ts", () => {
   it("exposes the same values with types", () => {
-    expect(tokens.color["surface-100"]).toEqual({ light: "#faf8f4", dark: "#131211" });
+    expect(tokens.color["surface-100"]).toEqual({
+      light: "#faf8f4",
+      dark: "#131211",
+    });
     expect(tokens.color.night).toBe("#171615");
     expect(tokens.space["space-24"]).toBe("96px");
     expect(tokens.cssVar("ink")).toBe("var(--ink)");

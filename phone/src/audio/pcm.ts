@@ -18,7 +18,8 @@ export function floatToPcm16(input: Float32Array): Int16Array {
 export function int16ToLeBytes(samples: Int16Array): Uint8Array {
   const out = new Uint8Array(samples.length * 2);
   const view = new DataView(out.buffer);
-  for (let i = 0; i < samples.length; i++) view.setInt16(i * 2, samples[i]!, true);
+  for (let i = 0; i < samples.length; i++)
+    view.setInt16(i * 2, samples[i]!, true);
   return out;
 }
 
@@ -42,8 +43,12 @@ export class Downsampler {
   private nextOut = 0;
 
   constructor(inRate: number, outRate = SAMPLE_RATE, halfTaps = 16) {
-    if (!(inRate > 0) || !(outRate > 0)) throw new RangeError("sample rates must be positive");
-    if (outRate > inRate) throw new RangeError(`cannot upsample from ${inRate} Hz to ${outRate} Hz`);
+    if (!(inRate > 0) || !(outRate > 0))
+      throw new RangeError("sample rates must be positive");
+    if (outRate > inRate)
+      throw new RangeError(
+        `cannot upsample from ${inRate} Hz to ${outRate} Hz`,
+      );
     this.inRate = inRate;
     this.outRate = outRate;
     this.ratio = inRate / outRate;
@@ -58,7 +63,8 @@ export class Downsampler {
       const x = d / this.half;
       const arg = 2 * fc * d;
       const sinc = arg === 0 ? 1 : Math.sin(Math.PI * arg) / (Math.PI * arg);
-      const win = 0.42 + 0.5 * Math.cos(Math.PI * x) + 0.08 * Math.cos(2 * Math.PI * x);
+      const win =
+        0.42 + 0.5 * Math.cos(Math.PI * x) + 0.08 * Math.cos(2 * Math.PI * x);
       this.table[i] = Math.abs(x) >= 1 ? 0 : 2 * fc * sinc * win;
     }
   }
@@ -110,9 +116,14 @@ export class Downsampler {
       out.push(wsum !== 0 ? acc / wsum : 0);
       this.nextOut++;
     }
-    const keepFrom = Math.max(0, Math.floor(this.nextOut * this.ratio) - this.half + 1);
+    const keepFrom = Math.max(
+      0,
+      Math.floor(this.nextOut * this.ratio) - this.half + 1,
+    );
     if (keepFrom > this.bufStart) {
-      this.buf = this.buf.slice(Math.min(this.buf.length, keepFrom - this.bufStart));
+      this.buf = this.buf.slice(
+        Math.min(this.buf.length, keepFrom - this.bufStart),
+      );
       this.bufStart = keepFrom;
     }
     return Float32Array.from(out);

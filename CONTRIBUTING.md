@@ -16,20 +16,20 @@ bun install
 
 Rust comes from rustup (stable). On macOS with only the Command Line Tools, set `SDKROOT=$(xcrun --sdk macosx --show-sdk-path)` if a newer SDK breaks linking, and `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the speech engine's CMake build.
 
-| Part | Folder | Build and run | Tests |
-|---|---|---|---|
-| Desktop app (Tauri, Rust + React) | `src-tauri/`, `src/` | `bun run tauri dev` | `cd src-tauri && cargo test --lib`; `bun run test:playwright` |
-| Danish pipeline, relay client, cleanup | `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/` | (part of the app) | `cargo test --lib walkietalkey pipeline` |
-| Protocol (TypeScript and Rust) | `packages/protocol/` | | `bun run test` there; `cargo test` in `packages/protocol/rust` (shared `test-vectors.json`) |
-| Relay (Cloudflare Worker) | `relay/` | `bunx wrangler dev` | `bun run test` (Workers pool) |
-| Relay client (Rust) | `crates/wt-relay-client/` | | `cargo test`; `scripts/integration.sh` against a local relay |
-| Native platform layer | `crates/wt-native/` | | `cargo test` |
-| Punctuation (Ekko PnC) | `crates/ekko-pnc/` | | `models/ekko-pnc/download.sh <dir>`, then `WT_EKKO_PNC_DIR=<dir> cargo test` |
-| Phone app (PWA) | `phone/` | `bun run dev` | `bun run test`; `bun run test:e2e` |
-| iOS shell | `ios/` | `xcodegen generate`, then Xcode | simulator build in CI |
-| Website | `site/` | `bun run dev` | `bun run test` |
-| Design system | `packages/ui/` | | `bun run test` |
-| Models | `models/` | see `models/README` files | `models/eval/` (Danish accuracy, run before releases) |
+| Part                                   | Folder                                                      | Build and run                   | Tests                                                                                       |
+| -------------------------------------- | ----------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------- |
+| Desktop app (Tauri, Rust + React)      | `src-tauri/`, `src/`                                        | `bun run tauri dev`             | `cd src-tauri && cargo test --lib`; `bun run test:playwright`                               |
+| Danish pipeline, relay client, cleanup | `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/` | (part of the app)               | `cargo test --lib walkietalkey pipeline`                                                    |
+| Protocol (TypeScript and Rust)         | `packages/protocol/`                                        |                                 | `bun run test` there; `cargo test` in `packages/protocol/rust` (shared `test-vectors.json`) |
+| Relay (Cloudflare Worker)              | `relay/`                                                    | `bunx wrangler dev`             | `bun run test` (Workers pool)                                                               |
+| Relay client (Rust)                    | `crates/wt-relay-client/`                                   |                                 | `cargo test`; `scripts/integration.sh` against a local relay                                |
+| Native platform layer                  | `crates/wt-native/`                                         |                                 | `cargo test`                                                                                |
+| Punctuation (Ekko PnC)                 | `crates/ekko-pnc/`                                          |                                 | `models/ekko-pnc/download.sh <dir>`, then `WT_EKKO_PNC_DIR=<dir> cargo test`                |
+| Phone app (PWA)                        | `phone/`                                                    | `bun run dev`                   | `bun run test`; `bun run test:e2e`                                                          |
+| iOS shell                              | `ios/`                                                      | `xcodegen generate`, then Xcode | simulator build in CI                                                                       |
+| Website                                | `site/`                                                     | `bun run dev`                   | `bun run test`                                                                              |
+| Design system                          | `packages/ui/`                                              |                                 | `bun run test`                                                                              |
+| Models                                 | `models/`                                                   | see `models/README` files       | `models/eval/` (Danish accuracy, run before releases)                                       |
 
 End to end with a real model: build the app (`cd src-tauri && cargo build`), install a model, then
 

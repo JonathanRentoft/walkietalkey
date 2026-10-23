@@ -31,11 +31,25 @@ export type ControlMessage =
   | { t: "challenge"; n: string }
   | { t: "auth"; id: string; sig: string }
   | { t: "create"; pub: string; salt: string; sig: string }
-  | { t: "join"; a: string; pub: string; agree: string; mac: string; sig: string }
+  | {
+      t: "join";
+      a: string;
+      pub: string;
+      agree: string;
+      mac: string;
+      sig: string;
+    }
   | { t: "ok"; role: Role; members: MemberInfo[] }
   | { t: "add_admission"; h: string; exp: number }
   | { t: "cancel_admission"; h: string }
-  | { t: "member_joined"; id: string; pub: string; agree: string; mac: string; eid: number }
+  | {
+      t: "member_joined";
+      id: string;
+      pub: string;
+      agree: string;
+      mac: string;
+      eid: number;
+    }
   | { t: "member_left"; id: string; eid: number }
   | { t: "event_ack"; eid: number }
   | { t: "ack"; op: AckOp; h?: string; id?: string }
@@ -48,7 +62,10 @@ export type ControlMessage =
   | { t: "pong" };
 
 export type ControlType = ControlMessage["t"];
-export type ControlOf<T extends ControlType> = Extract<ControlMessage, { t: T }>;
+export type ControlOf<T extends ControlType> = Extract<
+  ControlMessage,
+  { t: T }
+>;
 
 type FieldKind =
   | { k: "bytes"; len: number }
@@ -67,13 +84,21 @@ interface FieldSpec {
 }
 
 const bytes = (len: number): FieldKind => ({ k: "bytes", len });
-const f = (name: string, kind: FieldKind, optional = false): FieldSpec => ({ name, kind, optional });
+const f = (name: string, kind: FieldKind, optional = false): FieldSpec => ({
+  name,
+  kind,
+  optional,
+});
 
 /** Field order here is the serialization order. */
 const SCHEMA: Record<ControlType, FieldSpec[]> = {
   challenge: [f("n", bytes(CHALLENGE_LEN))],
   auth: [f("id", bytes(DEVICE_ID_LEN)), f("sig", bytes(SIGNATURE_LEN))],
-  create: [f("pub", { k: "spki" }), f("salt", bytes(SALT_LEN)), f("sig", bytes(SIGNATURE_LEN))],
+  create: [
+    f("pub", { k: "spki" }),
+    f("salt", bytes(SALT_LEN)),
+    f("sig", bytes(SIGNATURE_LEN)),
+  ],
   join: [
     f("a", bytes(SECRET_LEN)),
     f("pub", { k: "spki" }),
@@ -93,7 +118,11 @@ const SCHEMA: Record<ControlType, FieldSpec[]> = {
   ],
   member_left: [f("id", bytes(DEVICE_ID_LEN)), f("eid", { k: "uint" })],
   event_ack: [f("eid", { k: "uint" })],
-  ack: [f("op", { k: "op" }), f("h", bytes(SHA256_LEN), true), f("id", bytes(DEVICE_ID_LEN), true)],
+  ack: [
+    f("op", { k: "op" }),
+    f("h", bytes(SHA256_LEN), true),
+    f("id", bytes(DEVICE_ID_LEN), true),
+  ],
   leave: [],
   revoke: [f("id", bytes(DEVICE_ID_LEN))],
   delete_room: [],
@@ -103,7 +132,11 @@ const SCHEMA: Record<ControlType, FieldSpec[]> = {
   pong: [],
 };
 
-const ACK_OPS: readonly string[] = ["add_admission", "cancel_admission", "revoke"];
+const ACK_OPS: readonly string[] = [
+  "add_admission",
+  "cancel_admission",
+  "revoke",
+];
 const MAX_MEMBERS = 64;
 
 function bad(msg: string): never {
@@ -121,12 +154,14 @@ function checkB64(value: unknown, len: number, what: string): string {
 }
 
 function checkUint(value: unknown, what: string): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) bad(`${what} must be a non-negative integer`);
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+    bad(`${what} must be a non-negative integer`);
   return value;
 }
 
 function checkRole(value: unknown): Role {
-  if (value !== "owner" && value !== "phone") bad("role must be owner or phone");
+  if (value !== "owner" && value !== "phone")
+    bad("role must be owner or phone");
   return value;
 }
 
@@ -152,17 +187,22 @@ function checkField(value: unknown, spec: FieldSpec): unknown {
     case "role":
       return checkRole(value);
     case "str":
-      if (typeof value !== "string" || value.length > kind.max) bad(`${spec.name} must be a short string`);
+      if (typeof value !== "string" || value.length > kind.max)
+        bad(`${spec.name} must be a short string`);
       return value;
     case "op":
-      if (typeof value !== "string" || !ACK_OPS.includes(value)) bad("unknown ack op");
+      if (typeof value !== "string" || !ACK_OPS.includes(value))
+        bad("unknown ack op");
       return value;
     case "members": {
-      if (!Array.isArray(value) || value.length > MAX_MEMBERS) bad("members must be a list");
+      if (!Array.isArray(value) || value.length > MAX_MEMBERS)
+        bad("members must be a list");
       return value.map((m: unknown) => {
-        if (typeof m !== "object" || m === null || Array.isArray(m)) bad("member must be an object");
+        if (typeof m !== "object" || m === null || Array.isArray(m))
+          bad("member must be an object");
         const o = m as Record<string, unknown>;
-        if (typeof o.online !== "boolean") bad("member.online must be a boolean");
+        if (typeof o.online !== "boolean")
+          bad("member.online must be a boolean");
         return {
           id: checkB64(o.id, DEVICE_ID_LEN, "member.id"),
           role: checkRole(o.role),
@@ -174,7 +214,10 @@ function checkField(value: unknown, spec: FieldSpec): unknown {
   }
 }
 
-function build(t: ControlType, source: Record<string, unknown>): ControlMessage {
+function build(
+  t: ControlType,
+  source: Record<string, unknown>,
+): ControlMessage {
   const out: Record<string, unknown> = { t };
   for (const spec of SCHEMA[t]) {
     const value = source[spec.name];
@@ -199,15 +242,20 @@ export function parseControlMessage(text: string): ControlMessage {
   } catch {
     bad("not JSON");
   }
-  if (typeof value !== "object" || value === null || Array.isArray(value)) bad("not a JSON object");
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    bad("not a JSON object");
   const o = value as Record<string, unknown>;
   if (typeof o.t !== "string") bad("t missing");
-  if (!Object.prototype.hasOwnProperty.call(SCHEMA, o.t)) throw new ProtocolError("unknown_message", o.t.slice(0, 32));
+  if (!Object.prototype.hasOwnProperty.call(SCHEMA, o.t))
+    throw new ProtocolError("unknown_message", o.t.slice(0, 32));
   return build(o.t as ControlType, o);
 }
 
 /** Validates and serializes a control message with a fixed key order (`t` first). */
 export function serializeControlMessage(msg: ControlMessage): string {
-  if (!Object.prototype.hasOwnProperty.call(SCHEMA, msg.t)) throw new ProtocolError("unknown_message", String(msg.t));
-  return JSON.stringify(build(msg.t, msg as unknown as Record<string, unknown>));
+  if (!Object.prototype.hasOwnProperty.call(SCHEMA, msg.t))
+    throw new ProtocolError("unknown_message", String(msg.t));
+  return JSON.stringify(
+    build(msg.t, msg as unknown as Record<string, unknown>),
+  );
 }

@@ -15,12 +15,14 @@ export const GLSL_COMMON = [
   "  vec3 c = pow(max(lin, 0.0), vec3(1.0 / 2.2)); return c + g * uGrain; }",
 ].join("\n");
 
-const VERT = "attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }";
+const VERT =
+  "attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }";
 
 export function hexToLin(hex: string): [number, number, number] {
   const m = /^#?([0-9a-f]{6})/i.exec((hex || "").trim());
   if (!m) return [0.5, 0.5, 0.5];
-  const n = parseInt(m[1], 16), out: number[] = [];
+  const n = parseInt(m[1], 16),
+    out: number[] = [];
   [(n >> 16) & 255, (n >> 8) & 255, n & 255].forEach((v) => {
     const c = v / 255;
     out.push(c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
@@ -59,45 +61,95 @@ export interface GLHandle {
 /* Port change: the design system loses the context at once on cleanup. When an effect runs again on the same canvas
    (hydration, where reduced motion switches from the server's guess to the browser's value, or the user switching it),
    the new mount then gets a lost context and falls back. So the loss waits a tick, and a new mount cancels it. */
-const pendingLoss = new WeakMap<HTMLCanvasElement, ReturnType<typeof setTimeout>>();
+const pendingLoss = new WeakMap<
+  HTMLCanvasElement,
+  ReturnType<typeof setTimeout>
+>();
 
-export function mountGL(wrap: HTMLElement, canvas: HTMLCanvasElement, frag: string, opts: GLOptions): GLHandle | null {
+export function mountGL(
+  wrap: HTMLElement,
+  canvas: HTMLCanvasElement,
+  frag: string,
+  opts: GLOptions,
+): GLHandle | null {
   const pending = pendingLoss.get(canvas);
-  if (pending) { clearTimeout(pending); pendingLoss.delete(canvas); }
+  if (pending) {
+    clearTimeout(pending);
+    pendingLoss.delete(canvas);
+  }
   let gl: WebGLRenderingContext | null = null;
-  try { gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" }) as WebGLRenderingContext | null; } catch { gl = null; }
+  try {
+    gl = canvas.getContext("webgl", {
+      antialias: false,
+      alpha: false,
+      premultipliedAlpha: false,
+      powerPreference: "low-power",
+    }) as WebGLRenderingContext | null;
+  } catch {
+    gl = null;
+  }
   if (!gl || gl.isContextLost()) return null;
   const g = gl;
   function compile(type: number, src: string): WebGLShader | null {
-    const s = g.createShader(type)!; g.shaderSource(s, src); g.compileShader(s);
-    if (!g.getShaderParameter(s, g.COMPILE_STATUS)) { console.warn("WalkieTalkey shader:", g.getShaderInfoLog(s)); return null; }
+    const s = g.createShader(type)!;
+    g.shaderSource(s, src);
+    g.compileShader(s);
+    if (!g.getShaderParameter(s, g.COMPILE_STATUS)) {
+      console.warn("WalkieTalkey shader:", g.getShaderInfoLog(s));
+      return null;
+    }
     return s;
   }
-  const vs = compile(g.VERTEX_SHADER, VERT), fs = compile(g.FRAGMENT_SHADER, GLSL_COMMON + "\n" + frag);
+  const vs = compile(g.VERTEX_SHADER, VERT),
+    fs = compile(g.FRAGMENT_SHADER, GLSL_COMMON + "\n" + frag);
   if (!vs || !fs) return null;
-  const prog = g.createProgram()!; g.attachShader(prog, vs); g.attachShader(prog, fs); g.linkProgram(prog);
+  const prog = g.createProgram()!;
+  g.attachShader(prog, vs);
+  g.attachShader(prog, fs);
+  g.linkProgram(prog);
   if (!g.getProgramParameter(prog, g.LINK_STATUS)) return null;
   g.useProgram(prog);
-  const buf = g.createBuffer(); g.bindBuffer(g.ARRAY_BUFFER, buf);
-  g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), g.STATIC_DRAW);
-  const aPos = g.getAttribLocation(prog, "aPos"); g.enableVertexAttribArray(aPos); g.vertexAttribPointer(aPos, 2, g.FLOAT, false, 0, 0);
+  const buf = g.createBuffer();
+  g.bindBuffer(g.ARRAY_BUFFER, buf);
+  g.bufferData(
+    g.ARRAY_BUFFER,
+    new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+    g.STATIC_DRAW,
+  );
+  const aPos = g.getAttribLocation(prog, "aPos");
+  g.enableVertexAttribArray(aPos);
+  g.vertexAttribPointer(aPos, 2, g.FLOAT, false, 0, 0);
   const cache: Record<string, WebGLUniformLocation | null> = {};
-  const loc: Loc = (name) => { if (!(name in cache)) cache[name] = g.getUniformLocation(prog, name); return cache[name]; };
+  const loc: Loc = (name) => {
+    if (!(name in cache)) cache[name] = g.getUniformLocation(prog, name);
+    return cache[name];
+  };
 
   const dprCap = opts.dpr || 1.5;
-  let W = 1, H = 1, raf = 0, running = false, visible = true;
+  let W = 1,
+    H = 1,
+    raf = 0,
+    running = false,
+    visible = true;
   const start = performance.now();
   const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5, amt: 0, tamt: 0 };
   const lag = opts.lag == null ? 0.06 : opts.lag;
   function size() {
-    const r = wrap.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, dprCap);
-    W = Math.max(1, Math.round(r.width * d)); H = Math.max(1, Math.round(r.height * d));
-    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    const r = wrap.getBoundingClientRect(),
+      d = Math.min(window.devicePixelRatio || 1, dprCap);
+    W = Math.max(1, Math.round(r.width * d));
+    H = Math.max(1, Math.round(r.height * d));
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width = W;
+      canvas.height = H;
+    }
     g.viewport(0, 0, W, H);
   }
   function draw(now: number) {
-    const t = (now - start) / 1000 * (opts.speed || 1);
-    mouse.x += (mouse.tx - mouse.x) * lag; mouse.y += (mouse.ty - mouse.y) * lag; mouse.amt += (mouse.tamt - mouse.amt) * lag;
+    const t = ((now - start) / 1000) * (opts.speed || 1);
+    mouse.x += (mouse.tx - mouse.x) * lag;
+    mouse.y += (mouse.ty - mouse.y) * lag;
+    mouse.amt += (mouse.tamt - mouse.amt) * lag;
     g.uniform2f(loc("uRes"), W, H);
     g.uniform1f(loc("uTime"), t + (opts.t0 || 0));
     g.uniform2f(loc("uMouse"), mouse.x, mouse.y);
@@ -106,40 +158,95 @@ export function mountGL(wrap: HTMLElement, canvas: HTMLCanvasElement, frag: stri
     if (opts.frame) opts.frame(g, loc, t);
     g.drawArrays(g.TRIANGLES, 0, 6);
   }
-  function loop(now: number) { draw(now); raf = requestAnimationFrame(loop); }
-  function play() { if (running || opts.still || !visible || document.hidden) return; running = true; raf = requestAnimationFrame(loop); }
-  function pause() { running = false; cancelAnimationFrame(raf); }
-  function recolor() { if (opts.setup) opts.setup(g, loc, wrap); draw(performance.now()); }
+  function loop(now: number) {
+    draw(now);
+    raf = requestAnimationFrame(loop);
+  }
+  function play() {
+    if (running || opts.still || !visible || document.hidden) return;
+    running = true;
+    raf = requestAnimationFrame(loop);
+  }
+  function pause() {
+    running = false;
+    cancelAnimationFrame(raf);
+  }
+  function recolor() {
+    if (opts.setup) opts.setup(g, loc, wrap);
+    draw(performance.now());
+  }
 
   function onMove(e: PointerEvent) {
     const r = wrap.getBoundingClientRect();
-    mouse.tx = (e.clientX - r.left) / r.width; mouse.ty = 1 - (e.clientY - r.top) / r.height; mouse.tamt = 1;
+    mouse.tx = (e.clientX - r.left) / r.width;
+    mouse.ty = 1 - (e.clientY - r.top) / r.height;
+    mouse.tamt = 1;
   }
-  function onLeave() { mouse.tamt = 0; }
-  if (opts.interactive !== false) { wrap.addEventListener("pointermove", onMove); wrap.addEventListener("pointerleave", onLeave); }
+  function onLeave() {
+    mouse.tamt = 0;
+  }
+  if (opts.interactive !== false) {
+    wrap.addEventListener("pointermove", onMove);
+    wrap.addEventListener("pointerleave", onLeave);
+  }
 
-  size(); recolor(); play();
-  const ro = new ResizeObserver(() => { size(); draw(performance.now()); }); ro.observe(wrap);
-  const io = new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible) play(); else pause(); }); io.observe(wrap);
+  size();
+  recolor();
+  play();
+  const ro = new ResizeObserver(() => {
+    size();
+    draw(performance.now());
+  });
+  ro.observe(wrap);
+  const io = new IntersectionObserver((es) => {
+    visible = es[0].isIntersecting;
+    if (visible) play();
+    else pause();
+  });
+  io.observe(wrap);
   const mo = new MutationObserver(recolor);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
-  function onVis() { if (document.hidden) pause(); else play(); }
+  mo.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "class"],
+  });
+  function onVis() {
+    if (document.hidden) pause();
+    else play();
+  }
   document.addEventListener("visibilitychange", onVis);
   return {
-    gl: g, loc, redraw: () => { draw(performance.now()); },
+    gl: g,
+    loc,
+    redraw: () => {
+      draw(performance.now());
+    },
     cleanup: () => {
-      pause(); ro.disconnect(); io.disconnect(); mo.disconnect();
+      pause();
+      ro.disconnect();
+      io.disconnect();
+      mo.disconnect();
       document.removeEventListener("visibilitychange", onVis);
-      wrap.removeEventListener("pointermove", onMove); wrap.removeEventListener("pointerleave", onLeave);
-      g.deleteProgram(prog); g.deleteShader(vs); g.deleteShader(fs); g.deleteBuffer(buf);
-      pendingLoss.set(canvas, setTimeout(() => {
-        pendingLoss.delete(canvas);
-        const ext = g.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
-      }, 0));
+      wrap.removeEventListener("pointermove", onMove);
+      wrap.removeEventListener("pointerleave", onLeave);
+      g.deleteProgram(prog);
+      g.deleteShader(vs);
+      g.deleteShader(fs);
+      g.deleteBuffer(buf);
+      pendingLoss.set(
+        canvas,
+        setTimeout(() => {
+          pendingLoss.delete(canvas);
+          const ext = g.getExtension("WEBGL_lose_context");
+          if (ext) ext.loseContext();
+        }, 0),
+      );
     },
   };
 }
 
 export function fallbackBg(el: HTMLElement, names: readonly string[]): void {
-  el.style.background = "linear-gradient(120deg, " + names.map((n) => "var(--" + n + ")").join(", ") + ")";
+  el.style.background =
+    "linear-gradient(120deg, " +
+    names.map((n) => "var(--" + n + ")").join(", ") +
+    ")";
 }

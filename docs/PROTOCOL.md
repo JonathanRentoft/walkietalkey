@@ -4,14 +4,14 @@ This document fixes every byte between a phone, the relay and a computer. It ref
 8 and 9 and Appendix C of `docs/SPEC.md`; where it adds or changes something, the change is
 listed in [Clarifications and deviations](#clarifications-and-deviations).
 
-| Part | Where |
-|---|---|
+| Part                                                                    | Where                                               |
+| ----------------------------------------------------------------------- | --------------------------------------------------- |
 | TypeScript implementation (WebCrypto only; browsers, Node 20+, Workers) | `packages/protocol/src/` (`@walkietalkey/protocol`) |
-| Rust implementation (RustCrypto) | `packages/protocol/rust/` (crate `wt-protocol`) |
-| Shared test vectors (SEC-05) | `packages/protocol/test-vectors.json` |
-| Relay (Cloudflare Worker + Durable Object) | `relay/` |
-| Computer-side client | `crates/wt-relay-client/` |
-| Scripted phone (tests) | `packages/protocol/scripts/scripted-phone.ts` |
+| Rust implementation (RustCrypto)                                        | `packages/protocol/rust/` (crate `wt-protocol`)     |
+| Shared test vectors (SEC-05)                                            | `packages/protocol/test-vectors.json`               |
+| Relay (Cloudflare Worker + Durable Object)                              | `relay/`                                            |
+| Computer-side client                                                    | `crates/wt-relay-client/`                           |
+| Scripted phone (tests)                                                  | `packages/protocol/scripts/scripted-phone.ts`       |
 
 ## 1. Encoding conventions
 
@@ -82,10 +82,10 @@ SPKI, `o` other than `mac`/`win`, and a `u` that is not `wss://` (`ws://` only t
 
 ## 5. Transport
 
-| Method | Path | |
-|---|---|---|
-| GET | `/v1/health` | `200 {"ok":true,"service":"walkietalkey-relay","protocol":1}` |
-| GET (WebSocket upgrade) | `/v1/rooms/{roomId}/ws?intent=auth\|create\|join` | one device in one room |
+| Method                  | Path                                              |                                                               |
+| ----------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
+| GET                     | `/v1/health`                                      | `200 {"ok":true,"service":"walkietalkey-relay","protocol":1}` |
+| GET (WebSocket upgrade) | `/v1/rooms/{roomId}/ws?intent=auth\|create\|join` | one device in one room                                        |
 
 - `roomId` is 22 characters of base64url (16 bytes). A malformed id is closed with 4404 by
   the Worker without touching a Durable Object. A plain GET on the socket path answers 426, an
@@ -106,25 +106,25 @@ SPKI, `o` other than `mac`/`win`, and a `u` that is not `wss://` (`ws://` only t
 
 Every control message is a JSON object with its type in `t`, first. At most 4,096 characters.
 
-| `t` | Direction | Fields (in this order) | Notes |
-|---|---|---|---|
-| `challenge` | relay → device | `n` (32 bytes) | first message on every accepted socket |
-| `auth` | member → relay | `id` (16), `sig` (64) | sig over `wt-auth-v1 ‖ roomId ‖ n` |
-| `create` | owner → relay | `pub` (SPKI), `salt` (16), `sig` (64) | sig over `wt-create-v1 ‖ roomId ‖ n` |
-| `join` | phone → relay | `a` (32), `pub` (SPKI), `agree` (SPKI), `mac` (32), `sig` (64) | sig over `wt-join-v1 ‖ roomId ‖ n` with the key in `pub` |
-| `ok` | relay → device | `role` (`owner`\|`phone`), `members` (`[{id, role, online, lastSeenDay}]`) | includes the device itself; `lastSeenDay` = days since 1970-01-01 UTC |
-| `add_admission` | owner → relay | `h` (32, SHA-256 of `a`), `exp` (unix ms) | answered with `ack` |
-| `cancel_admission` | owner → relay | `h` (32) | answered with `ack` |
-| `member_joined` | relay → owner | `id`, `pub`, `agree`, `mac`, `eid` | `eid`: event id, see `event_ack` |
-| `member_left` | relay → owner | `id`, `eid` | |
-| `event_ack` | owner → relay | `eid` | **extension**: the relay deletes that owner event |
-| `ack` | relay → owner | `op` (`add_admission`\|`cancel_admission`\|`revoke`), then `h` or `id` | **extension** |
-| `leave` | phone → relay | | relay closes the phone's sockets with 1000 |
-| `revoke` | owner → relay | `id` (16) | answered with `ack` |
-| `delete_room` | owner → relay | | relay closes phones with 4404, the owner with 1000 |
-| `peer` | relay → device | `id`, `online` | phones hear about the owner, the owner about phones |
-| `error` | relay → device | `code` (≤ 64 chars), `msg` (≤ 512 chars) | codes in section 10 |
-| `ping` / `pong` | device → relay → device | | exact strings, section 5 |
+| `t`                | Direction               | Fields (in this order)                                                     | Notes                                                                 |
+| ------------------ | ----------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `challenge`        | relay → device          | `n` (32 bytes)                                                             | first message on every accepted socket                                |
+| `auth`             | member → relay          | `id` (16), `sig` (64)                                                      | sig over `wt-auth-v1 ‖ roomId ‖ n`                                    |
+| `create`           | owner → relay           | `pub` (SPKI), `salt` (16), `sig` (64)                                      | sig over `wt-create-v1 ‖ roomId ‖ n`                                  |
+| `join`             | phone → relay           | `a` (32), `pub` (SPKI), `agree` (SPKI), `mac` (32), `sig` (64)             | sig over `wt-join-v1 ‖ roomId ‖ n` with the key in `pub`              |
+| `ok`               | relay → device          | `role` (`owner`\|`phone`), `members` (`[{id, role, online, lastSeenDay}]`) | includes the device itself; `lastSeenDay` = days since 1970-01-01 UTC |
+| `add_admission`    | owner → relay           | `h` (32, SHA-256 of `a`), `exp` (unix ms)                                  | answered with `ack`                                                   |
+| `cancel_admission` | owner → relay           | `h` (32)                                                                   | answered with `ack`                                                   |
+| `member_joined`    | relay → owner           | `id`, `pub`, `agree`, `mac`, `eid`                                         | `eid`: event id, see `event_ack`                                      |
+| `member_left`      | relay → owner           | `id`, `eid`                                                                |                                                                       |
+| `event_ack`        | owner → relay           | `eid`                                                                      | **extension**: the relay deletes that owner event                     |
+| `ack`              | relay → owner           | `op` (`add_admission`\|`cancel_admission`\|`revoke`), then `h` or `id`     | **extension**                                                         |
+| `leave`            | phone → relay           |                                                                            | relay closes the phone's sockets with 1000                            |
+| `revoke`           | owner → relay           | `id` (16)                                                                  | answered with `ack`                                                   |
+| `delete_room`      | owner → relay           |                                                                            | relay closes phones with 4404, the owner with 1000                    |
+| `peer`             | relay → device          | `id`, `online`                                                             | phones hear about the owner, the owner about phones                   |
+| `error`            | relay → device          | `code` (≤ 64 chars), `msg` (≤ 512 chars)                                   | codes in section 10                                                   |
+| `ping` / `pong`    | device → relay → device |                                                                            | exact strings, section 5                                              |
 
 Examples (from the test vectors): `{"t":"member_left","id":"fp8EAmIZWEEo2jlk_9k54w","eid":2}`,
 `{"t":"ack","op":"revoke","id":"fp8EAmIZWEEo2jlk_9k54w"}`, `{"t":"ping"}`.
@@ -220,16 +220,16 @@ higher than the last accepted one from that sender (`replay`); decrypt with the 
 
 ### 8.2 Payloads (Appendix C.2)
 
-| Type | Name | Direction | Plaintext |
-|---|---|---|---|
-| 0x10 | `device_info` | phone → computer | `{"name":…,"platform":…}`; name ≤ 256 UTF-8 bytes, platform ≤ 32 (`ios`, `android`, `web`) |
-| 0x11 | `presence` | computer → phone | `{"secondsSinceInput":u32,"locked":bool}`; only as an answer to 0x12 |
-| 0x12 | `presence_query` | phone → computer | `{}` |
-| 0x20 | `audio_start` | phone → computer | `{"sessionId":…,"sampleRate":16000,"codec":"pcm16"}` (other values are refused) |
-| 0x21 | `audio_chunk` | phone → computer | binary: sessionId (16) ‖ firstIndex (uint32 BE) ‖ PCM16 little-endian mono 16 kHz |
-| 0x22 | `audio_end` | phone → computer | `{"sessionId":…,"chunks":u32,"durationMs":u32}` |
-| 0x23 | `audio_cancel` | phone → computer | `{"sessionId":…}` |
-| 0x30 | `result` | computer → phone | `{"sessionId":…,"ok":true}` or `{"sessionId":…,"ok":false,"reason":…}`; never text |
+| Type | Name             | Direction        | Plaintext                                                                                  |
+| ---- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| 0x10 | `device_info`    | phone → computer | `{"name":…,"platform":…}`; name ≤ 256 UTF-8 bytes, platform ≤ 32 (`ios`, `android`, `web`) |
+| 0x11 | `presence`       | computer → phone | `{"secondsSinceInput":u32,"locked":bool}`; only as an answer to 0x12                       |
+| 0x12 | `presence_query` | phone → computer | `{}`                                                                                       |
+| 0x20 | `audio_start`    | phone → computer | `{"sessionId":…,"sampleRate":16000,"codec":"pcm16"}` (other values are refused)            |
+| 0x21 | `audio_chunk`    | phone → computer | binary: sessionId (16) ‖ firstIndex (uint32 BE) ‖ PCM16 little-endian mono 16 kHz          |
+| 0x22 | `audio_end`      | phone → computer | `{"sessionId":…,"chunks":u32,"durationMs":u32}`                                            |
+| 0x23 | `audio_cancel`   | phone → computer | `{"sessionId":…}`                                                                          |
+| 0x30 | `result`         | computer → phone | `{"sessionId":…,"ok":true}` or `{"sessionId":…,"ok":false,"reason":…}`; never text         |
 
 - A 200 ms block is 3,200 samples = 6,400 bytes. An `audio_chunk` carries 1 to 10 consecutive
   blocks starting at block `firstIndex`; every block is 6,400 bytes except the session's very
@@ -267,17 +267,17 @@ application waits up to 5 s for them (DESK-61). The computer remembers answered 
 
 ## 10. Close codes and error codes
 
-| Code | Meaning | When |
-|---|---|---|
-| 4401 | not authorised | message before auth; unknown member; bad signature; wrong room binding on create; invalid or used admission; revoked phone (its open sockets are closed with 4401 at once) |
-| 4403 | not allowed | wrong role for the command; handshake message ≠ declared intent; sender id ≠ socket's device; phone addressing anyone but the owner; owner addressing itself; room full |
-| 4404 | room not found | auth/join to an unknown room; malformed room id; room deleted (phones on `delete_room` and on housekeeping) |
-| 4409 | room exists | create intent for an existing room |
-| 4413 | frame too large | binary message > 65,536 bytes; text message > 4,096 characters |
-| 4429 | rate limited | > 50 messages per second on one socket; per-IP create/join limit in the Worker |
-| 1000 | normal | `leave`; the owner's socket after `delete_room` |
-| 1001 | going away | the relay closed a socket that went quiet for more than 75 s (RELAY-10) |
-| 1008 | policy violation | malformed control message or frame; invalid agreement key in `join` |
+| Code | Meaning          | When                                                                                                                                                                       |
+| ---- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4401 | not authorised   | message before auth; unknown member; bad signature; wrong room binding on create; invalid or used admission; revoked phone (its open sockets are closed with 4401 at once) |
+| 4403 | not allowed      | wrong role for the command; handshake message ≠ declared intent; sender id ≠ socket's device; phone addressing anyone but the owner; owner addressing itself; room full    |
+| 4404 | room not found   | auth/join to an unknown room; malformed room id; room deleted (phones on `delete_room` and on housekeeping)                                                                |
+| 4409 | room exists      | create intent for an existing room                                                                                                                                         |
+| 4413 | frame too large  | binary message > 65,536 bytes; text message > 4,096 characters                                                                                                             |
+| 4429 | rate limited     | > 50 messages per second on one socket; per-IP create/join limit in the Worker                                                                                             |
+| 1000 | normal           | `leave`; the owner's socket after `delete_room`                                                                                                                            |
+| 1001 | going away       | the relay closed a socket that went quiet for more than 75 s (RELAY-10)                                                                                                    |
+| 1008 | policy violation | malformed control message or frame; invalid agreement key in `join`                                                                                                        |
 
 Before closing for a reason of its own, the relay sends `error {code, msg}` with one of:
 `not_authenticated`, `not_member`, `bad_signature`, `room_binding`, `room_exists`,
@@ -292,13 +292,13 @@ Before closing for a reason of its own, the relay sends `error {code, msg}` with
 
 One SQLite-backed Durable Object per room, named by the base64url room id.
 
-| Table | Columns |
-|---|---|
-| `room` | owner_device_id, salt, created_at |
-| `devices` (WITHOUT ROWID) | device_id PK, signing_public_key, role, added_at, last_seen_day |
-| `admissions` (WITHOUT ROWID) | admission_sha256 PK, expires_at |
-| `owner_events` | id, kind, payload (JSON: id, pub, agree, mac), created_at |
-| `buffered` | id, recipient_device_id, frames (BLOB), expires_at |
+| Table                        | Columns                                                         |
+| ---------------------------- | --------------------------------------------------------------- |
+| `room`                       | owner_device_id, salt, created_at                               |
+| `devices` (WITHOUT ROWID)    | device_id PK, signing_public_key, role, added_at, last_seen_day |
+| `admissions` (WITHOUT ROWID) | admission_sha256 PK, expires_at                                 |
+| `owner_events`               | id, kind, payload (JSON: id, pub, agree, mac), created_at       |
+| `buffered`                   | id, recipient_device_id, frames (BLOB), expires_at              |
 
 Ids and keys are stored as base64url text. No table exists until `create` succeeds, so a random
 room id costs nothing. `last_seen_day` is written at most once per device per day: on a
@@ -395,8 +395,8 @@ the `test-utils` feature (Rust).
   pairs, streams a 16 kHz mono PCM16 WAV in real time and waits for the result.
 - `scripted-phone.ts --stdio` reads one JSON command per line and writes JSON lines:
   events `{"event":…}` and replies `{"reply":<cmd>,"id":…,"ok":…}`. Commands: `pair {url,
-  corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `resend
-  {sessionId}`, `reconnect {resend?}`, `drop`, `wait_result {sessionId, timeoutMs?}`,
+corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `resend
+{sessionId}`, `reconnect {resend?}`, `drop`, `wait_result {sessionId, timeoutMs?}`,
   `presence {timeoutMs?}`, `leave`, `wait_closed`, `quit`.
 - `relay/scripts/smoke.ts` runs a full live check against a relay and cleans up after itself.
 

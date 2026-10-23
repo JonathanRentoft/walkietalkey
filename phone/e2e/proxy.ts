@@ -1,5 +1,10 @@
 /** A TCP proxy in front of the local relay, so a test can cut the phone's socket mid-recording. */
-import { createConnection, createServer, type Server, type Socket } from "node:net";
+import {
+  createConnection,
+  createServer,
+  type Server,
+  type Socket,
+} from "node:net";
 
 export class TcpProxy {
   readonly port: number;
@@ -39,7 +44,10 @@ export class TcpProxy {
       });
       server.listen(0, host, () => {
         const addr = server.address();
-        proxy = new TcpProxy(server, typeof addr === "object" && addr ? addr.port : 0);
+        proxy = new TcpProxy(
+          server,
+          typeof addr === "object" && addr ? addr.port : 0,
+        );
         resolve(proxy);
       });
     });

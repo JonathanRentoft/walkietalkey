@@ -6,16 +6,32 @@ import {
   randomBytes,
   signChallenge,
 } from "@walkietalkey/protocol";
-import { authAs, challengeOf, Client, createRoom, inRoom, newOwner, rawFrame } from "./helpers.ts";
+import {
+  authAs,
+  challengeOf,
+  Client,
+  createRoom,
+  inRoom,
+  newOwner,
+  rawFrame,
+} from "./helpers.ts";
 
 describe("create (RELAY-03)", () => {
   it("creates a room bound to the owner's key and answers ok", async () => {
     const { owner, ok } = await createRoom();
     expect(ok.role).toBe("owner");
     expect(ok.members).toHaveLength(1);
-    expect(ok.members[0]).toMatchObject({ id: owner.id, role: "owner", online: true });
-    expect(ok.members[0]!.lastSeenDay).toBe(Math.floor(Date.now() / 86_400_000));
-    const rows = await inRoom(owner.roomB64, (_r, s) => [...s.storage.sql.exec("SELECT * FROM room")]);
+    expect(ok.members[0]).toMatchObject({
+      id: owner.id,
+      role: "owner",
+      online: true,
+    });
+    expect(ok.members[0]!.lastSeenDay).toBe(
+      Math.floor(Date.now() / 86_400_000),
+    );
+    const rows = await inRoom(owner.roomB64, (_r, s) => [
+      ...s.storage.sql.exec("SELECT * FROM room"),
+    ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.owner_device_id).toBe(owner.id);
     expect(rows[0]!.salt).toBe(b64uEncode(owner.salt));
@@ -25,8 +41,18 @@ describe("create (RELAY-03)", () => {
     const owner = await newOwner();
     const c = await Client.open(owner.roomB64, "create");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(owner.keys.signing.privateKey, "wt-create-v1", owner.roomId, ch);
-    c.sendControl({ t: "create", pub: b64uEncode(owner.keys.signingSpki), salt: b64uEncode(randomBytes(16)), sig: b64uEncode(sig) });
+    const sig = await signChallenge(
+      owner.keys.signing.privateKey,
+      "wt-create-v1",
+      owner.roomId,
+      ch,
+    );
+    c.sendControl({
+      t: "create",
+      pub: b64uEncode(owner.keys.signingSpki),
+      salt: b64uEncode(randomBytes(16)),
+      sig: b64uEncode(sig),
+    });
     expect((await c.closed()).code).toBe(4401);
   });
 
@@ -35,8 +61,18 @@ describe("create (RELAY-03)", () => {
     const thief = await generateDeviceKeys();
     const c = await Client.open(owner.roomB64, "create");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(thief.signing.privateKey, "wt-create-v1", owner.roomId, ch);
-    c.sendControl({ t: "create", pub: b64uEncode(thief.signingSpki), salt: b64uEncode(owner.salt), sig: b64uEncode(sig) });
+    const sig = await signChallenge(
+      thief.signing.privateKey,
+      "wt-create-v1",
+      owner.roomId,
+      ch,
+    );
+    c.sendControl({
+      t: "create",
+      pub: b64uEncode(thief.signingSpki),
+      salt: b64uEncode(owner.salt),
+      sig: b64uEncode(sig),
+    });
     expect((await c.closed()).code).toBe(4401);
   });
 
@@ -44,8 +80,18 @@ describe("create (RELAY-03)", () => {
     const owner = await newOwner();
     const c = await Client.open(owner.roomB64, "create");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(owner.keys.signing.privateKey, "wt-auth-v1", owner.roomId, ch);
-    c.sendControl({ t: "create", pub: b64uEncode(owner.keys.signingSpki), salt: b64uEncode(owner.salt), sig: b64uEncode(sig) });
+    const sig = await signChallenge(
+      owner.keys.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch,
+    );
+    c.sendControl({
+      t: "create",
+      pub: b64uEncode(owner.keys.signingSpki),
+      salt: b64uEncode(owner.salt),
+      sig: b64uEncode(sig),
+    });
     expect((await c.closed()).code).toBe(4401);
   });
 
@@ -61,8 +107,18 @@ describe("create (RELAY-03)", () => {
     const { owner: o2 } = await createRoom();
     const c = await Client.open(o2.roomB64, "auth");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(owner.keys.signing.privateKey, "wt-create-v1", o2.roomId, ch);
-    c.sendControl({ t: "create", pub: b64uEncode(owner.keys.signingSpki), salt: b64uEncode(owner.salt), sig: b64uEncode(sig) });
+    const sig = await signChallenge(
+      owner.keys.signing.privateKey,
+      "wt-create-v1",
+      o2.roomId,
+      ch,
+    );
+    c.sendControl({
+      t: "create",
+      pub: b64uEncode(owner.keys.signingSpki),
+      salt: b64uEncode(owner.salt),
+      sig: b64uEncode(sig),
+    });
     expect((await c.closed()).code).toBe(4403);
   });
 });
@@ -81,20 +137,39 @@ describe("auth (RELAY-02)", () => {
     const stranger = await generateDeviceKeys();
     const c1 = await Client.open(owner.roomB64, "auth");
     const ch1 = await challengeOf(c1);
-    const sig1 = await signChallenge(stranger.signing.privateKey, "wt-auth-v1", owner.roomId, ch1);
-    c1.sendControl({ t: "auth", id: b64uEncode(stranger.deviceId), sig: b64uEncode(sig1) });
+    const sig1 = await signChallenge(
+      stranger.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch1,
+    );
+    c1.sendControl({
+      t: "auth",
+      id: b64uEncode(stranger.deviceId),
+      sig: b64uEncode(sig1),
+    });
     expect((await c1.closed()).code).toBe(4401);
 
     const c2 = await Client.open(owner.roomB64, "auth");
     const ch2 = await challengeOf(c2);
-    const sig2 = await signChallenge(stranger.signing.privateKey, "wt-auth-v1", owner.roomId, ch2);
+    const sig2 = await signChallenge(
+      stranger.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch2,
+    );
     c2.sendControl({ t: "auth", id: owner.id, sig: b64uEncode(sig2) });
     expect((await c2.closed()).code).toBe(4401);
 
     // A signature over an old challenge does not work on a new socket.
     const c3 = await Client.open(owner.roomB64, "auth");
     await challengeOf(c3);
-    const old = await signChallenge(owner.keys.signing.privateKey, "wt-auth-v1", owner.roomId, ch1);
+    const old = await signChallenge(
+      owner.keys.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch1,
+    );
     c3.sendControl({ t: "auth", id: owner.id, sig: b64uEncode(old) });
     expect((await c3.closed()).code).toBe(4401);
   });
@@ -103,7 +178,12 @@ describe("auth (RELAY-02)", () => {
     const { owner } = await createRoom();
     const c = await Client.open(owner.roomB64, "auth");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(owner.keys.signing.privateKey, "wt-create-v1", owner.roomId, ch);
+    const sig = await signChallenge(
+      owner.keys.signing.privateKey,
+      "wt-create-v1",
+      owner.roomId,
+      ch,
+    );
     c.sendControl({ t: "auth", id: owner.id, sig: b64uEncode(sig) });
     expect((await c.closed()).code).toBe(4401);
   });

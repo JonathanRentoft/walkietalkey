@@ -16,7 +16,10 @@ export function haptic(kind: "start" | "stop"): void {
     }
     return;
   }
-  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.vibrate === "function"
+  ) {
     try {
       navigator.vibrate(kind === "start" ? 15 : 10);
     } catch {
@@ -58,7 +61,11 @@ export class ScreenWake {
   }
 
   private async request(): Promise<void> {
-    const wl = (navigator as Navigator & { wakeLock?: { request(type: "screen"): Promise<Sentinel> } }).wakeLock;
+    const wl = (
+      navigator as Navigator & {
+        wakeLock?: { request(type: "screen"): Promise<Sentinel> };
+      }
+    ).wakeLock;
     if (!wl || this.pending || this.sentinel) return;
     this.pending = true;
     try {

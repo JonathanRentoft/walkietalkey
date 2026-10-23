@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import jsQR from "jsqr";
 import QRCode from "qrcode";
-import { encodePairingUrl, generateDeviceKeys, randomBytes } from "@walkietalkey/protocol";
+import {
+  encodePairingUrl,
+  generateDeviceKeys,
+  randomBytes,
+} from "@walkietalkey/protocol";
 import { decodeFrame } from "../src/lib/qr";
 import { parseScanned } from "../src/lib/pairingLink";
 
@@ -16,7 +20,8 @@ function render(text: string, scale = 4, invert = false) {
     for (let x = 0; x < size; x++) {
       const mx = Math.floor(x / scale) - quiet;
       const my = Math.floor(y / scale) - quiet;
-      const dark = mx >= 0 && my >= 0 && mx < n && my < n && qr.modules.get(my, mx) === 1;
+      const dark =
+        mx >= 0 && my >= 0 && mx < n && my < n && qr.modules.get(my, mx) === 1;
       const v = dark !== invert ? 0 : 255;
       const o = (y * size + x) * 4;
       data[o] = data[o + 1] = data[o + 2] = v;
@@ -45,11 +50,20 @@ describe("QR decoding in JavaScript (PHONE-10)", () => {
   });
 
   it("reads a light-on-dark code (dark mode screens)", () => {
-    expect(decodeFrame(jsQR as never, render("https://app.walkietalkey.com/p#abc", 4, true))).toBe("https://app.walkietalkey.com/p#abc");
+    expect(
+      decodeFrame(
+        jsQR as never,
+        render("https://app.walkietalkey.com/p#abc", 4, true),
+      ),
+    ).toBe("https://app.walkietalkey.com/p#abc");
   });
 
   it("returns null when there is no code", () => {
-    const blank = { data: new Uint8ClampedArray(64 * 64 * 4).fill(255), width: 64, height: 64 };
+    const blank = {
+      data: new Uint8ClampedArray(64 * 64 * 4).fill(255),
+      width: 64,
+      height: 64,
+    };
     expect(decodeFrame(jsQR as never, blank)).toBeNull();
   });
 });

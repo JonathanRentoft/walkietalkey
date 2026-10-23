@@ -18,12 +18,17 @@ const PILL = {
 /** the text a screen reader reads, word by word (the pill's parts are separate inline elements) */
 function spoken(el: HTMLElement): string {
   const parts: string[] = [];
-  el.querySelectorAll(".wt-pill-inner > *").forEach((n) => { if (n.getAttribute("aria-hidden") !== "true" && n.textContent) parts.push(n.textContent); });
+  el.querySelectorAll(".wt-pill-inner > *").forEach((n) => {
+    if (n.getAttribute("aria-hidden") !== "true" && n.textContent)
+      parts.push(n.textContent);
+  });
   return parts.join(" ");
 }
 
 describe("DictationPill (DESK-55, Appendix A)", () => {
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("is a polite live region", () => {
     render(<DictationPill state="idle" />);
@@ -32,12 +37,15 @@ describe("DictationPill (DESK-55, Appendix A)", () => {
     expect(pill).toHaveClass("wt-pill", "wt-pill--idle");
   });
 
-  it.each(Object.entries(PILL))("shows %s with its Appendix A label", (state, label) => {
-    render(<DictationPill state={state as keyof typeof PILL} seconds={4} />);
-    const pill = screen.getByRole("status");
-    expect(pill).toHaveClass("wt-pill--" + state);
-    expect(spoken(pill)).toContain(label);
-  });
+  it.each(Object.entries(PILL))(
+    "shows %s with its Appendix A label",
+    (state, label) => {
+      render(<DictationPill state={state as keyof typeof PILL} seconds={4} />);
+      const pill = screen.getByRole("status");
+      expect(pill).toHaveClass("wt-pill--" + state);
+      expect(spoken(pill)).toContain(label);
+    },
+  );
 
   it("shows the recording time and level meter while listening", () => {
     render(<DictationPill state="listening" seconds={64} />);
@@ -47,7 +55,9 @@ describe("DictationPill (DESK-55, Appendix A)", () => {
   });
 
   it("uses the paste key and the hotkey it is given (Windows)", () => {
-    const { rerender } = render(<DictationPill state="ready" pasteKey="Ctrl+V" />);
+    const { rerender } = render(
+      <DictationPill state="ready" pasteKey="Ctrl+V" />,
+    );
     expect(screen.getByText("Ctrl+V").tagName).toBe("KBD");
     rerender(<DictationPill state="idle" hotkey="Højre Ctrl" />);
     expect(screen.getByText("Højre Ctrl").tagName).toBe("KBD");
@@ -63,13 +73,21 @@ describe("DictationPill (DESK-55, Appendix A)", () => {
     render(<DictationPill autoplay />);
     const pill = screen.getByRole("status");
     expect(pill).toHaveClass("wt-pill--idle");
-    act(() => { vi.advanceTimersByTime(2400); });
+    act(() => {
+      vi.advanceTimersByTime(2400);
+    });
     expect(pill).toHaveClass("wt-pill--listening");
-    act(() => { vi.advanceTimersByTime(3800); });
+    act(() => {
+      vi.advanceTimersByTime(3800);
+    });
     expect(pill).toHaveClass("wt-pill--processing");
-    act(() => { vi.advanceTimersByTime(1700); });
+    act(() => {
+      vi.advanceTimersByTime(1700);
+    });
     expect(pill).toHaveClass("wt-pill--ready");
-    act(() => { vi.advanceTimersByTime(2800); });
+    act(() => {
+      vi.advanceTimersByTime(2800);
+    });
     expect(pill).toHaveClass("wt-pill--idle");
   });
 });

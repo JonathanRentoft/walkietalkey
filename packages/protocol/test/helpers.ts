@@ -1,7 +1,19 @@
-import { generateDeviceKeys, randomBytes, type DeviceKeys } from "../src/index.ts";
+import {
+  generateDeviceKeys,
+  randomBytes,
+  type DeviceKeys,
+} from "../src/index.ts";
 
-export async function aesKey(raw: Uint8Array = randomBytes(32)): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", raw as BufferSource, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+export async function aesKey(
+  raw: Uint8Array = randomBytes(32),
+): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    raw as BufferSource,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 
 export interface TwoDevices {
@@ -10,5 +22,8 @@ export interface TwoDevices {
 }
 
 export async function twoDevices(): Promise<TwoDevices> {
-  return { computer: await generateDeviceKeys(), phone: await generateDeviceKeys() };
+  return {
+    computer: await generateDeviceKeys(),
+    phone: await generateDeviceKeys(),
+  };
 }

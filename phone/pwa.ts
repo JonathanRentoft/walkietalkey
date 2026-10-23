@@ -4,7 +4,13 @@
  * here), `p.html` for the pairing path `/p`, and the e2e variant of public/_headers.
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { Plugin, ResolvedConfig } from "vite";
 
@@ -24,9 +30,24 @@ export const MANIFEST = {
   theme_color: "#faf8f4",
   categories: ["productivity", "utilities"],
   icons: [
-    { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-    { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-    { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    {
+      src: "icons/icon-192.png",
+      sizes: "192x192",
+      type: "image/png",
+      purpose: "any",
+    },
+    {
+      src: "icons/icon-512.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "any",
+    },
+    {
+      src: "icons/icon-512.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "maskable",
+    },
   ],
 };
 
@@ -35,7 +56,10 @@ export const MANIFEST = {
  * managed setting, RELAY-14). The e2e build also allows ws:// to localhost (SEC-06).
  */
 function e2eHeaders(text: string): string {
-  return text.replace("connect-src 'self' wss:", "connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:*");
+  return text.replace(
+    "connect-src 'self' wss:",
+    "connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:*",
+  );
 }
 
 /** Never cached by the service worker. */
@@ -102,21 +126,40 @@ export function pwa(): Plugin {
       config = c;
     },
     generateBundle() {
-      this.emitFile({ type: "asset", fileName: "manifest.webmanifest", source: JSON.stringify(MANIFEST, null, 2) });
+      this.emitFile({
+        type: "asset",
+        fileName: "manifest.webmanifest",
+        source: JSON.stringify(MANIFEST, null, 2),
+      });
     },
     closeBundle() {
-      const out = config.build.outDir.startsWith("/") ? config.build.outDir : join(config.root, config.build.outDir);
+      const out = config.build.outDir.startsWith("/")
+        ? config.build.outDir
+        : join(config.root, config.build.outDir);
       // `/p#<payload>` (spec 5.3) is the same app: Cloudflare Pages serves p.html at /p.
       copyFileSync(join(out, "index.html"), join(out, "p.html"));
-      if (config.mode === "e2e") writeFileSync(join(out, "_headers"), e2eHeaders(readFileSync(join(out, "_headers"), "utf8")));
+      if (config.mode === "e2e")
+        writeFileSync(
+          join(out, "_headers"),
+          e2eHeaders(readFileSync(join(out, "_headers"), "utf8")),
+        );
       const files = walk(out)
         .map((f) => relative(out, f).split(sep).join("/"))
-        .filter((f) => !NOT_SHELL.includes(f) && !f.startsWith(".well-known/") && !f.endsWith(".map"))
+        .filter(
+          (f) =>
+            !NOT_SHELL.includes(f) &&
+            !f.startsWith(".well-known/") &&
+            !f.endsWith(".map"),
+        )
         .sort();
       const shell = ["./", ...files.map((f) => `./${f}`)];
       const hash = createHash("sha256");
-      for (const f of ["index.html", ...files]) hash.update(f).update(readFileSync(join(out, f)));
-      writeFileSync(join(out, "sw.js"), swSource(hash.digest("hex").slice(0, 12), shell));
+      for (const f of ["index.html", ...files])
+        hash.update(f).update(readFileSync(join(out, f)));
+      writeFileSync(
+        join(out, "sw.js"),
+        swSource(hash.digest("hex").slice(0, 12), shell),
+      );
     },
   };
 }

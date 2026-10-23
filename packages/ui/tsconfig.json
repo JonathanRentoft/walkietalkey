@@ -15,7 +15,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "bun", "vitest/globals", "@testing-library/jest-dom/vitest"]
+    "types": [
+      "node",
+      "bun",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ]
   },
   "include": ["src", "test", "scripts", "vitest.config.ts"]
 }

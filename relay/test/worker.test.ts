@@ -12,16 +12,23 @@ describe("Worker endpoints", () => {
 
   it("unknown paths are 404 and plain GET on the socket path is 426", async () => {
     expect((await SELF.fetch("https://relay.test/")).status).toBe(404);
-    expect((await SELF.fetch("https://relay.test/v2/rooms/x/ws")).status).toBe(404);
+    expect((await SELF.fetch("https://relay.test/v2/rooms/x/ws")).status).toBe(
+      404,
+    );
     const room = b64uEncode(randomBytes(16));
-    expect((await SELF.fetch(`https://relay.test/v1/rooms/${room}/ws`)).status).toBe(426);
+    expect(
+      (await SELF.fetch(`https://relay.test/v1/rooms/${room}/ws`)).status,
+    ).toBe(426);
   });
 
   it("an unknown intent is refused with 400", async () => {
     const room = b64uEncode(randomBytes(16));
-    const res = await SELF.fetch(`https://relay.test/v1/rooms/${room}/ws?intent=admin`, {
-      headers: { Upgrade: "websocket" },
-    });
+    const res = await SELF.fetch(
+      `https://relay.test/v1/rooms/${room}/ws?intent=admin`,
+      {
+        headers: { Upgrade: "websocket" },
+      },
+    );
     expect(res.status).toBe(400);
   });
 
@@ -40,7 +47,11 @@ describe("Worker endpoints", () => {
     expect((await noIntent.closed()).code).toBe(4404);
     const { writes, tables } = await inRoom(room, (r, state) => ({
       writes: r.store.writes,
-      tables: [...state.storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table'")].length,
+      tables: [
+        ...state.storage.sql.exec(
+          "SELECT name FROM sqlite_master WHERE type = 'table'",
+        ),
+      ].length,
     }));
     expect(writes).toBe(0);
     expect(tables).toBe(0);

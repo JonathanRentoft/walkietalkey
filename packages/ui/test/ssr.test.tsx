@@ -13,14 +13,30 @@ describe("server rendering", () => {
   });
 
   it.each(KIT_COMPONENTS)("%s renders to a string", (name) => {
-    const C = (UI as unknown as Record<string, (p: Record<string, unknown>) => JSX.Element>)[name];
-    const props: Record<string, unknown> = name === "FluidImage" ? { src: "/x.jpg", alt: "x" } : name === "PrismText" || name === "Transcript" ? { children: "Tal. Slip. Indsæt." } : {};
+    const C = (
+      UI as unknown as Record<
+        string,
+        (p: Record<string, unknown>) => JSX.Element
+      >
+    )[name];
+    const props: Record<string, unknown> =
+      name === "FluidImage"
+        ? { src: "/x.jpg", alt: "x" }
+        : name === "PrismText" || name === "Transcript"
+          ? { children: "Tal. Slip. Indsæt." }
+          : {};
     const html = renderToString(createElement(C, props));
     expect(html.length).toBeGreaterThan(10);
   });
 
   it("renders the still state of motion components (no reduced-motion guess on the server)", () => {
-    expect(renderToString(createElement(UI.RelayDemo))).toContain("wt-relay--home");
-    expect(renderToString(createElement(UI.LogoLoader, { variant: "fyld", progress: 0.3 }))).toContain('aria-valuenow="30"');
+    expect(renderToString(createElement(UI.RelayDemo))).toContain(
+      "wt-relay--home",
+    );
+    expect(
+      renderToString(
+        createElement(UI.LogoLoader, { variant: "fyld", progress: 0.3 }),
+      ),
+    ).toContain('aria-valuenow="30"');
   });
 });

@@ -4,21 +4,49 @@ import { useReducedMotion, useUid } from "../lib/hooks";
 import { pal, type Palette } from "../lib/palettes";
 import { cx, type Style } from "../lib/util";
 
-export function GradientDefs(p: { id: string; palette?: string; box: readonly number[]; animate: boolean }) {
-  const pl = pal(p.palette), stops = pl.metal || pl.stops;
-  const b = p.box, cxp = b[0] + b[2] / 2, cyp = b[1] + b[3] / 2;
+export function GradientDefs(p: {
+  id: string;
+  palette?: string;
+  box: readonly number[];
+  animate: boolean;
+}) {
+  const pl = pal(p.palette),
+    stops = pl.metal || pl.stops;
+  const b = p.box,
+    cxp = b[0] + b[2] / 2,
+    cyp = b[1] + b[3] / 2;
   const kids: React.ReactNode[] = stops.map((c, i) => (
-    <stop key={c + i} offset={i / (stops.length - 1)} style={{ stopColor: "var(--" + c + ")" }} />
+    <stop
+      key={c + i}
+      offset={i / (stops.length - 1)}
+      style={{ stopColor: "var(--" + c + ")" }}
+    />
   ));
   if (p.animate) {
     kids.push(
-      <animateTransform key="spin" attributeName="gradientTransform" type="rotate"
-        from={"0 " + cxp + " " + cyp} to={"360 " + cxp + " " + cyp} dur="16s" repeatCount="indefinite" />,
+      <animateTransform
+        key="spin"
+        attributeName="gradientTransform"
+        type="rotate"
+        from={"0 " + cxp + " " + cyp}
+        to={"360 " + cxp + " " + cyp}
+        dur="16s"
+        repeatCount="indefinite"
+      />,
     );
   }
   return (
     <defs>
-      <linearGradient id={p.id} gradientUnits="userSpaceOnUse" x1={b[0]} y1={b[1]} x2={b[0] + b[2]} y2={b[1] + b[3]}>{kids}</linearGradient>
+      <linearGradient
+        id={p.id}
+        gradientUnits="userSpaceOnUse"
+        x1={b[0]}
+        y1={b[1]}
+        x2={b[0] + b[2]}
+        y2={b[1] + b[3]}
+      >
+        {kids}
+      </linearGradient>
     </defs>
   );
 }
@@ -57,20 +85,48 @@ export function Logo(props: LogoProps) {
     kids = [<path key="w" d={g.word.d} />];
   } else if (variant === "stacked") {
     box = g.stacked.box;
-    kids = [<path key="m" d={g.mark.d} transform={g.stacked.markT} />, <path key="w" d={g.word.d} transform={g.stacked.wordT} />];
+    kids = [
+      <path key="m" d={g.mark.d} transform={g.stacked.markT} />,
+      <path key="w" d={g.word.d} transform={g.stacked.wordT} />,
+    ];
   } else {
     box = g.lockup.box;
-    kids = [<path key="m" d={g.mark.d} transform={g.lockup.markT} />, <path key="w" d={g.word.d} transform={g.lockup.wordT} />];
+    kids = [
+      <path key="m" d={g.mark.d} transform={g.lockup.markT} />,
+      <path key="w" d={g.word.d} transform={g.lockup.wordT} />,
+    ];
   }
-  const height = props.size || (variant === "mark" ? 48 : variant === "stacked" ? 96 : 32);
-  const width = Math.round(height * box[2] / box[3] * 100) / 100;
-  const fill = tone === "ink" ? "var(--ink)" : tone === "paper" ? "var(--on-night)" : tone === "gradient" ? "url(#" + gid + ")" : "currentColor";
+  const height =
+    props.size || (variant === "mark" ? 48 : variant === "stacked" ? 96 : 32);
+  const width = Math.round(((height * box[2]) / box[3]) * 100) / 100;
+  const fill =
+    tone === "ink"
+      ? "var(--ink)"
+      : tone === "paper"
+        ? "var(--on-night)"
+        : tone === "gradient"
+          ? "url(#" + gid + ")"
+          : "currentColor";
   const a11y = props.decorative
     ? { "aria-hidden": true, focusable: "false" as const }
     : { role: "img", "aria-label": props.title || "WalkieTalkey" };
   return (
-    <svg className={cx("wt-logo", props.className)} viewBox={box.join(" ")} width={width} height={height} style={props.style} {...a11y}>
-      {tone === "gradient" ? <GradientDefs id={gid} palette={props.palette} box={box} animate={props.animated !== false && !reduced} /> : null}
+    <svg
+      className={cx("wt-logo", props.className)}
+      viewBox={box.join(" ")}
+      width={width}
+      height={height}
+      style={props.style}
+      {...a11y}
+    >
+      {tone === "gradient" ? (
+        <GradientDefs
+          id={gid}
+          palette={props.palette}
+          box={box}
+          animate={props.animated !== false && !reduced}
+        />
+      ) : null}
       <g fill={fill}>{kids}</g>
     </svg>
   );
@@ -94,13 +150,36 @@ export interface FloatingMarkProps {
 
 export function FloatingMark(props: FloatingMarkProps) {
   const size = props.size || 160;
-  const w = Math.round(size * GEO.mark.w / GEO.mark.h);
-  const style = Object.assign({ width: w, height: Math.round(size * 1.32), "--wt-speed": props.speed || 1 } as Style, props.style);
+  const w = Math.round((size * GEO.mark.w) / GEO.mark.h);
+  const style = Object.assign(
+    {
+      width: w,
+      height: Math.round(size * 1.32),
+      "--wt-speed": props.speed || 1,
+    } as Style,
+    props.style,
+  );
   return (
     <div className={cx("wt-float", props.className)} style={style}>
-      {props.glow === false ? null : <span className={cx("wt-float-shadow", (props.tone === "gradient" || props.tone === "paper") && "wt-float-shadow--glow")} aria-hidden />}
+      {props.glow === false ? null : (
+        <span
+          className={cx(
+            "wt-float-shadow",
+            (props.tone === "gradient" || props.tone === "paper") &&
+              "wt-float-shadow--glow",
+          )}
+          aria-hidden
+        />
+      )}
       <span className="wt-float-body">
-        <Logo variant="mark" tone={props.tone || "ink"} palette={props.palette} size={size} title={props.title} decorative={!props.title} />
+        <Logo
+          variant="mark"
+          tone={props.tone || "ink"}
+          palette={props.palette}
+          size={size}
+          title={props.title}
+          decorative={!props.title}
+        />
       </span>
     </div>
   );

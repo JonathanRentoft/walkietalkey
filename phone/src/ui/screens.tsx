@@ -24,7 +24,11 @@ function Brand() {
 }
 
 /** First screen when not paired (PHONE-10), and "Par med en computer" from settings. */
-export function PairScreen(props: { onScan: () => void; onBack?: () => void; message?: string | null }) {
+export function PairScreen(props: {
+  onScan: () => void;
+  onBack?: () => void;
+  message?: string | null;
+}) {
   return (
     <main className="wt-screen">
       <Brand />
@@ -52,7 +56,11 @@ export function PairScreen(props: { onScan: () => void; onBack?: () => void; mes
 }
 
 /** The camera, decoding QR codes in JavaScript (PHONE-10). */
-export function ScanScreen(props: { onResult: (p: PairingPayload) => void; onCancel: () => void; allowInsecureLocalhost: boolean }) {
+export function ScanScreen(props: {
+  onResult: (p: PairingPayload) => void;
+  onCancel: () => void;
+  allowInsecureLocalhost: boolean;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -65,10 +73,17 @@ export function ScanScreen(props: { onResult: (p: PairingPayload) => void; onCan
     let stopped = false;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
       } catch (e) {
         const name = e instanceof Error ? e.name : "";
-        setProblem(name === "NotAllowedError" || name === "SecurityError" ? T.cameraDenied : T.cameraUnavailable);
+        setProblem(
+          name === "NotAllowedError" || name === "SecurityError"
+            ? T.cameraDenied
+            : T.cameraUnavailable,
+        );
         return;
       }
       if (stopped) {
@@ -117,7 +132,13 @@ export function ScanScreen(props: { onResult: (p: PairingPayload) => void; onCan
 
   return (
     <main className="wt-scan">
-      <video ref={video} className="wt-scan-video" playsInline muted aria-hidden />
+      <video
+        ref={video}
+        className="wt-scan-video"
+        playsInline
+        muted
+        aria-hidden
+      />
       <div className="wt-scan-frame" aria-hidden />
       <div className="wt-scan-text" role="status">
         <p>{problem ?? hint ?? T.scanHint}</p>
@@ -157,7 +178,11 @@ export function NameScreen(props: {
   if (p.state === "joining") {
     return (
       <main className="wt-screen wt-screen--center" aria-busy="true">
-        <LogoLoader variant="smelt" size={56} label={fill(T.pairing, { computer })} />
+        <LogoLoader
+          variant="smelt"
+          size={56}
+          label={fill(T.pairing, { computer })}
+        />
         <p className="wt-screen-status">{fill(T.pairing, { computer })}</p>
       </main>
     );
@@ -195,11 +220,23 @@ export function NameScreen(props: {
         <p>{fill(T.nameHint, { computer })}</p>
         <label className="wt-field">
           <span>{T.nameLabel}</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={64} autoComplete="off" autoCapitalize="words" enterKeyHint="done" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={64}
+            autoComplete="off"
+            autoCapitalize="words"
+            enterKeyHint="done"
+          />
         </label>
       </form>
       <footer className="wt-screen-actions">
-        <ShinyButton size="lg" type="submit" form="wt-name-form" disabled={!name.trim()}>
+        <ShinyButton
+          size="lg"
+          type="submit"
+          form="wt-name-form"
+          disabled={!name.trim()}
+        >
           {T.pairButton}
         </ShinyButton>
         <button type="button" className="wt-link" onClick={props.onCancel}>
@@ -216,7 +253,11 @@ export function InstallScreen(props: { fromLink: boolean }) {
     <main className="wt-screen">
       <Brand />
       <section className="wt-screen-body">
-        {props.fromLink ? <h1 aria-live="polite">{T.openFromHome}</h1> : <h1>{T.installTitle}</h1>}
+        {props.fromLink ? (
+          <h1 aria-live="polite">{T.openFromHome}</h1>
+        ) : (
+          <h1>{T.installTitle}</h1>
+        )}
         {props.fromLink ? <p>{T.installTitle}</p> : null}
         <ol className="wt-steps">
           {T.installSteps.map((s) => (

@@ -11,14 +11,33 @@ export interface PaletteDef {
 }
 
 export const PALETTES: Record<Palette, PaletteDef> = {
-  morgengry: { blobs: ["platin", "sand", "perle", "rav", "platin"], stops: ["perle", "platin", "sand", "rav"], metal: ["perle", "platin", "perle", "sand", "rav"] },
-  flint: { blobs: ["platin", "perle", "platin", "perle", "platin"], stops: ["perle", "platin", "perle", "platin"], metal: ["perle", "platin", "perle", "platin", "platin-dyb"] },
-  rav: { blobs: ["sand", "rav", "perle", "mokka", "rav"], stops: ["sand", "rav", "mokka"], metal: ["sand", "rav", "perle", "rav", "mokka"] },
-  skumring: { blobs: ["fjord", "syren", "skifer", "lavendel", "fjord"], stops: ["fjord", "syren", "lavendel"], metal: ["dis", "lavendel", "dis", "syren", "fjord"] },
+  morgengry: {
+    blobs: ["platin", "sand", "perle", "rav", "platin"],
+    stops: ["perle", "platin", "sand", "rav"],
+    metal: ["perle", "platin", "perle", "sand", "rav"],
+  },
+  flint: {
+    blobs: ["platin", "perle", "platin", "perle", "platin"],
+    stops: ["perle", "platin", "perle", "platin"],
+    metal: ["perle", "platin", "perle", "platin", "platin-dyb"],
+  },
+  rav: {
+    blobs: ["sand", "rav", "perle", "mokka", "rav"],
+    stops: ["sand", "rav", "mokka"],
+    metal: ["sand", "rav", "perle", "rav", "mokka"],
+  },
+  skumring: {
+    blobs: ["fjord", "syren", "skifer", "lavendel", "fjord"],
+    stops: ["fjord", "syren", "lavendel"],
+    metal: ["dis", "lavendel", "dis", "syren", "fjord"],
+  },
 };
 
 export function pal(name?: string): PaletteDef {
-  return (name && (PALETTES as Record<string, PaletteDef>)[name]) || PALETTES.morgengry;
+  return (
+    (name && (PALETTES as Record<string, PaletteDef>)[name]) ||
+    PALETTES.morgengry
+  );
 }
 
 /* FluidMesh: void + four band stops, all theme-invariant tone tokens */

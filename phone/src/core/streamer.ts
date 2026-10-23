@@ -4,7 +4,13 @@
  * arrives. After a reconnect the whole open session goes again, packed and paced; the computer
  * drops duplicates by block index.
  */
-import { SAMPLE_RATE, b64uEncode, randomBytes, type DevicePayload, type ResultReason } from "@walkietalkey/protocol";
+import {
+  SAMPLE_RATE,
+  b64uEncode,
+  randomBytes,
+  type DevicePayload,
+  type ResultReason,
+} from "@walkietalkey/protocol";
 import { Pacer, packBlocks } from "./resend";
 
 /** What the streamer needs from a room's relay connection. */
@@ -82,11 +88,21 @@ export class SessionStreamer {
   }
 
   private startPayload(s: AudioSession): DevicePayload {
-    return { type: "audio_start", sessionId: s.id, sampleRate: SAMPLE_RATE, codec: "pcm16" };
+    return {
+      type: "audio_start",
+      sessionId: s.id,
+      sampleRate: SAMPLE_RATE,
+      codec: "pcm16",
+    };
   }
 
   private endPayload(s: AudioSession): DevicePayload {
-    return { type: "audio_end", sessionId: s.id, chunks: s.blocks.length, durationMs: durationMs(s) };
+    return {
+      type: "audio_end",
+      sessionId: s.id,
+      chunks: s.blocks.length,
+      durationMs: durationMs(s),
+    };
   }
 
   /** audio_start when connected; otherwise the session waits for the next connection. */
@@ -95,7 +111,8 @@ export class SessionStreamer {
     const conn = this.link.connId;
     // Live at once: the link sends in call order, so blocks queued now follow audio_start.
     s.conn = conn;
-    if (!(await this.link.send(this.startPayload(s))) && s.conn === conn) s.conn = -1;
+    if (!(await this.link.send(this.startPayload(s))) && s.conn === conn)
+      s.conn = -1;
   }
 
   /** Keeps the block and sends it at once if the session is live on this connection. */
@@ -105,7 +122,15 @@ export class SessionStreamer {
     s.blocks.push(block);
     s.samples += block.length / 2;
     if (!this.live(s)) return;
-    if (!(await this.link.send({ type: "audio_chunk", sessionId: s.id, firstIndex: index, pcm: block }))) s.conn = -1;
+    if (
+      !(await this.link.send({
+        type: "audio_chunk",
+        sessionId: s.id,
+        firstIndex: index,
+        pcm: block,
+      }))
+    )
+      s.conn = -1;
   }
 
   /** The button was released: audio_end now if live, else with the next resend. */
@@ -125,7 +150,8 @@ export class SessionStreamer {
     s.blocks = [];
     // Sent whenever possible: the computer may hold part of the audio from an earlier socket or
     // from the relay's buffer, and it ignores a cancel for a session it never saw.
-    if (this.link.connected) await this.link.send({ type: "audio_cancel", sessionId: s.id });
+    if (this.link.connected)
+      await this.link.send({ type: "audio_cancel", sessionId: s.id });
   }
 
   /** After (re)authentication: every open session again, one after another, paced. */
@@ -149,7 +175,8 @@ export class SessionStreamer {
   async resend(s: AudioSession): Promise<void> {
     if (s.resending || !this.link.connected) return;
     const conn = this.link.connId;
-    const stillHere = () => this.link.connected && this.link.connId === conn && isOpen(s);
+    const stillHere = () =>
+      this.link.connected && this.link.connId === conn && isOpen(s);
     s.resending = true;
     s.conn = -1;
     s.endSent = false;
@@ -159,10 +186,21 @@ export class SessionStreamer {
       let i = 0;
       // Blocks recorded during the resend are picked up too; then the session is live again.
       while (i < s.blocks.length) {
-        const [frame] = packBlocks(s.blocks.slice(0, Math.min(s.blocks.length, i + 10)), i);
+        const [frame] = packBlocks(
+          s.blocks.slice(0, Math.min(s.blocks.length, i + 10)),
+          i,
+        );
         await this.pacer.next();
         if (!stillHere() || !frame) return;
-        if (!(await this.link.send({ type: "audio_chunk", sessionId: s.id, firstIndex: frame.firstIndex, pcm: frame.pcm }))) return;
+        if (
+          !(await this.link.send({
+            type: "audio_chunk",
+            sessionId: s.id,
+            firstIndex: frame.firstIndex,
+            pcm: frame.pcm,
+          }))
+        )
+          return;
         i += Math.ceil(frame.pcm.length / 6400);
       }
       s.conn = conn;

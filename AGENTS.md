@@ -14,17 +14,17 @@ Rules that keep the fork maintainable and the product honest:
 - **Privacy**: no telemetry, no analytics, no crash reporting. Audio is never stored unless "Gem lyd til fejlfinding" is on; text never goes back to the phone.
 - **Secrets** live in the OS keychain (`walkietalkey::secrets`, `wt-native`), never in settings files or logs.
 
-| Part | Folder | Commands |
-| --- | --- | --- |
-| Desktop app | `src-tauri/`, `src/` | `bun run tauri dev`, `cargo test --manifest-path src-tauri/Cargo.toml --lib` |
-| Protocol | `packages/protocol/` (Rust in `rust/`) | `bun run --cwd packages/protocol test`, `cargo test --manifest-path packages/protocol/rust/Cargo.toml` |
-| Relay client, native, punctuation | `crates/wt-relay-client`, `crates/wt-native`, `crates/ekko-pnc` | `cargo test --manifest-path crates/<crate>/Cargo.toml` |
-| Relay | `relay/` | `bun run --cwd relay test`, `bun run --cwd relay dev` |
-| Phone app | `phone/` | `bun run --cwd phone dev`, `bun run --cwd phone test`, `bun run --cwd phone test:e2e` |
-| iOS shell | `ios/` | XcodeGen (`ios/project.yml`); built in CI |
-| Website | `site/` | `bun run --cwd site dev`, `bun run --cwd site test` |
-| Design system | `packages/ui/` | `bun run --cwd packages/ui test` |
-| Licences | `deny.toml`, `scripts/walkietalkey/check-js-licenses.ts` | `cargo deny --manifest-path src-tauri/Cargo.toml check`, `bun scripts/walkietalkey/check-js-licenses.ts`, `bun audit` |
+| Part                              | Folder                                                          | Commands                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Desktop app                       | `src-tauri/`, `src/`                                            | `bun run tauri dev`, `cargo test --manifest-path src-tauri/Cargo.toml --lib`                                          |
+| Protocol                          | `packages/protocol/` (Rust in `rust/`)                          | `bun run --cwd packages/protocol test`, `cargo test --manifest-path packages/protocol/rust/Cargo.toml`                |
+| Relay client, native, punctuation | `crates/wt-relay-client`, `crates/wt-native`, `crates/ekko-pnc` | `cargo test --manifest-path crates/<crate>/Cargo.toml`                                                                |
+| Relay                             | `relay/`                                                        | `bun run --cwd relay test`, `bun run --cwd relay dev`                                                                 |
+| Phone app                         | `phone/`                                                        | `bun run --cwd phone dev`, `bun run --cwd phone test`, `bun run --cwd phone test:e2e`                                 |
+| iOS shell                         | `ios/`                                                          | XcodeGen (`ios/project.yml`); built in CI                                                                             |
+| Website                           | `site/`                                                         | `bun run --cwd site dev`, `bun run --cwd site test`                                                                   |
+| Design system                     | `packages/ui/`                                                  | `bun run --cwd packages/ui test`                                                                                      |
+| Licences                          | `deny.toml`, `scripts/walkietalkey/check-js-licenses.ts`        | `cargo deny --manifest-path src-tauri/Cargo.toml check`, `bun scripts/walkietalkey/check-js-licenses.ts`, `bun audit` |
 
 On macOS, if linking fails against a beta SDK, point `SDKROOT` at the release SDK (`/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
 
@@ -198,17 +198,17 @@ Handy supports command-line parameters on all platforms for integration with scr
 
 **Implementation:** `cli.rs` (definitions), `main.rs` (parsing), `lib.rs` (applying), `signal_handle.rs` (shared logic)
 
-| Flag                     | Description                                                |
-| ------------------------ | ---------------------------------------------------------- |
-| `--toggle-transcription` | Toggle recording on/off on a running instance              |
-| `--toggle-post-process`  | Toggle recording with post-processing on/off               |
-| `--cancel`               | Cancel the current operation on a running instance         |
-| `--start-hidden`         | Launch without showing the main window (tray icon visible) |
-| `--no-tray`              | Launch without system tray (closing window quits the app)  |
-| `--debug`                | Enable debug mode with verbose (Trace) logging             |
-| `-f`, `--transcribe-file` | Transcribe a 16 kHz mono WAV headlessly and exit          |
-| `--live`                 | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46) |
-| `--phone-receive`        | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
+| Flag                      | Description                                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `--toggle-transcription`  | Toggle recording on/off on a running instance                                                                                             |
+| `--toggle-post-process`   | Toggle recording with post-processing on/off                                                                                              |
+| `--cancel`                | Cancel the current operation on a running instance                                                                                        |
+| `--start-hidden`          | Launch without showing the main window (tray icon visible)                                                                                |
+| `--no-tray`               | Launch without system tray (closing window quits the app)                                                                                 |
+| `--debug`                 | Enable debug mode with verbose (Trace) logging                                                                                            |
+| `-f`, `--transcribe-file` | Transcribe a 16 kHz mono WAV headlessly and exit                                                                                          |
+| `--live`                  | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46)                         |
+| `--phone-receive`         | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
 
 **Key design decisions:**
 

@@ -2,13 +2,29 @@
    [E2E_LIVE_RELAY=wss://walkietalkey-relay.jonathan0912.workers.dev] npx playwright test e2e/live.spec.ts --project=chromium
    Pairs the deployed app with a scripted computer on the live relay, records, and cleans up. */
 import { ScriptedComputer } from "./computer";
-import { chip, expect, hold, holdButton, label, preparePage, test } from "./helpers";
+import {
+  chip,
+  expect,
+  hold,
+  holdButton,
+  label,
+  preparePage,
+  test,
+} from "./helpers";
 
 const APP = process.env.E2E_LIVE_APP || "https://walkietalkey-app.pages.dev";
-const RELAY = process.env.E2E_LIVE_RELAY || "wss://walkietalkey-relay.jonathan0912.workers.dev";
+const RELAY =
+  process.env.E2E_LIVE_RELAY ||
+  "wss://walkietalkey-relay.jonathan0912.workers.dev";
 
-test("live: the deployed app pairs and streams through the live relay", async ({ page, browserName }) => {
-  test.skip(!process.env.E2E_LIVE, "set E2E_LIVE=1 to run against the deployment");
+test("live: the deployed app pairs and streams through the live relay", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    !process.env.E2E_LIVE,
+    "set E2E_LIVE=1 to run against the deployment",
+  );
   const computer = await ScriptedComputer.create(RELAY, "Live testcomputer");
   await computer.connect();
   try {

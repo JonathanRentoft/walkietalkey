@@ -2,37 +2,115 @@
    Only states and controls the product needs that the design system does not draw yet, built from the same tokens. */
 
 /* ShinyButton rendered as a link */
-a.wt-shiny { text-decoration: none; box-sizing: border-box; }
+a.wt-shiny {
+  text-decoration: none;
+  box-sizing: border-box;
+}
 
 /* DictationPill: an outcome note ("Hørte ikke noget", "Brugte teksten uden oprydning", ...) */
-.wt-pill-note { width: 8px; height: 8px; border-radius: 50%; background: var(--on-night-muted); flex: none; }
-.wt-pill--error .wt-pill-note { background: var(--signal-rec); }
-.wt-pill--pasted .wt-pill-halo { opacity: .75; }
+.wt-pill-note {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--on-night-muted);
+  flex: none;
+}
+.wt-pill--error .wt-pill-note {
+  background: var(--signal-rec);
+}
+.wt-pill--pasted .wt-pill-halo {
+  opacity: 0.75;
+}
 
 /* PhoneApp as a real control (buttonProps, onDeviceClick, onRetry, onDetails) */
 button.wt-app-btn {
-  border: 0; padding: 0; margin: 0; background: none; color: inherit; font: inherit; cursor: pointer;
-  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.wt-app-btn:focus-visible { outline: 2px solid #ffffff00; box-shadow: var(--focus-ring); }
-button.wt-app-dev { border: 0; margin: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.wt-app-dev:focus-visible { outline: 2px solid #ffffff00; box-shadow: var(--focus-ring); }
+.wt-app-btn:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
+button.wt-app-dev {
+  border: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-app-dev:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
 .wt-app-action {
-  display: inline-flex; align-items: center; justify-content: center; height: 2.6em; padding: 0 1.3em; border: 0; border-radius: var(--radius-pill);
-  background: var(--ink); color: var(--on-ink); font: 500 1em/1 var(--font-sans); text-decoration: none; cursor: pointer;
-  box-shadow: var(--shadow-soft); -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.6em;
+  padding: 0 1.3em;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--on-ink);
+  font: 500 1em/1 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  -webkit-tap-highlight-color: transparent;
 }
-.wt-app-sub > span > .wt-app-action { font-size: 1em; }
-.wt-app-action:focus-visible { outline: 2px solid #ffffff00; outline-offset: 2px; box-shadow: var(--focus-ring); }
+.wt-app-sub > span > .wt-app-action {
+  font-size: 1em;
+}
+.wt-app-action:focus-visible {
+  outline: 2px solid #ffffff00;
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
 
 /* PhoneApp: cancel (finger slid off the button), and the waiting and problem states */
-.wt-app--cancel .wt-app-btn { transform: scale(.88); opacity: .7; }
-.wt-app--offline .wt-app-ring, .wt-app--failed .wt-app-ring, .wt-app--error .wt-app-ring, .wt-app--paused .wt-app-ring { opacity: .35; }
-.wt-app--offline .wt-app-face svg, .wt-app--failed .wt-app-face svg, .wt-app--error .wt-app-face svg, .wt-app--paused .wt-app-face svg { opacity: .6; }
-.wt-app--offline .wt-app-halo, .wt-app--failed .wt-app-halo, .wt-app--error .wt-app-halo, .wt-app--paused .wt-app-halo { opacity: .12; }
-.wt-app-dev { white-space: nowrap; }
-.wt-app-label--long > span:last-child { font-size: 1.4em; line-height: 1.25; max-width: 18em; }
+.wt-app--cancel .wt-app-btn {
+  transform: scale(0.88);
+  opacity: 0.7;
+}
+.wt-app--offline .wt-app-ring,
+.wt-app--failed .wt-app-ring,
+.wt-app--error .wt-app-ring,
+.wt-app--paused .wt-app-ring {
+  opacity: 0.35;
+}
+.wt-app--offline .wt-app-face svg,
+.wt-app--failed .wt-app-face svg,
+.wt-app--error .wt-app-face svg,
+.wt-app--paused .wt-app-face svg {
+  opacity: 0.6;
+}
+.wt-app--offline .wt-app-halo,
+.wt-app--failed .wt-app-halo,
+.wt-app--error .wt-app-halo,
+.wt-app--paused .wt-app-halo {
+  opacity: 0.12;
+}
+.wt-app-dev {
+  white-space: nowrap;
+}
+.wt-app-label--long > span:last-child {
+  font-size: 1.4em;
+  line-height: 1.25;
+  max-width: 18em;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .wt-app-btn, .wt-app-action { transition: none; }
+  .wt-app-btn,
+  .wt-app-action {
+    transition: none;
+  }
 }

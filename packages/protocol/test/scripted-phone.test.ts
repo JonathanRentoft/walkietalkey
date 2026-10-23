@@ -27,14 +27,20 @@ describe("WAV helpers", () => {
 
   it("splits into 200 ms blocks with a shorter last block", () => {
     const blocks = splitBlocks(new Uint8Array(BLOCK_BYTES * 2 + 640));
-    expect(blocks.map((b) => b.length)).toEqual([BLOCK_BYTES, BLOCK_BYTES, 640]);
+    expect(blocks.map((b) => b.length)).toEqual([
+      BLOCK_BYTES,
+      BLOCK_BYTES,
+      640,
+    ]);
     expect(splitBlocks(new Uint8Array(BLOCK_BYTES * 2)).length).toBe(2);
   });
 });
 
 describe("resend packing (PHONE-32)", () => {
   it("packs up to 10 blocks per frame, in order", () => {
-    const blocks = Array.from({ length: 23 }, (_, i) => new Uint8Array(BLOCK_BYTES).fill(i));
+    const blocks = Array.from({ length: 23 }, (_, i) =>
+      new Uint8Array(BLOCK_BYTES).fill(i),
+    );
     blocks.push(new Uint8Array(100).fill(99));
     const frames = packResend(blocks);
     expect(frames.map((f) => [f.firstIndex, f.pcm.length])).toEqual([

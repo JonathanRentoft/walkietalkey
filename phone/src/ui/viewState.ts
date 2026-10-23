@@ -15,22 +15,49 @@ export interface ViewState {
 
 export function viewState(m: MachineState, noConnection: boolean): ViewState {
   const recording = m.phase === "rec" || m.phase === "cancel";
-  const lost: ViewState = { state: "offline", labels: { offline: T.noConnection }, recording: false, sending: false };
+  const lost: ViewState = {
+    state: "offline",
+    labels: { offline: T.noConnection },
+    recording: false,
+    sending: false,
+  };
   switch (m.phase) {
     case "idle":
-      return noConnection ? lost : { state: "idle", labels: {}, recording, sending: false };
+      return noConnection
+        ? lost
+        : { state: "idle", labels: {}, recording, sending: false };
     case "rec":
     case "cancel":
       // A latched recording (tap mode, Start diktering) ends with a tap, not a release.
-      return { state: m.phase, labels: m.latched && !m.armed ? { rec: T.tapToSend } : {}, recording, sending: false, latched: m.latched };
+      return {
+        state: m.phase,
+        labels: m.latched && !m.armed ? { rec: T.tapToSend } : {},
+        recording,
+        sending: false,
+        latched: m.latched,
+      };
     case "send":
-      return noConnection ? lost : { state: "send", labels: {}, recording, sending: true };
+      return noConnection
+        ? lost
+        : { state: "send", labels: {}, recording, sending: true };
     case "offline":
-      return noConnection ? lost : { state: "offline", labels: {}, recording, sending: false };
+      return noConnection
+        ? lost
+        : { state: "offline", labels: {}, recording, sending: false };
     case "no_speech":
-      return { state: "idle", labels: { idle: T.noSpeech }, recording, sending: false };
+      return {
+        state: "idle",
+        labels: { idle: T.noSpeech },
+        recording,
+        sending: false,
+      };
     case "mic_denied":
-      return { state: "paused", labels: { paused: T.micDenied }, recording, sending: false };
+      return {
+        state: "paused",
+        labels: { paused: T.micDenied },
+        recording,
+        sending: false,
+      };
     case "ready":
     case "failed":
     case "error":
@@ -40,7 +67,11 @@ export function viewState(m: MachineState, noConnection: boolean): ViewState {
 }
 
 /** PHONE-29: the clock counts down from 4:45; returns the seconds left, or null before that. */
-export function countdownSeconds(elapsedMs: number, maxMs: number, fromMs: number): number | null {
+export function countdownSeconds(
+  elapsedMs: number,
+  maxMs: number,
+  fromMs: number,
+): number | null {
   if (elapsedMs < fromMs) return null;
   return Math.max(0, Math.ceil((maxMs - elapsedMs) / 1000));
 }

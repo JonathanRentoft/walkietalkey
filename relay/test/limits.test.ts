@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { b64uEncode, randomBytes } from "@walkietalkey/protocol";
-import { Client, createRoom, frameFrom, joinPhone, newOwner, rawFrame } from "./helpers.ts";
+import {
+  Client,
+  createRoom,
+  frameFrom,
+  joinPhone,
+  newOwner,
+  rawFrame,
+} from "./helpers.ts";
 
 describe("limits (RELAY-11)", () => {
   it("frames over 64 kB close with 4413", async () => {
     const { owner, client: ownerClient } = await createRoom();
     const p = await joinPhone(owner, ownerClient);
-    p.client.sendBinary(rawFrame(0x21, p.phone.deviceId, owner.keys.deviceId, 65536 - 70 + 1));
+    p.client.sendBinary(
+      rawFrame(0x21, p.phone.deviceId, owner.keys.deviceId, 65536 - 70 + 1),
+    );
     expect((await p.client.closed()).code).toBe(4413);
   });
 
@@ -22,14 +31,21 @@ describe("limits (RELAY-11)", () => {
 
   it("oversized control messages close with 4413", async () => {
     const { client } = await createRoom();
-    client.sendText(JSON.stringify({ t: "event_ack", eid: 1, pad: "x".repeat(5000) }));
+    client.sendText(
+      JSON.stringify({ t: "event_ack", eid: 1, pad: "x".repeat(5000) }),
+    );
     expect((await client.closed()).code).toBe(4413);
   });
 
   it("more than 50 frames per second on one socket close with 4429", async () => {
     const { owner, client: ownerClient } = await createRoom();
     const p = await joinPhone(owner, ownerClient);
-    const f = await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "presence_query" }, 1n);
+    const f = await frameFrom(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      { type: "presence_query" },
+      1n,
+    );
     for (let i = 0; i < 200; i++) p.client.sendBinary(f);
     expect((await p.client.closed()).code).toBe(4429);
   });
@@ -39,7 +55,14 @@ describe("limits (RELAY-11)", () => {
     const p = await joinPhone(owner, ownerClient);
     await ownerClient.control("member_joined");
     for (let i = 0; i < 50; i++) {
-      p.client.sendBinary(await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "presence_query" }, BigInt(i + 1)));
+      p.client.sendBinary(
+        await frameFrom(
+          p.phone.deviceId,
+          owner.keys.deviceId,
+          { type: "presence_query" },
+          BigInt(i + 1),
+        ),
+      );
       await new Promise((r) => setTimeout(r, 40));
     }
     for (let i = 0; i < 50; i++) await ownerClient.binary();

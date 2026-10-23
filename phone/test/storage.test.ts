@@ -26,7 +26,10 @@ afterEach(() => {
   open = [];
 });
 
-async function room(storage: PhoneStorage, name = "MacBook"): Promise<RoomRecord> {
+async function room(
+  storage: PhoneStorage,
+  name = "MacBook",
+): Promise<RoomRecord> {
   const device = await storage.loadOrCreateDeviceKeys();
   const computer = await generateDeviceKeys();
   const roomId = randomBytes(16);
@@ -70,7 +73,12 @@ describe("device keys (PHONE-13, SEC-09)", () => {
     const k = await s.loadOrCreateDeviceKeys();
     s.close();
     const reloaded = await (await openStorage(name)).loadOrCreateDeviceKeys();
-    for (const key of [k.signing.privateKey, k.agreement.privateKey, reloaded.signing.privateKey, reloaded.agreement.privateKey]) {
+    for (const key of [
+      k.signing.privateKey,
+      k.agreement.privateKey,
+      reloaded.signing.privateKey,
+      reloaded.agreement.privateKey,
+    ]) {
       expect(key).toBeInstanceOf(CryptoKey);
       expect(key.extractable).toBe(false);
       await expect(crypto.subtle.exportKey("pkcs8", key)).rejects.toThrow();
@@ -89,11 +97,16 @@ describe("rooms and pair keys", () => {
     s.close();
     const t = await openStorage(name);
     const rooms = await t.listRooms();
-    expect(rooms.map((r) => r.computerName).sort()).toEqual(["MacBook", "ThinkPad"]);
+    expect(rooms.map((r) => r.computerName).sort()).toEqual([
+      "MacBook",
+      "ThinkPad",
+    ]);
     for (const r of rooms) {
       expect(r.keys.p2c.extractable).toBe(false);
       expect(r.keys.c2p.extractable).toBe(false);
-      await expect(crypto.subtle.exportKey("raw", r.keys.p2c)).rejects.toThrow();
+      await expect(
+        crypto.subtle.exportKey("raw", r.keys.p2c),
+      ).rejects.toThrow();
     }
   });
 
@@ -159,14 +172,26 @@ describe("settings and pending leaves", () => {
   it("defaults to hold to talk with haptics on", async () => {
     const s = await openStorage(dbName());
     expect(await s.getSettings()).toEqual({ mode: "hold", haptics: true });
-    await s.putSettings({ mode: "toggle", haptics: false, deviceName: "Jonathans iPhone", target: "x" });
-    expect(await s.getSettings()).toEqual({ mode: "toggle", haptics: false, deviceName: "Jonathans iPhone", target: "x" });
+    await s.putSettings({
+      mode: "toggle",
+      haptics: false,
+      deviceName: "Jonathans iPhone",
+      target: "x",
+    });
+    expect(await s.getSettings()).toEqual({
+      mode: "toggle",
+      haptics: false,
+      deviceName: "Jonathans iPhone",
+      target: "x",
+    });
   });
 
   it("remembers a leave that could not be sent", async () => {
     const s = await openStorage(dbName());
     await s.addPendingLeave({ roomId: "r1", relayUrl: "wss://x" });
-    expect(await s.listPendingLeaves()).toEqual([{ roomId: "r1", relayUrl: "wss://x" }]);
+    expect(await s.listPendingLeaves()).toEqual([
+      { roomId: "r1", relayUrl: "wss://x" },
+    ]);
     await s.deletePendingLeave("r1");
     expect(await s.listPendingLeaves()).toEqual([]);
   });
@@ -176,6 +201,12 @@ describe("never audio on disk (PHONE-33)", () => {
   it("has no store for audio", async () => {
     const s = await openStorage(dbName());
     expect(s.storeNames().sort()).toEqual([...STORE_NAMES].sort());
-    expect(STORE_NAMES).toEqual(["device", "rooms", "counters", "settings", "pendingLeaves"]);
+    expect(STORE_NAMES).toEqual([
+      "device",
+      "rooms",
+      "counters",
+      "settings",
+      "pendingLeaves",
+    ]);
   });
 });

@@ -28,13 +28,26 @@ export const SHELL_UA_MARKER = "WalkieTalkeyIOS";
 
 export function detectPlatform(env: Env): Platform {
   const ua = env.userAgent;
-  const shell = (env.protocol !== "http:" && env.protocol !== "https:") || env.shellBridge || ua.includes(SHELL_UA_MARKER);
+  const shell =
+    (env.protocol !== "http:" && env.protocol !== "https:") ||
+    env.shellBridge ||
+    ua.includes(SHELL_UA_MARKER);
   const iphone = /iPhone|iPod/.test(ua);
-  const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && env.maxTouchPoints > 1);
+  const ipad =
+    /iPad/.test(ua) || (/Macintosh/.test(ua) && env.maxTouchPoints > 1);
   const android = /Android/i.test(ua);
-  const os: Platform["os"] = shell || iphone || ipad ? "ios" : android ? "android" : "other";
-  const standalone = shell || env.navigatorStandalone === true || env.displayModeStandalone;
-  const device: Platform["device"] = os === "ios" ? (ipad && !iphone ? "iPad" : "iPhone") : os === "android" ? "Android" : "Telefon";
+  const os: Platform["os"] =
+    shell || iphone || ipad ? "ios" : android ? "android" : "other";
+  const standalone =
+    shell || env.navigatorStandalone === true || env.displayModeStandalone;
+  const device: Platform["device"] =
+    os === "ios"
+      ? ipad && !iphone
+        ? "iPad"
+        : "iPhone"
+      : os === "android"
+        ? "Android"
+        : "Telefon";
   return { os, standalone, shell, device };
 }
 
@@ -49,22 +62,31 @@ export function platformTag(p: Platform): "ios" | "android" | "web" {
 }
 
 interface WebkitWindow {
-  webkit?: { messageHandlers?: Record<string, { postMessage(message: unknown): void } | undefined> };
+  webkit?: {
+    messageHandlers?: Record<
+      string,
+      { postMessage(message: unknown): void } | undefined
+    >;
+  };
 }
 
-export function shellHandler(name: string): { postMessage(message: unknown): void } | undefined {
+export function shellHandler(
+  name: string,
+): { postMessage(message: unknown): void } | undefined {
   if (typeof window === "undefined") return undefined;
   return (window as unknown as WebkitWindow).webkit?.messageHandlers?.[name];
 }
 
 export function readEnv(): Env {
   const nav = navigator as Navigator & { standalone?: boolean };
-  const mm = (q: string) => typeof matchMedia === "function" && matchMedia(q).matches;
+  const mm = (q: string) =>
+    typeof matchMedia === "function" && matchMedia(q).matches;
   return {
     userAgent: nav.userAgent,
     maxTouchPoints: nav.maxTouchPoints || 0,
     navigatorStandalone: nav.standalone,
-    displayModeStandalone: mm("(display-mode: standalone)") || mm("(display-mode: fullscreen)"),
+    displayModeStandalone:
+      mm("(display-mode: standalone)") || mm("(display-mode: fullscreen)"),
     protocol: location.protocol,
     shellBridge: !!shellHandler("haptics"),
   };

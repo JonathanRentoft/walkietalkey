@@ -67,9 +67,21 @@ fn model_dir() -> Option<PathBuf> {
 #[test]
 fn golden_set_covers_the_required_cases() {
     let g = golden();
-    assert!(g.cases.len() >= 40, "at least 40 golden inputs, got {}", g.cases.len());
-    let long = g.cases.iter().filter(|c| c.tokens > g.options.max_length).count();
-    assert!(long >= 3, "several inputs must exceed one {}-token window, got {long}", g.options.max_length);
+    assert!(
+        g.cases.len() >= 40,
+        "at least 40 golden inputs, got {}",
+        g.cases.len()
+    );
+    let long = g
+        .cases
+        .iter()
+        .filter(|c| c.tokens > g.options.max_length)
+        .count();
+    assert!(
+        long >= 3,
+        "several inputs must exceed one {}-token window, got {long}",
+        g.options.max_length
+    );
     assert_eq!((g.options.max_length, g.options.overlap_words), (128, 12));
 }
 
@@ -79,7 +91,10 @@ fn model_files_match_the_golden_checksums() {
     for (name, expected) in golden().model.files {
         let bytes = std::fs::read(dir.join(&name)).unwrap_or_else(|e| panic!("{name}: {e}"));
         let actual = format!("{:x}", Sha256::digest(&bytes));
-        assert_eq!(actual, expected, "{name} differs from the file the golden set was made with");
+        assert_eq!(
+            actual, expected,
+            "{name} differs from the file the golden set was made with"
+        );
     }
 }
 
@@ -92,7 +107,10 @@ fn reproduces_the_reference_on_every_golden_input() {
     for case in &g.cases {
         let got = pnc.punctuate(&case.input).expect("punctuate");
         if got != case.output {
-            failures.push(format!("{}:\n  expected: {:?}\n  got:      {:?}", case.name, case.output, got));
+            failures.push(format!(
+                "{}:\n  expected: {:?}\n  got:      {:?}",
+                case.name, case.output, got
+            ));
         }
     }
     assert!(

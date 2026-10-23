@@ -23,11 +23,26 @@ export function PrismText(props: PrismTextProps) {
   useSpotlight(ref, reduced);
   const text = props.children;
   const El = (props.as || "span") as ElementType;
-  const style = Object.assign({ "--wt-r": (props.size || 220) + "px" } as Style, props.style);
+  const style = Object.assign(
+    { "--wt-r": (props.size || 220) + "px" } as Style,
+    props.style,
+  );
   return (
-    <El ref={ref} className={cx("wt-prism", "wt-prism--" + (props.mode || "fill"), props.glow && "wt-prism--glow", reduced && "wt-prism--still", props.className)} style={style}>
+    <El
+      ref={ref}
+      className={cx(
+        "wt-prism",
+        "wt-prism--" + (props.mode || "fill"),
+        props.glow && "wt-prism--glow",
+        reduced && "wt-prism--still",
+        props.className,
+      )}
+      style={style}
+    >
       <span className="wt-prism-base">{text}</span>
-      <span className="wt-prism-reveal" aria-hidden>{text}</span>
+      <span className="wt-prism-reveal" aria-hidden>
+        {text}
+      </span>
     </El>
   );
 }

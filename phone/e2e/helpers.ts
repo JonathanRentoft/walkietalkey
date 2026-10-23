@@ -11,7 +11,9 @@ export const RELAY_URL = `ws://127.0.0.1:${RELAY_PORT}`;
 
 const SIGNAL_B64 = Buffer.from(testSignal().buffer).toString("base64");
 
-export const test = base.extend<{ newComputer: (name?: string, os?: ComputerOs) => Promise<ScriptedComputer> }>({
+export const test = base.extend<{
+  newComputer: (name?: string, os?: ComputerOs) => Promise<ScriptedComputer>;
+}>({
   newComputer: async ({}, use) => {
     const made: ScriptedComputer[] = [];
     await use(async (name = "Testcomputer", os: ComputerOs = "mac") => {
@@ -27,7 +29,11 @@ export const test = base.extend<{ newComputer: (name?: string, os?: ComputerOs) 
 export { expect };
 
 /** Fake media per engine: Chromium's microphone comes from the launch flags; WebKit's from the init script. */
-export async function preparePage(page: Page, browserName: string, extra: FakeMediaConfig = {}): Promise<void> {
+export async function preparePage(
+  page: Page,
+  browserName: string,
+  extra: FakeMediaConfig = {},
+): Promise<void> {
   const cfg: FakeMediaConfig = { ...extra };
   if (browserName === "webkit") {
     cfg.audio = SIGNAL_B64;
@@ -39,20 +45,29 @@ export async function preparePage(page: Page, browserName: string, extra: FakeMe
 export function qrConfig(text: string): { size: number; bits: string } {
   const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
   let bits = "";
-  for (let y = 0; y < qr.modules.size; y++) for (let x = 0; x < qr.modules.size; x++) bits += qr.modules.get(y, x) ? "1" : "0";
+  for (let y = 0; y < qr.modules.size; y++)
+    for (let x = 0; x < qr.modules.size; x++)
+      bits += qr.modules.get(y, x) ? "1" : "0";
   return { size: qr.modules.size, bits };
 }
 
 export const holdButton = (page: Page) => page.locator("button.wt-hold");
-export const label = (page: Page) => page.locator(".wt-app-label > span:last-child");
+export const label = (page: Page) =>
+  page.locator(".wt-app-label > span:last-child");
 export const sub = (page: Page) => page.locator(".wt-app-sub");
 export const chip = (page: Page) => page.locator(".wt-app-dev");
 
 /** Pairs through the link the computer shows (the app opened from the QR's URL, PHONE-11). */
-export async function pairByLink(page: Page, computer: ScriptedComputer, opts: { name?: string; relayUrl?: string } = {}) {
+export async function pairByLink(
+  page: Page,
+  computer: ScriptedComputer,
+  opts: { name?: string; relayUrl?: string } = {},
+) {
   const url = await computer.pairingUrl(APP_URL, opts.relayUrl);
   await page.goto(url);
-  await expect(page.getByRole("heading", { name: "Hvad hedder telefonen?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Hvad hedder telefonen?" }),
+  ).toBeVisible();
   if (opts.name) await page.getByLabel("Telefonens navn").fill(opts.name);
   await page.getByRole("button", { name: "Par telefonen" }).click();
   await expect(holdButton(page)).toBeVisible();

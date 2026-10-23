@@ -1,16 +1,58 @@
 import { describe, expect, it } from "vitest";
 import { bytesEqual, randomBytes } from "@walkietalkey/protocol";
-import { authAs, createRoom, frameFrom, inRoom, joinPhone, peerStatus, sleep, unthrottle, until, writesIn } from "./helpers.ts";
+import {
+  authAs,
+  createRoom,
+  frameFrom,
+  inRoom,
+  joinPhone,
+  peerStatus,
+  sleep,
+  unthrottle,
+  until,
+  writesIn,
+} from "./helpers.ts";
 
-async function dictationFrames(sender: Uint8Array, recipient: Uint8Array, chunks: number, start = 1n) {
+async function dictationFrames(
+  sender: Uint8Array,
+  recipient: Uint8Array,
+  chunks: number,
+  start = 1n,
+) {
   const sessionId = randomBytes(16);
   const frames: Uint8Array[] = [];
   let c = start;
-  frames.push(await frameFrom(sender, recipient, { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" }, c++));
+  frames.push(
+    await frameFrom(
+      sender,
+      recipient,
+      { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" },
+      c++,
+    ),
+  );
   for (let i = 0; i < chunks; i++) {
-    frames.push(await frameFrom(sender, recipient, { type: "audio_chunk", sessionId, firstIndex: i, pcm: randomBytes(6400) }, c++));
+    frames.push(
+      await frameFrom(
+        sender,
+        recipient,
+        {
+          type: "audio_chunk",
+          sessionId,
+          firstIndex: i,
+          pcm: randomBytes(6400),
+        },
+        c++,
+      ),
+    );
   }
-  frames.push(await frameFrom(sender, recipient, { type: "audio_end", sessionId, chunks, durationMs: chunks * 200 }, c++));
+  frames.push(
+    await frameFrom(
+      sender,
+      recipient,
+      { type: "audio_end", sessionId, chunks, durationMs: chunks * 200 },
+      c++,
+    ),
+  );
   return frames;
 }
 
@@ -27,11 +69,24 @@ async function offlineOwnerRoom() {
 describe("buffering for an offline recipient (RELAY-08)", () => {
   it("batches a dictation into rows of at most 256 kB and delivers it in order", async () => {
     const { owner, p } = await offlineOwnerRoom();
-    const frames = await dictationFrames(p.phone.deviceId, owner.keys.deviceId, 75);
+    const frames = await dictationFrames(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      75,
+    );
     for (const f of frames) p.client.sendBinary(f);
-    await until(owner.roomB64, (r, st) => r.pendingBatchCount() === 0 && [...st.storage.sql.exec("SELECT id FROM buffered")].length === 2);
+    await until(
+      owner.roomB64,
+      (r, st) =>
+        r.pendingBatchCount() === 0 &&
+        [...st.storage.sql.exec("SELECT id FROM buffered")].length === 2,
+    );
     const rows = await inRoom(owner.roomB64, (r, st) => ({
-      rows: [...st.storage.sql.exec("SELECT length(frames) AS n FROM buffered ORDER BY id")].map((x) => x.n as number),
+      rows: [
+        ...st.storage.sql.exec(
+          "SELECT length(frames) AS n FROM buffered ORDER BY id",
+        ),
+      ].map((x) => x.n as number),
       batches: r.pendingBatchCount(),
     }));
     // 77 frames of ~6.5 kB: one full row and the rest flushed by audio_end.
@@ -41,15 +96,24 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
 
     const back = await authAs(owner.roomB64, owner.roomId, owner.keys);
     await back.client.control("member_joined");
-    for (const f of frames) expect(bytesEqual(await back.client.binary(), f)).toBe(true);
-    const left = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length);
+    for (const f of frames)
+      expect(bytesEqual(await back.client.binary(), f)).toBe(true);
+    const left = await inRoom(
+      owner.roomB64,
+      (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length,
+    );
     expect(left).toBe(0);
   });
 
   it("delivers an unflushed in-memory batch without writing it", async () => {
     const { owner, p } = await offlineOwnerRoom();
     const sessionId = randomBytes(16);
-    const f1 = await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" }, 1n);
+    const f1 = await frameFrom(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" },
+      1n,
+    );
     p.client.sendBinary(f1);
     await sleep(50);
     const before = await writesIn(owner.roomB64);
@@ -63,9 +127,19 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
   it("flushes 2 s after the last frame", async () => {
     const { owner, p } = await offlineOwnerRoom();
     const sessionId = randomBytes(16);
-    p.client.sendBinary(await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" }, 1n));
+    p.client.sendBinary(
+      await frameFrom(
+        p.phone.deviceId,
+        owner.keys.deviceId,
+        { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" },
+        1n,
+      ),
+    );
     await sleep(300);
-    const early = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length);
+    const early = await inRoom(
+      owner.roomB64,
+      (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length,
+    );
     expect(early).toBe(0);
     await sleep(2200);
     const late = await inRoom(owner.roomB64, (r, st) => ({
@@ -78,11 +152,21 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
   it("flushes when the sender disconnects", async () => {
     const { owner, p } = await offlineOwnerRoom();
     const sessionId = randomBytes(16);
-    p.client.sendBinary(await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" }, 1n));
+    p.client.sendBinary(
+      await frameFrom(
+        p.phone.deviceId,
+        owner.keys.deviceId,
+        { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" },
+        1n,
+      ),
+    );
     await sleep(50);
     p.client.close();
     await sleep(200);
-    const rows = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length);
+    const rows = await inRoom(
+      owner.roomB64,
+      (_r, st) => [...st.storage.sql.exec("SELECT id FROM buffered")].length,
+    );
     expect(rows).toBe(1);
   });
 
@@ -91,10 +175,20 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
     await inRoom(owner.roomB64, (r) => {
       r.bufferLimitBytes = 200 * 1024;
     });
-    const first = await dictationFrames(p.phone.deviceId, owner.keys.deviceId, 20, 1n);
+    const first = await dictationFrames(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      20,
+      1n,
+    );
     for (const f of first) p.client.sendBinary(f);
     await sleep(100);
-    const second = await dictationFrames(p.phone.deviceId, owner.keys.deviceId, 20, 100n);
+    const second = await dictationFrames(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      20,
+      100n,
+    );
     for (const f of second) p.client.sendBinary(f);
     const err = await p.client.control("error");
     expect(err.code).toBe("buffer_full");
@@ -102,18 +196,25 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
     const back = await authAs(owner.roomB64, owner.roomId, owner.keys);
     await back.client.control("member_joined");
     // Only the second dictation is left, complete and in order.
-    for (const f of second) expect(bytesEqual(await back.client.binary(), f)).toBe(true);
+    for (const f of second)
+      expect(bytesEqual(await back.client.binary(), f)).toBe(true);
     expect(await back.client.quiet(200)).toBe(true);
   });
 
   it("keeps the 25 MB default limit", async () => {
     const { owner } = await createRoom();
-    expect(await inRoom(owner.roomB64, (r) => r.bufferLimitBytes)).toBe(25 * 1024 * 1024);
+    expect(await inRoom(owner.roomB64, (r) => r.bufferLimitBytes)).toBe(
+      25 * 1024 * 1024,
+    );
   });
 
   it("does not deliver frames older than 10 minutes", async () => {
     const { owner, p } = await offlineOwnerRoom();
-    const frames = await dictationFrames(p.phone.deviceId, owner.keys.deviceId, 2);
+    const frames = await dictationFrames(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+      2,
+    );
     for (const f of frames) p.client.sendBinary(f);
     await sleep(100);
     await inRoom(owner.roomB64, (r) => {
@@ -130,7 +231,12 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
     await ownerClient.control("member_joined");
     p.client.close();
     await peerStatus(ownerClient, p.phoneId, false);
-    const result = await frameFrom(owner.keys.deviceId, p.phone.deviceId, { type: "result", sessionId: randomBytes(16), ok: true }, 1n);
+    const result = await frameFrom(
+      owner.keys.deviceId,
+      p.phone.deviceId,
+      { type: "result", sessionId: randomBytes(16), ok: true },
+      1n,
+    );
     ownerClient.sendBinary(result);
     const back = await authAs(owner.roomB64, owner.roomId, p.phone);
     expect(bytesEqual(await back.client.binary(), result)).toBe(true);

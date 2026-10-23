@@ -12,7 +12,9 @@ import {
   type ControlType,
 } from "../src/index.ts";
 
-export type Incoming = { kind: "text"; text: string; msg?: ControlMessage } | { kind: "binary"; bytes: Uint8Array };
+export type Incoming =
+  | { kind: "text"; text: string; msg?: ControlMessage }
+  | { kind: "binary"; bytes: Uint8Array };
 
 export class RelaySocket {
   readonly queue: Incoming[] = [];
@@ -79,12 +81,21 @@ export class RelaySocket {
     for (const w of this.waiters.splice(0)) w();
   }
 
-  async take(match: (m: Incoming) => boolean, what: string, timeoutMs = 10_000): Promise<Incoming> {
+  async take(
+    match: (m: Incoming) => boolean,
+    what: string,
+    timeoutMs = 10_000,
+  ): Promise<Incoming> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const i = this.queue.findIndex(match);
       if (i >= 0) return this.queue.splice(i, 1)[0]!;
-      if (this.closeInfo) throw new SocketClosedError(this.closeInfo.code, this.closeInfo.reason, what);
+      if (this.closeInfo)
+        throw new SocketClosedError(
+          this.closeInfo.code,
+          this.closeInfo.reason,
+          what,
+        );
       const left = deadline - Date.now();
       if (left <= 0) throw new Error(`timed out waiting for ${what}`);
       await new Promise<void>((resolve) => {
@@ -97,13 +108,24 @@ export class RelaySocket {
     }
   }
 
-  async control<T extends ControlType>(t: T, timeoutMs = 10_000): Promise<ControlOf<T>> {
-    const m = await this.take((x) => x.kind === "text" && x.msg?.t === t, t, timeoutMs);
+  async control<T extends ControlType>(
+    t: T,
+    timeoutMs = 10_000,
+  ): Promise<ControlOf<T>> {
+    const m = await this.take(
+      (x) => x.kind === "text" && x.msg?.t === t,
+      t,
+      timeoutMs,
+    );
     return (m as { msg: ControlMessage }).msg as ControlOf<T>;
   }
 
   async binary(timeoutMs = 10_000): Promise<Uint8Array> {
-    const m = await this.take((x) => x.kind === "binary", "a binary frame", timeoutMs);
+    const m = await this.take(
+      (x) => x.kind === "binary",
+      "a binary frame",
+      timeoutMs,
+    );
     return (m as { bytes: Uint8Array }).bytes;
   }
 

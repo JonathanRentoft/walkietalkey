@@ -1,5 +1,12 @@
 /* The WebGL surfaces: FluidMesh, LightWaves and FluidImage. At most one per page (design system rule, SITE-06). */
-import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ElementType,
+  type ReactNode,
+} from "react";
 import { fallbackBg, mountGL, tokenLin, type GLHandle } from "../lib/gl";
 import { useReducedMotion } from "../lib/hooks";
 import { MESH, WAVES } from "../lib/palettes";
@@ -41,7 +48,12 @@ const FRAG_MESH = [
   "}",
 ].join("\n");
 
-const SCRIM: Record<string, number> = { none: 0, left: 1, center: 2, bottom: 3 };
+const SCRIM: Record<string, number> = {
+  none: 0,
+  left: 1,
+  center: 2,
+  bottom: 3,
+};
 
 export interface FluidMeshProps {
   /** 'auto' (default) picks 'nat' in dark sections and 'morgengry' otherwise. 'skumring' is for dark sections only. */
@@ -70,30 +82,70 @@ export interface FluidMeshProps {
 }
 
 export function FluidMesh(props: FluidMeshProps) {
-  const wrap = useRef<HTMLElement>(null), cv = useRef<HTMLCanvasElement>(null);
+  const wrap = useRef<HTMLElement>(null),
+    cv = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
-  const palette = props.palette || "auto", scrim = props.scrim || "none";
-  const deps = [palette, scrim, reduced, props.scale, props.distortion, props.grain, props.bloom, props.lag, props.speed, props.scrimAmount, props.interactive];
+  const palette = props.palette || "auto",
+    scrim = props.scrim || "none";
+  const deps = [
+    palette,
+    scrim,
+    reduced,
+    props.scale,
+    props.distortion,
+    props.grain,
+    props.bloom,
+    props.lag,
+    props.speed,
+    props.scrimAmount,
+    props.interactive,
+  ];
   useEffect(() => {
-    const el = wrap.current, c = cv.current;
+    const el = wrap.current,
+      c = cv.current;
     if (!el || !c) return undefined;
-    function names() { const p = palette === "auto" ? (isDark(el) ? "nat" : "morgengry") : palette; return MESH[p] || MESH.morgengry; }
+    function names() {
+      const p =
+        palette === "auto" ? (isDark(el) ? "nat" : "morgengry") : palette;
+      return MESH[p] || MESH.morgengry;
+    }
     const g = mountGL(el, c, FRAG_MESH, {
-      still: reduced, lag: props.lag, speed: props.speed, interactive: props.interactive, t0: 7,
+      still: reduced,
+      lag: props.lag,
+      speed: props.speed,
+      interactive: props.interactive,
+      t0: 7,
       grain: props.grain == null ? 0.045 : props.grain,
       setup: (gl, loc) => {
-        const n = names(), keys = ["uVoid", "uC1", "uC2", "uC3", "uC4"];
-        for (let i = 0; i < 5; i++) { const v = tokenLin(el, n[i]); gl.uniform3f(loc(keys[i]), v[0], v[1], v[2]); }
+        const n = names(),
+          keys = ["uVoid", "uC1", "uC2", "uC3", "uC4"];
+        for (let i = 0; i < 5; i++) {
+          const v = tokenLin(el, n[i]);
+          gl.uniform3f(loc(keys[i]), v[0], v[1], v[2]);
+        }
         gl.uniform1f(loc("uScale"), props.scale == null ? 1.1 : props.scale);
-        gl.uniform1f(loc("uDist"), props.distortion == null ? 1 : props.distortion);
+        gl.uniform1f(
+          loc("uDist"),
+          props.distortion == null ? 1 : props.distortion,
+        );
         gl.uniform1f(loc("uBloom"), props.bloom == null ? 0.6 : props.bloom);
         gl.uniform1f(loc("uScrimMode"), SCRIM[scrim] || 0);
-        gl.uniform1f(loc("uScrim"), props.scrimAmount == null ? 0.8 : props.scrimAmount);
-        const p = palette === "auto" ? (isDark(el) ? "nat" : "morgengry") : palette;
-        gl.uniform1f(loc("uBias"), p === "nat" ? 0.35 : p === "skumring" ? 0.2 : 0.0);
+        gl.uniform1f(
+          loc("uScrim"),
+          props.scrimAmount == null ? 0.8 : props.scrimAmount,
+        );
+        const p =
+          palette === "auto" ? (isDark(el) ? "nat" : "morgengry") : palette;
+        gl.uniform1f(
+          loc("uBias"),
+          p === "nat" ? 0.35 : p === "skumring" ? 0.2 : 0.0,
+        );
       },
     });
-    if (!g) { fallbackBg(el, names()); return undefined; }
+    if (!g) {
+      fallbackBg(el, names());
+      return undefined;
+    }
     return g.cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -101,7 +153,9 @@ export function FluidMesh(props: FluidMeshProps) {
   return (
     <El ref={wrap} className={cx("wt-gl", props.className)} style={props.style}>
       <canvas ref={cv} className="wt-gl-canvas" aria-hidden />
-      {props.children ? <div className="wt-content">{props.children}</div> : null}
+      {props.children ? (
+        <div className="wt-content">{props.children}</div>
+      ) : null}
     </El>
   );
 }
@@ -154,35 +208,73 @@ export interface LightWavesProps {
 }
 
 export function LightWaves(props: LightWavesProps) {
-  const wrap = useRef<HTMLElement>(null), cv = useRef<HTMLCanvasElement>(null);
+  const wrap = useRef<HTMLElement>(null),
+    cv = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
   const palette = props.palette || "morgengry";
   useEffect(() => {
-    const el = wrap.current, c = cv.current;
+    const el = wrap.current,
+      c = cv.current;
     if (!el || !c) return undefined;
     const n = WAVES[palette] || WAVES.morgengry;
     const g = mountGL(el, c, FRAG_WAVES, {
-      still: reduced, speed: props.speed, lag: 0.05, t0: 3, interactive: props.interactive,
+      still: reduced,
+      speed: props.speed,
+      lag: 0.05,
+      t0: 3,
+      interactive: props.interactive,
       grain: props.grain == null ? 0.05 : props.grain,
       setup: (gl, loc) => {
-        const v = tokenLin(el, n[3] || "night"); gl.uniform3f(loc("uVoid"), v[0], v[1], v[2]);
+        const v = tokenLin(el, n[3] || "night");
+        gl.uniform3f(loc("uVoid"), v[0], v[1], v[2]);
         const keys = ["uTop", "uMid", "uBot"];
-        for (let i = 0; i < 3; i++) { const w = tokenLin(el, n[i]); gl.uniform3f(loc(keys[i]), w[0], w[1], w[2]); }
-        gl.uniform1f(loc("uDensity"), props.density == null ? 1 : props.density);
-        gl.uniform1f(loc("uIntensity"), props.intensity == null ? 1 : props.intensity);
-        gl.uniform1f(loc("uSens"), props.sensitivity == null ? 1 : props.sensitivity);
+        for (let i = 0; i < 3; i++) {
+          const w = tokenLin(el, n[i]);
+          gl.uniform3f(loc(keys[i]), w[0], w[1], w[2]);
+        }
+        gl.uniform1f(
+          loc("uDensity"),
+          props.density == null ? 1 : props.density,
+        );
+        gl.uniform1f(
+          loc("uIntensity"),
+          props.intensity == null ? 1 : props.intensity,
+        );
+        gl.uniform1f(
+          loc("uSens"),
+          props.sensitivity == null ? 1 : props.sensitivity,
+        );
         gl.uniform1f(loc("uLift"), props.lift == null ? 0 : props.lift);
       },
     });
-    if (!g) { fallbackBg(el, ["night", n[2], "night"]); return undefined; }
+    if (!g) {
+      fallbackBg(el, ["night", n[2], "night"]);
+      return undefined;
+    }
     return g.cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [palette, reduced, props.speed, props.grain, props.density, props.intensity, props.sensitivity, props.interactive, props.lift]);
+  }, [
+    palette,
+    reduced,
+    props.speed,
+    props.grain,
+    props.density,
+    props.intensity,
+    props.sensitivity,
+    props.interactive,
+    props.lift,
+  ]);
   const El = (props.as || "div") as ElementType;
   return (
-    <El ref={wrap} className={cx("wt-gl wt-waves", props.className)} style={props.style}>
+    <El
+      ref={wrap}
+      className={cx("wt-gl wt-waves", props.className)}
+      style={props.style}
+    >
       <canvas ref={cv} className="wt-gl-canvas" aria-hidden />
-      {props.children ? <div className="wt-content">{props.children}</div> : null}
+      {props.children ? (
+        <div className="wt-content">{props.children}</div>
+      ) : null}
     </El>
   );
 }
@@ -221,46 +313,97 @@ export interface FluidImageProps {
 }
 
 export function FluidImage(props: FluidImageProps) {
-  const wrap = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null);
+  const wrap = useRef<HTMLDivElement>(null),
+    cv = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    const el = wrap.current, c = cv.current;
+    const el = wrap.current,
+      c = cv.current;
     if (!el || !c || !props.src) return undefined;
-    let g: GLHandle | null = null, alive = true;
+    let g: GLHandle | null = null,
+      alive = true;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (!alive) return;
-      let tex: WebGLTexture | null = null, texFailed = false;
+      let tex: WebGLTexture | null = null,
+        texFailed = false;
       g = mountGL(el, c, FRAG_IMAGE, {
-        still: reduced, lag: 0.08, grain: props.grain == null ? 0.02 : props.grain,
+        still: reduced,
+        lag: 0.08,
+        grain: props.grain == null ? 0.02 : props.grain,
         setup: (gl, loc) => {
           if (!tex) {
             tex = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, tex);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(
+              gl.TEXTURE_2D,
+              gl.TEXTURE_WRAP_S,
+              gl.CLAMP_TO_EDGE,
+            );
+            gl.texParameteri(
+              gl.TEXTURE_2D,
+              gl.TEXTURE_WRAP_T,
+              gl.CLAMP_TO_EDGE,
+            );
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); } catch { texFailed = true; }
+            try {
+              gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                gl.RGBA,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                img,
+              );
+            } catch {
+              texFailed = true;
+            }
           }
           gl.uniform1i(loc("uTex"), 0);
-          const bg = tokenLin(el, "surface-300"); gl.uniform3f(loc("uBg"), bg[0], bg[1], bg[2]);
+          const bg = tokenLin(el, "surface-300");
+          gl.uniform3f(loc("uBg"), bg[0], bg[1], bg[2]);
           gl.uniform2f(loc("uTex2"), img.naturalWidth, img.naturalHeight);
-          gl.uniform1f(loc("uStrength"), props.strength == null ? 1 : props.strength);
-          gl.uniform1f(loc("uRadius"), props.radius == null ? 0.35 : props.radius);
+          gl.uniform1f(
+            loc("uStrength"),
+            props.strength == null ? 1 : props.strength,
+          );
+          gl.uniform1f(
+            loc("uRadius"),
+            props.radius == null ? 0.35 : props.radius,
+          );
         },
       });
-      if (!g || texFailed) { if (g) g.cleanup(); g = null; setFailed(true); }
+      if (!g || texFailed) {
+        if (g) g.cleanup();
+        g = null;
+        setFailed(true);
+      }
     };
-    img.onerror = () => { if (alive) setFailed(true); };
+    img.onerror = () => {
+      if (alive) setFailed(true);
+    };
     img.src = props.src;
-    return () => { alive = false; if (g) g.cleanup(); };
+    return () => {
+      alive = false;
+      if (g) g.cleanup();
+    };
   }, [props.src, reduced, props.strength, props.radius, props.grain]);
   return (
-    <div ref={wrap} className={cx("wt-gl wt-fluidimg", props.className)} style={props.style} role="img" aria-label={props.alt || ""}>
-      {failed ? <img className="wt-fluidimg-fallback" src={props.src} alt="" /> : <canvas ref={cv} className="wt-gl-canvas" aria-hidden />}
+    <div
+      ref={wrap}
+      className={cx("wt-gl wt-fluidimg", props.className)}
+      style={props.style}
+      role="img"
+      aria-label={props.alt || ""}
+    >
+      {failed ? (
+        <img className="wt-fluidimg-fallback" src={props.src} alt="" />
+      ) : (
+        <canvas ref={cv} className="wt-gl-canvas" aria-hidden />
+      )}
     </div>
   );
 }

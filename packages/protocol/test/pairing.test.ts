@@ -35,7 +35,16 @@ describe("pairing URL", () => {
     const url = encodePairingUrl("https://app.walkietalkey.com/", p);
     expect(url.startsWith("https://app.walkietalkey.com/p#")).toBe(true);
     const json = utf8Decode(b64uDecode(url.split("#")[1]!));
-    expect(Object.keys(JSON.parse(json))).toEqual(["v", "r", "a", "s", "e", "u", "n", "o"]);
+    expect(Object.keys(JSON.parse(json))).toEqual([
+      "v",
+      "r",
+      "a",
+      "s",
+      "e",
+      "u",
+      "n",
+      "o",
+    ]);
     expect(JSON.parse(json).r).toBe(b64uEncode(p.r));
     const back = decodePairingUrl(url);
     expect(back.v).toBe(1);
@@ -50,14 +59,18 @@ describe("pairing URL", () => {
 
   it("keeps a company phone app path", async () => {
     const p = await payload();
-    expect(encodePairingUrl("https://intranet.example.dk/walkietalkey", p)).toMatch(
-      /^https:\/\/intranet\.example\.dk\/walkietalkey\/p#/,
-    );
+    expect(
+      encodePairingUrl("https://intranet.example.dk/walkietalkey", p),
+    ).toMatch(/^https:\/\/intranet\.example\.dk\/walkietalkey\/p#/);
   });
 
   it("rejects malformed payloads", async () => {
     const p = await payload();
-    const good = JSON.parse(utf8Decode(b64uDecode(encodePairingUrl("https://x.dk", p).split("#")[1]!)));
+    const good = JSON.parse(
+      utf8Decode(
+        b64uDecode(encodePairingUrl("https://x.dk", p).split("#")[1]!),
+      ),
+    );
     const variants = [
       { ...good, v: 2 },
       { ...good, r: b64uEncode(randomBytes(15)) },
@@ -70,7 +83,9 @@ describe("pairing URL", () => {
     ];
     for (const v of variants) {
       const url = `https://x.dk/p#${b64uEncode(utf8Encode(JSON.stringify(v)))}`;
-      expect(() => decodePairingUrl(url), JSON.stringify(v)).toThrow(ProtocolError);
+      expect(() => decodePairingUrl(url), JSON.stringify(v)).toThrow(
+        ProtocolError,
+      );
     }
     expect(() => decodePairingUrl("https://x.dk/p")).toThrow(ProtocolError);
     expect(() => decodePairingUrl("https://x.dk/p#%%%")).toThrow(ProtocolError);
@@ -80,19 +95,33 @@ describe("pairing URL", () => {
     const p = { ...(await payload()), u: "ws://127.0.0.1:8787" };
     const url = encodePairingUrl("http://localhost:5173", p);
     expect(() => decodePairingUrl(url)).toThrow(ProtocolError);
-    expect(decodePairingUrl(url, { allowInsecureLocalhost: true }).u).toBe("ws://127.0.0.1:8787");
+    expect(decodePairingUrl(url, { allowInsecureLocalhost: true }).u).toBe(
+      "ws://127.0.0.1:8787",
+    );
   });
 });
 
 describe("relay URLs", () => {
   it("accepts wss and refuses ws except localhost when allowed", () => {
     expect(() => assertRelayUrl("wss://relay.walkietalkey.com")).not.toThrow();
-    expect(() => assertRelayUrl("ws://relay.walkietalkey.com")).toThrow(ProtocolError);
+    expect(() => assertRelayUrl("ws://relay.walkietalkey.com")).toThrow(
+      ProtocolError,
+    );
     expect(() => assertRelayUrl("ws://localhost:8787")).toThrow(ProtocolError);
-    expect(() => assertRelayUrl("ws://localhost:8787", { allowInsecureLocalhost: true })).not.toThrow();
-    expect(() => assertRelayUrl("ws://[::1]:8787", { allowInsecureLocalhost: true })).not.toThrow();
-    expect(() => assertRelayUrl("ws://evil.localhost.example", { allowInsecureLocalhost: true })).toThrow(ProtocolError);
-    expect(() => assertRelayUrl("https://relay.walkietalkey.com")).toThrow(ProtocolError);
+    expect(() =>
+      assertRelayUrl("ws://localhost:8787", { allowInsecureLocalhost: true }),
+    ).not.toThrow();
+    expect(() =>
+      assertRelayUrl("ws://[::1]:8787", { allowInsecureLocalhost: true }),
+    ).not.toThrow();
+    expect(() =>
+      assertRelayUrl("ws://evil.localhost.example", {
+        allowInsecureLocalhost: true,
+      }),
+    ).toThrow(ProtocolError);
+    expect(() => assertRelayUrl("https://relay.walkietalkey.com")).toThrow(
+      ProtocolError,
+    );
   });
 
   it("builds the room socket URL with the declared intent", () => {

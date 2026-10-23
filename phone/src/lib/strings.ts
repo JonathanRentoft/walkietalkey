@@ -12,7 +12,8 @@ export const T = {
   noSpeech: "Hørte ikke noget",
   removed: "Parringen med {computer} er fjernet. Par igen for at bruge den.",
   expired: "Koden er udløbet. Lav en ny på computeren.",
-  micDenied: "WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.",
+  micDenied:
+    "WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.",
   noConnection: "Ingen forbindelse. Prøver igen.",
   installTitle: "Føj WalkieTalkey til hjemmeskærmen for at bruge den",
   openFromHome: "Åbn WalkieTalkey fra hjemmeskærmen og scan koden der.",
@@ -33,7 +34,8 @@ export const T = {
   cancel: "Annullér",
 
   // TODO(copy): first screen, the short explanation under "Par med en computer" (PHONE-10)
-  pairIntro: "Åbn WalkieTalkey på din computer, vælg Indstillinger, Telefon og Par en telefon. Scan så koden, der kommer frem.",
+  pairIntro:
+    "Åbn WalkieTalkey på din computer, vælg Indstillinger, Telefon og Par en telefon. Scan så koden, der kommer frem.",
   // TODO(copy): install steps in a Safari tab (PHONE-04)
   installSteps: [
     "Tryk på Del-knappen nederst i Safari.",
@@ -41,11 +43,13 @@ export const T = {
     "Åbn WalkieTalkey fra hjemmeskærmen.",
   ],
   // TODO(copy): why a Safari tab is not enough (PHONE-04)
-  installWhy: "Appen på hjemmeskærmen gemmer parringen sikkert. En fane i Safari kan glemme den.",
+  installWhy:
+    "Appen på hjemmeskærmen gemmer parringen sikkert. En fane i Safari kan glemme den.",
   // TODO(copy): scanner
   scanHint: "Ret kameraet mod koden på computeren.",
   // TODO(copy): camera permission refused
-  cameraDenied: "WalkieTalkey skal bruge kameraet for at scanne koden. Slå det til i indstillingerne.",
+  cameraDenied:
+    "WalkieTalkey skal bruge kameraet for at scanne koden. Slå det til i indstillingerne.",
   // TODO(copy): no camera or no QR decoding available
   cameraUnavailable: "Kameraet kunne ikke starte.",
   // TODO(copy): scanned something that is not a WalkieTalkey code
@@ -57,7 +61,8 @@ export const T = {
   pairButton: "Par telefonen",
   pairing: "Parrer med {computer}",
   // TODO(copy): the computer is full (8 devices per room)
-  roomFull: "Der er allerede parret 8 enheder med {computer}. Fjern en på computeren først.",
+  roomFull:
+    "Der er allerede parret 8 enheder med {computer}. Fjern en på computeren først.",
   // TODO(copy): generic buttons
   ok: "OK",
   back: "Tilbage",
@@ -67,7 +72,8 @@ export const T = {
   offline: "Ikke online",
   // TODO(copy): settings details
   removeConfirm: "Fjern parringen med {computer}?",
-  removeHint: "Telefonen kan ikke længere sende til {computer}. Du kan altid parre igen.",
+  removeHint:
+    "Telefonen kan ikke længere sende til {computer}. Du kan altid parre igen.",
   noComputers: "Ingen computere endnu.",
   hapticsOn: "Lille vibration, når optagelsen starter og stopper",
   phoneName: "Navn på {computer}: {name}",
@@ -78,7 +84,8 @@ export const T = {
     "Krypteret fra telefon til computer.",
     "Ingen konto. Ingen sporing.",
   ],
-  credits: "Bygget med React (MIT), jsQR (Apache-2.0) og skrifttypen Albert Sans (SIL Open Font License 1.1).",
+  credits:
+    "Bygget med React (MIT), jsQR (Apache-2.0) og skrifttypen Albert Sans (SIL Open Font License 1.1).",
   version: "Version {version}",
   sourceCode: "Kildekode",
   // TODO(copy): label while a tap-mode or Start diktering recording runs (it ends with a tap)
@@ -100,5 +107,7 @@ export const T = {
 
 /** Fills {name} placeholders. */
 export function fill(template: string, values: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? values[k]! : m));
+  return template.replace(/\{(\w+)\}/g, (m, k: string) =>
+    k in values ? values[k]! : m,
+  );
 }

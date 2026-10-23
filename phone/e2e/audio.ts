@@ -17,7 +17,9 @@ export function testSignal(): Int16Array {
     const f = 300 + (x % 2700);
     for (let i = 0; i < seg; i++) {
       const env = Math.min(1, i / ramp, (seg - 1 - i) / ramp);
-      out[k * seg + i] = Math.round(0.45 * 32767 * env * Math.sin((2 * Math.PI * f * i) / SIGNAL_RATE));
+      out[k * seg + i] = Math.round(
+        0.45 * 32767 * env * Math.sin((2 * Math.PI * f * i) / SIGNAL_RATE),
+      );
     }
   }
   return out;
@@ -26,7 +28,8 @@ export function testSignal(): Int16Array {
 export function wavBytes(pcm: Int16Array, rate = SIGNAL_RATE): Uint8Array {
   const out = new Uint8Array(44 + pcm.length * 2);
   const v = new DataView(out.buffer);
-  const w = (o: number, s: string) => [...s].forEach((c, i) => (out[o + i] = c.charCodeAt(0)));
+  const w = (o: number, s: string) =>
+    [...s].forEach((c, i) => (out[o + i] = c.charCodeAt(0)));
   w(0, "RIFF");
   v.setUint32(4, 36 + pcm.length * 2, true);
   w(8, "WAVE");
@@ -75,7 +78,12 @@ export function rms(x: Int16Array): number {
  * Best normalised cross-correlation between a window of the received audio and the looping
  * source signal, over every circular lag. 1.0 means the same waveform (up to gain).
  */
-export function bestCorrelation(received: Int16Array, source = testSignal(), from = 6400, length = 4000): number {
+export function bestCorrelation(
+  received: Int16Array,
+  source = testSignal(),
+  from = 6400,
+  length = 4000,
+): number {
   const w = received.subarray(from, from + length);
   if (w.length < length) return 0;
   let wn = 0;

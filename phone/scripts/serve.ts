@@ -13,7 +13,17 @@ if (existsSync(join(dist, "_headers"))) {
   for (const line of readFileSync(join(dist, "_headers"), "utf8").split("\n")) {
     if (!line.trim() || line.trim().startsWith("#")) continue;
     if (!/^\s/.test(line)) {
-      cur = { re: new RegExp("^" + line.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$"), headers: [] };
+      cur = {
+        re: new RegExp(
+          "^" +
+            line
+              .trim()
+              .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+              .replace(/\*/g, ".*") +
+            "$",
+        ),
+        headers: [],
+      };
       rules.push(cur);
     } else if (cur) {
       const i = line.indexOf(":");
@@ -47,10 +57,18 @@ const server = Bun.serve({
   hostname: "127.0.0.1",
   fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname.endsWith(".html")) return Response.redirect(url.origin + (url.pathname.replace(/(index)?\.html$/, "") || "/"), 308);
+    if (url.pathname.endsWith(".html"))
+      return Response.redirect(
+        url.origin + (url.pathname.replace(/(index)?\.html$/, "") || "/"),
+        308,
+      );
     const f = file(url.pathname) ?? join(dist, "index.html");
-    const headers = new Headers({ "content-type": TYPES[extname(f)] || "application/octet-stream" });
-    for (const r of rules) if (r.re.test(url.pathname)) for (const [k, v] of r.headers) headers.set(k, v);
+    const headers = new Headers({
+      "content-type": TYPES[extname(f)] || "application/octet-stream",
+    });
+    for (const r of rules)
+      if (r.re.test(url.pathname))
+        for (const [k, v] of r.headers) headers.set(k, v);
     return new Response(Bun.file(f), { headers });
   },
 });

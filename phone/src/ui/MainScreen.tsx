@@ -1,7 +1,17 @@
 /** The main screen (spec 7.3): exactly the design system's PhoneApp, driven by the controller. */
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { LogoLoader, PhoneApp } from "@walkietalkey/ui";
-import { COUNTDOWN_FROM_MS, MAX_RECORDING_MS, type PhoneController, type Snapshot } from "../core/controller";
+import {
+  COUNTDOWN_FROM_MS,
+  MAX_RECORDING_MS,
+  type PhoneController,
+  type Snapshot,
+} from "../core/controller";
 import { T, fill } from "../lib/strings";
 import { countdownSeconds, viewState } from "./viewState";
 
@@ -21,7 +31,8 @@ function inside(e: ReactPointerEvent<HTMLButtonElement>): boolean {
 }
 
 export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
-  const target = snap.rooms.find((r) => r.roomId === snap.target) ?? snap.rooms[0];
+  const target =
+    snap.rooms.find((r) => r.roomId === snap.target) ?? snap.rooms[0];
   const m = snap.machine;
   const view = viewState(m, snap.noConnection);
   const pointer = useRef<number | null>(null);
@@ -34,10 +45,15 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
   }, [view.recording]);
 
   const elapsed = view.recording ? controller.recordedMs() : 0;
-  const left = view.recording ? countdownSeconds(elapsed, MAX_RECORDING_MS, COUNTDOWN_FROM_MS) : null;
+  const left = view.recording
+    ? countdownSeconds(elapsed, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)
+    : null;
   const seconds = left !== null ? left : Math.floor(elapsed / 1000);
 
-  const end = (e: ReactPointerEvent<HTMLButtonElement>, checkInside: boolean) => {
+  const end = (
+    e: ReactPointerEvent<HTMLButtonElement>,
+    checkInside: boolean,
+  ) => {
     if (pointer.current !== e.pointerId) return;
     pointer.current = null;
     if (checkInside) controller.slide(inside(e));
@@ -46,7 +62,11 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
 
   return (
     <main
-      className={"wt-stage" + (target && !target.online ? " wt-stage--away" : "") + (view.sending ? " wt-stage--sending" : "")}
+      className={
+        "wt-stage" +
+        (target && !target.online ? " wt-stage--away" : "") +
+        (view.sending ? " wt-stage--sending" : "")
+      }
       data-phase={m.phase}
     >
       <div className="wt-stage-inner">
@@ -100,7 +120,11 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
         ) : null}
         {view.latched ? (
           <div className="wt-stage-cancel">
-            <button type="button" className="wt-app-action wt-stage-cancel-btn" onClick={() => controller.cancel()}>
+            <button
+              type="button"
+              className="wt-app-action wt-stage-cancel-btn"
+              onClick={() => controller.cancel()}
+            >
               {T.cancel}
             </button>
           </div>

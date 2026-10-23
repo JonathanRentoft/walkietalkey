@@ -111,7 +111,9 @@ export class Room extends DurableObject<Env> {
     super(ctx, env);
     this.store = new RoomStore(ctx.storage.sql);
     // RELAY-10: answered by the runtime without waking the object.
-    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING_MESSAGE, PONG_MESSAGE));
+    ctx.setWebSocketAutoResponse(
+      new WebSocketRequestResponsePair(PING_MESSAGE, PONG_MESSAGE),
+    );
   }
 
   // ---------------------------------------------------------------- clock, logging
@@ -140,13 +142,23 @@ export class Room extends DurableObject<Env> {
   private members(): Map<string, Member> {
     if (!this.roomExists()) return new Map();
     if (!this.membersCache) {
-      const rows = this.store.exec<{ device_id: string; role: string; signing_public_key: string; last_seen_day: number }>(
+      const rows = this.store.exec<{
+        device_id: string;
+        role: string;
+        signing_public_key: string;
+        last_seen_day: number;
+      }>(
         "SELECT device_id, role, signing_public_key, last_seen_day FROM devices",
       );
       this.membersCache = new Map(
         rows.map((r) => [
           r.device_id,
-          { id: r.device_id, role: r.role as Role, pub: r.signing_public_key, lastSeenDay: r.last_seen_day },
+          {
+            id: r.device_id,
+            role: r.role as Role,
+            pub: r.signing_public_key,
+            lastSeenDay: r.last_seen_day,
+          },
         ]),
       );
     }
@@ -154,7 +166,8 @@ export class Room extends DurableObject<Env> {
   }
 
   private ownerId(): string | undefined {
-    for (const m of this.members().values()) if (m.role === "owner") return m.id;
+    for (const m of this.members().values())
+      if (m.role === "owner") return m.id;
     return undefined;
   }
 
@@ -167,7 +180,11 @@ export class Room extends DurableObject<Env> {
   private liveOf(ws: WebSocket): Live {
     let l = this.live.get(ws);
     if (!l) {
-      l = { tokens: this.maxFramesPerSecond, refillAtReal: Date.now(), lastMsgAt: 0 };
+      l = {
+        tokens: this.maxFramesPerSecond,
+        refillAtReal: Date.now(),
+        lastMsgAt: 0,
+      };
       this.live.set(ws, l);
     }
     return l;
@@ -204,7 +221,9 @@ export class Room extends DurableObject<Env> {
   }
 
   private isOnline(deviceId: string): boolean {
-    return this.socketsOf(deviceId).some((ws) => this.isFresh(ws, this.att(ws)));
+    return this.socketsOf(deviceId).some((ws) =>
+      this.isFresh(ws, this.att(ws)),
+    );
   }
 
   private send(ws: WebSocket, msg: ControlMessage): void {
@@ -228,7 +247,12 @@ export class Room extends DurableObject<Env> {
   }
 
   /** Sends `error` (when a code is given) and closes. */
-  private fail(ws: WebSocket, code: number, errorCode: string, msg = errorCode): void {
+  private fail(
+    ws: WebSocket,
+    code: number,
+    errorCode: string,
+    msg = errorCode,
+  ): void {
     this.send(ws, { t: "error", code: errorCode, msg });
     this.closeSocket(ws, code, errorCode);
   }
@@ -239,9 +263,12 @@ export class Room extends DurableObject<Env> {
     if (!m) return;
     const targets =
       m.role === "owner"
-        ? [...this.members().values()].filter((x) => x.role === "phone").flatMap((x) => this.socketsOf(x.id))
+        ? [...this.members().values()]
+            .filter((x) => x.role === "phone")
+            .flatMap((x) => this.socketsOf(x.id))
         : this.socketsOf(this.ownerId() ?? "");
-    for (const ws of targets) this.send(ws, { t: "peer", id: deviceId, online });
+    for (const ws of targets)
+      this.send(ws, { t: "peer", id: deviceId, online });
   }
 
   // ---------------------------------------------------------------- entry points
@@ -255,7 +282,8 @@ export class Room extends DurableObject<Env> {
     }
     const roomB64 = match[1]!;
     const intentParam = url.searchParams.get("intent") ?? "auth";
-    if (!INTENTS.includes(intentParam)) return new Response("unknown intent", { status: 400 });
+    if (!INTENTS.includes(intentParam))
+      return new Response("unknown intent", { status: 400 });
     const intent = intentParam as Intent;
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
@@ -271,20 +299,32 @@ export class Room extends DurableObject<Env> {
     }
 
     this.ctx.acceptWebSocket(server);
-    const att: Attachment = { v: 1, st: "p", rm: roomB64, in: intent, ch: b64uEncode(randomBytes(32)), at: this.now() };
+    const att: Attachment = {
+      v: 1,
+      st: "p",
+      rm: roomB64,
+      in: intent,
+      ch: b64uEncode(randomBytes(32)),
+      at: this.now(),
+    };
     server.serializeAttachment(att);
     this.send(server, { t: "challenge", n: att.ch! });
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+  async webSocketMessage(
+    ws: WebSocket,
+    message: string | ArrayBuffer,
+  ): Promise<void> {
     if (this.closing.has(ws)) return;
-    if (!this.takeToken(ws)) return this.fail(ws, CloseCode.RateLimited, "rate_limited");
+    if (!this.takeToken(ws))
+      return this.fail(ws, CloseCode.RateLimited, "rate_limited");
     const att = this.att(ws);
     this.liveOf(ws).lastMsgAt = this.now();
 
     if (typeof message === "string") {
-      if (message.length > MAX_CONTROL_CHARS) return this.fail(ws, CloseCode.FrameTooLarge, "frame_too_large");
+      if (message.length > MAX_CONTROL_CHARS)
+        return this.fail(ws, CloseCode.FrameTooLarge, "frame_too_large");
       let msg: ControlMessage;
       try {
         msg = parseControlMessage(message);
@@ -295,20 +335,34 @@ export class Room extends DurableObject<Env> {
       return this.command(ws, att, msg);
     }
 
-    if (message.byteLength > 65536) return this.fail(ws, CloseCode.FrameTooLarge, "frame_too_large");
-    if (att.st !== "a") return this.fail(ws, CloseCode.NotAuthorised, "not_authenticated");
+    if (message.byteLength > 65536)
+      return this.fail(ws, CloseCode.FrameTooLarge, "frame_too_large");
+    if (att.st !== "a")
+      return this.fail(ws, CloseCode.NotAuthorised, "not_authenticated");
     this.route(ws, att, new Uint8Array(message));
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
-    await this.socketGone(ws, code === 1005 || code === 1006 ? 1000 : code, reason);
+  async webSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+  ): Promise<void> {
+    await this.socketGone(
+      ws,
+      code === 1005 || code === 1006 ? 1000 : code,
+      reason,
+    );
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
     await this.socketGone(ws, 1011, "error");
   }
 
-  private async socketGone(ws: WebSocket, code: number, reason: string): Promise<void> {
+  private async socketGone(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+  ): Promise<void> {
     const wasClosing = this.closing.has(ws);
     this.closing.add(ws);
     if (!wasClosing) {
@@ -324,7 +378,12 @@ export class Room extends DurableObject<Env> {
     for (const [recipient, b] of [...this.batches]) {
       if (b.senders.has(att.id)) await this.flush(recipient);
     }
-    if (this.roomExists() && this.members().has(att.id) && !this.isOnline(att.id)) this.announce(att.id, false);
+    if (
+      this.roomExists() &&
+      this.members().has(att.id) &&
+      !this.isOnline(att.id)
+    )
+      this.announce(att.id, false);
   }
 
   // ---------------------------------------------------------------- handshake
@@ -333,11 +392,16 @@ export class Room extends DurableObject<Env> {
     return !this.closing.has(ws) && this.att(ws).st === "p";
   }
 
-  private async handshake(ws: WebSocket, att: Attachment, msg: ControlMessage): Promise<void> {
+  private async handshake(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlMessage,
+  ): Promise<void> {
     if (msg.t !== "auth" && msg.t !== "create" && msg.t !== "join") {
       return this.fail(ws, CloseCode.NotAuthorised, "not_authenticated");
     }
-    if (msg.t !== att.in) return this.fail(ws, CloseCode.NotAllowed, "intent_mismatch");
+    if (msg.t !== att.in)
+      return this.fail(ws, CloseCode.NotAllowed, "intent_mismatch");
     const roomId = b64uDecode(att.rm, 16);
     const challenge = b64uDecode(att.ch!, 32);
     if (msg.t === "auth") return this.auth(ws, att, msg, roomId, challenge);
@@ -345,25 +409,52 @@ export class Room extends DurableObject<Env> {
     return this.join(ws, att, msg, roomId, challenge);
   }
 
-  private async auth(ws: WebSocket, att: Attachment, msg: ControlOf<"auth">, roomId: Uint8Array, challenge: Uint8Array) {
-    if (!this.roomExists()) return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
+  private async auth(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlOf<"auth">,
+    roomId: Uint8Array,
+    challenge: Uint8Array,
+  ) {
+    if (!this.roomExists())
+      return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
     const member = this.members().get(msg.id);
     if (!member) return this.fail(ws, CloseCode.NotAuthorised, "not_member");
-    const ok = await verifyChallenge(b64uDecode(member.pub), "wt-auth-v1", roomId, challenge, b64uDecode(msg.sig));
+    const ok = await verifyChallenge(
+      b64uDecode(member.pub),
+      "wt-auth-v1",
+      roomId,
+      challenge,
+      b64uDecode(msg.sig),
+    );
     if (!this.isPending(ws)) return;
-    if (!this.roomExists()) return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
-    if (!ok || !this.members().has(msg.id)) return this.fail(ws, CloseCode.NotAuthorised, "bad_signature");
+    if (!this.roomExists())
+      return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
+    if (!ok || !this.members().has(msg.id))
+      return this.fail(ws, CloseCode.NotAuthorised, "bad_signature");
     await this.complete(ws, att, msg.id);
   }
 
-  private async create(ws: WebSocket, att: Attachment, msg: ControlOf<"create">, roomId: Uint8Array, challenge: Uint8Array) {
+  private async create(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlOf<"create">,
+    roomId: Uint8Array,
+    challenge: Uint8Array,
+  ) {
     const pub = b64uDecode(msg.pub);
     const salt = b64uDecode(msg.salt, 16);
     const bound = bytesEqual(await computeRoomId(pub, salt), roomId);
     if (!bound) return this.fail(ws, CloseCode.NotAuthorised, "room_binding");
     let ok = false;
     try {
-      ok = await verifyChallenge(pub, "wt-create-v1", roomId, challenge, b64uDecode(msg.sig));
+      ok = await verifyChallenge(
+        pub,
+        "wt-create-v1",
+        roomId,
+        challenge,
+        b64uDecode(msg.sig),
+      );
     } catch (e) {
       if (!(e instanceof ProtocolError)) throw e;
     }
@@ -371,11 +462,17 @@ export class Room extends DurableObject<Env> {
     const id = b64uEncode(await deviceIdFromSpki(pub));
     if (!this.isPending(ws)) return;
     // Synchronous from here: no other event can run in between.
-    if (this.roomExists()) return this.fail(ws, CloseCode.RoomExists, "room_exists");
+    if (this.roomExists())
+      return this.fail(ws, CloseCode.RoomExists, "room_exists");
     const now = this.now();
     const today = this.today();
     this.store.createSchema();
-    this.store.exec("INSERT INTO room (owner_device_id, salt, created_at) VALUES (?, ?, ?)", id, msg.salt, now);
+    this.store.exec(
+      "INSERT INTO room (owner_device_id, salt, created_at) VALUES (?, ?, ?)",
+      id,
+      msg.salt,
+      now,
+    );
     this.store.exec(
       "INSERT INTO devices (device_id, signing_public_key, role, added_at, last_seen_day) VALUES (?, ?, 'owner', ?, ?)",
       id,
@@ -390,8 +487,15 @@ export class Room extends DurableObject<Env> {
     await this.complete(ws, att, id);
   }
 
-  private async join(ws: WebSocket, att: Attachment, msg: ControlOf<"join">, roomId: Uint8Array, challenge: Uint8Array) {
-    if (!this.roomExists()) return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
+  private async join(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlOf<"join">,
+    roomId: Uint8Array,
+    challenge: Uint8Array,
+  ) {
+    if (!this.roomExists())
+      return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
     const pub = b64uDecode(msg.pub);
     try {
       await importAgreementPublicKey(b64uDecode(msg.agree));
@@ -400,7 +504,13 @@ export class Room extends DurableObject<Env> {
     }
     let ok = false;
     try {
-      ok = await verifyChallenge(pub, "wt-join-v1", roomId, challenge, b64uDecode(msg.sig));
+      ok = await verifyChallenge(
+        pub,
+        "wt-join-v1",
+        roomId,
+        challenge,
+        b64uDecode(msg.sig),
+      );
     } catch (e) {
       if (!(e instanceof ProtocolError)) throw e;
     }
@@ -409,20 +519,31 @@ export class Room extends DurableObject<Env> {
     const id = b64uEncode(await deviceIdFromSpki(pub));
     if (!this.isPending(ws)) return;
     // Synchronous from here.
-    if (!this.roomExists()) return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
+    if (!this.roomExists())
+      return this.fail(ws, CloseCode.RoomNotFound, "room_not_found");
     const members = this.members();
-    if (id === this.ownerId()) return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
+    if (id === this.ownerId())
+      return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
     const existing = members.get(id);
-    if (!existing && members.size >= MAX_DEVICES_PER_ROOM) return this.fail(ws, CloseCode.NotAllowed, "room_full");
+    if (!existing && members.size >= MAX_DEVICES_PER_ROOM)
+      return this.fail(ws, CloseCode.NotAllowed, "room_full");
     const now = this.now();
-    const adm = this.store.one<{ expires_at: number }>("SELECT expires_at FROM admissions WHERE admission_sha256 = ?", hash);
-    if (!adm || adm.expires_at <= now) return this.fail(ws, CloseCode.NotAuthorised, "admission_invalid");
+    const adm = this.store.one<{ expires_at: number }>(
+      "SELECT expires_at FROM admissions WHERE admission_sha256 = ?",
+      hash,
+    );
+    if (!adm || adm.expires_at <= now)
+      return this.fail(ws, CloseCode.NotAuthorised, "admission_invalid");
     this.store.exec("DELETE FROM admissions WHERE admission_sha256 = ?", hash);
     const today = this.today();
     if (existing) {
       // The same phone pairing again: it stays a member; the owner re-derives its keys.
       if (existing.lastSeenDay !== today) {
-        this.store.exec("UPDATE devices SET last_seen_day = ? WHERE device_id = ?", today, id);
+        this.store.exec(
+          "UPDATE devices SET last_seen_day = ? WHERE device_id = ?",
+          today,
+          id,
+        );
       }
     } else {
       this.store.exec(
@@ -434,7 +555,12 @@ export class Room extends DurableObject<Env> {
       );
     }
     this.membersCache = null;
-    const payload = JSON.stringify({ id, pub: msg.pub, agree: msg.agree, mac: msg.mac });
+    const payload = JSON.stringify({
+      id,
+      pub: msg.pub,
+      agree: msg.agree,
+      mac: msg.mac,
+    });
     const ev = this.store.one<{ id: number }>(
       "INSERT INTO owner_events (kind, payload, created_at) VALUES ('member_joined', ?, ?) RETURNING id",
       payload,
@@ -443,7 +569,14 @@ export class Room extends DurableObject<Env> {
     const owner = this.ownerId();
     if (owner) {
       for (const o of this.socketsOf(owner)) {
-        this.send(o, { t: "member_joined", id, pub: msg.pub, agree: msg.agree, mac: msg.mac, eid: ev.id });
+        this.send(o, {
+          t: "member_joined",
+          id,
+          pub: msg.pub,
+          agree: msg.agree,
+          mac: msg.mac,
+          eid: ev.id,
+        });
       }
     }
     this.log(att.rm, { evt: "joined", members: this.members().size });
@@ -451,15 +584,31 @@ export class Room extends DurableObject<Env> {
   }
 
   /** Marks the socket authenticated, sends ok, pending owner events and buffered frames. */
-  private async complete(ws: WebSocket, att: Attachment, id: string): Promise<void> {
+  private async complete(
+    ws: WebSocket,
+    att: Attachment,
+    id: string,
+  ): Promise<void> {
     const member = this.members().get(id);
     if (!member) return this.fail(ws, CloseCode.NotAuthorised, "not_member");
-    const authed: Attachment = { v: 1, st: "a", rm: att.rm, in: att.in, at: att.at, id, ro: member.role };
+    const authed: Attachment = {
+      v: 1,
+      st: "a",
+      rm: att.rm,
+      in: att.in,
+      at: att.at,
+      id,
+      ro: member.role,
+    };
     ws.serializeAttachment(authed);
     const today = this.today();
     if (member.lastSeenDay !== today) {
       // Written at most once per device per day (spec 8.3).
-      this.store.exec("UPDATE devices SET last_seen_day = ? WHERE device_id = ?", today, id);
+      this.store.exec(
+        "UPDATE devices SET last_seen_day = ? WHERE device_id = ?",
+        today,
+        id,
+      );
       member.lastSeenDay = today;
     }
     const members: MemberInfo[] = [...this.members().values()].map((m) => ({
@@ -479,9 +628,21 @@ export class Room extends DurableObject<Env> {
       "SELECT id, kind, payload FROM owner_events ORDER BY id",
     );
     for (const r of rows) {
-      const p = JSON.parse(r.payload) as { id: string; pub?: string; agree?: string; mac?: string };
+      const p = JSON.parse(r.payload) as {
+        id: string;
+        pub?: string;
+        agree?: string;
+        mac?: string;
+      };
       if (r.kind === "member_joined") {
-        this.send(ws, { t: "member_joined", id: p.id, pub: p.pub!, agree: p.agree!, mac: p.mac!, eid: r.id });
+        this.send(ws, {
+          t: "member_joined",
+          id: p.id,
+          pub: p.pub!,
+          agree: p.agree!,
+          mac: p.mac!,
+          eid: r.id,
+        });
       } else {
         this.send(ws, { t: "member_left", id: p.id, eid: r.id });
       }
@@ -490,7 +651,11 @@ export class Room extends DurableObject<Env> {
 
   // ---------------------------------------------------------------- commands
 
-  private async command(ws: WebSocket, att: Attachment, msg: ControlMessage): Promise<void> {
+  private async command(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlMessage,
+  ): Promise<void> {
     if (!this.roomExists() || !this.members().has(att.id!)) {
       return this.fail(ws, CloseCode.NotAuthorised, "not_member");
     }
@@ -509,7 +674,10 @@ export class Room extends DurableObject<Env> {
         return this.addAdmission(ws, att, msg);
       case "cancel_admission":
         if (!owner) break;
-        this.store.exec("DELETE FROM admissions WHERE admission_sha256 = ?", msg.h);
+        this.store.exec(
+          "DELETE FROM admissions WHERE admission_sha256 = ?",
+          msg.h,
+        );
         return this.send(ws, { t: "ack", op: "cancel_admission", h: msg.h });
       case "event_ack":
         if (!owner) break;
@@ -530,12 +698,29 @@ export class Room extends DurableObject<Env> {
     this.fail(ws, CloseCode.NotAllowed, "not_allowed");
   }
 
-  private async addAdmission(ws: WebSocket, att: Attachment, msg: ControlOf<"add_admission">): Promise<void> {
+  private async addAdmission(
+    ws: WebSocket,
+    att: Attachment,
+    msg: ControlOf<"add_admission">,
+  ): Promise<void> {
     const now = this.now();
     const expires = Math.min(msg.exp, now + BUFFER_TTL_MS);
-    if (expires <= now) return this.send(ws, { t: "error", code: "admission_expired", msg: "exp is in the past" });
-    const count = this.store.one<{ n: number }>("SELECT COUNT(*) AS n FROM admissions WHERE expires_at > ?", now)!.n;
-    if (count >= MAX_ADMISSIONS) return this.send(ws, { t: "error", code: "too_many_admissions", msg: "too many admissions" });
+    if (expires <= now)
+      return this.send(ws, {
+        t: "error",
+        code: "admission_expired",
+        msg: "exp is in the past",
+      });
+    const count = this.store.one<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM admissions WHERE expires_at > ?",
+      now,
+    )!.n;
+    if (count >= MAX_ADMISSIONS)
+      return this.send(ws, {
+        t: "error",
+        code: "too_many_admissions",
+        msg: "too many admissions",
+      });
     this.store.exec(
       "INSERT INTO admissions (admission_sha256, expires_at) VALUES (?, ?) ON CONFLICT (admission_sha256) DO UPDATE SET expires_at = excluded.expires_at",
       msg.h,
@@ -547,7 +732,10 @@ export class Room extends DurableObject<Env> {
   }
 
   private removePhone(id: string): void {
-    this.store.exec("DELETE FROM devices WHERE device_id = ? AND role = 'phone'", id);
+    this.store.exec(
+      "DELETE FROM devices WHERE device_id = ? AND role = 'phone'",
+      id,
+    );
     this.store.exec("DELETE FROM buffered WHERE recipient_device_id = ?", id);
     this.batches.delete(id);
     this.membersCache = null;
@@ -582,15 +770,21 @@ export class Room extends DurableObject<Env> {
       this.now(),
     )!;
     const owner = this.ownerId();
-    if (owner) for (const o of this.socketsOf(owner)) this.send(o, { t: "member_left", id: payload.id, eid: ev.id });
+    if (owner)
+      for (const o of this.socketsOf(owner))
+        this.send(o, { t: "member_left", id: payload.id, eid: ev.id });
   }
 
   /** delete_room (by the owner) or housekeeping: closes everything and deletes all storage. */
-  private async destroy(roomB64: string, by: "owner" | "housekeeping"): Promise<void> {
+  private async destroy(
+    roomB64: string,
+    by: "owner" | "housekeeping",
+  ): Promise<void> {
     const owner = this.ownerId();
     for (const ws of this.ctx.getWebSockets()) {
       const a = this.att(ws);
-      if (by === "owner" && a.id === owner) this.closeSocket(ws, 1000, "room deleted");
+      if (by === "owner" && a.id === owner)
+        this.closeSocket(ws, 1000, "room deleted");
       else this.closeSocket(ws, CloseCode.RoomNotFound, "room not found");
     }
     if (this.flushTimer) clearTimeout(this.flushTimer);
@@ -618,20 +812,29 @@ export class Room extends DurableObject<Env> {
       return this.fail(ws, 1008, "bad_frame");
     }
     const members = this.members();
-    if (!members.has(att.id!)) return this.fail(ws, CloseCode.NotAuthorised, "not_member");
-    if (b64uEncode(header.sender) !== att.id) return this.fail(ws, CloseCode.NotAllowed, "wrong_sender");
+    if (!members.has(att.id!))
+      return this.fail(ws, CloseCode.NotAuthorised, "not_member");
+    if (b64uEncode(header.sender) !== att.id)
+      return this.fail(ws, CloseCode.NotAllowed, "wrong_sender");
     const recipient = b64uEncode(header.recipient);
     const owner = this.ownerId();
     if (att.ro === "phone") {
-      if (recipient !== owner) return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
+      if (recipient !== owner)
+        return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
     } else {
-      if (recipient === owner) return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
+      if (recipient === owner)
+        return this.fail(ws, CloseCode.NotAllowed, "not_allowed");
       if (!members.has(recipient)) return; // RELAY-07: dropped.
     }
     this.deliver(recipient, bytes, att.id!, header.type);
   }
 
-  private deliver(recipient: string, bytes: Uint8Array, sender: string, type: number): void {
+  private deliver(
+    recipient: string,
+    bytes: Uint8Array,
+    sender: string,
+    type: number,
+  ): void {
     const sockets = this.socketsOf(recipient);
     let sent = 0;
     let closedStale = false;
@@ -654,14 +857,25 @@ export class Room extends DurableObject<Env> {
     this.buffer(recipient, bytes, sender, type);
   }
 
-  private buffer(recipient: string, bytes: Uint8Array, sender: string, type: number): void {
+  private buffer(
+    recipient: string,
+    bytes: Uint8Array,
+    sender: string,
+    type: number,
+  ): void {
     let b = this.batches.get(recipient);
     if (b && b.bytes + 4 + bytes.length > BUFFER_ROW_BYTES) {
       void this.flush(recipient);
       b = undefined;
     }
     if (!b) {
-      b = { frames: [], bytes: 0, firstAt: this.now(), lastAtReal: Date.now(), senders: new Set() };
+      b = {
+        frames: [],
+        bytes: 0,
+        firstAt: this.now(),
+        lastAtReal: Date.now(),
+        senders: new Set(),
+      };
       this.batches.set(recipient, b);
     }
     b.frames.push(bytes);
@@ -701,11 +915,15 @@ export class Room extends DurableObject<Env> {
     this.batches.delete(recipient);
     if (!this.roomExists() || !this.members().has(recipient)) return;
     const blob = encodeBatch(b.frames);
-    let total = this.store.one<{ n: number }>("SELECT COALESCE(SUM(length(frames)), 0) AS n FROM buffered")!.n;
+    let total = this.store.one<{ n: number }>(
+      "SELECT COALESCE(SUM(length(frames)), 0) AS n FROM buffered",
+    )!.n;
     let dropped = 0;
     if (total + blob.length > this.bufferLimitBytes) {
       // Drop the oldest buffered dictation(s): rows up to and including one that ends a dictation.
-      const rows = this.store.exec<{ id: number; frames: ArrayBuffer }>("SELECT id, frames FROM buffered ORDER BY id");
+      const rows = this.store.exec<{ id: number; frames: ArrayBuffer }>(
+        "SELECT id, frames FROM buffered ORDER BY id",
+      );
       const drop: number[] = [];
       for (const r of rows) {
         if (total + blob.length <= this.bufferLimitBytes) break;
@@ -715,10 +933,16 @@ export class Room extends DurableObject<Env> {
           if (total + blob.length <= this.bufferLimitBytes) break;
         }
       }
-      for (const id of drop) this.store.exec("DELETE FROM buffered WHERE id = ?", id);
+      for (const id of drop)
+        this.store.exec("DELETE FROM buffered WHERE id = ?", id);
       dropped = drop.length;
       for (const s of b.senders) {
-        for (const ws of this.socketsOf(s)) this.send(ws, { t: "error", code: "buffer_full", msg: "the relay buffer for this room is full" });
+        for (const ws of this.socketsOf(s))
+          this.send(ws, {
+            t: "error",
+            code: "buffer_full",
+            msg: "the relay buffer for this room is full",
+          });
       }
     }
     const expires = b.firstAt + BUFFER_TTL_MS;
@@ -728,14 +952,23 @@ export class Room extends DurableObject<Env> {
       blob,
       expires,
     );
-    this.log(undefined, { evt: "buffered", frames: b.frames.length, bytes: blob.length, dropped });
+    this.log(undefined, {
+      evt: "buffered",
+      frames: b.frames.length,
+      bytes: blob.length,
+      dropped,
+    });
     await this.ensureAlarm(expires);
   }
 
   /** On connect: stored rows first (oldest first), then the unflushed batch; then delete. */
   private deliverBuffered(ws: WebSocket, id: string): void {
     const now = this.now();
-    const rows = this.store.exec<{ id: number; frames: ArrayBuffer; expires_at: number }>(
+    const rows = this.store.exec<{
+      id: number;
+      frames: ArrayBuffer;
+      expires_at: number;
+    }>(
       "SELECT id, frames, expires_at FROM buffered WHERE recipient_device_id = ? ORDER BY id",
       id,
     );
@@ -748,7 +981,11 @@ export class Room extends DurableObject<Env> {
       }
     }
     if (rows.length) {
-      this.store.exec("DELETE FROM buffered WHERE recipient_device_id = ? AND id <= ?", id, rows[rows.length - 1]!.id);
+      this.store.exec(
+        "DELETE FROM buffered WHERE recipient_device_id = ? AND id <= ?",
+        id,
+        rows[rows.length - 1]!.id,
+      );
     }
     const b = this.batches.get(id);
     if (b) {
@@ -770,7 +1007,8 @@ export class Room extends DurableObject<Env> {
   }
 
   private async ensureAlarm(at: number): Promise<void> {
-    if (this.alarmAt === undefined) this.alarmAt = await this.ctx.storage.getAlarm();
+    if (this.alarmAt === undefined)
+      this.alarmAt = await this.ctx.storage.getAlarm();
     if (this.alarmAt === null || at < this.alarmAt) {
       this.alarmAt = at;
       await this.ctx.storage.setAlarm(at);
@@ -787,7 +1025,11 @@ export class Room extends DurableObject<Env> {
     // Devices that are connected right now count as seen.
     for (const m of this.members().values()) {
       if (m.lastSeenDay !== today && this.isOnline(m.id)) {
-        this.store.exec("UPDATE devices SET last_seen_day = ? WHERE device_id = ?", today, m.id);
+        this.store.exec(
+          "UPDATE devices SET last_seen_day = ? WHERE device_id = ?",
+          today,
+          m.id,
+        );
         m.lastSeenDay = today;
       }
     }
@@ -804,7 +1046,8 @@ export class Room extends DurableObject<Env> {
         const sockets = this.socketsOf(m.id);
         this.removePhone(m.id);
         this.queueOwnerEvent("member_left", { id: m.id });
-        for (const s of sockets) this.closeSocket(s, CloseCode.NotAuthorised, "removed");
+        for (const s of sockets)
+          this.closeSocket(s, CloseCode.NotAuthorised, "removed");
         this.log(roomB64, { evt: "expired_phone" });
       }
     }
@@ -813,11 +1056,16 @@ export class Room extends DurableObject<Env> {
 
   private async scheduleNextAlarm(): Promise<void> {
     const candidates: number[] = [];
-    const adm = this.store.one<{ t: number | null }>("SELECT MIN(expires_at) AS t FROM admissions")!.t;
+    const adm = this.store.one<{ t: number | null }>(
+      "SELECT MIN(expires_at) AS t FROM admissions",
+    )!.t;
     if (adm !== null) candidates.push(adm);
-    const buf = this.store.one<{ t: number | null }>("SELECT MIN(expires_at) AS t FROM buffered")!.t;
+    const buf = this.store.one<{ t: number | null }>(
+      "SELECT MIN(expires_at) AS t FROM buffered",
+    )!.t;
     if (buf !== null) candidates.push(buf);
-    for (const m of this.members().values()) candidates.push(this.deviceExpiry(m.lastSeenDay));
+    for (const m of this.members().values())
+      candidates.push(this.deviceExpiry(m.lastSeenDay));
     if (candidates.length === 0) return;
     this.alarmAt = Math.min(...candidates);
     await this.ctx.storage.setAlarm(this.alarmAt);
@@ -832,7 +1080,8 @@ export class Room extends DurableObject<Env> {
 
   /** Marks a device's sockets as just heard from on the relay clock (tests shift the clock). */
   markAliveForTest(deviceId: string): void {
-    for (const ws of this.socketsOf(deviceId)) this.liveOf(ws).lastMsgAt = this.now();
+    for (const ws of this.socketsOf(deviceId))
+      this.liveOf(ws).lastMsgAt = this.now();
   }
 
   /** JSON size of the largest attachment this object can create. */
@@ -854,6 +1103,9 @@ export class Room extends DurableObject<Env> {
       id: "A".repeat(22),
       ro: "owner",
     };
-    return Math.max(JSON.stringify(pending).length, JSON.stringify(authed).length);
+    return Math.max(
+      JSON.stringify(pending).length,
+      JSON.stringify(authed).length,
+    );
   }
 }

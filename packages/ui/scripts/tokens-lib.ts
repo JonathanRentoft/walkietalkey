@@ -13,17 +13,40 @@ export interface TokensJson {
     groups: {
       name: string;
       family: string;
-      styles: { name: string; fontSize: string; lineHeight: number; fontWeight: number; letterSpacing?: string }[];
+      styles: {
+        name: string;
+        fontSize: string;
+        lineHeight: number;
+        fontWeight: number;
+        letterSpacing?: string;
+      }[];
     }[];
   };
   [group: string]: unknown;
 }
 
-interface Token { name: string; value: Value }
+interface Token {
+  name: string;
+  value: Value;
+}
 
-const SCALES = ["spacing", "radius", "shadow", "blur", "duration", "easing", "opacity"] as const;
+const SCALES = [
+  "spacing",
+  "radius",
+  "shadow",
+  "blur",
+  "duration",
+  "easing",
+  "opacity",
+] as const;
 const TS_GROUP: Record<(typeof SCALES)[number], string> = {
-  spacing: "space", radius: "radius", shadow: "shadow", blur: "blur", duration: "duration", easing: "easing", opacity: "opacity",
+  spacing: "space",
+  radius: "radius",
+  shadow: "shadow",
+  blur: "blur",
+  duration: "duration",
+  easing: "easing",
+  opacity: "opacity",
 };
 
 function isThemed(v: Value): v is Themed {
@@ -61,11 +84,14 @@ export function generate(json: TokensJson): { css: string; ts: string } {
   colors.forEach(push);
 
   light.push("", "  /* type */");
-  for (const [fam, stack] of Object.entries(json.type.families)) light.push(`  --font-${fam}: ${stack};`);
+  for (const [fam, stack] of Object.entries(json.type.families))
+    light.push(`  --font-${fam}: ${stack};`);
   for (const group of json.type.groups) {
     for (const s of group.styles) {
       const p = `--type-${s.name}`;
-      light.push(`  ${p}: ${s.fontWeight} ${s.fontSize}/${s.lineHeight} var(--font-${group.family});`);
+      light.push(
+        `  ${p}: ${s.fontWeight} ${s.fontSize}/${s.lineHeight} var(--font-${group.family});`,
+      );
       light.push(`  ${p}-size: ${s.fontSize};`);
       light.push(`  ${p}-line-height: ${s.lineHeight};`);
       light.push(`  ${p}-weight: ${s.fontWeight};`);
@@ -94,9 +120,20 @@ export function generate(json: TokensJson): { css: string; ts: string } {
 
   /* tokens.ts: the same values, typed */
   const obj = (list: Token[]) =>
-    "{\n" + list.map((t) => `  ${JSON.stringify(t.name)}: ${JSON.stringify(t.value)},`).join("\n") + "\n}";
+    "{\n" +
+    list
+      .map((t) => `  ${JSON.stringify(t.name)}: ${JSON.stringify(t.value)},`)
+      .join("\n") +
+    "\n}";
   const typeStyles = json.type.groups.flatMap((g) =>
-    g.styles.map((s) => ({ name: s.name, family: g.family, fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: s.fontWeight, letterSpacing: s.letterSpacing ?? "0" })),
+    g.styles.map((s) => ({
+      name: s.name,
+      family: g.family,
+      fontSize: s.fontSize,
+      lineHeight: s.lineHeight,
+      fontWeight: s.fontWeight,
+      letterSpacing: s.letterSpacing ?? "0",
+    })),
   );
   const ts = [
     "/* Generated from tokens/tokens.json by scripts/gen-tokens.ts. Do not edit by hand. */",
@@ -105,7 +142,9 @@ export function generate(json: TokensJson): { css: string; ts: string } {
     "",
     `export const color = ${obj(colors)} as const;`,
     "",
-    ...SCALES.map((g) => `export const ${TS_GROUP[g]} = ${obj(scale(json, g))} as const;\n`),
+    ...SCALES.map(
+      (g) => `export const ${TS_GROUP[g]} = ${obj(scale(json, g))} as const;\n`,
+    ),
     `export const fontFamily = ${JSON.stringify(json.type.families, null, 2)} as const;`,
     "",
     `export const typeStyle = {\n${typeStyles.map((s) => `  ${JSON.stringify(s.name)}: ${JSON.stringify({ family: s.family, fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: s.fontWeight, letterSpacing: s.letterSpacing })},`).join("\n")}\n} as const;`,
@@ -117,7 +156,7 @@ export function generate(json: TokensJson): { css: string; ts: string } {
     "export type TypeStyle = keyof typeof typeStyle;",
     "export type TokenName = ColorToken | SpaceToken | RadiusToken | ShadowToken | keyof typeof blur | keyof typeof duration | keyof typeof easing | keyof typeof opacity;",
     "",
-    "/** The CSS custom property for a token, e.g. cssVar(\"ink\") is \"var(--ink)\". */",
+    '/** The CSS custom property for a token, e.g. cssVar("ink") is "var(--ink)". */',
     "export function cssVar(name: TokenName): string {",
     "  return `var(--${name})`;",
     "}",

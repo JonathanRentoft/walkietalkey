@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import { generate, type TokensJson } from "./tokens-lib";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const json = JSON.parse(readFileSync(root + "tokens/tokens.json", "utf8")) as TokensJson;
+const json = JSON.parse(
+  readFileSync(root + "tokens/tokens.json", "utf8"),
+) as TokensJson;
 const out = generate(json);
 const targets: [string, string][] = [
   [root + "src/styles/tokens.css", out.css],
@@ -15,10 +17,18 @@ const targets: [string, string][] = [
 
 if (process.argv.includes("--check")) {
   const stale = targets.filter(([file, text]) => {
-    try { return readFileSync(file, "utf8") !== text; } catch { return true; }
+    try {
+      return readFileSync(file, "utf8") !== text;
+    } catch {
+      return true;
+    }
   });
   if (stale.length) {
-    console.error("Out of date: " + stale.map(([f]) => f.slice(root.length)).join(", ") + ". Run bun run gen:tokens.");
+    console.error(
+      "Out of date: " +
+        stale.map(([f]) => f.slice(root.length)).join(", ") +
+        ". Run bun run gen:tokens.",
+    );
     process.exit(1);
   }
   console.log("tokens up to date");

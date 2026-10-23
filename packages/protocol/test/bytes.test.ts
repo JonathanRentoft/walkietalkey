@@ -32,7 +32,18 @@ describe("base64url", () => {
   });
 
   it("rejects padding, standard alphabet, bad lengths and non-canonical trailing bits", () => {
-    for (const bad of ["AQID=", "aGVsbG8=", "+w", "/w", "A", "AQIDB", "-x", "AB", "a b", "é"]) {
+    for (const bad of [
+      "AQID=",
+      "aGVsbG8=",
+      "+w",
+      "/w",
+      "A",
+      "AQIDB",
+      "-x",
+      "AB",
+      "a b",
+      "é",
+    ]) {
       expect(() => b64uDecode(bad), bad).toThrow(ProtocolError);
     }
     // "-w" is canonical for 0xfb; "-x" has non-zero trailing bits.
@@ -48,14 +59,22 @@ describe("base64url", () => {
 
 describe("byte helpers", () => {
   it("concatenates", () => {
-    expect(concatBytes(new Uint8Array([1]), new Uint8Array([]), new Uint8Array([2, 3]))).toEqual(
-      new Uint8Array([1, 2, 3]),
-    );
+    expect(
+      concatBytes(
+        new Uint8Array([1]),
+        new Uint8Array([]),
+        new Uint8Array([2, 3]),
+      ),
+    ).toEqual(new Uint8Array([1, 2, 3]));
   });
 
   it("compares", () => {
-    expect(bytesEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2]))).toBe(true);
-    expect(bytesEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3]))).toBe(false);
+    expect(bytesEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2]))).toBe(
+      true,
+    );
+    expect(bytesEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3]))).toBe(
+      false,
+    );
     expect(bytesEqual(new Uint8Array([1, 2]), new Uint8Array([1]))).toBe(false);
   });
 
@@ -67,7 +86,11 @@ describe("byte helpers", () => {
   });
 
   it("utf8 decoding is strict", () => {
-    expect(utf8Decode(utf8Encode("Jonathans iPhone æøå"))).toBe("Jonathans iPhone æøå");
-    expect(() => utf8Decode(new Uint8Array([0xff, 0xfe]))).toThrow(ProtocolError);
+    expect(utf8Decode(utf8Encode("Jonathans iPhone æøå"))).toBe(
+      "Jonathans iPhone æøå",
+    );
+    expect(() => utf8Decode(new Uint8Array([0xff, 0xfe]))).toThrow(
+      ProtocolError,
+    );
   });
 });

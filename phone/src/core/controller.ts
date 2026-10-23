@@ -17,11 +17,35 @@ import { MicDeniedError, MicError } from "../audio/recorder";
 import type { Platform } from "../lib/platform";
 import { platformTag } from "../lib/platform";
 import type { PhoneStorage, RoomRecord, Settings } from "../lib/storage";
-import { JoinError, RoomLink, joinRoom, leaveOnce, type LinkEvent, type WebSocketCtor } from "./link";
-import { initialMachine, transition, type Effect, type MachineEvent, type MachineState, type Mode } from "./machine";
-import { chooseTarget, needsPresence, type Candidate, type PresenceAnswer } from "./presence";
+import {
+  JoinError,
+  RoomLink,
+  joinRoom,
+  leaveOnce,
+  type LinkEvent,
+  type WebSocketCtor,
+} from "./link";
+import {
+  initialMachine,
+  transition,
+  type Effect,
+  type MachineEvent,
+  type MachineState,
+  type Mode,
+} from "./machine";
+import {
+  chooseTarget,
+  needsPresence,
+  type Candidate,
+  type PresenceAnswer,
+} from "./presence";
 import { Pacer } from "./resend";
-import { SessionStreamer, isOpen, newSession, type AudioSession } from "./streamer";
+import {
+  SessionStreamer,
+  isOpen,
+  newSession,
+  type AudioSession,
+} from "./streamer";
 
 /** PHONE-29: five minutes per recording. */
 export const MAX_RECORDING_MS = 5 * 60 * 1000;
@@ -52,7 +76,12 @@ export interface Notice {
 export type PairingState =
   | { state: "idle" }
   | { state: "joining"; computer: string }
-  | { state: "error"; kind: "expired" | "full" | "network" | "error"; computer: string; detail: string };
+  | {
+      state: "error";
+      kind: "expired" | "full" | "network" | "error";
+      computer: string;
+      detail: string;
+    };
 
 export interface Snapshot {
   loaded: boolean;
@@ -91,8 +120,15 @@ export class PhoneController {
   private device: DeviceKeys | null = null;
   private readonly rooms = new Map<string, RoomEntry>();
   private readonly sessions = new Map<string, AudioSession>();
-  private readonly resultTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private machine: MachineState = initialMachine({ mode: "hold", peerOnline: false, connected: false });
+  private readonly resultTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
+  private machine: MachineState = initialMachine({
+    mode: "hold",
+    peerOnline: false,
+    connected: false,
+  });
   private settings: Settings = { mode: "hold", haptics: true };
   private target: string | null = null;
   private notices: Notice[] = [];
@@ -156,8 +192,15 @@ export class PhoneController {
     this.settings = await storage.getSettings();
     this.device = await storage.loadOrCreateDeviceKeys();
     for (const record of await storage.listRooms()) this.addRoom(record);
-    this.target = this.settings.target && this.rooms.has(this.settings.target) ? this.settings.target : this.lastUsed();
-    this.machine = initialMachine({ mode: this.settings.mode, peerOnline: false, connected: false });
+    this.target =
+      this.settings.target && this.rooms.has(this.settings.target)
+        ? this.settings.target
+        : this.lastUsed();
+    this.machine = initialMachine({
+      mode: this.settings.mode,
+      peerOnline: false,
+      connected: false,
+    });
     this.loaded = true;
     for (const r of this.rooms.values()) r.link.start();
     this.watchConnection();
@@ -168,7 +211,8 @@ export class PhoneController {
 
   private lastUsed(): string | null {
     let best: RoomRecord | null = null;
-    for (const r of this.rooms.values()) if (!best || r.record.lastUsedAt > best.lastUsedAt) best = r.record;
+    for (const r of this.rooms.values())
+      if (!best || r.record.lastUsedAt > best.lastUsedAt) best = r.record;
     return best?.roomId ?? null;
   }
 
@@ -181,7 +225,12 @@ export class PhoneController {
       backoffMs: this.deps.backoffMs,
       onEvent: (e) => this.linkEvent(record.roomId, e),
     });
-    const entry: RoomEntry = { record, link, streamer: new SessionStreamer(link, new Pacer()), presenceWaiters: [] };
+    const entry: RoomEntry = {
+      record,
+      link,
+      streamer: new SessionStreamer(link, new Pacer()),
+      presenceWaiters: [],
+    };
     this.rooms.set(record.roomId, entry);
     return entry;
   }
@@ -193,7 +242,8 @@ export class PhoneController {
         await storage.deletePendingLeave(p.roomId);
         continue;
       }
-      if (await leaveOnce(this.WS, p.relayUrl, p.roomId, this.device!)) await storage.deletePendingLeave(p.roomId);
+      if (await leaveOnce(this.WS, p.relayUrl, p.roomId, this.device!))
+        await storage.deletePendingLeave(p.roomId);
     }
   }
 
@@ -234,7 +284,9 @@ export class PhoneController {
   }
 
   private sessionsOf(roomId: string): AudioSession[] {
-    return [...this.sessions.values()].filter((s) => s.roomId === roomId && isOpen(s)).sort((a, b) => a.startedAt - b.startedAt);
+    return [...this.sessions.values()]
+      .filter((s) => s.roomId === roomId && isOpen(s))
+      .sort((a, b) => a.startedAt - b.startedAt);
   }
 
   private payload(entry: RoomEntry, p: DevicePayload): void {
@@ -247,9 +299,16 @@ export class PhoneController {
       s.blocks = [];
       this.sessions.delete(sid);
       this.clearResultTimer(sid);
-      this.dispatch(p.ok ? { type: "result", sessionId: sid, ok: true } : { type: "result", sessionId: sid, ok: false, reason: p.reason });
+      this.dispatch(
+        p.ok
+          ? { type: "result", sessionId: sid, ok: true }
+          : { type: "result", sessionId: sid, ok: false, reason: p.reason },
+      );
     } else if (p.type === "presence") {
-      const answer = { secondsSinceInput: p.secondsSinceInput, locked: p.locked };
+      const answer = {
+        secondsSinceInput: p.secondsSinceInput,
+        locked: p.locked,
+      };
       for (const w of entry.presenceWaiters.splice(0)) w(answer);
     }
   }
@@ -330,16 +389,23 @@ export class PhoneController {
     if (this.maxTimer) clearTimeout(this.maxTimer);
     this.maxTimer = setTimeout(() => {
       this.maxTimer = null;
-      if (this.machine.sessionId === sid) this.dispatch({ type: "max_duration" });
+      if (this.machine.sessionId === sid)
+        this.dispatch({ type: "max_duration" });
     }, MAX_RECORDING_MS);
     this.recChain = this.recChain.then(async () => {
       if (s.cancelled || s.ended) return;
       try {
-        await this.deps.recorder.start((block) => void entry.streamer.addBlock(s, block));
+        await this.deps.recorder.start(
+          (block) => void entry.streamer.addBlock(s, block),
+        );
       } catch (e) {
         if (this.machine.sessionId !== sid) return;
         if (e instanceof MicDeniedError) this.dispatch({ type: "mic_denied" });
-        else this.dispatch({ type: "mic_error", detail: e instanceof MicError ? e.detail : "Error" });
+        else
+          this.dispatch({
+            type: "mic_error",
+            detail: e instanceof MicError ? e.detail : "Error",
+          });
       }
     });
   }
@@ -398,7 +464,9 @@ export class PhoneController {
 
   /** Keep at most a few failed recordings in memory (up to 9.6 MB each). */
   private trimFailed(max = 3): void {
-    const failed = [...this.sessions.values()].filter((s) => s.failed && s.sid !== this.machine.sessionId).sort((a, b) => a.startedAt - b.startedAt);
+    const failed = [...this.sessions.values()]
+      .filter((s) => s.failed && s.sid !== this.machine.sessionId)
+      .sort((a, b) => a.startedAt - b.startedAt);
     while (failed.length > max) {
       const s = failed.shift()!;
       s.blocks = [];
@@ -484,7 +552,11 @@ export class PhoneController {
     void this.deps.storage.putSettings(this.settings).catch(() => undefined);
     const link = roomId ? this.rooms.get(roomId)?.link : undefined;
     this.noConnection = false;
-    this.dispatch({ type: "retarget", peerOnline: !!link?.peerOnline, connected: !!link?.connected });
+    this.dispatch({
+      type: "retarget",
+      peerOnline: !!link?.peerOnline,
+      connected: !!link?.connected,
+    });
     this.watchConnection();
   }
 
@@ -504,7 +576,9 @@ export class PhoneController {
     if (this.rooms.size < 2 || this.choosing) return;
     this.choosing = true;
     try {
-      await Promise.all([...this.rooms.values()].map((r) => r.link.whenSettled(3000)));
+      await Promise.all(
+        [...this.rooms.values()].map((r) => r.link.whenSettled(3000)),
+      );
       const entries = [...this.rooms.values()];
       const candidates: Candidate[] = entries.map((r) => ({
         roomId: r.record.roomId,
@@ -516,12 +590,18 @@ export class PhoneController {
         await Promise.all(
           entries
             .filter((r) => r.link.connected && r.link.peerOnline)
-            .map(async (r) => answers.set(r.record.roomId, await this.askPresence(r))),
+            .map(async (r) =>
+              answers.set(r.record.roomId, await this.askPresence(r)),
+            ),
         );
       }
       const choice = chooseTarget(candidates, answers);
       const phase = this.machine.phase;
-      const busy = phase === "rec" || phase === "cancel" || phase === "send" || phase === "offline";
+      const busy =
+        phase === "rec" ||
+        phase === "cancel" ||
+        phase === "send" ||
+        phase === "offline";
       if (choice && choice !== this.target && !busy) this.setTarget(choice);
     } finally {
       this.choosing = false;
@@ -547,21 +627,32 @@ export class PhoneController {
     const name = deviceName.trim() || this.deps.platform.device;
     this.pairing = { state: "joining", computer: p.n };
     this.changed();
-    const device = this.device ?? (await this.deps.storage.loadOrCreateDeviceKeys());
+    const device =
+      this.device ?? (await this.deps.storage.loadOrCreateDeviceKeys());
     this.device = device;
     let h;
     try {
       h = await joinRoom(this.WS, p, device);
     } catch (e) {
       const kind = e instanceof JoinError ? e.kind : "error";
-      this.pairing = { state: "error", kind, computer: p.n, detail: e instanceof JoinError ? e.detail : String(e) };
+      this.pairing = {
+        state: "error",
+        kind,
+        computer: p.n,
+        detail: e instanceof JoinError ? e.detail : String(e),
+      };
       this.changed();
       return false;
     }
     const owner = h.members.find((m) => m.role === "owner");
     if (!owner) {
       h.ws.close(1000, "bye");
-      this.pairing = { state: "error", kind: "error", computer: p.n, detail: "no_owner" };
+      this.pairing = {
+        state: "error",
+        kind: "error",
+        computer: p.n,
+        detail: "no_owner",
+      };
       this.changed();
       return false;
     }
@@ -580,7 +671,10 @@ export class PhoneController {
       old.link.stop();
       this.rooms.delete(roomId);
     }
-    await this.deps.storage.resetCounters([counterKey(device.deviceId, computerId), counterKey(computerId, device.deviceId)]);
+    await this.deps.storage.resetCounters([
+      counterKey(device.deviceId, computerId),
+      counterKey(computerId, device.deviceId),
+    ]);
     const now = this.now();
     const record: RoomRecord = {
       roomId,
@@ -597,7 +691,11 @@ export class PhoneController {
     const entry = this.addRoom(record);
     entry.link.adopt(h);
     // Step 7: the phone's name, encrypted with the pair key.
-    await entry.link.send({ type: "device_info", name, platform: platformTag(this.deps.platform) });
+    await entry.link.send({
+      type: "device_info",
+      name,
+      platform: platformTag(this.deps.platform),
+    });
     this.settings = { ...this.settings, deviceName: name };
     this.pairing = { state: "idle" };
     this.setTarget(roomId);
@@ -616,8 +714,18 @@ export class PhoneController {
     const entry = this.rooms.get(roomId);
     if (!entry) return;
     let ok = entry.link.connected ? await entry.link.leave() : false;
-    if (!ok) ok = await leaveOnce(this.WS, entry.record.relayUrl, roomId, this.device!);
-    if (!ok) await this.deps.storage.addPendingLeave({ roomId, relayUrl: entry.record.relayUrl });
+    if (!ok)
+      ok = await leaveOnce(
+        this.WS,
+        entry.record.relayUrl,
+        roomId,
+        this.device!,
+      );
+    if (!ok)
+      await this.deps.storage.addPendingLeave({
+        roomId,
+        relayUrl: entry.record.relayUrl,
+      });
     await this.dropRoom(roomId, false);
   }
 
@@ -635,13 +743,25 @@ export class PhoneController {
       this.clearResultTimer(s.sid);
     }
     await this.deps.storage.deleteRoom(roomId);
-    if (notify) this.notices = [...this.notices, { id: ++this.noticeId, kind: "removed", computer: entry.record.computerName }];
+    if (notify)
+      this.notices = [
+        ...this.notices,
+        {
+          id: ++this.noticeId,
+          kind: "removed",
+          computer: entry.record.computerName,
+        },
+      ];
     if (this.target === roomId) {
       if (this.machine.phase === "rec" || this.machine.phase === "cancel") {
         this.deps.recorder.abort();
         this.deps.wake.release();
       }
-      this.machine = initialMachine({ mode: this.settings.mode, peerOnline: false, connected: false });
+      this.machine = initialMachine({
+        mode: this.settings.mode,
+        peerOnline: false,
+        connected: false,
+      });
       this.setTarget(this.lastUsed());
     }
     this.changed();
@@ -668,6 +788,8 @@ export class PhoneController {
 
   /** Seconds recorded so far (for the clock). */
   recordedMs(): number {
-    return this.machine.recStartedAt === null ? 0 : this.now() - this.machine.recStartedAt;
+    return this.machine.recStartedAt === null
+      ? 0
+      : this.now() - this.machine.recStartedAt;
   }
 }

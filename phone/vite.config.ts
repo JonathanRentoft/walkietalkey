@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { pwa } from "./pwa";
 
-const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
+const pkg = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 // Every URL in the build is relative (base "./"), so the same files run at any origin and path,
 // including the iOS shell's custom URL scheme (PHONE-03).

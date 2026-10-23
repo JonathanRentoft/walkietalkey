@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { randomBytes } from "@walkietalkey/protocol";
-import { authAs, Client, createRoom, frameFrom, inRoom, joinPhone, paced, peerStatus, sleep, writesIn } from "./helpers.ts";
+import {
+  authAs,
+  Client,
+  createRoom,
+  frameFrom,
+  inRoom,
+  joinPhone,
+  paced,
+  peerStatus,
+  sleep,
+  writesIn,
+} from "./helpers.ts";
 
 const DAY = 86_400_000;
 
@@ -8,11 +19,37 @@ async function dictation(sender: Uint8Array, recipient: Uint8Array) {
   const sessionId = randomBytes(16);
   const frames: Uint8Array[] = [];
   let c = 1n;
-  frames.push(await frameFrom(sender, recipient, { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" }, c++));
+  frames.push(
+    await frameFrom(
+      sender,
+      recipient,
+      { type: "audio_start", sessionId, sampleRate: 16000, codec: "pcm16" },
+      c++,
+    ),
+  );
   for (let i = 0; i < 75; i++) {
-    frames.push(await frameFrom(sender, recipient, { type: "audio_chunk", sessionId, firstIndex: i, pcm: randomBytes(6400) }, c++));
+    frames.push(
+      await frameFrom(
+        sender,
+        recipient,
+        {
+          type: "audio_chunk",
+          sessionId,
+          firstIndex: i,
+          pcm: randomBytes(6400),
+        },
+        c++,
+      ),
+    );
   }
-  frames.push(await frameFrom(sender, recipient, { type: "audio_end", sessionId, chunks: 75, durationMs: 15000 }, c++));
+  frames.push(
+    await frameFrom(
+      sender,
+      recipient,
+      { type: "audio_end", sessionId, chunks: 75, durationMs: 15000 },
+      c++,
+    ),
+  );
   return { frames, sessionId };
 }
 
@@ -31,10 +68,20 @@ describe("storage writes per dictation (spec 8.3, 15.1)", () => {
     await inRoom(owner.roomB64, (r) => r.markAliveForTest(owner.id));
     const before = await writesIn(owner.roomB64);
     const phone = await authAs(owner.roomB64, owner.roomId, p.phone);
-    const { frames, sessionId } = await dictation(p.phone.deviceId, owner.keys.deviceId);
+    const { frames, sessionId } = await dictation(
+      p.phone.deviceId,
+      owner.keys.deviceId,
+    );
     await paced(phone.client, frames);
     for (let i = 0; i < frames.length; i++) await ownerClient.binary();
-    ownerClient.sendBinary(await frameFrom(owner.keys.deviceId, p.phone.deviceId, { type: "result", sessionId, ok: true }, 1n));
+    ownerClient.sendBinary(
+      await frameFrom(
+        owner.keys.deviceId,
+        p.phone.deviceId,
+        { type: "result", sessionId, ok: true },
+        1n,
+      ),
+    );
     await phone.client.binary();
     const written = (await writesIn(owner.roomB64)) - before;
     expect(written).toBeLessThanOrEqual(1);
@@ -85,11 +132,14 @@ describe("socket attachments (RELAY-01)", () => {
     const pending = await Client.open(owner.roomB64, "join");
     await pending.control("challenge");
     const sizes = await inRoom(owner.roomB64, (r, st) => {
-      const real = st.getWebSockets().map((ws) => JSON.stringify(ws.deserializeAttachment()).length);
+      const real = st
+        .getWebSockets()
+        .map((ws) => JSON.stringify(ws.deserializeAttachment()).length);
       return { real, worst: r.worstCaseAttachmentSize() };
     });
     expect(sizes.real.length).toBe(3);
-    for (const n of [...sizes.real, sizes.worst]) expect(n).toBeLessThanOrEqual(2048);
+    for (const n of [...sizes.real, sizes.worst])
+      expect(n).toBeLessThanOrEqual(2048);
     expect(sizes.worst).toBeLessThan(400);
   });
 });

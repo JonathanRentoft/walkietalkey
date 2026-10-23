@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { COUNTER_BLOCK, MemoryCounterStore, ReplayGuard, SendCounter, type CounterStore } from "../src/index.ts";
+import {
+  COUNTER_BLOCK,
+  MemoryCounterStore,
+  ReplayGuard,
+  SendCounter,
+  type CounterStore,
+} from "../src/index.ts";
 
 class RecordingStore extends MemoryCounterStore {
   log: string[] = [];
@@ -21,7 +27,8 @@ describe("send counters", () => {
     expect(store.log).toEqual([]);
     expect(await c.next()).toBe(1n);
     expect(store.log).toEqual(["reserve a>b 1000"]);
-    for (let i = 2; i <= COUNTER_BLOCK; i++) expect(await c.next()).toBe(BigInt(i));
+    for (let i = 2; i <= COUNTER_BLOCK; i++)
+      expect(await c.next()).toBe(BigInt(i));
     expect(store.log.length).toBe(1);
     expect(await c.next()).toBe(1001n);
     expect(store.log).toEqual(["reserve a>b 1000", "reserve a>b 2000"]);
@@ -49,9 +56,13 @@ describe("send counters", () => {
   it("are unique under concurrent use", async () => {
     const store = new MemoryCounterStore();
     const c = await SendCounter.open(store, "k", 10);
-    const values = await Promise.all(Array.from({ length: 95 }, () => c.next()));
+    const values = await Promise.all(
+      Array.from({ length: 95 }, () => c.next()),
+    );
     expect(new Set(values.map(String)).size).toBe(95);
-    expect(values.map(Number).sort((x, y) => x - y)).toEqual(Array.from({ length: 95 }, (_, i) => i + 1));
+    expect(values.map(Number).sort((x, y) => x - y)).toEqual(
+      Array.from({ length: 95 }, (_, i) => i + 1),
+    );
   });
 
   it("keep keys apart", async () => {

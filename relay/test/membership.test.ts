@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { authAs, Client, challengeOf, createRoom, frameFrom, inRoom, joinPhone, sleep } from "./helpers.ts";
+import {
+  authAs,
+  Client,
+  challengeOf,
+  createRoom,
+  frameFrom,
+  inRoom,
+  joinPhone,
+  sleep,
+} from "./helpers.ts";
 import { b64uEncode, signChallenge } from "@walkietalkey/protocol";
 
 describe("leave, revoke and delete_room (RELAY-06)", () => {
@@ -15,7 +24,12 @@ describe("leave, revoke and delete_room (RELAY-06)", () => {
 
     const c = await Client.open(owner.roomB64, "auth");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(p.phone.signing.privateKey, "wt-auth-v1", owner.roomId, ch);
+    const sig = await signChallenge(
+      p.phone.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch,
+    );
     c.sendControl({ t: "auth", id: p.phoneId, sig: b64uEncode(sig) });
     expect((await c.closed()).code).toBe(4401);
   });
@@ -51,7 +65,12 @@ describe("leave, revoke and delete_room (RELAY-06)", () => {
     expect(ack).toEqual({ t: "ack", op: "revoke", id: p.phoneId });
     const c = await Client.open(owner.roomB64, "auth");
     const ch = await challengeOf(c);
-    const sig = await signChallenge(p.phone.signing.privateKey, "wt-auth-v1", owner.roomId, ch);
+    const sig = await signChallenge(
+      p.phone.signing.privateKey,
+      "wt-auth-v1",
+      owner.roomId,
+      ch,
+    );
     c.sendControl({ t: "auth", id: p.phoneId, sig: b64uEncode(sig) });
     expect((await c.closed()).code).toBe(4401);
   });
@@ -61,7 +80,12 @@ describe("leave, revoke and delete_room (RELAY-06)", () => {
     const p = await joinPhone(owner, ownerClient);
     p.client.close();
     await sleep(50);
-    const f = await frameFrom(owner.keys.deviceId, p.phone.deviceId, { type: "result", sessionId: new Uint8Array(16), ok: true }, 1n);
+    const f = await frameFrom(
+      owner.keys.deviceId,
+      p.phone.deviceId,
+      { type: "result", sessionId: new Uint8Array(16), ok: true },
+      1n,
+    );
     ownerClient.sendBinary(f);
     await sleep(50);
     ownerClient.sendControl({ t: "revoke", id: p.phoneId });
@@ -88,7 +112,15 @@ describe("leave, revoke and delete_room (RELAY-06)", () => {
     expect((await ownerClient.closed()).code).toBe(1000);
     const again = await Client.open(owner.roomB64, "auth");
     expect((await again.closed()).code).toBe(4404);
-    const tables = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table'")].length);
+    const tables = await inRoom(
+      owner.roomB64,
+      (_r, st) =>
+        [
+          ...st.storage.sql.exec(
+            "SELECT name FROM sqlite_master WHERE type = 'table'",
+          ),
+        ].length,
+    );
     expect(tables).toBe(0);
     // The same id can be created again by its owner.
     const re = await createRoom(owner);

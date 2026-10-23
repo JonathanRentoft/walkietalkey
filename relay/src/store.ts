@@ -53,13 +53,18 @@ export class RoomStore {
     return rows;
   }
 
-  one<T extends Row = Row>(query: string, ...bindings: unknown[]): T | undefined {
+  one<T extends Row = Row>(
+    query: string,
+    ...bindings: unknown[]
+  ): T | undefined {
     return this.exec<T>(query, ...bindings)[0];
   }
 
   /** True once `create` has succeeded. Reads sqlite_master only; writes nothing. */
   roomExists(): boolean {
-    const t = this.one("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'room'");
+    const t = this.one(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'room'",
+    );
     if (!t) return false;
     return this.one("SELECT owner_device_id FROM room LIMIT 1") !== undefined;
   }

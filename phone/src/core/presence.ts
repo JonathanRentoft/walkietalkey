@@ -18,13 +18,17 @@ export function needsPresence(candidates: readonly Candidate[]): boolean {
 }
 
 /** The unlocked computer with the most recent input; if none answers, the computer used last. */
-export function chooseTarget(candidates: readonly Candidate[], answers: ReadonlyMap<string, PresenceAnswer | null>): string | null {
+export function chooseTarget(
+  candidates: readonly Candidate[],
+  answers: ReadonlyMap<string, PresenceAnswer | null>,
+): string | null {
   if (candidates.length === 0) return null;
   let best: { roomId: string; seconds: number } | null = null;
   for (const c of candidates) {
     const a = answers.get(c.roomId);
     if (!a || a.locked) continue;
-    if (!best || a.secondsSinceInput < best.seconds) best = { roomId: c.roomId, seconds: a.secondsSinceInput };
+    if (!best || a.secondsSinceInput < best.seconds)
+      best = { roomId: c.roomId, seconds: a.secondsSinceInput };
   }
   if (best) return best.roomId;
   let last = candidates[0]!;

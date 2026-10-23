@@ -1,5 +1,11 @@
 import { b64uDecode, b64uEncode, utf8Decode, utf8Encode } from "./bytes.ts";
-import { MAX_COMPUTER_NAME_BYTES, ROOM_ID_LEN, SECRET_LEN, type ComputerOs, type Intent } from "./constants.ts";
+import {
+  MAX_COMPUTER_NAME_BYTES,
+  ROOM_ID_LEN,
+  SECRET_LEN,
+  type ComputerOs,
+  type Intent,
+} from "./constants.ts";
 import { ProtocolError } from "./errors.ts";
 import { assertSpki } from "./keys.ts";
 
@@ -38,18 +44,31 @@ export function assertRelayUrl(url: string, policy: UrlPolicy = {}): void {
     throw new ProtocolError("bad_relay_url", "not a URL");
   }
   if (parsed.protocol === "wss:") return;
-  if (parsed.protocol === "ws:" && policy.allowInsecureLocalhost && LOOPBACK.has(parsed.hostname)) return;
+  if (
+    parsed.protocol === "ws:" &&
+    policy.allowInsecureLocalhost &&
+    LOOPBACK.has(parsed.hostname)
+  )
+    return;
   throw new ProtocolError("bad_relay_url", "the relay must use wss://");
 }
 
 /** `<relayUrl>/v1/rooms/<roomId>/ws?intent=<intent>` (spec 8.2; intent is our extension). */
-export function roomSocketUrl(relayUrl: string, roomId: Uint8Array, intent: Intent): string {
-  if (roomId.length !== ROOM_ID_LEN) throw new ProtocolError("bad_length", "roomId must be 16 bytes");
+export function roomSocketUrl(
+  relayUrl: string,
+  roomId: Uint8Array,
+  intent: Intent,
+): string {
+  if (roomId.length !== ROOM_ID_LEN)
+    throw new ProtocolError("bad_length", "roomId must be 16 bytes");
   return `${relayUrl.replace(/\/+$/, "")}/v1/rooms/${b64uEncode(roomId)}/ws?intent=${intent}`;
 }
 
 /** `<phoneAppUrl>/p#<base64url(UTF-8 JSON)>`, JSON keys exactly v, r, a, s, e, u, n, o. */
-export function encodePairingUrl(phoneAppUrl: string, p: PairingPayload): string {
+export function encodePairingUrl(
+  phoneAppUrl: string,
+  p: PairingPayload,
+): string {
   validate(p, { allowInsecureLocalhost: true });
   const json = JSON.stringify({
     v: 1,
@@ -70,9 +89,12 @@ function bad(msg: string): never {
 
 function validate(p: PairingPayload, policy: UrlPolicy): void {
   if (p.v !== 1) bad("unsupported version");
-  if (!(p.r instanceof Uint8Array) || p.r.length !== ROOM_ID_LEN) bad("r must be 16 bytes");
-  if (!(p.a instanceof Uint8Array) || p.a.length !== SECRET_LEN) bad("a must be 32 bytes");
-  if (!(p.s instanceof Uint8Array) || p.s.length !== SECRET_LEN) bad("s must be 32 bytes");
+  if (!(p.r instanceof Uint8Array) || p.r.length !== ROOM_ID_LEN)
+    bad("r must be 16 bytes");
+  if (!(p.a instanceof Uint8Array) || p.a.length !== SECRET_LEN)
+    bad("a must be 32 bytes");
+  if (!(p.s instanceof Uint8Array) || p.s.length !== SECRET_LEN)
+    bad("s must be 32 bytes");
   try {
     assertSpki(p.e);
   } catch {
@@ -84,7 +106,11 @@ function validate(p: PairingPayload, policy: UrlPolicy): void {
   } catch {
     bad("u must be a wss:// relay URL");
   }
-  if (typeof p.n !== "string" || utf8Encode(p.n).length > MAX_COMPUTER_NAME_BYTES) bad("n must be a short string");
+  if (
+    typeof p.n !== "string" ||
+    utf8Encode(p.n).length > MAX_COMPUTER_NAME_BYTES
+  )
+    bad("n must be a short string");
   if (p.o !== "mac" && p.o !== "win") bad("o must be mac or win");
 }
 
@@ -99,14 +125,18 @@ function bytesField(o: Record<string, unknown>, key: string): Uint8Array {
 }
 
 /** Decodes only the fragment part (after `#`). */
-export function decodePairingFragment(fragment: string, policy: UrlPolicy = {}): PairingPayload {
+export function decodePairingFragment(
+  fragment: string,
+  policy: UrlPolicy = {},
+): PairingPayload {
   let o: unknown;
   try {
     o = JSON.parse(utf8Decode(b64uDecode(fragment)));
   } catch {
     bad("fragment is not base64url JSON");
   }
-  if (typeof o !== "object" || o === null || Array.isArray(o)) bad("not a JSON object");
+  if (typeof o !== "object" || o === null || Array.isArray(o))
+    bad("not a JSON object");
   const rec = o as Record<string, unknown>;
   const p = {
     v: rec.v,
@@ -123,7 +153,10 @@ export function decodePairingFragment(fragment: string, policy: UrlPolicy = {}):
 }
 
 /** Decodes a pairing URL (any origin and path; the payload is after `#`). */
-export function decodePairingUrl(url: string, policy: UrlPolicy = {}): PairingPayload {
+export function decodePairingUrl(
+  url: string,
+  policy: UrlPolicy = {},
+): PairingPayload {
   const hash = url.indexOf("#");
   if (hash < 0) bad("no fragment");
   return decodePairingFragment(url.slice(hash + 1), policy);

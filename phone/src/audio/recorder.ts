@@ -50,14 +50,19 @@ export class Recorder implements RecorderLike {
   prime(): void {
     if (!this.ctx) {
       const AC: AudioContextCtor =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext: AudioContextCtor }).webkitAudioContext;
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: AudioContextCtor })
+          .webkitAudioContext;
       this.ctx = new AC({ latencyHint: "interactive" });
     }
-    if (this.ctx.state !== "running") void this.ctx.resume().catch(() => undefined);
-    this.module ??= this.ctx.audioWorklet.addModule(workletUrl).catch((e: unknown) => {
-      this.module = null;
-      throw e;
-    });
+    if (this.ctx.state !== "running")
+      void this.ctx.resume().catch(() => undefined);
+    this.module ??= this.ctx.audioWorklet
+      .addModule(workletUrl)
+      .catch((e: unknown) => {
+        this.module = null;
+        throw e;
+      });
   }
 
   async start(onBlock: (block: Uint8Array) => void): Promise<void> {
@@ -67,11 +72,21 @@ export class Recorder implements RecorderLike {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
     } catch (e) {
       const name = e instanceof Error ? e.name : "Error";
-      if (name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError") throw new MicDeniedError();
+      if (
+        name === "NotAllowedError" ||
+        name === "SecurityError" ||
+        name === "PermissionDeniedError"
+      )
+        throw new MicDeniedError();
       throw new MicError(name);
     }
     if (gen !== this.generation) {
@@ -93,7 +108,11 @@ export class Recorder implements RecorderLike {
     this.stream = stream;
     this.pipeline = new PcmPipeline(ctx.sampleRate, onBlock);
     this.source = ctx.createMediaStreamSource(stream);
-    this.node = new AudioWorkletNode(ctx, "wt-capture", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    this.node = new AudioWorkletNode(ctx, "wt-capture", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [1],
+    });
     this.node.port.onmessage = (e: MessageEvent) => {
       if (e.data instanceof Float32Array) this.pipeline?.push(e.data);
       else if (e.data === "flushed") this.flushed?.();

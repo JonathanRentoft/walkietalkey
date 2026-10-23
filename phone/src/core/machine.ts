@@ -78,7 +78,11 @@ export interface Transition {
   effects: Effect[];
 }
 
-export function initialMachine(opts: { mode: Mode; peerOnline: boolean; connected: boolean }): MachineState {
+export function initialMachine(opts: {
+  mode: Mode;
+  peerOnline: boolean;
+  connected: boolean;
+}): MachineState {
   return {
     phase: "idle",
     mode: opts.mode,
@@ -94,16 +98,34 @@ export function initialMachine(opts: { mode: Mode; peerOnline: boolean; connecte
 
 const RECORDING = new Set<Phase>(["rec", "cancel"]);
 const WAITING = new Set<Phase>(["send", "offline"]);
-const SETTLED = new Set<Phase>(["ready", "no_speech", "paused", "error", "mic_denied"]);
+const SETTLED = new Set<Phase>([
+  "ready",
+  "no_speech",
+  "paused",
+  "error",
+  "mic_denied",
+]);
 
 /** Waiting for the result: "offline" when the relay says the computer is away, else "send". */
 function waiting(s: MachineState): Phase {
   return s.connected && !s.peerOnline ? "offline" : "send";
 }
 
-function start(s: MachineState, e: { sessionId: string; at: number }, latched: boolean): Transition {
+function start(
+  s: MachineState,
+  e: { sessionId: string; at: number },
+  latched: boolean,
+): Transition {
   return {
-    state: { ...s, phase: "rec", sessionId: e.sessionId, recStartedAt: e.at, detail: null, latched, armed: false },
+    state: {
+      ...s,
+      phase: "rec",
+      sessionId: e.sessionId,
+      recStartedAt: e.at,
+      detail: null,
+      latched,
+      armed: false,
+    },
     effects: [
       { type: "start_capture", sessionId: e.sessionId },
       { type: "haptic", kind: "start" },
@@ -115,7 +137,13 @@ function start(s: MachineState, e: { sessionId: string; at: number }, latched: b
 function finish(s: MachineState): Transition {
   const sessionId = s.sessionId!;
   return {
-    state: { ...s, phase: waiting(s), recStartedAt: null, latched: false, armed: false },
+    state: {
+      ...s,
+      phase: waiting(s),
+      recStartedAt: null,
+      latched: false,
+      armed: false,
+    },
     effects: [
       { type: "finish_capture", sessionId },
       { type: "haptic", kind: "stop" },
@@ -127,7 +155,14 @@ function finish(s: MachineState): Transition {
 function cancel(s: MachineState): Transition {
   const sessionId = s.sessionId!;
   return {
-    state: { ...s, phase: "idle", sessionId: null, recStartedAt: null, latched: false, armed: false },
+    state: {
+      ...s,
+      phase: "idle",
+      sessionId: null,
+      recStartedAt: null,
+      latched: false,
+      armed: false,
+    },
     effects: [
       { type: "cancel_capture", sessionId },
       { type: "haptic", kind: "stop" },
@@ -142,7 +177,8 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
   switch (e.type) {
     case "down":
       // A latched recording's next tap arms the stop; it happens on release (or cancels, slid off).
-      if (RECORDING.has(s.phase)) return s.latched && !s.armed ? same({ ...s, armed: true }) : same(s);
+      if (RECORDING.has(s.phase))
+        return s.latched && !s.armed ? same({ ...s, armed: true }) : same(s);
       return start(s, e, s.mode === "toggle");
     case "shell_start":
       if (RECORDING.has(s.phase)) return same(s);
@@ -155,7 +191,8 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       return same(s);
     case "slide":
       if (s.latched && !s.armed) return same(s);
-      if (s.phase === "rec" && !e.inside) return same({ ...s, phase: "cancel" });
+      if (s.phase === "rec" && !e.inside)
+        return same({ ...s, phase: "cancel" });
       if (s.phase === "cancel" && e.inside) return same({ ...s, phase: "rec" });
       return same(s);
     case "cancel":
@@ -171,7 +208,14 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       const sessionId = s.sessionId!;
       const phase: Phase = e.type === "mic_denied" ? "mic_denied" : "error";
       return {
-        state: { ...s, phase, recStartedAt: null, latched: false, armed: false, detail: e.type === "mic_error" ? `mic:${e.detail}` : null },
+        state: {
+          ...s,
+          phase,
+          recStartedAt: null,
+          latched: false,
+          armed: false,
+          detail: e.type === "mic_error" ? `mic:${e.detail}` : null,
+        },
         effects: [
           { type: "cancel_capture", sessionId },
           { type: "wake_lock", on: false },
@@ -179,26 +223,39 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       };
     }
     case "result": {
-      if (e.sessionId !== s.sessionId || !(WAITING.has(s.phase) || s.phase === "failed")) return same(s);
+      if (
+        e.sessionId !== s.sessionId ||
+        !(WAITING.has(s.phase) || s.phase === "failed")
+      )
+        return same(s);
       if (e.ok) return same({ ...s, phase: "ready", detail: null });
-      if (e.reason === "no_speech") return same({ ...s, phase: "no_speech", detail: null });
-      if (e.reason === "paused") return same({ ...s, phase: "paused", detail: null });
+      if (e.reason === "no_speech")
+        return same({ ...s, phase: "no_speech", detail: null });
+      if (e.reason === "paused")
+        return same({ ...s, phase: "paused", detail: null });
       return same({ ...s, phase: "error", detail: e.reason ?? "error" });
     }
     case "peer": {
       const next = { ...s, peerOnline: e.online };
-      return same(WAITING.has(s.phase) ? { ...next, phase: waiting(next) } : next);
+      return same(
+        WAITING.has(s.phase) ? { ...next, phase: waiting(next) } : next,
+      );
     }
     case "connection": {
       const next = { ...s, connected: e.up };
-      return same(WAITING.has(s.phase) ? { ...next, phase: waiting(next) } : next);
+      return same(
+        WAITING.has(s.phase) ? { ...next, phase: waiting(next) } : next,
+      );
     }
     case "timeout":
       if (e.sessionId !== s.sessionId || !WAITING.has(s.phase)) return same(s);
       return same({ ...s, phase: "failed" });
     case "retry":
       if (s.phase !== "failed" || !s.sessionId) return same(s);
-      return { state: { ...s, phase: waiting(s) }, effects: [{ type: "retry", sessionId: s.sessionId }] };
+      return {
+        state: { ...s, phase: waiting(s) },
+        effects: [{ type: "retry", sessionId: s.sessionId }],
+      };
     case "relay_error":
       if (e.code !== "buffer_full" || !WAITING.has(s.phase)) return same(s);
       return same({ ...s, phase: "error", detail: e.code });
@@ -206,8 +263,17 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       return same({ ...s, mode: e.mode });
     case "retarget":
       if (RECORDING.has(s.phase)) return same(s);
-      return same({ ...s, phase: "idle", sessionId: null, detail: null, peerOnline: e.peerOnline, connected: e.connected });
+      return same({
+        ...s,
+        phase: "idle",
+        sessionId: null,
+        detail: null,
+        peerOnline: e.peerOnline,
+        connected: e.connected,
+      });
     case "foreground":
-      return same(SETTLED.has(s.phase) ? { ...s, phase: "idle", detail: null } : s);
+      return same(
+        SETTLED.has(s.phase) ? { ...s, phase: "idle", detail: null } : s,
+      );
   }
 }

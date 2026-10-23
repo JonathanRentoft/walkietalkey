@@ -1,19 +1,32 @@
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { randomBytes } from "@walkietalkey/protocol";
-import { addAdmission, Client, createRoom, frameFrom, inRoom, joinPhone, sleep, stub } from "./helpers.ts";
+import {
+  addAdmission,
+  Client,
+  createRoom,
+  frameFrom,
+  inRoom,
+  joinPhone,
+  sleep,
+  stub,
+} from "./helpers.ts";
 
 const DAY = 86_400_000;
 
 describe("housekeeping with one alarm (RELAY-12)", () => {
   it("sets a single alarm at the earliest pending expiry", async () => {
     const { owner, client } = await createRoom();
-    const afterCreate = await inRoom(owner.roomB64, (_r, st) => st.storage.getAlarm());
+    const afterCreate = await inRoom(owner.roomB64, (_r, st) =>
+      st.storage.getAlarm(),
+    );
     const today = Math.floor(Date.now() / DAY);
     // Owner expiry: 91 days after the day it was last seen.
     expect(afterCreate).toBe((today + 91) * DAY);
     await addAdmission(client);
-    const withAdmission = await inRoom(owner.roomB64, (_r, st) => st.storage.getAlarm());
+    const withAdmission = await inRoom(owner.roomB64, (_r, st) =>
+      st.storage.getAlarm(),
+    );
     expect(withAdmission).toBeLessThanOrEqual(Date.now() + 600_000);
     expect(withAdmission).toBeGreaterThan(Date.now() + 590_000);
   });
@@ -25,7 +38,14 @@ describe("housekeeping with one alarm (RELAY-12)", () => {
     client.close();
     await p.client.control("peer");
     const sessionId = randomBytes(16);
-    p.client.sendBinary(await frameFrom(p.phone.deviceId, owner.keys.deviceId, { type: "audio_cancel", sessionId }, 1n));
+    p.client.sendBinary(
+      await frameFrom(
+        p.phone.deviceId,
+        owner.keys.deviceId,
+        { type: "audio_cancel", sessionId },
+        1n,
+      ),
+    );
     await sleep(100);
     const before = await inRoom(owner.roomB64, (_r, st) => ({
       adm: [...st.storage.sql.exec("SELECT * FROM admissions")].length,
@@ -62,7 +82,11 @@ describe("housekeeping with one alarm (RELAY-12)", () => {
     expect(await runDurableObjectAlarm(stub(owner.roomB64))).toBe(true);
     const left = await client.control("member_left");
     expect(left.id).toBe(p.phoneId);
-    const devices = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT device_id FROM devices")].map((r) => r.device_id));
+    const devices = await inRoom(owner.roomB64, (_r, st) =>
+      [...st.storage.sql.exec("SELECT device_id FROM devices")].map(
+        (r) => r.device_id,
+      ),
+    );
     expect(devices).toEqual([owner.id]);
   });
 
@@ -77,7 +101,15 @@ describe("housekeeping with one alarm (RELAY-12)", () => {
       r.clockOffsetMs = 92 * DAY;
     });
     expect(await runDurableObjectAlarm(stub(owner.roomB64))).toBe(true);
-    const tables = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table'")].length);
+    const tables = await inRoom(
+      owner.roomB64,
+      (_r, st) =>
+        [
+          ...st.storage.sql.exec(
+            "SELECT name FROM sqlite_master WHERE type = 'table'",
+          ),
+        ].length,
+    );
     expect(tables).toBe(0);
     const again = await Client.open(owner.roomB64, "auth");
     expect((await again.closed()).code).toBe(4404);
@@ -91,7 +123,12 @@ describe("housekeeping with one alarm (RELAY-12)", () => {
     await inRoom(owner.roomB64, (r) => r.markAliveForTest(owner.id));
     expect(await runDurableObjectAlarm(stub(owner.roomB64))).toBe(true);
     expect(client.closeInfo).toBeNull();
-    const day = await inRoom(owner.roomB64, (_r, st) => [...st.storage.sql.exec("SELECT last_seen_day FROM devices")][0]!.last_seen_day);
+    const day = await inRoom(
+      owner.roomB64,
+      (_r, st) =>
+        [...st.storage.sql.exec("SELECT last_seen_day FROM devices")][0]!
+          .last_seen_day,
+    );
     expect(day).toBe(Math.floor((Date.now() + 92 * DAY) / DAY));
   });
 });

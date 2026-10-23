@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { PHONE_LABELS } from "@walkietalkey/ui";
-import { initialMachine, type MachineState, type Phase } from "../src/core/machine";
+import {
+  initialMachine,
+  type MachineState,
+  type Phase,
+} from "../src/core/machine";
 import { COUNTDOWN_FROM_MS, MAX_RECORDING_MS } from "../src/core/controller";
 import { countdownSeconds, viewState } from "../src/ui/viewState";
 import { T } from "../src/lib/strings";
 
-const m = (phase: Phase): MachineState => ({ ...initialMachine({ mode: "hold", peerOnline: true, connected: true }), phase });
+const m = (phase: Phase): MachineState => ({
+  ...initialMachine({ mode: "hold", peerOnline: true, connected: true }),
+  phase,
+});
 
 describe("main screen states (spec 7.3)", () => {
   it.each([
@@ -29,7 +36,9 @@ describe("main screen states (spec 7.3)", () => {
   });
 
   it("a refused microphone says so", () => {
-    expect(viewState(m("mic_denied"), false).labels.paused).toBe("WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.");
+    expect(viewState(m("mic_denied"), false).labels.paused).toBe(
+      "WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.",
+    );
   });
 
   it("a lost connection says Ingen forbindelse. Prøver igen.", () => {
@@ -46,7 +55,9 @@ describe("main screen states (spec 7.3)", () => {
     expect(viewState(latched, false).labels.rec).toBe("Tryk for at sende");
     expect(viewState(latched, false).latched).toBe(true);
     // During the stopping tap the release sends, as the label says.
-    expect(viewState({ ...latched, armed: true }, false).labels.rec).toBeUndefined();
+    expect(
+      viewState({ ...latched, armed: true }, false).labels.rec,
+    ).toBeUndefined();
     expect(viewState(m("rec"), false).latched).toBe(false);
   });
 
@@ -61,7 +72,9 @@ describe("main screen states (spec 7.3)", () => {
     expect(PHONE_LABELS.cancel).toBe("Slip for at annullere");
     expect(PHONE_LABELS.send).toBe("Sender til {computer}");
     expect(PHONE_LABELS.ready).toBe("Klar på {computer}");
-    expect(PHONE_LABELS.offline).toBe("{computer} er ikke online. Optagelsen venter i 10 minutter.");
+    expect(PHONE_LABELS.offline).toBe(
+      "{computer} er ikke online. Optagelsen venter i 10 minutter.",
+    );
     expect(PHONE_LABELS.failed).toBe("Nåede ikke frem til {computer}.");
     expect(PHONE_LABELS.paused).toBe("{computer} er sat på pause.");
     expect(PHONE_LABELS.error).toBe("Noget gik galt. Prøv igen.");
@@ -77,9 +90,17 @@ describe("main screen states (spec 7.3)", () => {
 
 describe("5 minute limit (PHONE-29)", () => {
   it("counts down from 4:45", () => {
-    expect(countdownSeconds(284_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBeNull();
-    expect(countdownSeconds(285_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(15);
-    expect(countdownSeconds(299_100, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(1);
-    expect(countdownSeconds(301_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(0);
+    expect(
+      countdownSeconds(284_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS),
+    ).toBeNull();
+    expect(countdownSeconds(285_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(
+      15,
+    );
+    expect(countdownSeconds(299_100, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(
+      1,
+    );
+    expect(countdownSeconds(301_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(
+      0,
+    );
   });
 });

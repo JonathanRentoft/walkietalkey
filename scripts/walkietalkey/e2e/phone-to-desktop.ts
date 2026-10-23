@@ -41,28 +41,62 @@ export function normalise(text: string): string[] {
 export function wer(reference: string, hypothesis: string): number {
   const r = normalise(reference);
   const h = normalise(hypothesis);
-  const d: number[][] = Array.from({ length: r.length + 1 }, (_, i) => [i, ...Array(h.length).fill(0)]);
+  const d: number[][] = Array.from({ length: r.length + 1 }, (_, i) => [
+    i,
+    ...Array(h.length).fill(0),
+  ]);
   for (let j = 1; j <= h.length; j++) d[0][j] = j;
   for (let i = 1; i <= r.length; i++)
     for (let j = 1; j <= h.length; j++)
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (r[i - 1] === h[j - 1] ? 0 : 1));
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + (r[i - 1] === h[j - 1] ? 0 : 1),
+      );
   return r.length === 0 ? 0 : d[r.length][h.length] / r.length;
 }
 
 async function main() {
   const repo = join(import.meta.dir, "..", "..", "..");
-  const appBin = arg("--app", join(repo, "src-tauri/target/debug/walkietalkey"));
-  const model = arg("--model", "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf");
-  const relay = arg("--relay", "wss://walkietalkey-relay.jonathan0912.workers.dev");
+  const appBin = arg(
+    "--app",
+    join(repo, "src-tauri/target/debug/walkietalkey"),
+  );
+  const model = arg(
+    "--model",
+    "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
+  );
+  const relay = arg(
+    "--relay",
+    "wss://walkietalkey-relay.jonathan0912.workers.dev",
+  );
   const phoneApp = arg("--phone-app", "https://walkietalkey-app.pages.dev");
   const wav = arg("--wav");
   const reference = readFileSync(arg("--reference"), "utf8").trim();
   const maxWer = Number(arg("--max-wer", "0.25"));
 
-  const desktop = spawn(appBin, ["--phone-receive", "--model", model, "--relay-url", relay, "--phone-app-url", phoneApp, "--count", "1", "--timeout-secs", "240"], {
-    stdio: ["ignore", "pipe", "inherit"],
-  });
-  let transcript: { text: string; wait_after_end_ms: number; audio_secs: number } | undefined;
+  const desktop = spawn(
+    appBin,
+    [
+      "--phone-receive",
+      "--model",
+      model,
+      "--relay-url",
+      relay,
+      "--phone-app-url",
+      phoneApp,
+      "--count",
+      "1",
+      "--timeout-secs",
+      "240",
+    ],
+    {
+      stdio: ["ignore", "pipe", "inherit"],
+    },
+  );
+  let transcript:
+    | { text: string; wait_after_end_ms: number; audio_secs: number }
+    | undefined;
   let phoneDone: { ok: boolean; reason?: string } | undefined;
   const started = Date.now();
 
@@ -77,9 +111,22 @@ async function main() {
       console.log(`[desktop] ${event.event}`);
       if (event.event === "transcript") transcript = event as never;
       if (event.event === "pairing") {
-        const phone = spawn("bun", [join(repo, "packages/protocol/scripts/scripted-phone.ts"), "stream", "--url", String(event.url), "--wav", wav, "--name", "E2E-telefon"], {
-          stdio: ["ignore", "pipe", "inherit"],
-        });
+        const phone = spawn(
+          "bun",
+          [
+            join(repo, "packages/protocol/scripts/scripted-phone.ts"),
+            "stream",
+            "--url",
+            String(event.url),
+            "--wav",
+            wav,
+            "--name",
+            "E2E-telefon",
+          ],
+          {
+            stdio: ["ignore", "pipe", "inherit"],
+          },
+        );
         createInterface({ input: phone.stdout! }).on("line", (l) => {
           try {
             const e = JSON.parse(l);
@@ -94,7 +141,9 @@ async function main() {
     });
   });
 
-  const desktopExit = new Promise<number>((resolve) => desktop.on("exit", (code) => resolve(code ?? 1)));
+  const desktopExit = new Promise<number>((resolve) =>
+    desktop.on("exit", (code) => resolve(code ?? 1)),
+  );
   await phoneFinished;
   const code = await desktopExit;
 
@@ -111,7 +160,11 @@ async function main() {
     total_ms: Date.now() - started,
   };
   console.log(JSON.stringify(summary, null, 2));
-  const pass = code === 0 && phoneDone?.ok === true && transcript !== undefined && score <= maxWer;
+  const pass =
+    code === 0 &&
+    phoneDone?.ok === true &&
+    transcript !== undefined &&
+    score <= maxWer;
   console.log(pass ? "PASS" : "FAIL");
   process.exit(pass ? 0 : 1);
 }

@@ -8,7 +8,12 @@ import {
   type DevicePayload,
 } from "@walkietalkey/protocol";
 import { Pacer, packBlocks, type Clock } from "../src/core/resend";
-import { SessionStreamer, newSession, type AudioSession, type StreamLink } from "../src/core/streamer";
+import {
+  SessionStreamer,
+  newSession,
+  type AudioSession,
+  type StreamLink,
+} from "../src/core/streamer";
 
 function fakeClock(): Clock & { t: number; sleeps: number[] } {
   const c = {
@@ -24,7 +29,9 @@ function fakeClock(): Clock & { t: number; sleeps: number[] } {
 }
 
 function blocks(n: number, last = BLOCK_BYTES): Uint8Array[] {
-  return Array.from({ length: n }, (_, i) => new Uint8Array(i === n - 1 ? last : BLOCK_BYTES).fill(i % 251));
+  return Array.from({ length: n }, (_, i) =>
+    new Uint8Array(i === n - 1 ? last : BLOCK_BYTES).fill(i % 251),
+  );
 }
 
 describe("resend packing (PHONE-32)", () => {
@@ -32,7 +39,11 @@ describe("resend packing (PHONE-32)", () => {
     const b = blocks(23, 1200);
     const frames = packBlocks(b);
     expect(frames.map((f) => f.firstIndex)).toEqual([0, 10, 20]);
-    expect(frames.map((f) => f.pcm.length)).toEqual([64000, 64000, 2 * 6400 + 1200]);
+    expect(frames.map((f) => f.pcm.length)).toEqual([
+      64000,
+      64000,
+      2 * 6400 + 1200,
+    ]);
     expect(frames[1]!.pcm[0]).toBe(10);
     expect(frames[2]!.pcm[2 * 6400]).toBe(22);
   });
@@ -40,13 +51,20 @@ describe("resend packing (PHONE-32)", () => {
   it("keeps every packed frame under the frame size limit", () => {
     const [f] = packBlocks(blocks(10));
     const sid = new Uint8Array(16);
-    const { bytes } = encodePayload({ type: "audio_chunk", sessionId: sid, firstIndex: 0, pcm: f!.pcm });
+    const { bytes } = encodePayload({
+      type: "audio_chunk",
+      sessionId: sid,
+      firstIndex: 0,
+      pcm: f!.pcm,
+    });
     expect(bytes.length).toBe(AUDIO_CHUNK_HEADER_LEN + 64000);
     expect(bytes.length).toBeLessThanOrEqual(MAX_PLAINTEXT_LEN);
   });
 
   it("can start from a later block", () => {
-    expect(packBlocks(blocks(15), 12).map((f) => [f.firstIndex, f.pcm.length])).toEqual([[12, 3 * 6400]]);
+    expect(
+      packBlocks(blocks(15), 12).map((f) => [f.firstIndex, f.pcm.length]),
+    ).toEqual([[12, 3 * 6400]]);
   });
 });
 
@@ -60,7 +78,9 @@ describe("resend pacing (at most 25 frames per second, RELAY-11)", () => {
       times.push(clock.now());
     }
     for (const start of times) {
-      expect(times.filter((t) => t >= start && t < start + 1000).length).toBeLessThanOrEqual(25);
+      expect(
+        times.filter((t) => t >= start && t < start + 1000).length,
+      ).toBeLessThanOrEqual(25);
     }
     // And it does not dawdle: 80 frames in about 3.2 s.
     expect(times[79]!).toBeLessThanOrEqual(79 * 40 + 1);
@@ -94,7 +114,9 @@ class FakeLink implements StreamLink {
     this.connected = true;
   }
   types(conn?: number) {
-    return this.sent.filter((s) => conn === undefined || s.conn === conn).map((s) => s.p.type);
+    return this.sent
+      .filter((s) => conn === undefined || s.conn === conn)
+      .map((s) => s.p.type);
   }
 }
 
@@ -122,12 +144,27 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     await streamer.start(s);
     for (const b of blocks(4, 640)) await streamer.addBlock(s, b);
     await streamer.end(s);
-    expect(link.types()).toEqual(["audio_start", "audio_chunk", "audio_chunk", "audio_chunk", "audio_chunk", "audio_end"]);
+    expect(link.types()).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+    ]);
     const end = link.sent.at(-1)!.p;
-    expect(end).toMatchObject({ type: "audio_end", chunks: 4, durationMs: 620 });
+    expect(end).toMatchObject({
+      type: "audio_end",
+      chunks: 4,
+      durationMs: 620,
+    });
     const sid = (link.sent[0]!.p as { sessionId: Uint8Array }).sessionId;
     expect(b64uEncode(sid)).toBe(s.sid);
-    expect(link.sent.slice(1, 5).map((x) => (x.p as { firstIndex: number }).firstIndex)).toEqual([0, 1, 2, 3]);
+    expect(
+      link.sent
+        .slice(1, 5)
+        .map((x) => (x.p as { firstIndex: number }).firstIndex),
+    ).toEqual([0, 1, 2, 3]);
   });
 
   it("keeps blocks in memory while offline and resends the whole session after the reconnect", async () => {
@@ -142,8 +179,16 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     // Live again on the new connection.
     await streamer.addBlock(s, new Uint8Array(BLOCK_BYTES));
     await streamer.end(s);
-    expect(link.types(2)).toEqual(["audio_start", "audio_chunk", "audio_chunk", "audio_chunk", "audio_end"]);
-    expect(chunkIndices(link, 2)).toEqual(Array.from({ length: 16 }, (_, i) => i));
+    expect(link.types(2)).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+    ]);
+    expect(chunkIndices(link, 2)).toEqual(
+      Array.from({ length: 16 }, (_, i) => i),
+    );
     const end = link.sent.at(-1)!.p;
     expect(end).toMatchObject({ chunks: 16 });
   });
@@ -157,10 +202,19 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     link.reconnect();
     await streamer.resendOpen([s]);
     const resent = link.sent.filter((x) => x.conn === 2);
-    expect(resent.map((x) => x.p.type)).toEqual(["audio_start", ...Array(10).fill("audio_chunk"), "audio_end"]);
-    expect(chunkIndices(link, 2)).toEqual(Array.from({ length: 95 }, (_, i) => i));
+    expect(resent.map((x) => x.p.type)).toEqual([
+      "audio_start",
+      ...Array(10).fill("audio_chunk"),
+      "audio_end",
+    ]);
+    expect(chunkIndices(link, 2)).toEqual(
+      Array.from({ length: 95 }, (_, i) => i),
+    );
     const times = resent.map((x) => x.t);
-    for (const t0 of times) expect(times.filter((t) => t >= t0 && t < t0 + 1000).length).toBeLessThanOrEqual(25);
+    for (const t0 of times)
+      expect(
+        times.filter((t) => t >= t0 && t < t0 + 1000).length,
+      ).toBeLessThanOrEqual(25);
     expect(clock.now()).toBeGreaterThan(0);
   });
 
@@ -192,8 +246,14 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     await streamer.retry(s);
     expect(s.failed).toBe(false);
     expect(link.types(1)).toEqual([
-      "audio_start", "audio_chunk", "audio_chunk", "audio_chunk", "audio_end",
-      "audio_start", "audio_chunk", "audio_end",
+      "audio_start",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_chunk",
+      "audio_end",
+      "audio_start",
+      "audio_chunk",
+      "audio_end",
     ]);
   });
 
@@ -202,7 +262,11 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     await streamer.start(s);
     await streamer.addBlock(s, new Uint8Array(BLOCK_BYTES));
     await streamer.cancel(s);
-    expect(link.types()).toEqual(["audio_start", "audio_chunk", "audio_cancel"]);
+    expect(link.types()).toEqual([
+      "audio_start",
+      "audio_chunk",
+      "audio_cancel",
+    ]);
     expect(s.blocks).toEqual([]);
     expect(s.cancelled).toBe(true);
   });
@@ -217,6 +281,9 @@ describe("SessionStreamer (PHONE-31, PHONE-32)", () => {
     link.reconnect();
     await streamer.resendOpen([s]);
     expect(link.types(2)).toEqual(["audio_start", "audio_chunk", "audio_end"]);
-    expect(link.sent.at(-1)!.p).toMatchObject({ chunks: 2, durationMs: Math.round((3200 + 50) / 16) });
+    expect(link.sent.at(-1)!.p).toMatchObject({
+      chunks: 2,
+      durationMs: Math.round((3200 + 50) / 16),
+    });
   });
 });

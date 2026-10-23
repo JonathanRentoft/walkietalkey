@@ -36,13 +36,22 @@ export function SettingsScreen(props: {
               <div className="wt-list-main">
                 <b>{r.name}</b>
                 <span>
-                  <i className={"wt-dot" + (r.online ? " wt-dot--on" : "")} aria-hidden />
+                  <i
+                    className={"wt-dot" + (r.online ? " wt-dot--on" : "")}
+                    aria-hidden
+                  />
                   {r.online ? T.online : T.offline}
                 </span>
-                <span>{fill(T.phoneName, { computer: r.name, name: r.deviceName })}</span>
+                <span>
+                  {fill(T.phoneName, { computer: r.name, name: r.deviceName })}
+                </span>
               </div>
               {confirm === r.roomId ? (
-                <div className="wt-confirm" role="group" aria-label={fill(T.removeConfirm, { computer: r.name })}>
+                <div
+                  className="wt-confirm"
+                  role="group"
+                  aria-label={fill(T.removeConfirm, { computer: r.name })}
+                >
                   <p>{fill(T.removeConfirm, { computer: r.name })}</p>
                   <p>{fill(T.removeHint, { computer: r.name })}</p>
                   <div className="wt-confirm-actions">
@@ -59,13 +68,22 @@ export function SettingsScreen(props: {
                     >
                       {T.remove}
                     </button>
-                    <button type="button" className="wt-pill-btn" onClick={() => setConfirm(null)}>
+                    <button
+                      type="button"
+                      className="wt-pill-btn"
+                      onClick={() => setConfirm(null)}
+                    >
                       {T.cancel}
                     </button>
                   </div>
                 </div>
               ) : (
-                <button type="button" className="wt-pill-btn" onClick={() => setConfirm(r.roomId)} aria-label={`${T.remove} ${r.name}`}>
+                <button
+                  type="button"
+                  className="wt-pill-btn"
+                  onClick={() => setConfirm(r.roomId)}
+                  aria-label={`${T.remove} ${r.name}`}
+                >
                   {T.remove}
                 </button>
               )}
@@ -77,7 +95,11 @@ export function SettingsScreen(props: {
 
       <section aria-labelledby="wt-s-mode">
         <h2 id="wt-s-mode">{T.holdOrTap}</h2>
-        <div className="wt-choices" role="radiogroup" aria-labelledby="wt-s-mode">
+        <div
+          className="wt-choices"
+          role="radiogroup"
+          aria-labelledby="wt-s-mode"
+        >
           {(
             [
               ["hold", T.holdToTalk],
@@ -85,7 +107,12 @@ export function SettingsScreen(props: {
             ] as const
           ).map(([mode, label]) => (
             <label key={mode} className="wt-choice">
-              <input type="radio" name="wt-mode" checked={snap.settings.mode === mode} onChange={() => props.onMode(mode)} />
+              <input
+                type="radio"
+                name="wt-mode"
+                checked={snap.settings.mode === mode}
+                onChange={() => props.onMode(mode)}
+              />
               <span>{label}</span>
             </label>
           ))}
@@ -95,7 +122,12 @@ export function SettingsScreen(props: {
       <section aria-labelledby="wt-s-haptics">
         <h2 id="wt-s-haptics">{T.haptics}</h2>
         <label className="wt-choice wt-choice--switch">
-          <input type="checkbox" role="switch" checked={snap.settings.haptics} onChange={(e) => props.onHaptics(e.target.checked)} />
+          <input
+            type="checkbox"
+            role="switch"
+            checked={snap.settings.haptics}
+            onChange={(e) => props.onHaptics(e.target.checked)}
+          />
           <span>{T.hapticsOn}</span>
         </label>
       </section>
@@ -106,16 +138,28 @@ export function SettingsScreen(props: {
           <p key={l}>{l}</p>
         ))}
         <p>{T.credits}</p>
-        <p className="wt-muted">{fill(T.version, { version: __APP_VERSION__ })}</p>
+        <p className="wt-muted">
+          {fill(T.version, { version: __APP_VERSION__ })}
+        </p>
       </section>
     </main>
   );
 }
 
-function Sheet(props: { title: string; onClose: () => void; children: ReactNode }) {
+function Sheet(props: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   return (
     <div className="wt-sheet-backdrop" onClick={props.onClose}>
-      <div className="wt-sheet" role="dialog" aria-modal="true" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="wt-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={props.title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>{props.title}</h2>
         {props.children}
       </div>
@@ -141,12 +185,17 @@ export function PickerSheet(props: {
               type="button"
               role="option"
               aria-selected={r.roomId === props.target}
-              className={"wt-pick" + (r.roomId === props.target ? " wt-pick--on" : "")}
+              className={
+                "wt-pick" + (r.roomId === props.target ? " wt-pick--on" : "")
+              }
               onClick={() => props.onPick(r.roomId)}
             >
               <b>{r.name}</b>
               <span>
-                <i className={"wt-dot" + (r.online ? " wt-dot--on" : "")} aria-hidden />
+                <i
+                  className={"wt-dot" + (r.online ? " wt-dot--on" : "")}
+                  aria-hidden
+                />
                 {r.online ? T.online : T.offline}
               </span>
             </button>
@@ -157,7 +206,11 @@ export function PickerSheet(props: {
         <button type="button" className="wt-pill-btn" onClick={props.onPair}>
           {T.pairTitle}
         </button>
-        <button type="button" className="wt-pill-btn" onClick={props.onSettings}>
+        <button
+          type="button"
+          className="wt-pill-btn"
+          onClick={props.onSettings}
+        >
           {T.settings}
         </button>
       </div>
@@ -166,7 +219,10 @@ export function PickerSheet(props: {
 }
 
 /** PHONE-25: what went wrong. */
-export function DetailsSheet(props: { detail: string | null; onClose: () => void }) {
+export function DetailsSheet(props: {
+  detail: string | null;
+  onClose: () => void;
+}) {
   const code = props.detail ?? "unknown";
   const key = code.startsWith("mic:") ? "mic" : code;
   return (
@@ -183,13 +239,28 @@ export function DetailsSheet(props: { detail: string | null; onClose: () => void
 }
 
 /** PHONE-14: the pairing was removed on the other side. */
-export function NoticeDialog(props: { notice: Notice; onPair: () => void; onClose: () => void }) {
+export function NoticeDialog(props: {
+  notice: Notice;
+  onPair: () => void;
+  onClose: () => void;
+}) {
   return (
     <div className="wt-sheet-backdrop">
-      <div className="wt-sheet" role="alertdialog" aria-modal="true" aria-label={fill(T.removed, { computer: props.notice.computer })}>
-        <p className="wt-sheet-lead">{fill(T.removed, { computer: props.notice.computer })}</p>
+      <div
+        className="wt-sheet"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={fill(T.removed, { computer: props.notice.computer })}
+      >
+        <p className="wt-sheet-lead">
+          {fill(T.removed, { computer: props.notice.computer })}
+        </p>
         <div className="wt-sheet-actions">
-          <button type="button" className="wt-pill-btn wt-pill-btn--ink" onClick={props.onPair}>
+          <button
+            type="button"
+            className="wt-pill-btn wt-pill-btn--ink"
+            onClick={props.onPair}
+          >
             {T.pairTitle}
           </button>
           <button type="button" className="wt-pill-btn" onClick={props.onClose}>

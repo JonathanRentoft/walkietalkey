@@ -23,8 +23,12 @@ describe("device keys", () => {
     expect(keys.agreement.privateKey.algorithm.name).toBe("ECDH");
     expect(keys.signingSpki.length).toBe(SPKI_LEN);
     expect(keys.agreementSpki.length).toBe(SPKI_LEN);
-    expect(bytesEqual(keys.signingSpki.subarray(0, SPKI_PREFIX.length), SPKI_PREFIX)).toBe(true);
-    expect(bytesEqual(await exportSpki(keys.signing.publicKey), keys.signingSpki)).toBe(true);
+    expect(
+      bytesEqual(keys.signingSpki.subarray(0, SPKI_PREFIX.length), SPKI_PREFIX),
+    ).toBe(true);
+    expect(
+      bytesEqual(await exportSpki(keys.signing.publicKey), keys.signingSpki),
+    ).toBe(true);
   });
 
   it("derives the device id as the first 16 bytes of SHA-256(signing SPKI)", async () => {
@@ -32,7 +36,9 @@ describe("device keys", () => {
     const digest = await sha256(keys.signingSpki);
     expect(keys.deviceId.length).toBe(DEVICE_ID_LEN);
     expect(bytesEqual(keys.deviceId, digest.subarray(0, 16))).toBe(true);
-    expect(bytesEqual(await deviceIdFromSpki(keys.signingSpki), keys.deviceId)).toBe(true);
+    expect(
+      bytesEqual(await deviceIdFromSpki(keys.signingSpki), keys.deviceId),
+    ).toBe(true);
   });
 
   it("imports public keys from SPKI and rejects malformed ones", async () => {
@@ -49,7 +55,11 @@ describe("device keys", () => {
     expect(() => assertSpki(wrongPrefix)).toThrow(ProtocolError);
     const offCurve = keys.signingSpki.slice();
     offCurve[90]! ^= 1;
-    await expect(importSigningPublicKey(offCurve)).rejects.toThrow(ProtocolError);
-    await expect(importAgreementPublicKey(offCurve)).rejects.toThrow(ProtocolError);
+    await expect(importSigningPublicKey(offCurve)).rejects.toThrow(
+      ProtocolError,
+    );
+    await expect(importAgreementPublicKey(offCurve)).rejects.toThrow(
+      ProtocolError,
+    );
   });
 });

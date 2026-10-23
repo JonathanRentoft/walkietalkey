@@ -31,7 +31,8 @@ const ALLOWED = new Set([
 
 /** Packages outside the list, with why they are acceptable. */
 const EXCEPTIONS: Record<string, string> = {
-  "@img/sharp-libvips-darwin-arm64": "LGPL libvips binary used by Astro's image build step; never shipped in the site or the apps",
+  "@img/sharp-libvips-darwin-arm64":
+    "LGPL libvips binary used by Astro's image build step; never shipped in the site or the apps",
   "@img/sharp-libvips-darwin-x64": "same, Intel macOS",
   "@img/sharp-libvips-linux-x64": "same, Linux CI",
   "@img/sharp-libvips-linuxmusl-x64": "same, Linux CI",
@@ -42,7 +43,10 @@ const EXCEPTIONS: Record<string, string> = {
 function licenceOf(pkg: Record<string, unknown>): string | undefined {
   const lic = pkg.license ?? pkg.licenses;
   if (typeof lic === "string") return lic;
-  if (Array.isArray(lic)) return lic.map((l) => (typeof l === "string" ? l : (l as { type?: string }).type)).join(" OR ");
+  if (Array.isArray(lic))
+    return lic
+      .map((l) => (typeof l === "string" ? l : (l as { type?: string }).type))
+      .join(" OR ");
   if (lic && typeof lic === "object") return (lic as { type?: string }).type;
   return undefined;
 }
@@ -51,7 +55,9 @@ export function allowed(expression: string): boolean {
   const cleaned = expression.replace(/[()]/g, " ").trim();
   return cleaned
     .split(/\s+OR\s+/i)
-    .some((branch) => branch.split(/\s+AND\s+/i).every((id) => ALLOWED.has(id.trim())));
+    .some((branch) =>
+      branch.split(/\s+AND\s+/i).every((id) => ALLOWED.has(id.trim())),
+    );
 }
 
 function* packages(dir: string): Generator<string> {
@@ -69,7 +75,14 @@ function* packages(dir: string): Generator<string> {
 }
 
 if (import.meta.main) {
-  const roots = ["node_modules", "phone/node_modules", "site/node_modules", "relay/node_modules", "packages/ui/node_modules", "packages/protocol/node_modules"];
+  const roots = [
+    "node_modules",
+    "phone/node_modules",
+    "site/node_modules",
+    "relay/node_modules",
+    "packages/ui/node_modules",
+    "packages/protocol/node_modules",
+  ];
   const failures: string[] = [];
   let checked = 0;
   for (const root of roots) {
@@ -79,11 +92,14 @@ if (import.meta.main) {
       checked++;
       const licence = licenceOf(pkg);
       if (pkg.name in EXCEPTIONS) continue;
-      if (!licence || !allowed(licence)) failures.push(`${pkg.name}@${pkg.version}: ${licence ?? "no licence"}`);
+      if (!licence || !allowed(licence))
+        failures.push(`${pkg.name}@${pkg.version}: ${licence ?? "no licence"}`);
     }
   }
   if (failures.length) {
-    console.error(`Licences not allowed (${failures.length}):\n  ${[...new Set(failures)].join("\n  ")}`);
+    console.error(
+      `Licences not allowed (${failures.length}):\n  ${[...new Set(failures)].join("\n  ")}`,
+    );
     process.exit(1);
   }
   console.log(`licences ok (${checked} packages)`);

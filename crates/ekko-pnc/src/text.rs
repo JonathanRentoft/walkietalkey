@@ -105,7 +105,10 @@ mod tests {
         // U+001C..U+001F are whitespace for Python but not for Rust.
         assert_eq!(py_split("a\u{1c}b\u{1f}c"), vec!["a", "b", "c"]);
         // NBSP, ideographic space, line separator.
-        assert_eq!(py_split("a\u{a0}b\u{3000}c\u{2028}d"), vec!["a", "b", "c", "d"]);
+        assert_eq!(
+            py_split("a\u{a0}b\u{3000}c\u{2028}d"),
+            vec!["a", "b", "c", "d"]
+        );
         // Zero-width space is not whitespace in Python.
         assert_eq!(py_split("a\u{200b}b"), vec!["a\u{200b}b"]);
         assert!(py_split("").is_empty());
@@ -164,8 +167,14 @@ mod tests {
             stabilize_sentence_case(words("hej. med dig? ja! nej")),
             words("Hej. Med dig? Ja! Nej")
         );
-        assert_eq!(stabilize_sentence_case(words("f.eks. noget")), words("F.eks. noget"));
-        assert_eq!(stabilize_sentence_case(words("slut. iPhone")), words("Slut. iPhone"));
+        assert_eq!(
+            stabilize_sentence_case(words("f.eks. noget")),
+            words("F.eks. noget")
+        );
+        assert_eq!(
+            stabilize_sentence_case(words("slut. iPhone")),
+            words("Slut. iPhone")
+        );
         assert!(stabilize_sentence_case(Vec::new()).is_empty());
     }
 }

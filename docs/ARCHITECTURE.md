@@ -19,17 +19,17 @@ The behaviour is specified in [SPEC.md](SPEC.md); the wire protocol in [PROTOCOL
 
 The desktop app is Handy with WalkieTalkey's modules added beside it (DESK-05). Handy's code calls in through a few hooks marked `WalkieTalkey`:
 
-| Hook in Handy's code | WalkieTalkey module | What |
-|---|---|---|
-| `lib.rs` `run`, `initialize_core_logic`, CLI | `walkietalkey::{early_init, startup}`, `bench`, `relay::headless` | managed settings, model loaded at start, relay, updates, notifications; `--live` bench and `--phone-receive` e2e mode |
-| `settings::get_settings` | `walkietalkey::store::overlay_handy` | managed values win (DESK-101) |
-| `transcription_coordinator` | `Discard`, `ForceStop` effects | short holds dropped, 5-minute limit |
-| `actions.rs` start/stop | `walkietalkey::{keys, limits, dictation, pill, sequence}` | reveal after 300 ms, fn shortcuts cancel, output in order |
-| `managers/transcription` | `audio_toolkit::chunking::ChunkPlan::LIVE_DA`, `pipeline::da::context`, `walkietalkey::{cleanup::key_chunk_observer, punctuation::apply, vocabulary::for_run}` | 10-18 s chunks, context prompts, text-only windows, cleanup per chunk, Ekko PnC before filler removal, Ord within 150 tokens |
-| `managers/model` | `walkietalkey::models::company_mirror` | `ModelBaseUrl` downloads |
-| `catalog` | `walkietalkey::catalog` (`catalog.json`) | Edda and Ekko as an overlay on Handy's catalog, ranking by hardware |
-| `clipboard.rs` | `walkietalkey::clipboard::write_private` | clipboard that stays on this computer |
-| `tray.rs`, `lib.rs` menu events | `walkietalkey::tray` | Seneste, Par en telefon, Sæt på pause, Genstart nu, pulse |
+| Hook in Handy's code                         | WalkieTalkey module                                                                                                                                            | What                                                                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `lib.rs` `run`, `initialize_core_logic`, CLI | `walkietalkey::{early_init, startup}`, `bench`, `relay::headless`                                                                                              | managed settings, model loaded at start, relay, updates, notifications; `--live` bench and `--phone-receive` e2e mode        |
+| `settings::get_settings`                     | `walkietalkey::store::overlay_handy`                                                                                                                           | managed values win (DESK-101)                                                                                                |
+| `transcription_coordinator`                  | `Discard`, `ForceStop` effects                                                                                                                                 | short holds dropped, 5-minute limit                                                                                          |
+| `actions.rs` start/stop                      | `walkietalkey::{keys, limits, dictation, pill, sequence}`                                                                                                      | reveal after 300 ms, fn shortcuts cancel, output in order                                                                    |
+| `managers/transcription`                     | `audio_toolkit::chunking::ChunkPlan::LIVE_DA`, `pipeline::da::context`, `walkietalkey::{cleanup::key_chunk_observer, punctuation::apply, vocabulary::for_run}` | 10-18 s chunks, context prompts, text-only windows, cleanup per chunk, Ekko PnC before filler removal, Ord within 150 tokens |
+| `managers/model`                             | `walkietalkey::models::company_mirror`                                                                                                                         | `ModelBaseUrl` downloads                                                                                                     |
+| `catalog`                                    | `walkietalkey::catalog` (`catalog.json`)                                                                                                                       | Edda and Ekko as an overlay on Handy's catalog, ranking by hardware                                                          |
+| `clipboard.rs`                               | `walkietalkey::clipboard::write_private`                                                                                                                       | clipboard that stays on this computer                                                                                        |
+| `tray.rs`, `lib.rs` menu events              | `walkietalkey::tray`                                                                                                                                           | Seneste, Par en telefon, Sæt på pause, Genstart nu, pulse                                                                    |
 
 Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
@@ -40,12 +40,12 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
 ## Crates (`crates/`, `packages/protocol/rust/`)
 
-| Crate | What |
-|---|---|
-| `wt-protocol` (`packages/protocol/rust`) | keys, derivations, frames, payloads, control messages; shares `test-vectors.json` with the TypeScript package |
-| `wt-relay-client` | the computer's side of a room: connect, create, auth, ping, backoff, pairing, decrypt, results |
-| `wt-native` | keychain, Windows clipboard formats, notifications with click handling, managed settings readers, presence, elevation |
-| `ekko-pnc` | Ekko PnC punctuation in Rust, reproducing the `ekko-stt` reference on a golden set |
+| Crate                                    | What                                                                                                                  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `wt-protocol` (`packages/protocol/rust`) | keys, derivations, frames, payloads, control messages; shares `test-vectors.json` with the TypeScript package         |
+| `wt-relay-client`                        | the computer's side of a room: connect, create, auth, ping, backoff, pairing, decrypt, results                        |
+| `wt-native`                              | keychain, Windows clipboard formats, notifications with click handling, managed settings readers, presence, elevation |
+| `ekko-pnc`                               | Ekko PnC punctuation in Rust, reproducing the `ekko-stt` reference on a golden set                                    |
 
 ## Phone, relay, site
 

@@ -54,7 +54,12 @@ pub fn plan(
         } else {
             (next_word + 1).max(end.saturating_sub(overlap_words))
         };
-        windows.push(Window { context_start, end, emit_start: next_word, emit_end });
+        windows.push(Window {
+            context_start,
+            end,
+            emit_start: next_word,
+            emit_end,
+        });
         next_word = emit_end;
     }
     windows
@@ -65,7 +70,12 @@ mod tests {
     use super::*;
 
     fn w(context_start: usize, end: usize, emit_start: usize, emit_end: usize) -> Window {
-        Window { context_start, end, emit_start, emit_end }
+        Window {
+            context_start,
+            end,
+            emit_start,
+            emit_end,
+        }
     }
 
     #[test]
@@ -103,7 +113,10 @@ mod tests {
 
     #[test]
     fn no_overlap() {
-        assert_eq!(plan(&[1; 5], 2, 4, 0), vec![w(0, 2, 0, 2), w(2, 4, 2, 4), w(4, 5, 4, 5)]);
+        assert_eq!(
+            plan(&[1; 5], 2, 4, 0),
+            vec![w(0, 2, 0, 2), w(2, 4, 2, 4), w(4, 5, 4, 5)]
+        );
     }
 
     #[test]

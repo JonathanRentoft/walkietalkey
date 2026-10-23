@@ -23,11 +23,20 @@ declare global {
 }
 
 /** ws:// to localhost only in debug builds and the e2e build (SEC-06). */
-const policy = { allowInsecureLocalhost: import.meta.env.DEV || import.meta.env.MODE === "e2e" };
+const policy = {
+  allowInsecureLocalhost: import.meta.env.DEV || import.meta.env.MODE === "e2e",
+};
 
 function applyTheme(): void {
-  const mq = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
-  const set = () => document.documentElement.setAttribute("data-theme", mq?.matches ? "dark" : "light");
+  const mq =
+    typeof matchMedia === "function"
+      ? matchMedia("(prefers-color-scheme: dark)")
+      : null;
+  const set = () =>
+    document.documentElement.setAttribute(
+      "data-theme",
+      mq?.matches ? "dark" : "light",
+    );
   set();
   mq?.addEventListener?.("change", set);
 }
@@ -36,9 +45,12 @@ function registerServiceWorker(): void {
   if (import.meta.env.DEV || !("serviceWorker" in navigator)) return;
   // Never in the iOS shell (walkietalkey://localhost/): only http(s), and plain http only locally.
   if (location.protocol !== "https:" && location.protocol !== "http:") return;
-  const local = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const local =
+    location.hostname === "localhost" || location.hostname === "127.0.0.1";
   if (location.protocol === "http:" && !local) return;
-  void navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => undefined);
+  void navigator.serviceWorker
+    .register("./sw.js", { scope: "./" })
+    .catch(() => undefined);
 }
 
 async function main(): Promise<void> {
@@ -61,25 +73,41 @@ async function main(): Promise<void> {
     registerServiceWorker();
     return;
   }
-  if (!window.isSecureContext || !globalThis.crypto?.subtle || typeof indexedDB === "undefined") {
+  if (
+    !window.isSecureContext ||
+    !globalThis.crypto?.subtle ||
+    typeof indexedDB === "undefined"
+  ) {
     root.render(<Unsupported detail={T.detail.insecure!} />);
     return;
   }
 
   const storage = await PhoneStorage.open();
   const wake = new ScreenWake();
-  const controller = new PhoneController({ storage, platform, recorder: new Recorder(), haptic, wake });
+  const controller = new PhoneController({
+    storage,
+    platform,
+    recorder: new Recorder(),
+    haptic,
+    wake,
+  });
 
   let seq = 0;
-  let link: { payload: PairingPayload | null; invalid: boolean; seq: number } = {
-    payload: first.kind === "pairing" ? first.payload : null,
-    invalid: first.kind === "invalid",
-    seq: 0,
-  };
+  let link: { payload: PairingPayload | null; invalid: boolean; seq: number } =
+    {
+      payload: first.kind === "pairing" ? first.payload : null,
+      invalid: first.kind === "invalid",
+      seq: 0,
+    };
   const render = () =>
     root.render(
       <StrictMode>
-        <App controller={controller} platform={platform} allowInsecureLocalhost={!!policy.allowInsecureLocalhost} link={link} />
+        <App
+          controller={controller}
+          platform={platform}
+          allowInsecureLocalhost={!!policy.allowInsecureLocalhost}
+          link={link}
+        />
       </StrictMode>,
     );
   const openLink = (payload: PairingPayload | null, invalid: boolean) => {
@@ -90,7 +118,8 @@ async function main(): Promise<void> {
   // PHONE-11: a pairing link that arrives while the app is open.
   window.addEventListener("hashchange", () => {
     const r = takePairingFragment(location, history, policy);
-    if (r.kind !== "none") openLink(r.kind === "pairing" ? r.payload : null, r.kind === "invalid");
+    if (r.kind !== "none")
+      openLink(r.kind === "pairing" ? r.payload : null, r.kind === "invalid");
   });
   window.walkieTalkey = {
     openPairingUrl(url: string): boolean {
@@ -111,11 +140,15 @@ async function main(): Promise<void> {
   });
   window.addEventListener("online", () => controller.network(true));
   // PHONE-35: the AudioContext may only start inside a user gesture; prepare it on the first touch.
-  document.addEventListener("pointerdown", () => controller.prime(), { capture: true, once: true });
+  document.addEventListener("pointerdown", () => controller.prime(), {
+    capture: true,
+    once: true,
+  });
 
   render();
   await controller.init();
-  if (startOnLoad && first.kind === "none") window.dispatchEvent(new CustomEvent(SHELL_START_EVENT));
+  if (startOnLoad && first.kind === "none")
+    window.dispatchEvent(new CustomEvent(SHELL_START_EVENT));
   registerServiceWorker();
 }
 

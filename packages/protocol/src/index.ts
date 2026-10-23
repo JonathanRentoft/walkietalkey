@@ -38,7 +38,14 @@ export {
   type PairKeyInput,
   type PairKeys,
 } from "./derive.ts";
-export { openFrame, parseFrame, sealFrame, type FrameHeader, type ParsedFrame, type SealHeader } from "./frame.ts";
+export {
+  openFrame,
+  parseFrame,
+  sealFrame,
+  type FrameHeader,
+  type ParsedFrame,
+  type SealHeader,
+} from "./frame.ts";
 export {
   decodePayload,
   encodePayload,
@@ -66,5 +73,11 @@ export {
   type PairingPayload,
   type UrlPolicy,
 } from "./pairing.ts";
-export { counterKey, MemoryCounterStore, ReplayGuard, SendCounter, type CounterStore } from "./counter.ts";
+export {
+  counterKey,
+  MemoryCounterStore,
+  ReplayGuard,
+  SendCounter,
+  type CounterStore,
+} from "./counter.ts";
 export { PairChannel, type PairChannelOptions } from "./channel.ts";

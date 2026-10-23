@@ -20,7 +20,9 @@ describe("room id", () => {
     const keys = await generateDeviceKeys();
     const salt = randomBytes(16);
     const roomId = await computeRoomId(keys.signingSpki, salt);
-    const digest = await sha256(concatBytes(utf8Encode(LABELS.room), keys.signingSpki, salt));
+    const digest = await sha256(
+      concatBytes(utf8Encode(LABELS.room), keys.signingSpki, salt),
+    );
     expect(roomId.length).toBe(16);
     expect(bytesEqual(roomId, digest.subarray(0, 16))).toBe(true);
     const other = await computeRoomId(keys.signingSpki, randomBytes(16));
@@ -29,7 +31,9 @@ describe("room id", () => {
 
   it("requires a 16-byte salt", async () => {
     const keys = await generateDeviceKeys();
-    await expect(computeRoomId(keys.signingSpki, randomBytes(15))).rejects.toThrow(ProtocolError);
+    await expect(
+      computeRoomId(keys.signingSpki, randomBytes(15)),
+    ).rejects.toThrow(ProtocolError);
   });
 });
 
@@ -39,7 +43,12 @@ describe("pair keys", () => {
     const phone = await generateDeviceKeys();
     const s = randomBytes(32);
     const roomId = await computeRoomId(computer.signingSpki, randomBytes(16));
-    const common = { secret: s, roomId, computerId: computer.deviceId, phoneId: phone.deviceId };
+    const common = {
+      secret: s,
+      roomId,
+      computerId: computer.deviceId,
+      phoneId: phone.deviceId,
+    };
 
     const onPhone = await deriveRawPairSecrets({
       ...common,
@@ -80,19 +89,80 @@ describe("join MAC", () => {
     const phone = await generateDeviceKeys();
     const s = randomBytes(32);
     const roomId = randomBytes(16);
-    const mac = await computeJoinMac(s, roomId, phone.signingSpki, phone.agreementSpki);
+    const mac = await computeJoinMac(
+      s,
+      roomId,
+      phone.signingSpki,
+      phone.agreementSpki,
+    );
     expect(mac.length).toBe(32);
-    expect(await verifyJoinMac(s, roomId, phone.signingSpki, phone.agreementSpki, mac)).toBe(true);
+    expect(
+      await verifyJoinMac(
+        s,
+        roomId,
+        phone.signingSpki,
+        phone.agreementSpki,
+        mac,
+      ),
+    ).toBe(true);
 
-    expect(await verifyJoinMac(randomBytes(32), roomId, phone.signingSpki, phone.agreementSpki, mac)).toBe(false);
-    expect(await verifyJoinMac(s, randomBytes(16), phone.signingSpki, phone.agreementSpki, mac)).toBe(false);
+    expect(
+      await verifyJoinMac(
+        randomBytes(32),
+        roomId,
+        phone.signingSpki,
+        phone.agreementSpki,
+        mac,
+      ),
+    ).toBe(false);
+    expect(
+      await verifyJoinMac(
+        s,
+        randomBytes(16),
+        phone.signingSpki,
+        phone.agreementSpki,
+        mac,
+      ),
+    ).toBe(false);
     const other = await generateDeviceKeys();
     // A relay that swaps the agreement key is caught.
-    expect(await verifyJoinMac(s, roomId, phone.signingSpki, other.agreementSpki, mac)).toBe(false);
-    expect(await verifyJoinMac(s, roomId, other.signingSpki, phone.agreementSpki, mac)).toBe(false);
+    expect(
+      await verifyJoinMac(
+        s,
+        roomId,
+        phone.signingSpki,
+        other.agreementSpki,
+        mac,
+      ),
+    ).toBe(false);
+    expect(
+      await verifyJoinMac(
+        s,
+        roomId,
+        other.signingSpki,
+        phone.agreementSpki,
+        mac,
+      ),
+    ).toBe(false);
     const flipped = mac.slice();
     flipped[0]! ^= 0x80;
-    expect(await verifyJoinMac(s, roomId, phone.signingSpki, phone.agreementSpki, flipped)).toBe(false);
-    expect(await verifyJoinMac(s, roomId, phone.signingSpki, phone.agreementSpki, mac.subarray(0, 31))).toBe(false);
+    expect(
+      await verifyJoinMac(
+        s,
+        roomId,
+        phone.signingSpki,
+        phone.agreementSpki,
+        flipped,
+      ),
+    ).toBe(false);
+    expect(
+      await verifyJoinMac(
+        s,
+        roomId,
+        phone.signingSpki,
+        phone.agreementSpki,
+        mac.subarray(0, 31),
+      ),
+    ).toBe(false);
   });
 });

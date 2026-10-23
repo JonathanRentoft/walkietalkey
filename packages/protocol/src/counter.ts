@@ -51,7 +51,12 @@ export class SendCounter {
   private readonly key: string;
   private readonly blockSize: bigint;
 
-  private constructor(store: CounterStore, key: string, blockSize: bigint, storedEnd: bigint) {
+  private constructor(
+    store: CounterStore,
+    key: string,
+    blockSize: bigint,
+    storedEnd: bigint,
+  ) {
     this.store = store;
     this.key = key;
     this.blockSize = blockSize;
@@ -60,9 +65,19 @@ export class SendCounter {
     this.reservedEnd = storedEnd;
   }
 
-  static async open(store: CounterStore, key: string, blockSize = COUNTER_BLOCK): Promise<SendCounter> {
-    if (!Number.isInteger(blockSize) || blockSize < 1) throw new RangeError("blockSize");
-    return new SendCounter(store, key, BigInt(blockSize), await store.loadSendReservation(key));
+  static async open(
+    store: CounterStore,
+    key: string,
+    blockSize = COUNTER_BLOCK,
+  ): Promise<SendCounter> {
+    if (!Number.isInteger(blockSize) || blockSize < 1)
+      throw new RangeError("blockSize");
+    return new SendCounter(
+      store,
+      key,
+      BigInt(blockSize),
+      await store.loadSendReservation(key),
+    );
   }
 
   /** The next counter; resolves only after its block is durable. Safe to call concurrently. */
@@ -108,7 +123,8 @@ export class ReplayGuard {
 
   /** Records an authenticated frame's counter. Throws ProtocolError("replay") if not higher. */
   async accept(counter: bigint): Promise<void> {
-    if (!this.wouldAccept(counter)) throw new ProtocolError("replay", `counter ${counter} <= ${this.last}`);
+    if (!this.wouldAccept(counter))
+      throw new ProtocolError("replay", `counter ${counter} <= ${this.last}`);
     this.last = counter;
     await this.store.saveLastAccepted(this.key, counter);
   }

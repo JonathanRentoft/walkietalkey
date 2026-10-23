@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BLOCK_BYTES, BLOCK_SAMPLES } from "@walkietalkey/protocol";
-import { BlockFramer, Downsampler, PcmPipeline, floatToPcm16, int16ToLeBytes } from "../src/audio/pcm";
+import {
+  BlockFramer,
+  Downsampler,
+  PcmPipeline,
+  floatToPcm16,
+  int16ToLeBytes,
+} from "../src/audio/pcm";
 
 /** Splits `total` into pseudo-random chunk sizes, the way an AudioWorklet batches arrive. */
 function chunks(total: number, seed = 1): number[] {
@@ -16,9 +22,15 @@ function chunks(total: number, seed = 1): number[] {
   return out;
 }
 
-function sine(freq: number, rate: number, samples: number, amp = 0.5): Float32Array {
+function sine(
+  freq: number,
+  rate: number,
+  samples: number,
+  amp = 0.5,
+): Float32Array {
   const out = new Float32Array(samples);
-  for (let i = 0; i < samples; i++) out[i] = amp * Math.sin((2 * Math.PI * freq * i) / rate);
+  for (let i = 0; i < samples; i++)
+    out[i] = amp * Math.sin((2 * Math.PI * freq * i) / rate);
   return out;
 }
 
@@ -28,7 +40,11 @@ function rms(x: ArrayLike<number>, from = 0, to = x.length): number {
   return Math.sqrt(s / Math.max(1, to - from));
 }
 
-function runChunked(ds: Downsampler, input: Float32Array, seed: number): Float32Array {
+function runChunked(
+  ds: Downsampler,
+  input: Float32Array,
+  seed: number,
+): Float32Array {
   const parts: Float32Array[] = [];
   let o = 0;
   for (const n of chunks(input.length, seed)) {
@@ -52,7 +68,9 @@ describe("PCM16 conversion (PHONE-30)", () => {
     for (let i = 0; i < 65536; i++) all[i] = (i - 32768) / 32768;
     const back = floatToPcm16(all);
     for (let i = 0; i < 65536; i++) expect(back[i]).toBe(i - 32768);
-    expect(Array.from(floatToPcm16(Float32Array.from([1.5, -1.5, 1, -1, 0])))).toEqual([32767, -32768, 32767, -32768, 0]);
+    expect(
+      Array.from(floatToPcm16(Float32Array.from([1.5, -1.5, 1, -1, 0]))),
+    ).toEqual([32767, -32768, 32767, -32768, 0]);
   });
 
   it("writes little-endian bytes", () => {
@@ -111,7 +129,11 @@ describe("downsampling to 16 kHz mono", () => {
   });
 
   it("produces 16,000 samples per second from 44.1 kHz", () => {
-    const y = runChunked(new Downsampler(44100), sine(500, 44100, 44100 * 2), 5);
+    const y = runChunked(
+      new Downsampler(44100),
+      sine(500, 44100, 44100 * 2),
+      5,
+    );
     expect(y.length).toBe(32000);
   });
 

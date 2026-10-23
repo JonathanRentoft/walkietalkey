@@ -4,18 +4,18 @@ The user-facing privacy policy is the website's Danish page `/privatliv` (`site/
 
 ## What data exists where
 
-| Data | Where | How long | Who can read it |
-|---|---|---|---|
-| Audio from the key | computer memory | until transcribed | the user |
-| Audio from the phone | phone memory; encrypted in transit; encrypted in the relay buffer if the computer is offline | until transcribed; buffer at most 10 minutes | the user's devices only |
-| Text | history on the computer it was dictated to; never sent to the phone or other computers | per retention setting (default 14 days) | the user |
-| Text sent to AI cleanup | the provider the user chose | per that provider's terms | the provider |
-| Device public keys, room ids | relay | until removed or 90 days unused | the relay operator (meaningless on their own) |
-| IP addresses, connection times | Cloudflare, as processor for the relay operator | Cloudflare's standard retention | the relay operator |
-| Website visits and phone app files | Cloudflare Pages (or the company's `PhoneAppUrl`) | Cloudflare's standard logs; no analytics | the site operator |
-| Update checks | GitHub (release files and update manifests) | GitHub's retention | GitHub: IP address and app version |
-| Model downloads | Hugging Face, or the company's `ModelBaseUrl` | their retention | Hugging Face: IP address |
-| Shared word list | the company's `VocabularySource` server | the company's rules | the company |
+| Data                               | Where                                                                                        | How long                                     | Who can read it                               |
+| ---------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------- |
+| Audio from the key                 | computer memory                                                                              | until transcribed                            | the user                                      |
+| Audio from the phone               | phone memory; encrypted in transit; encrypted in the relay buffer if the computer is offline | until transcribed; buffer at most 10 minutes | the user's devices only                       |
+| Text                               | history on the computer it was dictated to; never sent to the phone or other computers       | per retention setting (default 14 days)      | the user                                      |
+| Text sent to AI cleanup            | the provider the user chose                                                                  | per that provider's terms                    | the provider                                  |
+| Device public keys, room ids       | relay                                                                                        | until removed or 90 days unused              | the relay operator (meaningless on their own) |
+| IP addresses, connection times     | Cloudflare, as processor for the relay operator                                              | Cloudflare's standard retention              | the relay operator                            |
+| Website visits and phone app files | Cloudflare Pages (or the company's `PhoneAppUrl`)                                            | Cloudflare's standard logs; no analytics     | the site operator                             |
+| Update checks                      | GitHub (release files and update manifests)                                                  | GitHub's retention                           | GitHub: IP address and app version            |
+| Model downloads                    | Hugging Face, or the company's `ModelBaseUrl`                                                | their retention                              | Hugging Face: IP address                      |
+| Shared word list                   | the company's `VocabularySource` server                                                      | the company's rules                          | the company                                   |
 
 ## How the code keeps it true
 

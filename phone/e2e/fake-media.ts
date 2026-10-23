@@ -18,7 +18,10 @@ export function installFakeMedia(cfg: FakeMediaConfig): void {
   const w = window as unknown as Record<string, unknown>;
   if (cfg.standalone) {
     try {
-      Object.defineProperty(Navigator.prototype, "standalone", { get: () => true, configurable: true });
+      Object.defineProperty(Navigator.prototype, "standalone", {
+        get: () => true,
+        configurable: true,
+      });
     } catch {
       /* ignore */
     }
@@ -66,20 +69,29 @@ export function installFakeMedia(cfg: FakeMediaConfig): void {
       g.fillStyle = "#000000";
       for (let y = 0; y < q.size; y++)
         for (let x = 0; x < q.size; x++)
-          if (q.bits[y * q.size + x] === "1") g.fillRect(80 + (quiet + x) * scale, 40 + (quiet + y) * scale, scale, scale);
+          if (q.bits[y * q.size + x] === "1")
+            g.fillRect(
+              80 + (quiet + x) * scale,
+              40 + (quiet + y) * scale,
+              scale,
+              scale,
+            );
       // A pixel that changes, so the stream keeps producing frames.
       g.fillStyle = t++ % 2 ? "#fefefe" : "#ffffff";
       g.fillRect(0, 0, 1, 1);
     };
     draw();
     setInterval(draw, 100);
-    return (canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream }).captureStream(10);
+    return (
+      canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream }
+    ).captureStream(10);
   }
 
   md.getUserMedia = async (c?: MediaStreamConstraints) => {
     if (c?.video && cfg.qr) return qrStream();
     if (c?.audio) {
-      if (cfg.denyMic) throw new DOMException("Permission denied", "NotAllowedError");
+      if (cfg.denyMic)
+        throw new DOMException("Permission denied", "NotAllowedError");
       if (cfg.audio) return audioStream();
     }
     if (orig) return orig(c);

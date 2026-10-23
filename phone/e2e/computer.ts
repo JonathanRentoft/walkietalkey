@@ -23,7 +23,11 @@ import {
   type DevicePayload,
   type ResultReason,
 } from "@walkietalkey/protocol";
-import { RelaySocket, SocketClosedError, type Incoming } from "@walkietalkey/protocol/relay-socket";
+import {
+  RelaySocket,
+  SocketClosedError,
+  type Incoming,
+} from "@walkietalkey/protocol/relay-socket";
 
 export interface SessionLog {
   sid: string;
@@ -71,15 +75,29 @@ export class ScriptedComputer {
   private readonly store = new MemoryCounterStore();
   private recv: Promise<unknown> = Promise.resolve();
 
-  private constructor(keys: DeviceKeys, relayUrl: string, name: string, os: ComputerOs) {
+  private constructor(
+    keys: DeviceKeys,
+    relayUrl: string,
+    name: string,
+    os: ComputerOs,
+  ) {
     this.keys = keys;
     this.relayUrl = relayUrl;
     this.name = name;
     this.os = os;
   }
 
-  static async create(relayUrl: string, name = "Testcomputer", os: ComputerOs = "mac"): Promise<ScriptedComputer> {
-    const c = new ScriptedComputer(await generateDeviceKeys(), relayUrl, name, os);
+  static async create(
+    relayUrl: string,
+    name = "Testcomputer",
+    os: ComputerOs = "mac",
+  ): Promise<ScriptedComputer> {
+    const c = new ScriptedComputer(
+      await generateDeviceKeys(),
+      relayUrl,
+      name,
+      os,
+    );
     c.roomId = await computeRoomId(c.keys.signingSpki, c.salt);
     return c;
   }
@@ -91,20 +109,42 @@ export class ScriptedComputer {
   /** Creates the room the first time, authenticates afterwards. */
   async connect(): Promise<void> {
     const intent = this.created ? "auth" : "create";
-    const sock = await RelaySocket.open(roomSocketUrl(this.relayUrl, this.roomId, intent));
+    const sock = await RelaySocket.open(
+      roomSocketUrl(this.relayUrl, this.roomId, intent),
+    );
     const ch = b64uDecode((await sock.control("challenge")).n, 32);
     if (this.created) {
-      const sig = await signChallenge(this.keys.signing.privateKey, "wt-auth-v1", this.roomId, ch);
-      sock.sendControl({ t: "auth", id: b64uEncode(this.keys.deviceId), sig: b64uEncode(sig) });
+      const sig = await signChallenge(
+        this.keys.signing.privateKey,
+        "wt-auth-v1",
+        this.roomId,
+        ch,
+      );
+      sock.sendControl({
+        t: "auth",
+        id: b64uEncode(this.keys.deviceId),
+        sig: b64uEncode(sig),
+      });
     } else {
-      const sig = await signChallenge(this.keys.signing.privateKey, "wt-create-v1", this.roomId, ch);
-      sock.sendControl({ t: "create", pub: b64uEncode(this.keys.signingSpki), salt: b64uEncode(this.salt), sig: b64uEncode(sig) });
+      const sig = await signChallenge(
+        this.keys.signing.privateKey,
+        "wt-create-v1",
+        this.roomId,
+        ch,
+      );
+      sock.sendControl({
+        t: "create",
+        pub: b64uEncode(this.keys.signingSpki),
+        salt: b64uEncode(this.salt),
+        sig: b64uEncode(sig),
+      });
     }
     await sock.control("ok");
     this.created = true;
     this.socket = sock;
     sock.onMessage = (m) => this.incoming(m);
-    for (const m of sock.queue.splice(0)) if (!this.incoming(m)) sock.queue.push(m);
+    for (const m of sock.queue.splice(0))
+      if (!this.incoming(m)) sock.queue.push(m);
     sock.startPing();
     this.log.push("connected");
   }
@@ -116,14 +156,30 @@ export class ScriptedComputer {
   }
 
   /** spec 5.3 step 1: register SHA-256(a) and make the QR's URL. */
-  async pairingUrl(phoneAppUrl: string, relayUrlForPhone = this.relayUrl): Promise<string> {
+  async pairingUrl(
+    phoneAppUrl: string,
+    relayUrlForPhone = this.relayUrl,
+  ): Promise<string> {
     const a = randomBytes(32);
     const s = randomBytes(32);
     const h = b64uEncode(await sha256(a));
-    this.socket!.sendControl({ t: "add_admission", h, exp: Date.now() + 10 * 60 * 1000 });
+    this.socket!.sendControl({
+      t: "add_admission",
+      h,
+      exp: Date.now() + 10 * 60 * 1000,
+    });
     await this.socket!.control("ack");
     this.pending = { a, s, h };
-    return encodePairingUrl(phoneAppUrl, { v: 1, r: this.roomId, a, s, e: this.keys.agreementSpki, u: relayUrlForPhone, n: this.name, o: this.os });
+    return encodePairingUrl(phoneAppUrl, {
+      v: 1,
+      r: this.roomId,
+      a,
+      s,
+      e: this.keys.agreementSpki,
+      u: relayUrlForPhone,
+      n: this.name,
+      o: this.os,
+    });
   }
 
   async cancelAdmission(): Promise<void> {
@@ -141,7 +197,9 @@ export class ScriptedComputer {
     const msg = m.msg;
     if (!msg) return false;
     if (msg.t === "member_joined") {
-      this.recv = this.recv.then(() => this.joined(msg.id, msg.pub, msg.agree, msg.mac, msg.eid));
+      this.recv = this.recv.then(() =>
+        this.joined(msg.id, msg.pub, msg.agree, msg.mac, msg.eid),
+      );
       return true;
     }
     if (msg.t === "member_left") {
@@ -157,12 +215,26 @@ export class ScriptedComputer {
     return false;
   }
 
-  private async joined(id: string, pub: string, agree: string, mac: string, eid: number): Promise<void> {
+  private async joined(
+    id: string,
+    pub: string,
+    agree: string,
+    mac: string,
+    eid: number,
+  ): Promise<void> {
     this.socket?.sendControl({ t: "event_ack", eid });
     const p = this.pending;
     if (!p) return;
     const agreeSpki = b64uDecode(agree);
-    if (!(await verifyJoinMac(p.s, this.roomId, b64uDecode(pub), agreeSpki, b64uDecode(mac)))) {
+    if (
+      !(await verifyJoinMac(
+        p.s,
+        this.roomId,
+        b64uDecode(pub),
+        agreeSpki,
+        b64uDecode(mac),
+      ))
+    ) {
       this.log.push("bad join MAC");
       return;
     }
@@ -178,7 +250,13 @@ export class ScriptedComputer {
     this.pending = null;
     this.store.send.clear();
     this.store.recv.clear();
-    const channel = await PairChannel.open({ role: "computer", selfId: this.keys.deviceId, peerId: phoneId, keys, store: this.store });
+    const channel = await PairChannel.open({
+      role: "computer",
+      selfId: this.keys.deviceId,
+      peerId: phoneId,
+      keys,
+      store: this.store,
+    });
     this.phones.set(id, { id, channel, name: null, platform: null });
     this.log.push(`joined ${id}`);
   }
@@ -201,7 +279,18 @@ export class ScriptedComputer {
     const sid = b64uEncode(id);
     let s = this.sessions.get(sid);
     if (!s) {
-      s = { sid, id, starts: 0, blocks: new Map(), chunkFrames: 0, duplicates: 0, mismatches: 0, end: null, cancelled: false, answered: 0 };
+      s = {
+        sid,
+        id,
+        starts: 0,
+        blocks: new Map(),
+        chunkFrames: 0,
+        duplicates: 0,
+        mismatches: 0,
+        end: null,
+        cancelled: false,
+        answered: 0,
+      };
       this.sessions.set(sid, s);
     }
     return s;
@@ -214,7 +303,8 @@ export class ScriptedComputer {
         phone.platform = p.platform;
         break;
       case "presence_query":
-        if (this.presence) await this.send(phone, { type: "presence", ...this.presence });
+        if (this.presence)
+          await this.send(phone, { type: "presence", ...this.presence });
         break;
       case "audio_start":
         this.session(p.sessionId).starts++;
@@ -227,7 +317,8 @@ export class ScriptedComputer {
           const old = s.blocks.get(i);
           if (old) {
             s.duplicates++;
-            if (Buffer.compare(Buffer.from(old), Buffer.from(block)) !== 0) s.mismatches++;
+            if (Buffer.compare(Buffer.from(old), Buffer.from(block)) !== 0)
+              s.mismatches++;
           } else s.blocks.set(i, block);
         }
         await this.maybeAnswer(phone, s);
@@ -253,7 +344,12 @@ export class ScriptedComputer {
     const a = this.answer(s);
     if (!a) return;
     s.answered = s.starts;
-    await this.send(phone, a.ok ? { type: "result", sessionId: s.id, ok: true } : { type: "result", sessionId: s.id, ok: false, reason: a.reason });
+    await this.send(
+      phone,
+      a.ok
+        ? { type: "result", sessionId: s.id, ok: true }
+        : { type: "result", sessionId: s.id, ok: false, reason: a.reason },
+    );
   }
 
   async send(phone: PhoneLog, payload: DevicePayload): Promise<void> {
@@ -265,7 +361,12 @@ export class ScriptedComputer {
     const phone = [...this.phones.values()][0]!;
     const s = this.sessions.get(sid)!;
     s.answered = s.starts;
-    await this.send(phone, a.ok ? { type: "result", sessionId: s.id, ok: true } : { type: "result", sessionId: s.id, ok: false, reason: a.reason });
+    await this.send(
+      phone,
+      a.ok
+        ? { type: "result", sessionId: s.id, ok: true }
+        : { type: "result", sessionId: s.id, ok: false, reason: a.reason },
+    );
   }
 
   async revoke(phoneId: string): Promise<void> {
@@ -279,7 +380,8 @@ export class ScriptedComputer {
       try {
         await this.connect();
       } catch (e) {
-        if (e instanceof SocketClosedError && e.code === CloseCode.RoomNotFound) return;
+        if (e instanceof SocketClosedError && e.code === CloseCode.RoomNotFound)
+          return;
         throw e;
       }
     }
@@ -290,26 +392,52 @@ export class ScriptedComputer {
 
   // ---------------------------------------------------------------- waiting
 
-  async until<T>(get: () => T | undefined | null | false, what: string, timeoutMs = 15_000): Promise<T> {
+  async until<T>(
+    get: () => T | undefined | null | false,
+    what: string,
+    timeoutMs = 15_000,
+  ): Promise<T> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const v = get();
       if (v) return v;
-      if (Date.now() > deadline) throw new Error(`computer timed out waiting for ${what}; log: ${this.log.slice(-8).join(" | ")}`);
+      if (Date.now() > deadline)
+        throw new Error(
+          `computer timed out waiting for ${what}; log: ${this.log.slice(-8).join(" | ")}`,
+        );
       await sleep(50);
     }
   }
 
   waitPhone(timeoutMs?: number): Promise<PhoneLog> {
-    return this.until(() => [...this.phones.values()].find((p) => p.name !== null), "a paired phone with its name", timeoutMs);
+    return this.until(
+      () => [...this.phones.values()].find((p) => p.name !== null),
+      "a paired phone with its name",
+      timeoutMs,
+    );
   }
 
-  waitSession(pred: (s: SessionLog) => boolean, what: string, timeoutMs?: number): Promise<SessionLog> {
-    return this.until(() => [...this.sessions.values()].find(pred), what, timeoutMs);
+  waitSession(
+    pred: (s: SessionLog) => boolean,
+    what: string,
+    timeoutMs?: number,
+  ): Promise<SessionLog> {
+    return this.until(
+      () => [...this.sessions.values()].find(pred),
+      what,
+      timeoutMs,
+    );
   }
 
   waitEnded(timeoutMs?: number): Promise<SessionLog> {
-    return this.waitSession((s) => !!s.end && !s.cancelled && [...Array(s.end.chunks).keys()].every((i) => s.blocks.has(i)), "a complete session", timeoutMs);
+    return this.waitSession(
+      (s) =>
+        !!s.end &&
+        !s.cancelled &&
+        [...Array(s.end.chunks).keys()].every((i) => s.blocks.has(i)),
+      "a complete session",
+      timeoutMs,
+    );
   }
 
   /** PCM of a session, blocks in order. */

@@ -12,12 +12,21 @@ export default defineConfig({
     channel: "chrome",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1280, height: 900 } } },
+    {
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        viewport: { width: 1280, height: 900 },
+      },
+    },
     { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" } },
   ],
-  webServer: process.env.BASE_URL ? undefined : {
-    command: `bun scripts/serve.ts ${port}`,
-    url: `http://localhost:${port}/`,
-    reuseExistingServer: true,
-  },
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: `bun scripts/serve.ts ${port}`,
+        url: `http://localhost:${port}/`,
+        reuseExistingServer: true,
+      },
 });

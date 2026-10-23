@@ -29,23 +29,31 @@ export function assertSpki(spki: Uint8Array): void {
 }
 
 export async function exportSpki(publicKey: CryptoKey): Promise<Uint8Array> {
-  const spki = new Uint8Array((await crypto.subtle.exportKey("spki", publicKey)) as ArrayBuffer);
+  const spki = new Uint8Array(
+    (await crypto.subtle.exportKey("spki", publicKey)) as ArrayBuffer,
+  );
   assertSpki(spki);
   return spki;
 }
 
 /** Imports an ECDSA P-256 verification key from canonical SPKI. Throws ProtocolError("bad_key"). */
-export async function importSigningPublicKey(spki: Uint8Array): Promise<CryptoKey> {
+export async function importSigningPublicKey(
+  spki: Uint8Array,
+): Promise<CryptoKey> {
   assertSpki(spki);
   try {
-    return await crypto.subtle.importKey("spki", bs(spki), ECDSA, true, ["verify"]);
+    return await crypto.subtle.importKey("spki", bs(spki), ECDSA, true, [
+      "verify",
+    ]);
   } catch {
     throw new ProtocolError("bad_key", "invalid P-256 point");
   }
 }
 
 /** Imports an ECDH P-256 public key from canonical SPKI. Throws ProtocolError("bad_key"). */
-export async function importAgreementPublicKey(spki: Uint8Array): Promise<CryptoKey> {
+export async function importAgreementPublicKey(
+  spki: Uint8Array,
+): Promise<CryptoKey> {
   assertSpki(spki);
   try {
     return await crypto.subtle.importKey("spki", bs(spki), ECDH, true, []);
@@ -55,29 +63,53 @@ export async function importAgreementPublicKey(spki: Uint8Array): Promise<Crypto
 }
 
 /** Device id = first 16 bytes of SHA-256(signing SPKI) (spec 9.2). */
-export async function deviceIdFromSpki(signingSpki: Uint8Array): Promise<Uint8Array> {
+export async function deviceIdFromSpki(
+  signingSpki: Uint8Array,
+): Promise<Uint8Array> {
   assertSpki(signingSpki);
   return (await sha256(signingSpki)).slice(0, DEVICE_ID_LEN);
 }
 
 /** ECDSA P-256 key pair; the private key is non-extractable unless asked (SEC-09). */
-export async function generateSigningKeyPair(extractable = false): Promise<CryptoKeyPair> {
-  return (await crypto.subtle.generateKey(ECDSA, extractable, ["sign", "verify"])) as CryptoKeyPair;
+export async function generateSigningKeyPair(
+  extractable = false,
+): Promise<CryptoKeyPair> {
+  return (await crypto.subtle.generateKey(ECDSA, extractable, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
 }
 
 /** ECDH P-256 key pair; the private key is non-extractable unless asked (SEC-09). */
-export async function generateAgreementKeyPair(extractable = false): Promise<CryptoKeyPair> {
-  return (await crypto.subtle.generateKey(ECDH, extractable, ["deriveBits", "deriveKey"])) as CryptoKeyPair;
+export async function generateAgreementKeyPair(
+  extractable = false,
+): Promise<CryptoKeyPair> {
+  return (await crypto.subtle.generateKey(ECDH, extractable, [
+    "deriveBits",
+    "deriveKey",
+  ])) as CryptoKeyPair;
 }
 
 /** Builds DeviceKeys from existing key pairs (for example loaded from IndexedDB). */
-export async function deviceKeysFromPairs(signing: CryptoKeyPair, agreement: CryptoKeyPair): Promise<DeviceKeys> {
+export async function deviceKeysFromPairs(
+  signing: CryptoKeyPair,
+  agreement: CryptoKeyPair,
+): Promise<DeviceKeys> {
   const signingSpki = await exportSpki(signing.publicKey);
   const agreementSpki = await exportSpki(agreement.publicKey);
-  return { signing, agreement, signingSpki, agreementSpki, deviceId: await deviceIdFromSpki(signingSpki) };
+  return {
+    signing,
+    agreement,
+    signingSpki,
+    agreementSpki,
+    deviceId: await deviceIdFromSpki(signingSpki),
+  };
 }
 
 /** Creates a device's two key pairs with non-extractable private keys. */
 export async function generateDeviceKeys(): Promise<DeviceKeys> {
-  return deviceKeysFromPairs(await generateSigningKeyPair(false), await generateAgreementKeyPair(false));
+  return deviceKeysFromPairs(
+    await generateSigningKeyPair(false),
+    await generateAgreementKeyPair(false),
+  );
 }

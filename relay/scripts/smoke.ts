@@ -25,12 +25,17 @@ import {
   verifyJoinMac,
 } from "@walkietalkey/protocol";
 import { RelaySocket } from "@walkietalkey/protocol/relay-socket";
-import { RemovedError, ScriptedPhone } from "@walkietalkey/protocol/scripted-phone";
+import {
+  RemovedError,
+  ScriptedPhone,
+} from "@walkietalkey/protocol/scripted-phone";
 
 const args = process.argv.slice(2);
 const relay = (() => {
   const i = args.indexOf("--relay");
-  return i >= 0 ? args[i + 1]! : "wss://walkietalkey-relay.jonathan0912.workers.dev";
+  return i >= 0
+    ? args[i + 1]!
+    : "wss://walkietalkey-relay.jonathan0912.workers.dev";
 })();
 const insecure = relay.startsWith("ws://");
 const steps: { step: string; ok: boolean; detail?: string }[] = [];
@@ -52,8 +57,18 @@ async function main() {
   const roomId = await computeRoomId(owner.signingSpki, salt);
   const os = await RelaySocket.open(roomSocketUrl(relay, roomId, "create"));
   const ch = b64uDecode((await os.control("challenge")).n, 32);
-  const csig = await signChallenge(owner.signing.privateKey, "wt-create-v1", roomId, ch);
-  os.sendControl({ t: "create", pub: b64uEncode(owner.signingSpki), salt: b64uEncode(salt), sig: b64uEncode(csig) });
+  const csig = await signChallenge(
+    owner.signing.privateKey,
+    "wt-create-v1",
+    roomId,
+    ch,
+  );
+  os.sendControl({
+    t: "create",
+    pub: b64uEncode(owner.signingSpki),
+    salt: b64uEncode(salt),
+    sig: b64uEncode(csig),
+  });
   const ok = await os.control("ok");
   if (ok.role !== "owner") throw new Error("not owner");
   os.startPing();
@@ -78,12 +93,24 @@ async function main() {
   pass("add_admission");
 
   // Phone joins.
-  const phone = await ScriptedPhone.create({ name: "Smoke phone", allowInsecureLocalhost: insecure });
+  const phone = await ScriptedPhone.create({
+    name: "Smoke phone",
+    allowInsecureLocalhost: insecure,
+  });
   await phone.pair(url);
   const joined = await os.control("member_joined");
   const phoneSpki = b64uDecode(joined.pub);
   const phoneAgree = b64uDecode(joined.agree);
-  if (!(await verifyJoinMac(s, roomId, phoneSpki, phoneAgree, b64uDecode(joined.mac)))) throw new Error("join MAC");
+  if (
+    !(await verifyJoinMac(
+      s,
+      roomId,
+      phoneSpki,
+      phoneAgree,
+      b64uDecode(joined.mac),
+    ))
+  )
+    throw new Error("join MAC");
   os.sendControl({ t: "event_ack", eid: joined.eid });
   const phoneId = b64uDecode(joined.id, 16);
   const keys = await derivePairKeys({
@@ -94,12 +121,19 @@ async function main() {
     computerId: owner.deviceId,
     phoneId,
   });
-  const channel = await PairChannel.open({ role: "computer", selfId: owner.deviceId, peerId: phoneId, keys, store: new MemoryCounterStore() });
+  const channel = await PairChannel.open({
+    role: "computer",
+    selfId: owner.deviceId,
+    peerId: phoneId,
+    keys,
+    store: new MemoryCounterStore(),
+  });
   pass("join + MAC verified", `phone ${joined.id.slice(0, 6)}…`);
 
   // Phone → computer: device_info, then a 1 s dictation.
   const info = await channel.open(await os.binary());
-  if (info.type !== "device_info" || info.name !== "Smoke phone") throw new Error(`device_info: ${info.type}`);
+  if (info.type !== "device_info" || info.name !== "Smoke phone")
+    throw new Error(`device_info: ${info.type}`);
   pass("device_info", info.name);
   const pcm = randomBytes(32000);
   const streaming = phone.streamPcm(pcm, { framesPerSecond: 25 });
@@ -114,17 +148,28 @@ async function main() {
   const sid = await streaming;
   const joinedPcm = Buffer.concat(got.map((g) => Buffer.from(g)));
   if (!joinedPcm.equals(Buffer.from(pcm))) throw new Error("PCM differs");
-  pass("audio frames phone → computer", `${got.length} blocks, ${pcm.length} bytes identical`);
+  pass(
+    "audio frames phone → computer",
+    `${got.length} blocks, ${pcm.length} bytes identical`,
+  );
 
   // Computer → phone: result and a presence answer.
-  os.sendBinary(await channel.seal({ type: "result", sessionId: sessionId!, ok: true }));
+  os.sendBinary(
+    await channel.seal({ type: "result", sessionId: sessionId!, ok: true }),
+  );
   const r = await phone.waitResult(sid, 10_000);
   if (!r.ok) throw new Error("result not ok");
   pass("result computer → phone");
   const presence = phone.presenceQuery(5000);
   const q = await channel.open(await os.binary());
   if (q.type !== "presence_query") throw new Error("presence_query");
-  os.sendBinary(await channel.seal({ type: "presence", secondsSinceInput: 7, locked: false }));
+  os.sendBinary(
+    await channel.seal({
+      type: "presence",
+      secondsSinceInput: 7,
+      locked: false,
+    }),
+  );
   const pres = await presence;
   if (!pres || pres.secondsSinceInput !== 7) throw new Error("presence");
   pass("presence_query / presence");
@@ -133,14 +178,16 @@ async function main() {
   os.sendControl({ t: "revoke", id: joined.id });
   const closed = await phone.waitClosed();
   await os.control("ack");
-  if (closed.code !== CloseCode.NotAuthorised) throw new Error(`revoke closed with ${closed.code}`);
+  if (closed.code !== CloseCode.NotAuthorised)
+    throw new Error(`revoke closed with ${closed.code}`);
   let again = 0;
   try {
     await phone.connect();
   } catch (e) {
     again = e instanceof RemovedError ? e.code : -1;
   }
-  if (again !== CloseCode.NotAuthorised) throw new Error(`reconnect after revoke: ${again}`);
+  if (again !== CloseCode.NotAuthorised)
+    throw new Error(`reconnect after revoke: ${again}`);
   pass("revoke", "phone closed 4401, reconnect 4401");
 
   // Clean up.
@@ -149,7 +196,8 @@ async function main() {
   if (oc.code !== 1000) throw new Error(`delete_room closed with ${oc.code}`);
   const probe = await RelaySocket.open(roomSocketUrl(relay, roomId, "auth"));
   const pc = await probe.closed();
-  if (pc.code !== CloseCode.RoomNotFound) throw new Error(`deleted room answered ${pc.code}`);
+  if (pc.code !== CloseCode.RoomNotFound)
+    throw new Error(`deleted room answered ${pc.code}`);
   pass("delete_room", "room gone (4404)");
 
   if (args.includes("--rate-limit")) {
@@ -158,7 +206,9 @@ async function main() {
     // The binding is approximate and eventually consistent: a burst overshoots the limit of 10
     // before refusals start (measured: first 4429 around attempt 25).
     for (let i = 1; i <= 40 && !refusedAt; i++) {
-      const sock = await RelaySocket.open(roomSocketUrl(relay, randomBytes(16), "create"));
+      const sock = await RelaySocket.open(
+        roomSocketUrl(relay, randomBytes(16), "create"),
+      );
       sockets.push(sock);
       try {
         await sock.control("challenge", 5000);
@@ -171,7 +221,14 @@ async function main() {
     pass("per-IP create limit", `refused with 4429 at attempt ${refusedAt}`);
   }
 
-  console.log(JSON.stringify({ relay, ok: true, ms: Date.now() - t0, steps: steps.length }));
+  console.log(
+    JSON.stringify({
+      relay,
+      ok: true,
+      ms: Date.now() - t0,
+      steps: steps.length,
+    }),
+  );
   process.exit(0);
 }
 

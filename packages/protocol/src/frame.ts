@@ -44,10 +44,13 @@ export interface SealHeader {
  * with a version other than 1. The relay uses this to route.
  */
 export function parseFrame(bytes: Uint8Array): ParsedFrame {
-  if (!(bytes instanceof Uint8Array)) throw new ProtocolError("bad_frame", "not bytes");
+  if (!(bytes instanceof Uint8Array))
+    throw new ProtocolError("bad_frame", "not bytes");
   if (bytes.length > MAX_FRAME_LEN) throw new ProtocolError("frame_too_large");
-  if (bytes.length < FRAME_OVERHEAD) throw new ProtocolError("bad_frame", "too short");
-  if (bytes[0] !== PROTOCOL_VERSION) throw new ProtocolError("bad_version", String(bytes[0]));
+  if (bytes.length < FRAME_OVERHEAD)
+    throw new ProtocolError("bad_frame", "too short");
+  if (bytes[0] !== PROTOCOL_VERSION)
+    throw new ProtocolError("bad_version", String(bytes[0]));
   return {
     header: {
       version: bytes[0],
@@ -63,14 +66,19 @@ export function parseFrame(bytes: Uint8Array): ParsedFrame {
 }
 
 function encodeHeader(h: SealHeader, nonce: Uint8Array): Uint8Array {
-  if (!Number.isInteger(h.type) || h.type < 0 || h.type > 255) throw new ProtocolError("bad_frame", "type");
-  if (h.sender.length !== DEVICE_ID_LEN || h.recipient.length !== DEVICE_ID_LEN) {
+  if (!Number.isInteger(h.type) || h.type < 0 || h.type > 255)
+    throw new ProtocolError("bad_frame", "type");
+  if (
+    h.sender.length !== DEVICE_ID_LEN ||
+    h.recipient.length !== DEVICE_ID_LEN
+  ) {
     throw new ProtocolError("bad_length", "device ids must be 16 bytes");
   }
   if (typeof h.counter !== "bigint" || h.counter < 1n || h.counter > MAX_U64) {
     throw new ProtocolError("bad_frame", "counter must be 1..2^64-1");
   }
-  if (nonce.length !== NONCE_LEN) throw new ProtocolError("bad_length", "nonce must be 12 bytes");
+  if (nonce.length !== NONCE_LEN)
+    throw new ProtocolError("bad_length", "nonce must be 12 bytes");
   const out = new Uint8Array(HEADER_LEN);
   out[0] = PROTOCOL_VERSION;
   out[1] = h.type;
@@ -88,11 +96,17 @@ export async function sealFrameInternal(
   plaintext: Uint8Array,
   nonce: Uint8Array,
 ): Promise<Uint8Array> {
-  if (plaintext.length > MAX_PLAINTEXT_LEN) throw new ProtocolError("frame_too_large");
+  if (plaintext.length > MAX_PLAINTEXT_LEN)
+    throw new ProtocolError("frame_too_large");
   const header = encodeHeader(h, nonce);
   const ct = new Uint8Array(
     await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: bs(nonce), additionalData: bs(header.subarray(0, AAD_LEN)), tagLength: 128 },
+      {
+        name: "AES-GCM",
+        iv: bs(nonce),
+        additionalData: bs(header.subarray(0, AAD_LEN)),
+        tagLength: 128,
+      },
       key,
       bs(plaintext),
     ),
@@ -104,7 +118,11 @@ export async function sealFrameInternal(
 }
 
 /** Encrypts one device frame with AES-256-GCM, a random 96-bit nonce and the header as AAD. */
-export async function sealFrame(key: CryptoKey, h: SealHeader, plaintext: Uint8Array): Promise<Uint8Array> {
+export async function sealFrame(
+  key: CryptoKey,
+  h: SealHeader,
+  plaintext: Uint8Array,
+): Promise<Uint8Array> {
   return sealFrameInternal(key, h, plaintext, randomBytes(NONCE_LEN));
 }
 
@@ -126,13 +144,20 @@ export async function openFrame(
   expect: OpenExpectations,
 ): Promise<{ header: FrameHeader; plaintext: Uint8Array }> {
   const { header, aad, ciphertext } = parseFrame(bytes);
-  if (!bytesEqual(header.recipient, expect.recipient)) throw new ProtocolError("wrong_recipient");
-  if (expect.sender && !bytesEqual(header.sender, expect.sender)) throw new ProtocolError("wrong_sender");
+  if (!bytesEqual(header.recipient, expect.recipient))
+    throw new ProtocolError("wrong_recipient");
+  if (expect.sender && !bytesEqual(header.sender, expect.sender))
+    throw new ProtocolError("wrong_sender");
   let plaintext: Uint8Array;
   try {
     plaintext = new Uint8Array(
       await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: bs(header.nonce), additionalData: bs(aad), tagLength: 128 },
+        {
+          name: "AES-GCM",
+          iv: bs(header.nonce),
+          additionalData: bs(aad),
+          tagLength: 128,
+        },
         key,
         bs(ciphertext),
       ),

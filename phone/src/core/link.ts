@@ -62,7 +62,13 @@ export function handshake(
     try {
       ws = new WS(url);
     } catch (e) {
-      reject(new HandshakeError(0, null, e instanceof Error ? e.message : "cannot open socket"));
+      reject(
+        new HandshakeError(
+          0,
+          null,
+          e instanceof Error ? e.message : "cannot open socket",
+        ),
+      );
       return;
     }
     ws.binaryType = "arraybuffer";
@@ -94,7 +100,8 @@ export function handshake(
       if (msg.t === "challenge") {
         answer(b64uDecode(msg.n, 32)).then(
           (reply) => {
-            if (!settled && ws.readyState === WebSocket.OPEN) ws.send(serializeControlMessage(reply));
+            if (!settled && ws.readyState === WebSocket.OPEN)
+              ws.send(serializeControlMessage(reply));
           },
           () => ws.close(4000, "cannot answer"),
         );
@@ -115,14 +122,22 @@ export function handshake(
   });
 }
 
-export function authHandshake(WS: WebSocketCtor, relayUrl: string, roomId: Uint8Array, device: DeviceKeys, timeoutMs?: number): Promise<Handshake> {
+export function authHandshake(
+  WS: WebSocketCtor,
+  relayUrl: string,
+  roomId: Uint8Array,
+  device: DeviceKeys,
+  timeoutMs?: number,
+): Promise<Handshake> {
   return handshake(
     WS,
     roomSocketUrl(relayUrl, roomId, "auth"),
     async (n) => ({
       t: "auth",
       id: b64uEncode(device.deviceId),
-      sig: b64uEncode(await signChallenge(device.signing.privateKey, "wt-auth-v1", roomId, n)),
+      sig: b64uEncode(
+        await signChallenge(device.signing.privateKey, "wt-auth-v1", roomId, n),
+      ),
     }),
     timeoutMs,
   );
@@ -142,7 +157,12 @@ export class JoinError extends Error {
 }
 
 /** spec 5.3 step 4: join with `a`, both public keys and the join MAC. */
-export async function joinRoom(WS: WebSocketCtor, p: PairingPayload, device: DeviceKeys, timeoutMs = 15_000): Promise<Handshake> {
+export async function joinRoom(
+  WS: WebSocketCtor,
+  p: PairingPayload,
+  device: DeviceKeys,
+  timeoutMs = 15_000,
+): Promise<Handshake> {
   try {
     return await handshake(
       WS,
@@ -152,8 +172,17 @@ export async function joinRoom(WS: WebSocketCtor, p: PairingPayload, device: Dev
         a: b64uEncode(p.a),
         pub: b64uEncode(device.signingSpki),
         agree: b64uEncode(device.agreementSpki),
-        mac: b64uEncode(await computeJoinMac(p.s, p.r, device.signingSpki, device.agreementSpki)),
-        sig: b64uEncode(await signChallenge(device.signing.privateKey, "wt-join-v1", p.r, n)),
+        mac: b64uEncode(
+          await computeJoinMac(
+            p.s,
+            p.r,
+            device.signingSpki,
+            device.agreementSpki,
+          ),
+        ),
+        sig: b64uEncode(
+          await signChallenge(device.signing.privateKey, "wt-join-v1", p.r, n),
+        ),
       }),
       timeoutMs,
     );
@@ -165,13 +194,19 @@ export async function joinRoom(WS: WebSocketCtor, p: PairingPayload, device: Dev
         return await authHandshake(WS, p.u, p.r, device, timeoutMs);
       } catch (e2) {
         const code = e2 instanceof HandshakeError ? e2.code : 0;
-        if (code === CloseCode.NotAuthorised || code === CloseCode.RoomNotFound) throw new JoinError("expired", e.relayCode ?? "admission_invalid");
-        throw new JoinError("network", e2 instanceof Error ? e2.message : String(e2));
+        if (code === CloseCode.NotAuthorised || code === CloseCode.RoomNotFound)
+          throw new JoinError("expired", e.relayCode ?? "admission_invalid");
+        throw new JoinError(
+          "network",
+          e2 instanceof Error ? e2.message : String(e2),
+        );
       }
     }
-    if (e.code === CloseCode.RoomNotFound) throw new JoinError("expired", "room_not_found");
+    if (e.code === CloseCode.RoomNotFound)
+      throw new JoinError("expired", "room_not_found");
     if (e.relayCode === "room_full") throw new JoinError("full", "room_full");
-    if (e.code === 0 || e.code === 1006) throw new JoinError("network", e.message);
+    if (e.code === 0 || e.code === 1006)
+      throw new JoinError("network", e.message);
     throw new JoinError("error", e.relayCode ?? `close ${e.code}`);
   }
 }
@@ -314,7 +349,12 @@ export class RoomLink implements StreamLink {
     if (this.stopped || this.removed || this.ws || this.connecting) return;
     this.connecting = true;
     try {
-      const h = await authHandshake(this.WS, this.room.relayUrl, b64uDecode(this.room.roomId, 16), this.opts.device);
+      const h = await authHandshake(
+        this.WS,
+        this.room.relayUrl,
+        b64uDecode(this.room.roomId, 16),
+        this.opts.device,
+      );
       if (this.stopped) {
         h.ws.close(1000, "bye");
         return;
@@ -340,9 +380,12 @@ export class RoomLink implements StreamLink {
     this.attempt = 0;
     this.connId++;
     this.connected = true;
-    const owner = h.members.find((m) => m.id === this.computerId) ?? h.members.find((m) => m.role === "owner");
+    const owner =
+      h.members.find((m) => m.id === this.computerId) ??
+      h.members.find((m) => m.role === "owner");
     this.peerOnline = !!owner?.online;
-    ws.onmessage = (ev: MessageEvent) => this.incoming(ws, ev.data as string | ArrayBuffer);
+    ws.onmessage = (ev: MessageEvent) =>
+      this.incoming(ws, ev.data as string | ArrayBuffer);
     ws.onclose = (ev: CloseEvent) => this.closed(ws, ev.code);
     this.startPing();
     this.markSettled();
@@ -438,7 +481,10 @@ export class RoomLink implements StreamLink {
 
   private startPing(): void {
     this.stopPing();
-    this.pingTimer = setInterval(() => this.checkAlive(), this.opts.pingIntervalMs ?? PING_INTERVAL_MS);
+    this.pingTimer = setInterval(
+      () => this.checkAlive(),
+      this.opts.pingIntervalMs ?? PING_INTERVAL_MS,
+    );
   }
 
   private stopPing(): void {
@@ -469,7 +515,8 @@ export class RoomLink implements StreamLink {
   send(payload: DevicePayload): Promise<boolean> {
     const result = this.sendChain.then(async () => {
       const ws = this.ws;
-      if (!ws || !this.connected || ws.readyState !== WebSocket.OPEN) return false;
+      if (!ws || !this.connected || ws.readyState !== WebSocket.OPEN)
+        return false;
       const frame = await (await this.getChannel()).seal(payload);
       if (this.ws !== ws || ws.readyState !== WebSocket.OPEN) return false;
       ws.send(frame);
@@ -503,10 +550,22 @@ export class RoomLink implements StreamLink {
 }
 
 /** `leave` for a room without a live socket (best effort; true when the relay has forgotten us). */
-export async function leaveOnce(WS: WebSocketCtor, relayUrl: string, roomId: string, device: DeviceKeys, timeoutMs = 8000): Promise<boolean> {
+export async function leaveOnce(
+  WS: WebSocketCtor,
+  relayUrl: string,
+  roomId: string,
+  device: DeviceKeys,
+  timeoutMs = 8000,
+): Promise<boolean> {
   let h: Handshake;
   try {
-    h = await authHandshake(WS, relayUrl, b64uDecode(roomId, 16), device, timeoutMs);
+    h = await authHandshake(
+      WS,
+      relayUrl,
+      b64uDecode(roomId, 16),
+      device,
+      timeoutMs,
+    );
   } catch (e) {
     const code = e instanceof HandshakeError ? e.code : 0;
     return code === CloseCode.NotAuthorised || code === CloseCode.RoomNotFound;

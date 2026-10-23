@@ -1,12 +1,23 @@
 /** Navigation between the phone app's screens. The controller holds everything else. */
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { PairingPayload } from "@walkietalkey/protocol";
 import type { PhoneController } from "../core/controller";
 import type { Platform } from "../lib/platform";
 import { T } from "../lib/strings";
 import { MainScreen } from "./MainScreen";
 import { Loading, NameScreen, PairScreen, ScanScreen } from "./screens";
-import { DetailsSheet, NoticeDialog, PickerSheet, SettingsScreen } from "./settings";
+import {
+  DetailsSheet,
+  NoticeDialog,
+  PickerSheet,
+  SettingsScreen,
+} from "./settings";
 
 /** Dispatched on window by the iOS shell (App Intent "Start diktering"). */
 export const SHELL_START_EVENT = "wt-shell-start";
@@ -26,8 +37,16 @@ export interface AppProps {
   link: { payload: PairingPayload | null; invalid: boolean; seq: number };
 }
 
-export function App({ controller, platform, allowInsecureLocalhost, link }: AppProps) {
-  const snap = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
+export function App({
+  controller,
+  platform,
+  allowInsecureLocalhost,
+  link,
+}: AppProps) {
+  const snap = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+  );
   const [view, setView] = useState<View>({ name: "home" });
   const [sheet, setSheet] = useState<"picker" | "details" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -77,7 +96,13 @@ export function App({ controller, platform, allowInsecureLocalhost, link }: AppP
   const paired = snap.rooms.length > 0;
   let screen;
   if (view.name === "scan") {
-    screen = <ScanScreen onResult={onScanned} onCancel={home} allowInsecureLocalhost={allowInsecureLocalhost} />;
+    screen = (
+      <ScanScreen
+        onResult={onScanned}
+        onCancel={home}
+        allowInsecureLocalhost={allowInsecureLocalhost}
+      />
+    );
   } else if (view.name === "name") {
     screen = (
       <NameScreen
@@ -121,7 +146,14 @@ export function App({ controller, platform, allowInsecureLocalhost, link }: AppP
       />
     );
   } else {
-    screen = <MainScreen controller={controller} snap={snap} onPicker={() => setSheet("picker")} onDetails={() => setSheet("details")} />;
+    screen = (
+      <MainScreen
+        controller={controller}
+        snap={snap}
+        onPicker={() => setSheet("picker")}
+        onDetails={() => setSheet("details")}
+      />
+    );
   }
 
   const notice = snap.notices[0];
@@ -147,7 +179,12 @@ export function App({ controller, platform, allowInsecureLocalhost, link }: AppP
           onClose={() => setSheet(null)}
         />
       ) : null}
-      {sheet === "details" && view.name === "home" ? <DetailsSheet detail={snap.machine.detail} onClose={() => setSheet(null)} /> : null}
+      {sheet === "details" && view.name === "home" ? (
+        <DetailsSheet
+          detail={snap.machine.detail}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
       {notice ? (
         <NoticeDialog
           notice={notice}

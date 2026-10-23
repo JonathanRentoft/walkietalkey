@@ -15,7 +15,13 @@ import {
   type PairKeys,
 } from "@walkietalkey/protocol";
 
-export const STORE_NAMES = ["device", "rooms", "counters", "settings", "pendingLeaves"] as const;
+export const STORE_NAMES = [
+  "device",
+  "rooms",
+  "counters",
+  "settings",
+  "pendingLeaves",
+] as const;
 const DB_VERSION = 1;
 
 export interface RoomRecord {
@@ -77,13 +83,15 @@ export class PhoneStorage implements CounterStore {
         const db = r.result;
         for (const store of STORE_NAMES) {
           if (db.objectStoreNames.contains(store)) continue;
-          if (store === "rooms" || store === "pendingLeaves") db.createObjectStore(store, { keyPath: "roomId" });
+          if (store === "rooms" || store === "pendingLeaves")
+            db.createObjectStore(store, { keyPath: "roomId" });
           else db.createObjectStore(store);
         }
       };
       r.onsuccess = () => resolve(new PhoneStorage(r.result));
       r.onerror = () => reject(r.error);
-      r.onblocked = () => reject(new Error("IndexedDB is blocked by another tab"));
+      r.onblocked = () =>
+        reject(new Error("IndexedDB is blocked by another tab"));
     });
   }
 
@@ -95,14 +103,25 @@ export class PhoneStorage implements CounterStore {
     return Array.from(this.db.objectStoreNames);
   }
 
-  private async get<T>(store: string, key: IDBValidKey): Promise<T | undefined> {
-    return (await req(this.db.transaction(store, "readonly").objectStore(store).get(key))) as T | undefined;
+  private async get<T>(
+    store: string,
+    key: IDBValidKey,
+  ): Promise<T | undefined> {
+    return (await req(
+      this.db.transaction(store, "readonly").objectStore(store).get(key),
+    )) as T | undefined;
   }
 
-  private async write(stores: string | string[], fn: (tx: IDBTransaction) => void, strict = false): Promise<void> {
+  private async write(
+    stores: string | string[],
+    fn: (tx: IDBTransaction) => void,
+    strict = false,
+  ): Promise<void> {
     // "strict" asks the browser to flush to disk before completing (counter reservations).
     const tx = strict
-      ? this.db.transaction(stores, "readwrite", { durability: "strict" } as IDBTransactionOptions)
+      ? this.db.transaction(stores, "readwrite", {
+          durability: "strict",
+        } as IDBTransactionOptions)
       : this.db.transaction(stores, "readwrite");
     fn(tx);
     await done(tx);
@@ -110,7 +129,10 @@ export class PhoneStorage implements CounterStore {
 
   /** The device's two key pairs, created on first use with non-extractable private keys. */
   async loadOrCreateDeviceKeys(): Promise<DeviceKeys> {
-    const stored = await this.get<{ signing: CryptoKeyPair; agreement: CryptoKeyPair }>("device", "keys");
+    const stored = await this.get<{
+      signing: CryptoKeyPair;
+      agreement: CryptoKeyPair;
+    }>("device", "keys");
     if (stored) return deviceKeysFromPairs(stored.signing, stored.agreement);
     const signing = await generateSigningKeyPair(false);
     const agreement = await generateAgreementKeyPair(false);
@@ -128,7 +150,9 @@ export class PhoneStorage implements CounterStore {
   }
 
   async listRooms(): Promise<RoomRecord[]> {
-    return (await req(this.db.transaction("rooms", "readonly").objectStore("rooms").getAll())) as RoomRecord[];
+    return (await req(
+      this.db.transaction("rooms", "readonly").objectStore("rooms").getAll(),
+    )) as RoomRecord[];
   }
 
   async putRoom(room: RoomRecord): Promise<void> {
@@ -143,10 +167,14 @@ export class PhoneStorage implements CounterStore {
   /** Drops a room with its pair keys and the counters of that pair. */
   async deleteRoom(roomId: string): Promise<void> {
     const room = await this.get<RoomRecord>("rooms", roomId);
-    const device = await this.get<{ signing: CryptoKeyPair; agreement: CryptoKeyPair }>("device", "keys");
+    const device = await this.get<{
+      signing: CryptoKeyPair;
+      agreement: CryptoKeyPair;
+    }>("device", "keys");
     const counterKeys: string[] = [];
     if (room && device) {
-      const self = (await deviceKeysFromPairs(device.signing, device.agreement)).deviceId;
+      const self = (await deviceKeysFromPairs(device.signing, device.agreement))
+        .deviceId;
       const peer = b64uDecode(room.computerId);
       counterKeys.push(counterKey(self, peer), counterKey(peer, self));
     }
@@ -170,23 +198,37 @@ export class PhoneStorage implements CounterStore {
   }
 
   async getSettings(): Promise<Settings> {
-    return { ...DEFAULT_SETTINGS, ...((await this.get<Settings>("settings", "settings")) ?? {}) };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...((await this.get<Settings>("settings", "settings")) ?? {}),
+    };
   }
 
   async putSettings(settings: Settings): Promise<void> {
-    await this.write("settings", (tx) => tx.objectStore("settings").put(settings, "settings"));
+    await this.write("settings", (tx) =>
+      tx.objectStore("settings").put(settings, "settings"),
+    );
   }
 
   async addPendingLeave(p: PendingLeave): Promise<void> {
-    await this.write("pendingLeaves", (tx) => tx.objectStore("pendingLeaves").put(p));
+    await this.write("pendingLeaves", (tx) =>
+      tx.objectStore("pendingLeaves").put(p),
+    );
   }
 
   async listPendingLeaves(): Promise<PendingLeave[]> {
-    return (await req(this.db.transaction("pendingLeaves", "readonly").objectStore("pendingLeaves").getAll())) as PendingLeave[];
+    return (await req(
+      this.db
+        .transaction("pendingLeaves", "readonly")
+        .objectStore("pendingLeaves")
+        .getAll(),
+    )) as PendingLeave[];
   }
 
   async deletePendingLeave(roomId: string): Promise<void> {
-    await this.write("pendingLeaves", (tx) => tx.objectStore("pendingLeaves").delete(roomId));
+    await this.write("pendingLeaves", (tx) =>
+      tx.objectStore("pendingLeaves").delete(roomId),
+    );
   }
 
   // CounterStore (spec 9.4). Values are decimal strings, so no engine has to clone a BigInt.
@@ -196,7 +238,11 @@ export class PhoneStorage implements CounterStore {
   }
 
   async saveSendReservation(key: string, end: bigint): Promise<void> {
-    await this.write("counters", (tx) => tx.objectStore("counters").put(end.toString(), `send:${key}`), true);
+    await this.write(
+      "counters",
+      (tx) => tx.objectStore("counters").put(end.toString(), `send:${key}`),
+      true,
+    );
   }
 
   async loadLastAccepted(key: string): Promise<bigint> {
@@ -204,6 +250,8 @@ export class PhoneStorage implements CounterStore {
   }
 
   async saveLastAccepted(key: string, value: bigint): Promise<void> {
-    await this.write("counters", (tx) => tx.objectStore("counters").put(value.toString(), `recv:${key}`));
+    await this.write("counters", (tx) =>
+      tx.objectStore("counters").put(value.toString(), `recv:${key}`),
+    );
   }
 }

@@ -13,7 +13,10 @@ export const LABELS = {
   joinMac: "wt-join-mac-v1",
 } as const;
 
-export type ChallengeLabel = typeof LABELS.auth | typeof LABELS.create | typeof LABELS.join;
+export type ChallengeLabel =
+  | typeof LABELS.auth
+  | typeof LABELS.create
+  | typeof LABELS.join;
 
 export const ROOM_ID_LEN = 16;
 export const DEVICE_ID_LEN = 16;
@@ -30,8 +33,9 @@ export const TAG_LEN = 16;
 
 /** DER prefix of a P-256 SubjectPublicKeyInfo with an uncompressed point (the 0x04 follows). */
 export const SPKI_PREFIX = new Uint8Array([
-  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce,
-  0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00, 0x04,
+  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+  0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00,
+  0x04,
 ]);
 export const SPKI_LEN = 91;
 
@@ -97,7 +101,13 @@ export const COUNTER_BLOCK = 1000;
 export const PING_MESSAGE = '{"t":"ping"}';
 export const PONG_MESSAGE = '{"t":"pong"}';
 
-export const RESULT_REASONS = ["no_speech", "model_not_ready", "too_long", "paused", "error"] as const;
+export const RESULT_REASONS = [
+  "no_speech",
+  "model_not_ready",
+  "too_long",
+  "paused",
+  "error",
+] as const;
 export type ResultReason = (typeof RESULT_REASONS)[number];
 
 export type Role = "owner" | "phone";

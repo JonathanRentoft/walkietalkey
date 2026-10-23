@@ -30,3 +30,8 @@ docs/SPEC.md
 ios/Web
 phone/dist-e2e
 phone/e2e/.tmp
+
+# Generated: design tokens (gen:tokens, checked byte for byte) and the relay's Worker types (wrangler types)
+packages/ui/src/styles/tokens.css
+packages/ui/src/tokens.ts
+relay/worker-configuration.d.ts

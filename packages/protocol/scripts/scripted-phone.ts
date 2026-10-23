@@ -33,7 +33,11 @@ import {
   type PairingPayload,
   type ResultReason,
 } from "../src/index.ts";
-import { RelaySocket, SocketClosedError, type Incoming } from "./relay-socket.ts";
+import {
+  RelaySocket,
+  SocketClosedError,
+  type Incoming,
+} from "./relay-socket.ts";
 import { parseWav, splitBlocks } from "./wav.ts";
 
 export type PhoneEvent = { event: string } & Record<string, unknown>;
@@ -57,10 +61,15 @@ interface Session {
 }
 
 /** PHONE-32: pack up to 10 blocks (2 s) per frame for a resend. */
-export function packResend(blocks: Uint8Array[]): { firstIndex: number; pcm: Uint8Array }[] {
+export function packResend(
+  blocks: Uint8Array[],
+): { firstIndex: number; pcm: Uint8Array }[] {
   const out: { firstIndex: number; pcm: Uint8Array }[] = [];
   for (let i = 0; i < blocks.length; i += MAX_BLOCKS_PER_FRAME) {
-    out.push({ firstIndex: i, pcm: concatBytes(...blocks.slice(i, i + MAX_BLOCKS_PER_FRAME)) });
+    out.push({
+      firstIndex: i,
+      pcm: concatBytes(...blocks.slice(i, i + MAX_BLOCKS_PER_FRAME)),
+    });
   }
   return out;
 }
@@ -89,7 +98,8 @@ export class ScriptedPhone {
   private readonly store = new MemoryCounterStore();
   private readonly sessions = new Map<string, Session>();
   private readonly results = new Map<string, PhoneResult>();
-  private readonly presence: { secondsSinceInput: number; locked: boolean }[] = [];
+  private readonly presence: { secondsSinceInput: number; locked: boolean }[] =
+    [];
   private waiters: Array<() => void> = [];
 
   private constructor(keys: DeviceKeys, options: ScriptedPhoneOptions) {
@@ -97,7 +107,9 @@ export class ScriptedPhone {
     this.options = options;
   }
 
-  static async create(options: ScriptedPhoneOptions = {}): Promise<ScriptedPhone> {
+  static async create(
+    options: ScriptedPhoneOptions = {},
+  ): Promise<ScriptedPhone> {
     return new ScriptedPhone(await generateDeviceKeys(), options);
   }
 
@@ -113,7 +125,11 @@ export class ScriptedPhone {
     for (const w of this.waiters.splice(0)) w();
   }
 
-  private async waitFor<T>(get: () => T | undefined, what: string, timeoutMs: number): Promise<T> {
+  private async waitFor<T>(
+    get: () => T | undefined,
+    what: string,
+    timeoutMs: number,
+  ): Promise<T> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const v = get();
@@ -144,15 +160,30 @@ export class ScriptedPhone {
    * Test knobs: `corruptMac` sends a wrong join MAC (the computer must refuse, SEC-03);
    * `skipDeviceInfo` never sends a name (DESK-62 "en telefon uden navn").
    */
-  async pair(url: string, knobs: { corruptMac?: boolean; skipDeviceInfo?: boolean } = {}): Promise<void> {
-    this.pairing = decodePairingUrl(url, { allowInsecureLocalhost: this.options.allowInsecureLocalhost });
+  async pair(
+    url: string,
+    knobs: { corruptMac?: boolean; skipDeviceInfo?: boolean } = {},
+  ): Promise<void> {
+    this.pairing = decodePairingUrl(url, {
+      allowInsecureLocalhost: this.options.allowInsecureLocalhost,
+    });
     const p = this.pairing;
     const socket = await RelaySocket.open(this.socketUrl("join"));
     let members: MemberInfo[];
     try {
       const ch = await this.challenge(socket);
-      const sig = await signChallenge(this.keys.signing.privateKey, "wt-join-v1", p.r, ch);
-      const mac = await computeJoinMac(p.s, p.r, this.keys.signingSpki, this.keys.agreementSpki);
+      const sig = await signChallenge(
+        this.keys.signing.privateKey,
+        "wt-join-v1",
+        p.r,
+        ch,
+      );
+      const mac = await computeJoinMac(
+        p.s,
+        p.r,
+        this.keys.signingSpki,
+        this.keys.agreementSpki,
+      );
       if (knobs.corruptMac) mac[0]! ^= 0xff;
       socket.sendControl({
         t: "join",
@@ -165,7 +196,10 @@ export class ScriptedPhone {
       members = (await socket.control("ok")).members;
     } catch (e) {
       socket.close();
-      if (e instanceof SocketClosedError && e.code === CloseCode.NotAuthorised) {
+      if (
+        e instanceof SocketClosedError &&
+        e.code === CloseCode.NotAuthorised
+      ) {
         // The join may have succeeded with its answer lost; a member can simply authenticate.
         await this.connect();
         if (!knobs.skipDeviceInfo) await this.sendDeviceInfo();
@@ -175,7 +209,11 @@ export class ScriptedPhone {
     }
     await this.deriveFromOwner(members);
     this.adopt(socket, members);
-    this.emit({ event: "paired", deviceId: this.deviceId, computerId: b64uEncode(this.computerId!) });
+    this.emit({
+      event: "paired",
+      deviceId: this.deviceId,
+      computerId: b64uEncode(this.computerId!),
+    });
     if (!knobs.skipDeviceInfo) await this.sendDeviceInfo();
   }
 
@@ -209,11 +247,13 @@ export class ScriptedPhone {
     socket.onClose = (code, reason) => {
       this.lastClose = { code, reason };
       this.emit({ event: "closed", code, reason });
-      if (code === CloseCode.NotAuthorised || code === CloseCode.RoomNotFound) this.emit({ event: "removed", code });
+      if (code === CloseCode.NotAuthorised || code === CloseCode.RoomNotFound)
+        this.emit({ event: "removed", code });
       this.wake();
     };
     // Anything that arrived before the handler was attached.
-    for (const m of socket.queue.splice(0)) if (!this.incoming(m)) socket.queue.push(m);
+    for (const m of socket.queue.splice(0))
+      if (!this.incoming(m)) socket.queue.push(m);
     socket.startPing();
   }
 
@@ -224,12 +264,25 @@ export class ScriptedPhone {
     let members: MemberInfo[];
     try {
       const ch = await this.challenge(socket);
-      const sig = await signChallenge(this.keys.signing.privateKey, "wt-auth-v1", this.pairing.r, ch);
-      socket.sendControl({ t: "auth", id: this.deviceId, sig: b64uEncode(sig) });
+      const sig = await signChallenge(
+        this.keys.signing.privateKey,
+        "wt-auth-v1",
+        this.pairing.r,
+        ch,
+      );
+      socket.sendControl({
+        t: "auth",
+        id: this.deviceId,
+        sig: b64uEncode(sig),
+      });
       members = (await socket.control("ok")).members;
     } catch (e) {
       socket.close();
-      if (e instanceof SocketClosedError && (e.code === CloseCode.NotAuthorised || e.code === CloseCode.RoomNotFound)) {
+      if (
+        e instanceof SocketClosedError &&
+        (e.code === CloseCode.NotAuthorised ||
+          e.code === CloseCode.RoomNotFound)
+      ) {
         this.lastClose = { code: e.code, reason: e.reason };
         this.emit({ event: "removed", code: e.code });
         throw new RemovedError(e.code);
@@ -256,11 +309,13 @@ export class ScriptedPhone {
   private incoming(m: Incoming): boolean {
     if (m.kind === "text") {
       if (m.msg?.t === "peer") {
-        if (this.computerId && m.msg.id === b64uEncode(this.computerId)) this.ownerOnline = m.msg.online;
+        if (this.computerId && m.msg.id === b64uEncode(this.computerId))
+          this.ownerOnline = m.msg.online;
         this.emit({ event: "peer", online: m.msg.online });
         return true;
       }
-      if (m.msg?.t === "error") this.emit({ event: "relay_error", code: m.msg.code });
+      if (m.msg?.t === "error")
+        this.emit({ event: "relay_error", code: m.msg.code });
       return false;
     }
     void this.openFrame(m.bytes);
@@ -273,19 +328,31 @@ export class ScriptedPhone {
     try {
       p = await this.channel.open(bytes);
     } catch (e) {
-      this.emit({ event: "frame_dropped", code: e instanceof ProtocolError ? e.code : String(e) });
+      this.emit({
+        event: "frame_dropped",
+        code: e instanceof ProtocolError ? e.code : String(e),
+      });
       return;
     }
     if (p.type === "result") {
       const sid = b64uEncode(p.sessionId);
-      const r: PhoneResult = p.ok ? { ok: true } : { ok: false, reason: p.reason };
+      const r: PhoneResult = p.ok
+        ? { ok: true }
+        : { ok: false, reason: p.reason };
       this.results.set(sid, r);
       // The computer has it; the phone can forget the audio (PHONE-32).
       this.sessions.delete(sid);
       this.emit({ event: "result", sessionId: sid, ...r });
     } else if (p.type === "presence") {
-      this.presence.push({ secondsSinceInput: p.secondsSinceInput, locked: p.locked });
-      this.emit({ event: "presence", secondsSinceInput: p.secondsSinceInput, locked: p.locked });
+      this.presence.push({
+        secondsSinceInput: p.secondsSinceInput,
+        locked: p.locked,
+      });
+      this.emit({
+        event: "presence",
+        secondsSinceInput: p.secondsSinceInput,
+        locked: p.locked,
+      });
     }
     this.wake();
   }
@@ -301,7 +368,11 @@ export class ScriptedPhone {
   }
 
   async sendDeviceInfo(): Promise<void> {
-    await this.send({ type: "device_info", name: this.options.name ?? "Scripted phone", platform: this.options.platform ?? "web" });
+    await this.send({
+      type: "device_info",
+      name: this.options.name ?? "Scripted phone",
+      platform: this.options.platform ?? "web",
+    });
   }
 
   /**
@@ -309,7 +380,10 @@ export class ScriptedPhone {
    * (5 = real time), then audio_end. `dropAfter` closes the socket after that many blocks; the
    * blocks after it are lost, as on a real phone whose network went away.
    */
-  async streamPcm(pcm: Uint8Array, opts: { framesPerSecond?: number; dropAfter?: number } = {}): Promise<string> {
+  async streamPcm(
+    pcm: Uint8Array,
+    opts: { framesPerSecond?: number; dropAfter?: number } = {},
+  ): Promise<string> {
     const fps = opts.framesPerSecond ?? 1000 / BLOCK_MS;
     const blocks = splitBlocks(pcm);
     const id = randomBytes(16);
@@ -317,38 +391,76 @@ export class ScriptedPhone {
     const durationMs = Math.round((pcm.length / 2 / SAMPLE_RATE) * 1000);
     this.sessions.set(sid, { id, blocks, durationMs });
     this.emit({ event: "stream_start", sessionId: sid, blocks: blocks.length });
-    await this.send({ type: "audio_start", sessionId: id, sampleRate: SAMPLE_RATE, codec: "pcm16" });
+    await this.send({
+      type: "audio_start",
+      sessionId: id,
+      sampleRate: SAMPLE_RATE,
+      codec: "pcm16",
+    });
     const t0 = Date.now();
     for (let i = 0; i < blocks.length; i++) {
       const due = t0 + ((i + 1) * 1000) / fps;
       const wait = due - Date.now();
       if (wait > 0) await sleep(wait);
-      await this.send({ type: "audio_chunk", sessionId: id, firstIndex: i, pcm: blocks[i]! });
+      await this.send({
+        type: "audio_chunk",
+        sessionId: id,
+        firstIndex: i,
+        pcm: blocks[i]!,
+      });
       if (opts.dropAfter !== undefined && i + 1 === opts.dropAfter) this.drop();
     }
-    await this.send({ type: "audio_end", sessionId: id, chunks: blocks.length, durationMs });
+    await this.send({
+      type: "audio_end",
+      sessionId: id,
+      chunks: blocks.length,
+      durationMs,
+    });
     this.emit({ event: "stream_end", sessionId: sid });
     return sid;
   }
 
-  async streamWav(wav: Uint8Array, opts: { framesPerSecond?: number; dropAfter?: number } = {}): Promise<string> {
+  async streamWav(
+    wav: Uint8Array,
+    opts: { framesPerSecond?: number; dropAfter?: number } = {},
+  ): Promise<string> {
     return this.streamPcm(parseWav(wav).pcm, opts);
   }
 
   /** PHONE-32: the whole session again, up to 10 blocks per frame, at most 25 frames per second. */
   async resend(sessionId: Uint8Array | string): Promise<void> {
-    const sid = typeof sessionId === "string" ? sessionId : b64uEncode(sessionId);
+    const sid =
+      typeof sessionId === "string" ? sessionId : b64uEncode(sessionId);
     const s = this.sessions.get(sid);
     if (!s) return;
     const gap = 1000 / MAX_RESEND_FRAMES_PER_SECOND;
-    await this.send({ type: "audio_start", sessionId: s.id, sampleRate: SAMPLE_RATE, codec: "pcm16" });
+    await this.send({
+      type: "audio_start",
+      sessionId: s.id,
+      sampleRate: SAMPLE_RATE,
+      codec: "pcm16",
+    });
     for (const f of packResend(s.blocks)) {
       await sleep(gap);
-      await this.send({ type: "audio_chunk", sessionId: s.id, firstIndex: f.firstIndex, pcm: f.pcm });
+      await this.send({
+        type: "audio_chunk",
+        sessionId: s.id,
+        firstIndex: f.firstIndex,
+        pcm: f.pcm,
+      });
     }
     await sleep(gap);
-    await this.send({ type: "audio_end", sessionId: s.id, chunks: s.blocks.length, durationMs: s.durationMs });
-    this.emit({ event: "resent", sessionId: sid, frames: Math.ceil(s.blocks.length / MAX_BLOCKS_PER_FRAME) });
+    await this.send({
+      type: "audio_end",
+      sessionId: s.id,
+      chunks: s.blocks.length,
+      durationMs: s.durationMs,
+    });
+    this.emit({
+      event: "resent",
+      sessionId: sid,
+      frames: Math.ceil(s.blocks.length / MAX_BLOCKS_PER_FRAME),
+    });
   }
 
   async cancel(sessionId: string): Promise<void> {
@@ -358,16 +470,29 @@ export class ScriptedPhone {
     this.sessions.delete(sessionId);
   }
 
-  async waitResult(sessionId: string, timeoutMs = 30_000): Promise<PhoneResult> {
-    return this.waitFor(() => this.results.get(sessionId), `result for ${sessionId}`, timeoutMs);
+  async waitResult(
+    sessionId: string,
+    timeoutMs = 30_000,
+  ): Promise<PhoneResult> {
+    return this.waitFor(
+      () => this.results.get(sessionId),
+      `result for ${sessionId}`,
+      timeoutMs,
+    );
   }
 
   /** PHONE-40: asks the computer; null if no answer within the time. */
-  async presenceQuery(timeoutMs = 1000): Promise<{ secondsSinceInput: number; locked: boolean } | null> {
+  async presenceQuery(
+    timeoutMs = 1000,
+  ): Promise<{ secondsSinceInput: number; locked: boolean } | null> {
     const before = this.presence.length;
     await this.send({ type: "presence_query" });
     try {
-      return await this.waitFor(() => this.presence[before], "presence", timeoutMs);
+      return await this.waitFor(
+        () => this.presence[before],
+        "presence",
+        timeoutMs,
+      );
     } catch {
       return null;
     }
@@ -380,7 +505,9 @@ export class ScriptedPhone {
     await this.socket!.closed();
   }
 
-  async waitClosed(timeoutMs = 10_000): Promise<{ code: number; reason: string }> {
+  async waitClosed(
+    timeoutMs = 10_000,
+  ): Promise<{ code: number; reason: string }> {
     if (!this.socket) throw new Error("no socket");
     return this.socket.closed(timeoutMs);
   }
@@ -406,8 +533,15 @@ async function readFileBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await fs.readFile(path));
 }
 
-async function stdioMode(insecure: boolean, name: string | undefined): Promise<void> {
-  const phone = await ScriptedPhone.create({ allowInsecureLocalhost: insecure, name, onEvent: (e) => print(e) });
+async function stdioMode(
+  insecure: boolean,
+  name: string | undefined,
+): Promise<void> {
+  const phone = await ScriptedPhone.create({
+    allowInsecureLocalhost: insecure,
+    name,
+    onEvent: (e) => print(e),
+  });
   print({ event: "ready", deviceId: phone.deviceId });
   const readline = await import("node:readline");
   const rl = readline.createInterface({ input: process.stdin });
@@ -423,20 +557,30 @@ async function stdioMode(insecure: boolean, name: string | undefined): Promise<v
         print({ reply: "?", ok: false, error: "bad JSON" });
         return;
       }
-      const reply = (extra: Record<string, unknown>) => print({ reply: cmd.cmd, id: cmd.id ?? null, ...extra });
+      const reply = (extra: Record<string, unknown>) =>
+        print({ reply: cmd.cmd, id: cmd.id ?? null, ...extra });
       try {
         switch (cmd.cmd) {
           case "pair":
-            await phone.pair(String(cmd.url), { corruptMac: cmd.corruptMac === true, skipDeviceInfo: cmd.skipDeviceInfo === true });
-            return reply({ ok: true, deviceId: phone.deviceId, computerId: b64uEncode(phone.computerId!) });
+            await phone.pair(String(cmd.url), {
+              corruptMac: cmd.corruptMac === true,
+              skipDeviceInfo: cmd.skipDeviceInfo === true,
+            });
+            return reply({
+              ok: true,
+              deviceId: phone.deviceId,
+              computerId: b64uEncode(phone.computerId!),
+            });
           case "connect":
             await phone.connect();
             return reply({ ok: true, ownerOnline: phone.ownerOnline });
           case "stream": {
             const wav = await readFileBytes(String(cmd.wav));
             const sid = await phone.streamWav(wav, {
-              framesPerSecond: typeof cmd.fps === "number" ? cmd.fps : undefined,
-              dropAfter: typeof cmd.dropAfter === "number" ? cmd.dropAfter : undefined,
+              framesPerSecond:
+                typeof cmd.fps === "number" ? cmd.fps : undefined,
+              dropAfter:
+                typeof cmd.dropAfter === "number" ? cmd.dropAfter : undefined,
             });
             return reply({ ok: true, sessionId: sid });
           }
@@ -451,16 +595,26 @@ async function stdioMode(insecure: boolean, name: string | undefined): Promise<v
             await phone.waitClosed();
             return reply({ ok: true });
           case "wait_result": {
-            const r = await phone.waitResult(String(cmd.sessionId), typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 30_000);
+            const r = await phone.waitResult(
+              String(cmd.sessionId),
+              typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 30_000,
+            );
             return reply({ ok: true, result: r });
           }
           case "presence":
-            return reply({ ok: true, presence: await phone.presenceQuery(typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 1000) });
+            return reply({
+              ok: true,
+              presence: await phone.presenceQuery(
+                typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 1000,
+              ),
+            });
           case "leave":
             await phone.leave();
             return reply({ ok: true });
           case "wait_closed": {
-            const c = await phone.waitClosed(typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 10_000);
+            const c = await phone.waitClosed(
+              typeof cmd.timeoutMs === "number" ? cmd.timeoutMs : 10_000,
+            );
             return reply({ ok: true, code: c.code });
           }
           case "quit":
@@ -472,8 +626,17 @@ async function stdioMode(insecure: boolean, name: string | undefined): Promise<v
             return reply({ ok: false, error: "unknown command" });
         }
       } catch (e) {
-        const code = e instanceof RemovedError ? e.code : e instanceof SocketClosedError ? e.code : undefined;
-        reply({ ok: false, error: e instanceof Error ? e.message : String(e), code });
+        const code =
+          e instanceof RemovedError
+            ? e.code
+            : e instanceof SocketClosedError
+              ? e.code
+              : undefined;
+        reply({
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+          code,
+        });
       }
     });
   });
@@ -489,13 +652,21 @@ async function streamMode(args: string[], insecure: boolean): Promise<void> {
   const url = arg(args, "--url");
   const wavPath = arg(args, "--wav");
   if (!url || !wavPath) {
-    console.error("usage: scripted-phone.ts stream --url '<pairing url>' --wav file.wav [--fps 5] [--name X] [--insecure-localhost]");
+    console.error(
+      "usage: scripted-phone.ts stream --url '<pairing url>' --wav file.wav [--fps 5] [--name X] [--insecure-localhost]",
+    );
     process.exit(2);
   }
   const fps = arg(args, "--fps");
-  const phone = await ScriptedPhone.create({ allowInsecureLocalhost: insecure, name: arg(args, "--name"), onEvent: (e) => print(e) });
+  const phone = await ScriptedPhone.create({
+    allowInsecureLocalhost: insecure,
+    name: arg(args, "--name"),
+    onEvent: (e) => print(e),
+  });
   await phone.pair(url);
-  const sid = await phone.streamWav(await readFileBytes(wavPath), { framesPerSecond: fps ? Number(fps) : undefined });
+  const sid = await phone.streamWav(await readFileBytes(wavPath), {
+    framesPerSecond: fps ? Number(fps) : undefined,
+  });
   const result = await phone.waitResult(sid, 60_000);
   print({ event: "done", sessionId: sid, ...result });
   phone.close();
@@ -504,20 +675,30 @@ async function streamMode(args: string[], insecure: boolean): Promise<void> {
 
 const isMain = (() => {
   const entry = process.argv[1] ?? "";
-  return entry.endsWith("scripted-phone.ts") || entry.endsWith("scripted-phone.js");
+  return (
+    entry.endsWith("scripted-phone.ts") || entry.endsWith("scripted-phone.js")
+  );
 })();
 
 if (isMain) {
   const args = process.argv.slice(2);
   const insecure = args.includes("--insecure-localhost");
-  const run = args.includes("--stdio") ? stdioMode(insecure, arg(args, "--name")) : args[0] === "stream" ? streamMode(args, insecure) : null;
+  const run = args.includes("--stdio")
+    ? stdioMode(insecure, arg(args, "--name"))
+    : args[0] === "stream"
+      ? streamMode(args, insecure)
+      : null;
   if (!run) {
-    console.error("usage: scripted-phone.ts --stdio | stream --url ... --wav ...");
+    console.error(
+      "usage: scripted-phone.ts --stdio | stream --url ... --wav ...",
+    );
     process.exit(2);
   }
   run.catch((e) => {
-    print({ event: "fatal", error: e instanceof Error ? e.message : String(e) });
+    print({
+      event: "fatal",
+      error: e instanceof Error ? e.message : String(e),
+    });
     process.exit(1);
   });
 }
-

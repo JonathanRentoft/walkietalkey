@@ -1,6 +1,11 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { b64uEncode, derivePairKeys, generateDeviceKeys, randomBytes } from "@walkietalkey/protocol";
+import {
+  b64uEncode,
+  derivePairKeys,
+  generateDeviceKeys,
+  randomBytes,
+} from "@walkietalkey/protocol";
 import type { RecorderLike } from "../src/audio/recorder";
 import { PhoneController } from "../src/core/controller";
 import type { WebSocketCtor } from "../src/core/link";
@@ -66,7 +71,8 @@ async function setup(opts: { paired: boolean; haptics?: boolean }) {
       lastUsedAt: 1,
     });
   }
-  if (opts.haptics === false) await storage.putSettings({ mode: "hold", haptics: false });
+  if (opts.haptics === false)
+    await storage.putSettings({ mode: "hold", haptics: false });
   const recorder = new FakeRecorder();
   const haptics: string[] = [];
   const wake: string[] = [];
@@ -75,7 +81,11 @@ async function setup(opts: { paired: boolean; haptics?: boolean }) {
     platform: { os: "ios", standalone: true, shell: true, device: "iPhone" },
     recorder,
     haptic: (k) => haptics.push(k),
-    wake: { acquire: () => wake.push("on"), release: () => wake.push("off"), visible: () => undefined },
+    wake: {
+      acquire: () => wake.push("on"),
+      release: () => wake.push("off"),
+      visible: () => undefined,
+    },
     WebSocketImpl: NeverSocket as unknown as WebSocketCtor,
   });
   await c.init();
