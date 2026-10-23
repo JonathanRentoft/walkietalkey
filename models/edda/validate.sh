@@ -32,6 +32,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TCPP="$WORK/src/transcribe.cpp-0.4.0"
 SNAPSHOT="$WORK/dl/edda-v0.2"
 MODELS="$WORK/models-final/edda-v0.2"
+REF="$WORK/build/reference-gguf"
 TURBO_HF="$WORK/dl/whisper-large-v3-turbo-hf"
 TURBO_F16="$WORK/dl/whisper-large-v3-turbo-gguf/whisper-large-v3-turbo-F16.gguf"
 OUT="$WORK/runs/edda-validation"
@@ -64,7 +65,7 @@ want() { [[ " $STEPS " == *" $1 "* ]]; }
 
 cd "$TCPP"
 want tensors && step tensors uv run scripts/validate.py all --family whisper --variant edda-v0.2 \
-  --model "$SNAPSHOT" --gguf "$MODELS/edda-v0.2-F16.gguf" --report
+  --model "$SNAPSHOT" --gguf "$REF/edda-v0.2-F16.gguf" --report
 
 if want control && [[ -d "$TURBO_HF" && -f "$TURBO_F16" ]]; then
   step control uv run scripts/validate.py all --family whisper --variant whisper-large-v3-turbo-da \
@@ -79,7 +80,7 @@ if want quant; then
   WRAP="$OUT/transcribe-cli-da-notimestamps"
   printf '#!/bin/sh\nexec "%s" --timestamps none -l da "$@"\n' "$TCPP/build/bin/transcribe-cli" > "$WRAP"
   chmod +x "$WRAP"
-  step quant uv run scripts/quant_accuracy.py --cli "$WRAP" --baseline "$MODELS/edda-v0.2-F16.gguf" \
+  step quant uv run scripts/quant_accuracy.py --cli "$WRAP" --baseline "$REF/edda-v0.2-F16.gguf" \
     --audio "$TCPP/samples/fleurs-da-6263195548503774343.wav" \
     --dump-root "$OUT/quant-dumps" "$MODELS/edda-v0.2-Q8_0.gguf"
 fi
@@ -90,7 +91,7 @@ if want same-text; then
     --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --out "$OUT/same_text.metal.json" "${CLIPS[@]}"
   step same-text-cpu uv run --project "$TCPP/scripts/envs/whisper" python "$HERE/same_text.py" \
     --tcpp "$TCPP" --model "$SNAPSHOT" --backend cpu \
-    --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --gguf "$MODELS/edda-v0.2-F16.gguf" \
+    --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --gguf "$REF/edda-v0.2-F16.gguf" \
     --out "$OUT/same_text.cpu.json" "${CLIPS[@]}"
 fi
 

@@ -95,13 +95,15 @@ def ffmpeg_convert(src: Path, dst: Path) -> None:
                     "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(dst)], check=True)
 
 
-def prepare_audio(clips: list[Clip], cache: Path, convert=ffmpeg_convert) -> list[Clip]:
+def prepare_audio(clips: list[Clip], cache: Path, convert=ffmpeg_convert, pcm16_only: bool = False) -> list[Clip]:
     """transcribe-cli reads 16 kHz mono WAV (16-bit PCM or 32-bit float); any
-    other clip is converted once into `cache` and the converted copy is used."""
+    other clip is converted once into `cache` and the converted copy is used.
+    `pcm16_only` also converts float WAV (for cutting with the wave module)."""
+    accepted = ((1, 16),) if pcm16_only else ((1, 16), (3, 32))
     out = []
     for clip in clips:
         info = wav_info(clip.wav)
-        if info.rate == 16000 and info.channels == 1 and (info.format, info.bits) in ((1, 16), (3, 32)):
+        if info.rate == 16000 and info.channels == 1 and (info.format, info.bits) in accepted:
             out.append(clip)
             continue
         cache.mkdir(parents=True, exist_ok=True)

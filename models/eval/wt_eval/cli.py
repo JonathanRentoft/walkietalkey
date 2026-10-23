@@ -16,7 +16,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .datasets import Clip, load_clips_dir, load_fleurs, prepare_audio
-from .engine import TranscribeCli
+from .engine import Result, TranscribeCli
+from .vadsplit import cut_segments, vad_segments
 from .normalize import normalize
 from .punctuation import count_marks, needs_pnc, word_count
 from .wer import Counts, bootstrap_ci, corpus_wer, word_errors
@@ -125,6 +126,13 @@ def cmd_run(a: argparse.Namespace) -> int:
     dataset.update(clips=len(clips), limit=a.limit)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    plan: dict[str, list[Path]] = {}
+    if a.split_vad:
+        dataset["split_vad"] = str(a.split_vad)
+        clips = prepare_audio(clips, out / "audio-16k", pcm16_only=True)
+        for clip in clips:
+            segments = vad_segments(Path(a.cli), a.split_vad, clip.wav)
+            plan[clip.id] = cut_segments(clip.wav, segments, out / "segments")
     meta = {
         "dataset": dataset,
         "engine": {"cli": str(a.cli), "backend": a.backend, "language": a.language, "threads": a.threads},
@@ -138,7 +146,18 @@ def cmd_run(a: argparse.Namespace) -> int:
             continue
         engine = TranscribeCli(cli=Path(a.cli), backend=a.backend, timestamps=m.timestamps, threads=a.threads)
         print(f"{m.name}: {len(clips)} clips ...", file=sys.stderr, flush=True)
-        results = engine.transcribe(m.path, [c.wav for c in clips], language=a.language)
+        if plan:
+            flat = [p for clip in clips for p in plan[clip.id]]
+            by_path = dict(zip(flat, engine.transcribe(m.path, flat, language=a.language)))
+            results = []
+            for clip in clips:
+                parts = [by_path[p] for p in plan[clip.id]]
+                results.append(Result(
+                    file=str(clip.wav), text=" ".join(r.text for r in parts if r.text),
+                    compute_ms=sum(r.compute_ms for r in parts),
+                    error=next((r.error for r in parts if r.error), None)))
+        else:
+            results = engine.transcribe(m.path, [c.wav for c in clips], language=a.language)
         with (out / f"{m.name}.jsonl").open("w", encoding="utf-8") as f:
             for clip, r in zip(clips, results):
                 f.write(json.dumps(score_row(clip, r.text, r.compute_ms, r.error), ensure_ascii=False) + "\n")
@@ -171,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--out", required=True, type=Path)
     r.add_argument("--resume", action="store_true",
                    help="keep <out>/<model>.jsonl files that already have a row for every clip")
+    r.add_argument("--split-vad", type=Path, metavar="VAD.gguf",
+                   help="split each clip at its pauses with this Silero VAD GGUF and decode every "
+                        "speech segment as its own window")
     r.set_defaults(func=cmd_run)
     s = sub.add_parser("score", help="recompute summary.json/summary.md from the per-clip rows")
     s.add_argument("out", type=Path)

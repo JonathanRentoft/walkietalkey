@@ -89,8 +89,10 @@ give the same text on both clips.
 
 ## Accuracy
 
-FLEURS da_dk test (930 clips), Danish: (filled in from models/eval).
-RyeAI reports 9.36 % WER on FLEURS da_dk (its own normalisation).
+FLEURS da_dk test (930 clips), Q8_0, Danish, WalkieTalkey's normaliser (lower
+case, punctuation stripped, numbers as spoken): **10.11 % WER** (95 % CI 9.47 to
+10.76). RyeAI reports 9.36 % with its own normalisation. Speed on an Apple M1 Pro
+CPU: 0.09 s for 10 s of speech, 0.35 s for 35 s.
 
 ## Credit
 

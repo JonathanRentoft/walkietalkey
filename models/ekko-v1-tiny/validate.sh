@@ -16,6 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 TCPP="$WORK/src/transcribe.cpp-0.4.0"
 NEMO="$WORK/dl/ekko-v1-tiny/ekko-v1-tiny.nemo"
 MODELS="$WORK/models-final/ekko-v1-tiny"
+REF="$WORK/build/reference-gguf/ekko-v1-tiny"
 OUT="$WORK/runs/ekko-validation"
 mkdir -p "$OUT"
 
@@ -26,10 +27,10 @@ done
 
 cd "$TCPP"
 uv run scripts/validate.py all --family parakeet --variant ekko-v1-tiny \
-  --model "$NEMO" --gguf "$MODELS/ekko-v1-tiny-F32.gguf" --report > "$OUT/tensors.log" 2>&1
+  --model "$NEMO" --gguf "$REF/ekko-v1-tiny-F32.gguf" --report > "$OUT/tensors.log" 2>&1
 echo "tensors $?" | tee "$OUT/status.txt"
 
-for gguf in "$MODELS"/ekko-v1-tiny-*.gguf; do
+for gguf in "$REF/ekko-v1-tiny-F32.gguf" "$MODELS/ekko-v1-tiny-Q8_0.gguf"; do
   for id in 6263195548503774343 17924706686437869147; do
     out="$("$TCPP/build/bin/transcribe-cli" -q -l da -m "$gguf" "$TCPP/samples/fleurs-da-$id.wav" 2>/dev/null)"
     if printf '%s\n' "$out" | grep -q '^text: .\+'; then
