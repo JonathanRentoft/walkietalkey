@@ -274,9 +274,9 @@ application waits up to 5 s for them (DESK-61). The computer remembers answered 
 | 4404 | room not found   | auth/join to an unknown room; malformed room id; room deleted (phones on `delete_room` and on housekeeping)                                                                |
 | 4409 | room exists      | create intent for an existing room                                                                                                                                         |
 | 4413 | frame too large  | binary message > 65,536 bytes; text message > 4,096 characters                                                                                                             |
-| 4429 | rate limited     | > 50 messages per second on one socket; per-IP create/join limit in the Worker                                                                                             |
+| 4429 | rate limited     | > 50 messages per second on one socket; per-IP create/join limit in the Worker; a 33rd socket in one room                                                                  |
 | 1000 | normal           | `leave`; the owner's socket after `delete_room`                                                                                                                            |
-| 1001 | going away       | the relay closed a socket that went quiet for more than 75 s (RELAY-10)                                                                                                    |
+| 1001 | going away       | the relay closed a socket that went quiet for more than 75 s (RELAY-10), or one that did not authenticate within 30 s                                                      |
 | 1008 | policy violation | malformed control message or frame; invalid agreement key in `join`                                                                                                        |
 
 Before closing for a reason of its own, the relay sends `error {code, msg}` with one of:
@@ -341,7 +341,10 @@ waits too).
 
 Device frames ≤ 65,536 bytes (4413); 50 messages per second per socket, token bucket with a
 burst of 50, counting every message that reaches the object (4429); 8 devices per room; at most
-16 open admissions per room; `exp` of an admission is clamped to now + 10 minutes. Per IP: 10
+32 open sockets per room, authenticated or not (a 33rd is accepted and closed at once with 4429);
+a socket that has not authenticated 30 s after connecting is closed with 1001 (checked when a
+socket connects and when a message arrives); at most 16 open admissions per room; `exp` of an
+admission is clamped to now + 10 minutes. Per IP: 10
 `create` and 10 `join` connections per minute through the Workers Rate Limiting binding (keyed
 by SHA-256 of the IP), checked in the Worker before any Durable Object.
 

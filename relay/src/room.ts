@@ -6,6 +6,7 @@
 import { DurableObject } from "cloudflare:workers";
 import {
   CloseCode,
+  ExtraCloseCode,
   FrameType,
   PING_MESSAGE,
   PONG_MESSAGE,
@@ -40,6 +41,8 @@ import {
   MAX_CONTROL_CHARS,
   MAX_DEVICES_PER_ROOM,
   MAX_FRAMES_PER_SECOND,
+  MAX_SOCKETS_PER_ROOM,
+  PENDING_TIMEOUT_MS,
   ROOM_BUFFER_BYTES,
 } from "./limits.ts";
 import { logLine, roomTag, type LogFields } from "./log.ts";
@@ -220,6 +223,25 @@ export class Room extends DurableObject<Env> {
     });
   }
 
+  /**
+   * Closes sockets that connected more than 30 s ago and never authenticated (RELAY-11), and
+   * returns how many sockets remain open. Runs when a socket connects and when a message arrives.
+   */
+  private sweepPending(): number {
+    const now = this.now();
+    let open = 0;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.closing.has(ws)) continue;
+      const a = this.att(ws);
+      if (a.st === "p" && now - a.at > PENDING_TIMEOUT_MS) {
+        this.closeSocket(ws, ExtraCloseCode.GoingAway, "handshake timeout");
+        continue;
+      }
+      open++;
+    }
+    return open;
+  }
+
   private isOnline(deviceId: string): boolean {
     return this.socketsOf(deviceId).some((ws) =>
       this.isFresh(ws, this.att(ws)),
@@ -297,6 +319,13 @@ export class Room extends DurableObject<Env> {
       this.log(roomB64, { evt: "close", code });
       return new Response(null, { status: 101, webSocket: client });
     }
+    if (this.sweepPending() >= MAX_SOCKETS_PER_ROOM) {
+      // RELAY-11: every route and announce scans the room's sockets, so their number is bounded.
+      server.accept();
+      server.close(CloseCode.RateLimited, "too many sockets");
+      this.log(roomB64, { evt: "close", code: CloseCode.RateLimited });
+      return new Response(null, { status: 101, webSocket: client });
+    }
 
     this.ctx.acceptWebSocket(server);
     const att: Attachment = {
@@ -316,6 +345,8 @@ export class Room extends DurableObject<Env> {
     ws: WebSocket,
     message: string | ArrayBuffer,
   ): Promise<void> {
+    if (this.closing.has(ws)) return;
+    this.sweepPending();
     if (this.closing.has(ws)) return;
     if (!this.takeToken(ws))
       return this.fail(ws, CloseCode.RateLimited, "rate_limited");
