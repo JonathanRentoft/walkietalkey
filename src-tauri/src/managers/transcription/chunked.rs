@@ -64,6 +64,33 @@ impl<'a> ChunkedDecode<'a> {
         }
     }
 
+    /// A whole clip's chunks under `plan`, decoded in order (WalkieTalkey:
+    /// Edda's segments, with context prompts).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn decode_clip_with(
+        tm: &'a TranscriptionManager,
+        mark: CancelMark,
+        run_options: RunOptions,
+        audio: Vec<f32>,
+        model_id: &str,
+        backend: VadBackend,
+        plan: ChunkPlan,
+        context_prompts: bool,
+    ) -> Result<Vec<Transcript>, EngineError> {
+        let mut decode = Self::new(
+            tm,
+            mark,
+            run_options,
+            model_id,
+            backend,
+            plan,
+            context_prompts,
+            None,
+        );
+        decode.push(audio);
+        decode.finish()
+    }
+
     /// A whole clip's chunks, decoded in order.
     pub(super) fn decode_clip(
         tm: &'a TranscriptionManager,

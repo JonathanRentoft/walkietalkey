@@ -21,3 +21,27 @@ pub const RANKING: &[(&str, u32, bool)] = &[(EDDA_CATALOG_ID, 0, true)];
 pub fn ranking(id: &str) -> Option<&'static (&'static str, u32, bool)> {
     RANKING.iter().find(|(model, _, _)| *model == id)
 }
+
+/// Models decoded one speech segment at a time (docs/MODELS.md, "Edda and
+/// pauses"): Edda, decoded greedily, stops at the first pause of a window
+/// that holds more than one sentence. Whisper turbo gets worse that way, so
+/// it keeps its longer chunks.
+pub fn decodes_by_segment(model_id: &str) -> bool {
+    model_id.starts_with("walkietalkey/edda-")
+}
+
+#[cfg(test)]
+mod segment_tests {
+    use super::*;
+
+    #[test]
+    fn only_edda_is_decoded_by_segment() {
+        assert!(decodes_by_segment(DEFAULT_MODEL_ID));
+        assert!(!decodes_by_segment(
+            "handy-computer/whisper-large-v3-turbo-gguf/whisper-large-v3-turbo-Q8_0.gguf"
+        ));
+        assert!(!decodes_by_segment(
+            "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf"
+        ));
+    }
+}

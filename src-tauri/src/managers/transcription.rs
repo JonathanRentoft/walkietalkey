@@ -1166,6 +1166,29 @@ impl TranscriptionManager {
         };
         // `mark` covers every chunk, so a cancel between two stops the rest.
         // A failed chunk fails the whole transcription.
+        // WalkieTalkey: Edda is decoded one speech segment at a time, text
+        // only, in batch as well as live (docs/MODELS.md, "Edda and pauses").
+        if crate::walkietalkey::catalog::decodes_by_segment(active_model) {
+            let mut run_options = setup.run_options.clone();
+            run_options.timestamps = transcribe_cpp::TimestampKind::None;
+            let transcripts = ChunkedDecode::decode_clip_with(
+                self,
+                mark,
+                run_options,
+                audio,
+                active_model,
+                settings.vad_backend,
+                crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS,
+                info.supports_initial_prompt,
+            )
+            .map_err(engine_error)?;
+            let (text, model_detected_language) = join_chunks(transcripts);
+            return Ok(RunOutcome {
+                setup,
+                text,
+                model_detected_language,
+            });
+        }
         let transcripts = match batch_decode(ModelTraits::of(&info), settings.long_form_chunking) {
             BatchDecode::Chunked => ChunkedDecode::decode_clip(
                 self,
