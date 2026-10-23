@@ -27,7 +27,9 @@ pub mod models;
 pub mod notify;
 pub mod output;
 pub mod pill;
+pub mod presence;
 pub mod relay;
+pub mod sequence;
 pub mod settings;
 pub mod speed;
 pub mod store;
@@ -37,6 +39,7 @@ pub mod updates;
 pub fn startup(app: &AppHandle) {
     select_default_model(app);
     updates::start(app);
+    relay::start(app);
     let settings = get_settings(app);
     if !settings.selected_model.is_empty() {
         if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {

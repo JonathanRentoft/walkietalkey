@@ -655,6 +655,8 @@ impl ShortcutAction for TranscribeAction {
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
         let cancel_generation = rm.cancel_generation();
+        // WalkieTalkey (DESK-27): outputs go in the order recordings end.
+        let ticket = crate::walkietalkey::sequence::take_ticket();
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone(), Arc::clone(&tm));
@@ -826,6 +828,8 @@ impl ShortcutAction for TranscribeAction {
                                             return;
                                         }
 
+                                        // DESK-27: wait for earlier dictations' output.
+                                        ticket.wait_turn();
                                         let end = match crate::walkietalkey::dictation::deliver(
                                             &ah_clone,
                                             final_text.clone(),

@@ -48,3 +48,34 @@ pub async fn wt_import_model_file(app: AppHandle, path: String) -> Result<String
     let _ = tauri::Emitter::emit(&app, "model-download-complete", &model_id);
     Ok(model_id)
 }
+
+/// Indstillinger › Telefon › "Par en telefon": a new pairing code as a QR.
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_pairing_start(app: AppHandle) -> Result<super::relay::PairingView, String> {
+    super::relay::start_pairing(&app).await
+}
+
+/// The pairing window was closed: cancel the code (spec 5.3 step 1).
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_pairing_cancel() -> Result<(), String> {
+    match super::relay::client() {
+        Some(client) => client.cancel_pairing().await.map_err(|e| e.to_string()),
+        None => Ok(()),
+    }
+}
+
+/// Connection state and the paired phones.
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_relay_status(app: AppHandle) -> super::relay::RelayView {
+    super::relay::status(&app).await
+}
+
+/// "Fjern" next to a phone (SEC-04).
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_phone_remove(id: String) -> Result<(), String> {
+    super::relay::remove_phone(&id).await
+}

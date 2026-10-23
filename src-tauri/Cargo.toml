@@ -84,6 +84,10 @@ tauri-plugin-dialog = "2.6"
 hf-hub = { git = "https://github.com/cjpais/hf-hub", branch = "cancellable-downloads", features = [
   "tokio",
 ] }
+# WalkieTalkey: the relay client (crates/wt-relay-client, spec 5 and 8) and the
+# pairing QR code (rendered as SVG here, so the secret never leaves the process).
+wt-relay-client = { path = "../crates/wt-relay-client" }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.3"
