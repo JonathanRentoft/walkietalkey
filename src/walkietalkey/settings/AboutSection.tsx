@@ -52,18 +52,46 @@ export function AboutSection() {
         </ul>
       </Group>
       <Group title={t("wt.about.links")}>
-        <SettingRow title={t("wt.about.code")} description={t("wt.about.codeDesc")}>
-          <button type="button" className="wt-link" aria-label={t("wt.about.openNamed", { name: t("wt.about.code") })} onClick={() => void openLink(LINKS.code)}>
+        <SettingRow
+          title={t("wt.about.code")}
+          description={t("wt.about.codeDesc")}
+        >
+          <button
+            type="button"
+            className="wt-link"
+            aria-label={t("wt.about.openNamed", { name: t("wt.about.code") })}
+            onClick={() => void openLink(LINKS.code)}
+          >
             {t("wt.about.open")}
           </button>
         </SettingRow>
-        <SettingRow title={t("wt.about.privacy")} description={t("wt.about.privacyDesc")}>
-          <button type="button" className="wt-link" aria-label={t("wt.about.openNamed", { name: t("wt.about.privacy") })} onClick={() => void openLink(LINKS.privacy)}>
+        <SettingRow
+          title={t("wt.about.privacy")}
+          description={t("wt.about.privacyDesc")}
+        >
+          <button
+            type="button"
+            className="wt-link"
+            aria-label={t("wt.about.openNamed", {
+              name: t("wt.about.privacy"),
+            })}
+            onClick={() => void openLink(LINKS.privacy)}
+          >
             {t("wt.about.open")}
           </button>
         </SettingRow>
-        <SettingRow title={t("wt.about.trademark")} description={t("wt.about.trademarkDesc")}>
-          <button type="button" className="wt-link" aria-label={t("wt.about.openNamed", { name: t("wt.about.trademark") })} onClick={() => void openLink(LINKS.trademark)}>
+        <SettingRow
+          title={t("wt.about.trademark")}
+          description={t("wt.about.trademarkDesc")}
+        >
+          <button
+            type="button"
+            className="wt-link"
+            aria-label={t("wt.about.openNamed", {
+              name: t("wt.about.trademark"),
+            })}
+            onClick={() => void openLink(LINKS.trademark)}
+          >
             {t("wt.about.open")}
           </button>
         </SettingRow>

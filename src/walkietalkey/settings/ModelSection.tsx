@@ -5,19 +5,44 @@ import { LogoLoader } from "@walkietalkey/ui";
 import { commands, type ModelInfo, type ModelUnloadTimeout } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { formatSizeMb, totalSizeMb, unloadChoice, UNLOAD_OPTIONS, type UnloadChoice } from "../lib/helpers";
+import {
+  formatSizeMb,
+  totalSizeMb,
+  unloadChoice,
+  UNLOAD_OPTIONS,
+  type UnloadChoice,
+} from "../lib/helpers";
 import { useLocked } from "../lib/wtStore";
-import { Button, ChoiceGroup, Group, Page, Select, SettingRow, Status } from "../ui/controls";
+import {
+  Button,
+  ChoiceGroup,
+  Group,
+  Page,
+  Select,
+  SettingRow,
+  Status,
+} from "../ui/controls";
 
 function DownloadState(props: { model: ModelInfo }) {
   const { t } = useTranslation();
   const progress = useModelStore((s) => s.downloadProgress[props.model.id]);
-  const downloading = useModelStore((s) => !!s.downloadingModels[props.model.id]);
+  const downloading = useModelStore(
+    (s) => !!s.downloadingModels[props.model.id],
+  );
   if (!downloading) return null;
-  const ratio = progress ? Math.max(0, Math.min(1, progress.percentage / 100)) : 0;
+  const ratio = progress
+    ? Math.max(0, Math.min(1, progress.percentage / 100))
+    : 0;
   return (
     <span className="wt-inline" role="status">
-      <LogoLoader variant="fyld" size={16} progress={ratio} label={t("wt.modelSettings.downloadingNamed", { name: props.model.name })} />
+      <LogoLoader
+        variant="fyld"
+        size={16}
+        progress={ratio}
+        label={t("wt.modelSettings.downloadingNamed", {
+          name: props.model.name,
+        })}
+      />
       <span className="wt-list-sub">{Math.round(ratio * 100)} %</span>
     </span>
   );
@@ -65,14 +90,20 @@ export function ModelSection() {
   return (
     <Page title={t("wt.nav.model")}>
       <Group>
-        <SettingRow title={t("wt.modelSettings.selected")} lockField="selected_model" htmlFor={selectId}>
+        <SettingRow
+          title={t("wt.modelSettings.selected")}
+          lockField="selected_model"
+          htmlFor={selectId}
+        >
           <Select
             id={selectId}
             disabled={modelLocked || !downloaded.length}
             value={current}
             onChange={(e) => void store.selectModel(e.target.value)}
           >
-            {!current ? <option value="">{t("wt.modelSettings.none")}</option> : null}
+            {!current ? (
+              <option value="">{t("wt.modelSettings.none")}</option>
+            ) : null}
             {downloaded.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -80,20 +111,33 @@ export function ModelSection() {
             ))}
           </Select>
         </SettingRow>
-        <SettingRow title={t("wt.modelSettings.keepLoaded")} description={t("wt.modelSettings.keepLoadedDesc")} stacked>
+        <SettingRow
+          title={t("wt.modelSettings.keepLoaded")}
+          description={t("wt.modelSettings.keepLoadedDesc")}
+          stacked
+        >
           {({ labelId }) => (
             <ChoiceGroup<UnloadChoice>
               labelledBy={labelId}
               value={unloadChoice(unload)}
               onChange={(v) => void setUnload(v)}
-              options={UNLOAD_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+              options={UNLOAD_OPTIONS.map((o) => ({
+                value: o.value,
+                label: t(o.labelKey),
+              }))}
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.modelSettings.redownloadTitle")} description={t("wt.modelSettings.redownloadDesc")}>
+        <SettingRow
+          title={t("wt.modelSettings.redownloadTitle")}
+          description={t("wt.modelSettings.redownloadDesc")}
+        >
           <>
             {currentInfo ? <DownloadState model={currentInfo} /> : null}
-            <Button disabled={!currentInfo || !!busy || modelLocked} onClick={() => void redownload()}>
+            <Button
+              disabled={!currentInfo || !!busy || modelLocked}
+              onClick={() => void redownload()}
+            >
               {t("wt.modelSettings.redownload")}
             </Button>
           </>
@@ -103,12 +147,18 @@ export function ModelSection() {
             <Status tone="warn">{t("wt.model.downloadFailed")}</Status>
           </div>
         ) : null}
-        <SettingRow title={t("wt.modelSettings.space")} description={t("wt.modelSettings.spaceDesc")}>
+        <SettingRow
+          title={t("wt.modelSettings.space")}
+          description={t("wt.modelSettings.spaceDesc")}
+        >
           <span className="wt-mono">{formatSizeMb(totalSizeMb(models))}</span>
         </SettingRow>
       </Group>
 
-      <Group title={t("wt.modelSettings.others")} description={t("wt.modelSettings.othersDesc")}>
+      <Group
+        title={t("wt.modelSettings.others")}
+        description={t("wt.modelSettings.othersDesc")}
+      >
         {others.length ? (
           <ul className="wt-list">
             {others.map((m) => (
@@ -126,24 +176,32 @@ export function ModelSection() {
                     <>
                       <Button
                         disabled={modelLocked}
-                        aria-label={t("wt.modelSettings.useNamed", { name: m.name })}
+                        aria-label={t("wt.modelSettings.useNamed", {
+                          name: m.name,
+                        })}
                         onClick={() => void store.selectModel(m.id)}
                       >
                         {t("wt.modelSettings.use")}
                       </Button>
                       <Button
                         variant="quiet"
-                        aria-label={t("wt.modelSettings.deleteNamed", { name: m.name })}
+                        aria-label={t("wt.modelSettings.deleteNamed", {
+                          name: m.name,
+                        })}
                         onClick={() => void store.deleteModel(m.id)}
                       >
                         {t("wt.common.delete")}
                       </Button>
                     </>
                   ) : store.downloadingModels[m.id] ? (
-                    <Button onClick={() => void store.cancelDownload(m.id)}>{t("wt.common.cancel")}</Button>
+                    <Button onClick={() => void store.cancelDownload(m.id)}>
+                      {t("wt.common.cancel")}
+                    </Button>
                   ) : (
                     <Button
-                      aria-label={t("wt.modelSettings.downloadNamed", { name: m.name })}
+                      aria-label={t("wt.modelSettings.downloadNamed", {
+                        name: m.name,
+                      })}
                       onClick={() => void store.downloadModel(m.id)}
                     >
                       {t("wt.modelSettings.download")}

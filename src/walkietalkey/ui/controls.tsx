@@ -18,7 +18,13 @@ const cx = (...c: (string | false | null | undefined)[]) =>
 
 export function LockIcon() {
   return (
-    <svg width={14} height={14} viewBox="0 0 16 16" aria-hidden focusable="false">
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 16 16"
+      aria-hidden
+      focusable="false"
+    >
       <path
         d="M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z"
         fill="none"
@@ -86,7 +92,9 @@ export function Group(props: {
   );
 }
 
-type RowChildren = ReactNode | ((ctx: { locked: boolean; labelId: string; descId: string }) => ReactNode);
+type RowChildren =
+  | ReactNode
+  | ((ctx: { locked: boolean; labelId: string; descId: string }) => ReactNode);
 
 /** One setting: label, optional description, the control, and the lock
  *  when a company manages the field. */
@@ -112,7 +120,10 @@ export function SettingRow(props: {
       ? props.children({ locked, labelId, descId })
       : props.children;
   return (
-    <div className={cx("wt-row", props.stacked && "wt-row--stacked")} data-locked={locked || undefined}>
+    <div
+      className={cx("wt-row", props.stacked && "wt-row--stacked")}
+      data-locked={locked || undefined}
+    >
       <div className="wt-row-text">
         {props.htmlFor ? (
           <label id={labelId} htmlFor={props.htmlFor} className="wt-row-title">
@@ -247,12 +258,20 @@ export function Select(
 }
 
 /** Announces changes to screen readers (aria-live). */
-export function Status(props: { children: ReactNode; tone?: "ok" | "warn" | "muted"; className?: string }) {
+export function Status(props: {
+  children: ReactNode;
+  tone?: "ok" | "warn" | "muted";
+  className?: string;
+}) {
   return (
     <p
       role="status"
       aria-live="polite"
-      className={cx("wt-status", props.tone && `wt-status--${props.tone}`, props.className)}
+      className={cx(
+        "wt-status",
+        props.tone && `wt-status--${props.tone}`,
+        props.className,
+      )}
     >
       {props.children}
     </p>
@@ -289,7 +308,8 @@ export function Dialog(props: {
         ) ?? [],
       );
     // Focus the first action, or the dialog itself.
-    const first = el?.querySelector<HTMLElement>("[data-autofocus]") ?? focusables()[0];
+    const first =
+      el?.querySelector<HTMLElement>("[data-autofocus]") ?? focusables()[0];
     (first ?? el)?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -328,11 +348,19 @@ export function Dialog(props: {
         tabIndex={-1}
         className={cx("wt-dialog", props.wide && "wt-dialog--wide")}
       >
-        <h2 id={titleId} className={cx("wt-dialog-title", props.hideTitle && "wt-visually-hidden")}>
+        <h2
+          id={titleId}
+          className={cx(
+            "wt-dialog-title",
+            props.hideTitle && "wt-visually-hidden",
+          )}
+        >
           {props.title}
         </h2>
         <div className="wt-dialog-body">{props.children}</div>
-        {props.actions ? <div className="wt-dialog-actions">{props.actions}</div> : null}
+        {props.actions ? (
+          <div className="wt-dialog-actions">{props.actions}</div>
+        ) : null}
       </div>
     </div>
   );

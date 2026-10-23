@@ -6,7 +6,15 @@ import { useTauriEvent } from "../lib/hooks";
 import { restartApp } from "../lib/system";
 import type { UpdateStatus } from "../lib/types";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { Button, ChoiceGroup, Group, Page, SettingRow, Status, Switch } from "../ui/controls";
+import {
+  Button,
+  ChoiceGroup,
+  Group,
+  Page,
+  SettingRow,
+  Status,
+  Switch,
+} from "../ui/controls";
 
 export function UpdatesSection() {
   const { t } = useTranslation();
@@ -41,7 +49,10 @@ export function UpdatesSection() {
       line = { text: t("wt.updates.upToDate"), tone: "ok" };
       break;
     case "downloading":
-      line = { text: t("wt.updates.downloading", { version: status.version }), tone: "muted" };
+      line = {
+        text: t("wt.updates.downloading", { version: status.version }),
+        tone: "muted",
+      };
       break;
     case "ready":
       line = { text: t("wt.notify.updateReady") };
@@ -91,7 +102,10 @@ export function UpdatesSection() {
         </SettingRow>
         <div className="wt-row wt-row--stacked">
           <div className="wt-inline">
-            <Button onClick={() => void check()} disabled={status?.state === "checking"}>
+            <Button
+              onClick={() => void check()}
+              disabled={status?.state === "checking"}
+            >
               {t("wt.updates.check")}
             </Button>
             {status?.state === "ready" ? (

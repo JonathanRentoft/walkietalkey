@@ -4,7 +4,8 @@
 import type { Page } from "@playwright/test";
 
 export const EDDA = "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf";
-export const EKKO_TINY = "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf";
+export const EKKO_TINY =
+  "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf";
 
 export interface MockOptions {
   platform?: "macos" | "windows";
@@ -27,7 +28,12 @@ export interface MockOptions {
   relay?: {
     enabled: boolean;
     connected: boolean;
-    phones: { id: string; name: string; platform: string | null; online: boolean }[];
+    phones: {
+      id: string;
+      name: string;
+      platform: string | null;
+      online: boolean;
+    }[];
     pairing_active: boolean;
   };
   pairingExpiresInMs?: number;
@@ -48,10 +54,10 @@ export async function emit(page: Page, event: string, payload?: unknown) {
     (e) => (window as any).__WT_MOCK__.listenerCount(e) > 0,
     event,
   );
-  await page.evaluate(
-    ([e, p]) => (window as any).__WT_MOCK__.emit(e, p),
-    [event, payload] as const,
-  );
+  await page.evaluate(([e, p]) => (window as any).__WT_MOCK__.emit(e, p), [
+    event,
+    payload,
+  ] as const);
 }
 
 export interface Call {
@@ -60,7 +66,9 @@ export interface Call {
 }
 
 export async function calls(page: Page, cmd?: string): Promise<Call[]> {
-  const all: Call[] = await page.evaluate(() => (window as any).__WT_MOCK__.calls);
+  const all: Call[] = await page.evaluate(
+    () => (window as any).__WT_MOCK__.calls,
+  );
   return cmd ? all.filter((c) => c.cmd === cmd) : all;
 }
 
@@ -233,14 +241,17 @@ function mockBackend(options: MockOptions) {
     get_app_settings: () => state.app,
     get_default_settings: () => state.app,
     change_autostart_setting: (a) => (state.app.autostart_enabled = a.enabled),
-    change_audio_feedback_setting: (a) => (state.app.audio_feedback = a.enabled),
-    change_overlay_position_setting: (a) => (state.app.overlay_position = a.position),
+    change_audio_feedback_setting: (a) =>
+      (state.app.audio_feedback = a.enabled),
+    change_overlay_position_setting: (a) =>
+      (state.app.overlay_position = a.position),
     change_overlay_style_setting: (a) => (state.app.overlay_style = a.style),
     change_app_language_setting: (a) => (state.app.app_language = a.language),
     change_shortcut_activation_setting: (a) =>
       (state.app.shortcut_activation = a.activation ?? a.value),
     update_custom_words: (a) => (state.app.custom_words = a.words),
-    set_model_unload_timeout: (a) => (state.app.model_unload_timeout = a.timeout),
+    set_model_unload_timeout: (a) =>
+      (state.app.model_unload_timeout = a.timeout),
     change_debug_mode_setting: (a) => (state.app.debug_mode = a.enabled),
     change_binding: (a) => {
       state.app.bindings[a.id].current_binding = a.binding;
@@ -274,12 +285,16 @@ function mockBackend(options: MockOptions) {
       app_access: "allowed",
       desktop_app_access: "allowed",
     }),
-    get_app_dir_path: () => "/Users/test/Library/Application Support/WalkieTalkey",
+    get_app_dir_path: () =>
+      "/Users/test/Library/Application Support/WalkieTalkey",
     get_log_dir_path: () => "/Users/test/Library/Logs/WalkieTalkey",
     // Models
     get_available_models: () => models(),
     get_current_model: () => state.app.selected_model,
-    get_model_load_status: () => ({ is_loaded: true, current_model: state.app.selected_model }),
+    get_model_load_status: () => ({
+      is_loaded: true,
+      current_model: state.app.selected_model,
+    }),
     is_model_loading: () => false,
     get_retired_models: () => [],
     download_model: (a) => {
@@ -310,7 +325,9 @@ function mockBackend(options: MockOptions) {
     },
     cancel_download: () => null,
     delete_model: (a) => {
-      state.downloaded = state.downloaded.filter((id: string) => id !== a.modelId);
+      state.downloaded = state.downloaded.filter(
+        (id: string) => id !== a.modelId,
+      );
       return null;
     },
     set_active_model: (a) => {

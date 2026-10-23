@@ -7,7 +7,11 @@ import "@walkietalkey/ui/styles.css";
 import "./styles.css";
 import { commands } from "@/bindings";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { resumeStep, onboardingSteps, type OnboardingStepId } from "./lib/helpers";
+import {
+  resumeStep,
+  onboardingSteps,
+  type OnboardingStepId,
+} from "./lib/helpers";
 import { currentPlatform } from "./lib/system";
 import { useWtStore } from "./lib/wtStore";
 import { Onboarding } from "./onboarding/Onboarding";
@@ -15,7 +19,10 @@ import { MainWindow } from "./MainWindow";
 import { GlobalDialogs } from "./GlobalDialogs";
 import { useHandyToasts } from "./lib/handyToasts";
 
-type Mode = { kind: "loading" } | { kind: "onboarding"; step: OnboardingStepId } | { kind: "main" };
+type Mode =
+  | { kind: "loading" }
+  | { kind: "onboarding"; step: OnboardingStepId }
+  | { kind: "main" };
 
 export default function WalkieTalkeyApp() {
   const platform = currentPlatform();
@@ -32,7 +39,8 @@ export default function WalkieTalkeyApp() {
       ]);
       if (cancelled) return;
       const completed =
-        appResult?.status === "ok" && appResult.data.onboarding_completed === true;
+        appResult?.status === "ok" &&
+        appResult.data.onboarding_completed === true;
       const steps = onboardingSteps(platform, {
         phonePairing: view?.settings.allow_phone_pairing ?? true,
       });
@@ -49,9 +57,10 @@ export default function WalkieTalkeyApp() {
   // Handy starts its keyboard and paste helpers once onboarding is done.
   useEffect(() => {
     if (mode.kind !== "main") return;
-    void Promise.all([commands.initializeEnigo(), commands.initializeShortcuts()]).catch(
-      (e) => console.warn("Failed to initialise:", e),
-    );
+    void Promise.all([
+      commands.initializeEnigo(),
+      commands.initializeShortcuts(),
+    ]).catch((e) => console.warn("Failed to initialise:", e));
     const store = useSettingsStore.getState();
     void store.refreshAudioDevices();
     void store.refreshOutputDevices();

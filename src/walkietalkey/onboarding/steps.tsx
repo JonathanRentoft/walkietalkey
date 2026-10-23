@@ -34,7 +34,9 @@ function StepTitle(props: { children: ReactNode }) {
 function Block(props: { title?: string; children: ReactNode }) {
   return (
     <div className="wt-onb-block">
-      {props.title ? <h2 className="wt-onb-block-title">{props.title}</h2> : null}
+      {props.title ? (
+        <h2 className="wt-onb-block-title">{props.title}</h2>
+      ) : null}
       {props.children}
     </div>
   );
@@ -107,7 +109,11 @@ export function ModelStep(props: { onNext: () => void }) {
         ) : null}
         {s.phase === "preparing" || s.phase === "idle" ? (
           <>
-            <LogoLoader variant="smelt" size={56} label={t("wt.model.preparing")} />
+            <LogoLoader
+              variant="smelt"
+              size={56}
+              label={t("wt.model.preparing")}
+            />
             <Status tone="muted">{t("wt.model.preparing")}</Status>
           </>
         ) : null}
@@ -119,11 +125,15 @@ export function ModelStep(props: { onNext: () => void }) {
             <Status tone="warn">{t("wt.model.downloadFailed")}</Status>
             <p className="wt-note">{t("wt.onboarding.model.importNote")}</p>
             <div className="wt-onb-actions">
-              <Button onClick={() => void s.retry()}>{t("wt.common.retry")}</Button>
+              <Button onClick={() => void s.retry()}>
+                {t("wt.common.retry")}
+              </Button>
             </div>
           </>
         ) : null}
-        {s.importError ? <Status tone="warn">{t("wt.model.importFailed")}</Status> : null}
+        {s.importError ? (
+          <Status tone="warn">{t("wt.model.importFailed")}</Status>
+        ) : null}
       </div>
 
       {offer && s.verdict?.reason ? (
@@ -133,7 +143,9 @@ export function ModelStep(props: { onNext: () => void }) {
             <Button variant="primary" onClick={() => void s.useFastModel()}>
               {t("wt.onboarding.model.useFast")}
             </Button>
-            <Button onClick={s.keepEdda}>{t("wt.onboarding.model.keepEdda")}</Button>
+            <Button onClick={s.keepEdda}>
+              {t("wt.onboarding.model.keepEdda")}
+            </Button>
           </div>
         </Block>
       ) : null}
@@ -157,8 +169,8 @@ export function ModelStep(props: { onNext: () => void }) {
 export function MicrophoneStep(props: { platform: WtPlatform }) {
   const { t } = useTranslation();
   const mac = props.platform === "macos";
-  const [granted, setGranted] = usePermission(
-    () => (mac ? hasPermission("microphone") : windowsMicrophoneAllowed()),
+  const [granted, setGranted] = usePermission(() =>
+    mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
   );
   const [asked, setAsked] = useState(false);
   const ask = async () => {
@@ -183,7 +195,9 @@ export function MicrophoneStep(props: { platform: WtPlatform }) {
           </div>
           {asked && granted === false ? (
             <>
-              <Status tone="warn">{t("wt.onboarding.microphone.deniedMac")}</Status>
+              <Status tone="warn">
+                {t("wt.onboarding.microphone.deniedMac")}
+              </Status>
               <Button onClick={() => void openSettingsPage("microphone")}>
                 {t("wt.onboarding.microphone.openSettings")}
               </Button>
@@ -192,8 +206,14 @@ export function MicrophoneStep(props: { platform: WtPlatform }) {
         </>
       ) : granted === false ? (
         <>
-          <Status tone="warn">{t("wt.onboarding.microphone.deniedWindows")}</Status>
-          <Button onClick={() => void commands.openMicrophonePrivacySettings().catch(() => {})}>
+          <Status tone="warn">
+            {t("wt.onboarding.microphone.deniedWindows")}
+          </Status>
+          <Button
+            onClick={() =>
+              void commands.openMicrophonePrivacySettings().catch(() => {})
+            }
+          >
             {t("wt.onboarding.microphone.openSettings")}
           </Button>
         </>
@@ -208,12 +228,14 @@ export function MicrophoneStep(props: { platform: WtPlatform }) {
 export function useKeyName(platform: WtPlatform): string {
   const { t } = useTranslation();
   const binding =
-    useSettingsStore((s) => s.settings?.bindings?.[DICTATION_BINDING]?.current_binding) ??
-    (platform === "macos" ? "fn" : "ctrl_right");
+    useSettingsStore(
+      (s) => s.settings?.bindings?.[DICTATION_BINDING]?.current_binding,
+    ) ?? (platform === "macos" ? "fn" : "ctrl_right");
   const label = useKeyLabel(platform);
   if (isCopilotBinding(binding)) return t("wt.keys.copilot");
   const parts = keyParts(binding);
-  if (parts.length === 1 && /^ctrl(_left|_right)?$/.test(parts[0])) return "Ctrl";
+  if (parts.length === 1 && /^ctrl(_left|_right)?$/.test(parts[0]))
+    return "Ctrl";
   return parts.map(label).join(" + ");
 }
 
@@ -227,12 +249,16 @@ function KeyCheck(props: { platform: WtPlatform }) {
   });
   return (
     <Block title={t("wt.onboarding.key.tryTitle")}>
-      <p>{t("wt.onboarding.key.tryText", { key: useKeyName(props.platform) })}</p>
+      <p>
+        {t("wt.onboarding.key.tryText", { key: useKeyName(props.platform) })}
+      </p>
       <KeyPicker platform={props.platform} showLive />
       <p className="wt-visually-hidden" aria-live="polite">
         {down ? t("wt.onboarding.key.down") : ""}
       </p>
-      {worked ? <Status tone="ok">{t("wt.onboarding.key.works")}</Status> : null}
+      {worked ? (
+        <Status tone="ok">{t("wt.onboarding.key.works")}</Status>
+      ) : null}
     </Block>
   );
 }
@@ -240,7 +266,10 @@ function KeyCheck(props: { platform: WtPlatform }) {
 export function KeyStep(props: { platform: WtPlatform }) {
   const { t } = useTranslation();
   const mac = props.platform === "macos";
-  const [monitoring] = usePermission(() => hasPermission("inputMonitoring"), mac);
+  const [monitoring] = usePermission(
+    () => hasPermission("inputMonitoring"),
+    mac,
+  );
   const updateWt = useWtStore((s) => s.update);
 
   // The key listener starts here, so the live check works before the end of
@@ -297,7 +326,9 @@ export function KeyStep(props: { platform: WtPlatform }) {
       <Block title={t("wt.onboarding.key.restartTitle")}>
         <p>{t("wt.onboarding.key.restartWhy")}</p>
         <div className="wt-onb-actions">
-          <Button onClick={() => void restart()}>{t("wt.onboarding.key.restart")}</Button>
+          <Button onClick={() => void restart()}>
+            {t("wt.onboarding.key.restart")}
+          </Button>
         </div>
       </Block>
       <KeyCheck platform={props.platform} />
@@ -309,7 +340,9 @@ export function KeyStep(props: { platform: WtPlatform }) {
 
 export function PasteStep(props: { platform: WtPlatform; onSkip: () => void }) {
   const { t } = useTranslation();
-  const [granted, setGranted] = usePermission(() => hasPermission("accessibility"));
+  const [granted, setGranted] = usePermission(() =>
+    hasPermission("accessibility"),
+  );
   const ask = async () => {
     const ok = await requestPermission("accessibility");
     setGranted(ok);
@@ -336,7 +369,10 @@ export function PasteStep(props: { platform: WtPlatform; onSkip: () => void }) {
 
 /* --------------------------------------------------- 6. Notifikationer */
 
-export function NotificationsStep(props: { platform: WtPlatform; onSkip: () => void }) {
+export function NotificationsStep(props: {
+  platform: WtPlatform;
+  onSkip: () => void;
+}) {
   const { t } = useTranslation();
   const [state, setState] = useState<string | null>(null);
   useEffect(() => {
@@ -372,7 +408,9 @@ export function NotificationsStep(props: { platform: WtPlatform; onSkip: () => v
           </div>
           {state === "denied" ? (
             <>
-              <Status tone="warn">{t("wt.onboarding.notifications.denied")}</Status>
+              <Status tone="warn">
+                {t("wt.onboarding.notifications.denied")}
+              </Status>
               {props.platform === "macos" ? (
                 <Button onClick={() => void openSettingsPage("notifications")}>
                   {t("wt.onboarding.notifications.openSettings")}

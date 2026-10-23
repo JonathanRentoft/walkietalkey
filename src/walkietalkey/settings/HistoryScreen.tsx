@@ -8,7 +8,17 @@ import { RETENTION_OPTIONS, type WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import { useUi } from "../lib/uiStore";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { Button, Dialog, Group, Page, Select, SettingRow, Status, Switch, TextInput } from "../ui/controls";
+import {
+  Button,
+  Dialog,
+  Group,
+  Page,
+  Select,
+  SettingRow,
+  Status,
+  Switch,
+  TextInput,
+} from "../ui/controls";
 
 function formatTime(seconds: number, locale: string): string {
   try {
@@ -22,10 +32,16 @@ function formatTime(seconds: number, locale: string): string {
 }
 
 function formatDuration(ms: number): string {
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} s`;
+  return ms < 1000
+    ? `${Math.round(ms)} ms`
+    : `${(ms / 1000).toFixed(1).replace(".", ",")} s`;
 }
 
-function Item(props: { item: HistoryItem; selected: boolean; onChanged: () => void }) {
+function Item(props: {
+  item: HistoryItem;
+  selected: boolean;
+  onChanged: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const { item } = props;
   const [showSent, setShowSent] = useState(props.selected && !!item.cleanup);
@@ -56,7 +72,10 @@ function Item(props: { item: HistoryItem; selected: boolean; onChanged: () => vo
     }
   };
 
-  const source = item.source === "tast" ? t("wt.history.fromKey") : t("wt.history.fromPhone", { name: item.source });
+  const source =
+    item.source === "tast"
+      ? t("wt.history.fromKey")
+      : t("wt.history.fromPhone", { name: item.source });
   return (
     <li
       ref={ref}
@@ -74,7 +93,9 @@ function Item(props: { item: HistoryItem; selected: boolean; onChanged: () => vo
       </div>
       <p className="wt-history-text">{item.text}</p>
       <div className="wt-history-actions">
-        <Button onClick={() => void copy()}>{copied ? t("wt.history.copied") : t("wt.common.copy")}</Button>
+        <Button onClick={() => void copy()}>
+          {copied ? t("wt.history.copied") : t("wt.common.copy")}
+        </Button>
         <Button variant="quiet" onClick={() => void remove()}>
           {t("wt.common.delete")}
         </Button>
@@ -174,7 +195,10 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
         {failed ? (
           <p className="wt-empty">{t("wt.history.loadFailed")}</p>
         ) : items === null ? null : shown.length ? (
-          <ul className="wt-history-list" aria-label={t("wt.history.listLabel")}>
+          <ul
+            className="wt-history-list"
+            aria-label={t("wt.history.listLabel")}
+          >
             {shown.map((item) => (
               <Item
                 key={item.id}
@@ -185,7 +209,9 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
             ))}
           </ul>
         ) : (
-          <p className="wt-empty">{query ? t("wt.history.noMatches") : t("wt.history.empty")}</p>
+          <p className="wt-empty">
+            {query ? t("wt.history.noMatches") : t("wt.history.empty")}
+          </p>
         )}
       </div>
 
@@ -201,7 +227,11 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
               id={retentionId}
               disabled={locked}
               value={wt?.history_retention ?? "two_weeks"}
-              onChange={(e) => void update({ history_retention: e.target.value as HistoryRetention })}
+              onChange={(e) =>
+                void update({
+                  history_retention: e.target.value as HistoryRetention,
+                })
+              }
             >
               {RETENTION_OPTIONS.map((o) => (
                 <option key={o} value={o}>
@@ -211,7 +241,10 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
             </Select>
           )}
         </SettingRow>
-        <SettingRow title={t("wt.history.keepAudio")} description={t("wt.history.keepAudioDesc")}>
+        <SettingRow
+          title={t("wt.history.keepAudio")}
+          description={t("wt.history.keepAudioDesc")}
+        >
           {({ labelId, descId }) => (
             <Switch
               labelledBy={labelId}
@@ -221,7 +254,10 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.history.deleteAllTitle")} description={t("wt.history.deleteAllDesc")}>
+        <SettingRow
+          title={t("wt.history.deleteAllTitle")}
+          description={t("wt.history.deleteAllDesc")}
+        >
           <Button variant="danger" onClick={() => setConfirmAll(true)}>
             {t("wt.history.deleteAll")}
           </Button>
@@ -247,7 +283,9 @@ export function HistoryScreen(_props: { platform: WtPlatform }) {
       >
         <p>{t("wt.history.deleteAllConfirm")}</p>
       </Dialog>
-      {items && failed ? <Status tone="warn">{t("wt.history.loadFailed")}</Status> : null}
+      {items && failed ? (
+        <Status tone="warn">{t("wt.history.loadFailed")}</Status>
+      ) : null}
     </Page>
   );
 }

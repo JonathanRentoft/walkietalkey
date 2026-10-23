@@ -33,7 +33,9 @@ export function CleanupSection(props: { platform: WtPlatform }) {
   const wt = useWtSettings();
   const update = useWtStore((s) => s.update);
   const managedKey = useWtStore((s) => !!s.view?.managed_api_key);
-  const keyLocked = useWtStore((s) => !!s.view?.locked.includes("cleanup_api_key"));
+  const keyLocked = useWtStore(
+    (s) => !!s.view?.locked.includes("cleanup_api_key"),
+  );
   const openHistory = useUi((s) => s.openHistory);
   const [pending, setPending] = useState<Patch | null>(null);
   const [apple, setApple] = useState<boolean | null>(null);
@@ -78,11 +80,17 @@ export function CleanupSection(props: { platform: WtPlatform }) {
   const pendingNext = pending ? { ...wt, ...pending } : null;
   const providerLabel = (id: string) =>
     CLEANUP_PROVIDERS.find((p) => p.id === id)?.name ?? t("wt.cleanup.custom");
-  const where = provider ? consentProviderName(provider, wt.cleanup_base_url) : "";
+  const where = provider
+    ? consentProviderName(provider, wt.cleanup_base_url)
+    : "";
 
   let sentLine: string | null = null;
   if (provider && wt.cleanup_mode !== "off") {
-    if (!cloud) sentLine = provider === "apple" ? t("wt.cleanup.staysApple") : t("wt.cleanup.staysLocal");
+    if (!cloud)
+      sentLine =
+        provider === "apple"
+          ? t("wt.cleanup.staysApple")
+          : t("wt.cleanup.staysLocal");
     else if (wt.cleanup_consented.includes(provider))
       sentLine =
         wt.cleanup_mode === "when-needed"
@@ -93,7 +101,11 @@ export function CleanupSection(props: { platform: WtPlatform }) {
   return (
     <Page title={t("wt.nav.cleanup")} description={t("wt.cleanup.intro")}>
       <Group>
-        <SettingRow title={t("wt.cleanup.mode")} lockField="cleanup_mode" stacked>
+        <SettingRow
+          title={t("wt.cleanup.mode")}
+          lockField="cleanup_mode"
+          stacked
+        >
           {({ labelId, locked }) => (
             <ChoiceGroup<CleanupMode>
               labelledBy={labelId}
@@ -118,7 +130,11 @@ export function CleanupSection(props: { platform: WtPlatform }) {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.cleanup.provider")} lockField="cleanup_provider" htmlFor={providerId}>
+        <SettingRow
+          title={t("wt.cleanup.provider")}
+          lockField="cleanup_provider"
+          htmlFor={providerId}
+        >
           {({ locked }) => (
             <Select
               id={providerId}
@@ -132,10 +148,16 @@ export function CleanupSection(props: { platform: WtPlatform }) {
               }
             >
               <option value="">{t("wt.cleanup.chooseProvider")}</option>
-              {CLEANUP_PROVIDERS.filter((p) => !p.macOnly || props.platform === "macos").map((p) => {
-                const isCloud = isCloudProvider(p.id, p.id === "custom" ? wt.cleanup_base_url : null);
+              {CLEANUP_PROVIDERS.filter(
+                (p) => !p.macOnly || props.platform === "macos",
+              ).map((p) => {
+                const isCloud = isCloudProvider(
+                  p.id,
+                  p.id === "custom" ? wt.cleanup_base_url : null,
+                );
                 const disabled =
-                  (p.id === "apple" && apple === false) || (isCloud && !wt.allow_cloud_cleanup);
+                  (p.id === "apple" && apple === false) ||
+                  (isCloud && !wt.allow_cloud_cleanup);
                 return (
                   <option key={p.id} value={p.id} disabled={disabled}>
                     {providerLabel(p.id)}
@@ -159,7 +181,12 @@ export function CleanupSection(props: { platform: WtPlatform }) {
           </div>
         ) : null}
         {provider && provider !== "apple" ? (
-          <SettingRow title={t("wt.cleanup.model")} description={t("wt.cleanup.modelDesc")} lockField="cleanup_model" htmlFor={modelId}>
+          <SettingRow
+            title={t("wt.cleanup.model")}
+            description={t("wt.cleanup.modelDesc")}
+            lockField="cleanup_model"
+            htmlFor={modelId}
+          >
             {({ locked }) => (
               <CommitInput
                 id={modelId}
@@ -190,7 +217,12 @@ export function CleanupSection(props: { platform: WtPlatform }) {
           </SettingRow>
         ) : null}
         {providerInfo?.needsKey ? (
-          <KeyRow id={keyId} provider={providerInfo.id} managed={managedKey} locked={keyLocked} />
+          <KeyRow
+            id={keyId}
+            provider={providerInfo.id}
+            managed={managedKey}
+            locked={keyLocked}
+          />
         ) : null}
         {sentLine ? (
           <div className="wt-row">
@@ -202,8 +234,13 @@ export function CleanupSection(props: { platform: WtPlatform }) {
       <p className="wt-note">{t("wt.cleanup.smallModels")}</p>
 
       <Group>
-        <SettingRow title={t("wt.cleanup.showSent")} description={t("wt.cleanup.showSentDesc")}>
-          <Button onClick={() => openHistory(null, true)}>{t("wt.cleanup.openHistory")}</Button>
+        <SettingRow
+          title={t("wt.cleanup.showSent")}
+          description={t("wt.cleanup.showSentDesc")}
+        >
+          <Button onClick={() => openHistory(null, true)}>
+            {t("wt.cleanup.openHistory")}
+          </Button>
         </SettingRow>
       </Group>
 
@@ -214,7 +251,9 @@ export function CleanupSection(props: { platform: WtPlatform }) {
         onCancel={() => setPending(null)}
         actions={
           <>
-            <Button onClick={() => setPending(null)}>{t("wt.cleanup.cancel")}</Button>
+            <Button onClick={() => setPending(null)}>
+              {t("wt.cleanup.cancel")}
+            </Button>
             <Button variant="primary" data-autofocus onClick={accept}>
               {t("wt.cleanup.turnOn")}
             </Button>
@@ -224,7 +263,10 @@ export function CleanupSection(props: { platform: WtPlatform }) {
         {pendingNext?.cleanup_provider ? (
           <p>
             {t("wt.cleanup.consent", {
-              provider: consentProviderName(pendingNext.cleanup_provider, pendingNext.cleanup_base_url),
+              provider: consentProviderName(
+                pendingNext.cleanup_provider,
+                pendingNext.cleanup_base_url,
+              ),
             })}
           </p>
         ) : null}
@@ -264,7 +306,12 @@ function CommitInput(props: {
 
 /** The user's own API key (DESK-81): stored in the keychain through
  *  wtSetCleanupKey and never read back into the window. */
-function KeyRow(props: { id: string; provider: string; managed: boolean; locked: boolean }) {
+function KeyRow(props: {
+  id: string;
+  provider: string;
+  managed: boolean;
+  locked: boolean;
+}) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const [stored, setStored] = useState<boolean | null>(null);
@@ -295,14 +342,23 @@ function KeyRow(props: { id: string; provider: string; managed: boolean; locked:
 
   if (props.managed || props.locked) {
     return (
-      <SettingRow title={t("wt.cleanup.key")} description={t("wt.cleanup.keyManaged")} locked>
+      <SettingRow
+        title={t("wt.cleanup.key")}
+        description={t("wt.cleanup.keyManaged")}
+        locked
+      >
         {null}
       </SettingRow>
     );
   }
 
   return (
-    <SettingRow title={t("wt.cleanup.key")} description={t("wt.cleanup.keyDesc")} htmlFor={props.id} stacked>
+    <SettingRow
+      title={t("wt.cleanup.key")}
+      description={t("wt.cleanup.keyDesc")}
+      htmlFor={props.id}
+      stacked
+    >
       <form
         className="wt-inline"
         onSubmit={(e) => {

@@ -36,7 +36,8 @@ export function GlobalDialogs(_props: { platform: WtPlatform }) {
   useTauriEvent<boolean>("wt-paused", (p) => setPaused(!!p));
   useTauriEvent<NoticeEvent>("wt-notify", (n) => {
     // A new phone gets the "Var det dig?" dialog instead of a notice.
-    if (n.history_id == null && Date.now() - lastJoinedAt.current < 3000) return;
+    if (n.history_id == null && Date.now() - lastJoinedAt.current < 3000)
+      return;
     const id = n.history_id;
     toast(n.title, {
       description: n.body || undefined,
@@ -81,7 +82,9 @@ export function GlobalDialogs(_props: { platform: WtPlatform }) {
       <Dialog
         open={!!current}
         alert
-        title={current ? t("wt.notify.phoneJoined", { name: current.name }) : ""}
+        title={
+          current ? t("wt.notify.phoneJoined", { name: current.name }) : ""
+        }
         onCancel={dismiss}
         actions={
           <>
@@ -95,7 +98,9 @@ export function GlobalDialogs(_props: { platform: WtPlatform }) {
         }
       >
         <p>{t("wt.phone.joinedHelp")}</p>
-        {removeFailed ? <Status tone="warn">{t("wt.phone.removeFailed")}</Status> : null}
+        {removeFailed ? (
+          <Status tone="warn">{t("wt.phone.removeFailed")}</Status>
+        ) : null}
       </Dialog>
     </>
   );

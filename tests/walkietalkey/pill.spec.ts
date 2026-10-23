@@ -8,7 +8,9 @@ async function openPill(page: Page, options: MockOptions = {}) {
 }
 
 test.describe("pill", () => {
-  test("Lytter with the time, then Renskriver, then Indsat", async ({ page }) => {
+  test("Lytter with the time, then Renskriver, then Indsat", async ({
+    page,
+  }) => {
     await openPill(page);
     await emit(page, "show-overlay", "recording");
     const pill = page.getByRole("status").filter({ hasText: "Lytter" });
@@ -16,8 +18,15 @@ test.describe("pill", () => {
     await expect(pill).toHaveAttribute("aria-live", "polite");
     await expect(page.getByText("0:00")).toBeVisible();
     await emit(page, "recording-ready");
-    await emit(page, "mic-level", [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]);
-    await expect(page.getByTestId("pill")).toHaveAttribute("data-level", /0\.[1-9]/);
+    await emit(
+      page,
+      "mic-level",
+      [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
+    );
+    await expect(page.getByTestId("pill")).toHaveAttribute(
+      "data-level",
+      /0\.[1-9]/,
+    );
     await expect(page.getByText("0:01")).toBeVisible({ timeout: 3000 });
 
     await emit(page, "show-overlay", "transcribing");
@@ -38,7 +47,10 @@ test.describe("pill", () => {
     await expect(page.getByText("Ctrl+V")).toBeVisible();
     await emit(page, "wt-pill-end", { state: "no_speech", shortcut: "⌘V" });
     await expect(page.getByText("Hørte ikke noget")).toBeVisible();
-    await emit(page, "wt-pill-end", { state: "cleanup_skipped", shortcut: "⌘V" });
+    await emit(page, "wt-pill-end", {
+      state: "cleanup_skipped",
+      shortcut: "⌘V",
+    });
     await expect(page.getByText("Brugte teksten uden oprydning")).toBeVisible();
   });
 

@@ -38,7 +38,8 @@ export const SETTINGS_PAGES = {
   microphone:
     "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
   keyboard: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
-  notifications: "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
+  notifications:
+    "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
 } as const;
 
 export async function openSettingsPage(page: keyof typeof SETTINGS_PAGES) {
@@ -108,7 +109,9 @@ export type NotificationPermission =
 export async function notificationPermission(): Promise<NotificationPermission> {
   try {
     const state = await commands.wtNotificationPermission();
-    return state === "granted" || state === "denied" || state === "not_determined"
+    return state === "granted" ||
+      state === "denied" ||
+      state === "not_determined"
       ? state
       : "unavailable";
   } catch {

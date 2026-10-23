@@ -7,7 +7,11 @@ const TEXT_FILTER = [{ name: "Tekst", extensions: ["txt"] }];
 /** Lets the user pick a text file and returns its content, or null. */
 export async function importTextFile(): Promise<string | null> {
   try {
-    const path = await open({ multiple: false, directory: false, filters: TEXT_FILTER });
+    const path = await open({
+      multiple: false,
+      directory: false,
+      filters: TEXT_FILTER,
+    });
     if (!path || Array.isArray(path)) return null;
     return await readTextFile(path);
   } catch (e) {
@@ -20,7 +24,10 @@ export type ExportResult = "saved" | "copied" | "cancelled" | "failed";
 
 /** Saves `text` where the user chooses. If the file cannot be written, the
  *  text goes to the clipboard instead, so the export is never lost. */
-export async function exportTextFile(defaultName: string, text: string): Promise<ExportResult> {
+export async function exportTextFile(
+  defaultName: string,
+  text: string,
+): Promise<ExportResult> {
   let path: string | null = null;
   try {
     path = await save({ defaultPath: defaultName, filters: TEXT_FILTER });

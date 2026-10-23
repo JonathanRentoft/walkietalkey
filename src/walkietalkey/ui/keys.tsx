@@ -168,11 +168,16 @@ export function KeyPicker(props: {
   }, [recording, stop, updateBinding]);
 
   // Never leave the backend recording keys.
-  useEffect(() => () => void commands.stopHandyKeysRecording().catch(() => {}), []);
+  useEffect(
+    () => () => void commands.stopHandyKeysRecording().catch(() => {}),
+    [],
+  );
 
   if (settings?.keyboard_implementation === "tauri") {
     // Linux builds record keys in the webview; Handy's control does that.
-    return <ShortcutInput shortcutId={DICTATION_BINDING} descriptionMode="inline" />;
+    return (
+      <ShortcutInput shortcutId={DICTATION_BINDING} descriptionMode="inline" />
+    );
   }
 
   const start = async () => {
@@ -204,7 +209,11 @@ export function KeyPicker(props: {
             <span className="wt-keypicker-prompt">{t("wt.keys.pressNow")}</span>
           )
         ) : (
-          <KeyCaps binding={current} platform={props.platform} pressed={pressed} />
+          <KeyCaps
+            binding={current}
+            platform={props.platform}
+            pressed={pressed}
+          />
         )}
       </div>
       <div className="wt-keypicker-actions">

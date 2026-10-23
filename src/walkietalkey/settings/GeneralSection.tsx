@@ -8,7 +8,14 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import type { WtPlatform } from "../lib/helpers";
 import { pasteKey } from "../lib/system";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { ChoiceGroup, Group, Page, Select, SettingRow, Switch } from "../ui/controls";
+import {
+  ChoiceGroup,
+  Group,
+  Page,
+  Select,
+  SettingRow,
+  Switch,
+} from "../ui/controls";
 
 type PillPlace = "bottom" | "top" | "never";
 
@@ -46,7 +53,10 @@ export function GeneralSection(props: { platform: WtPlatform }) {
   return (
     <Page title={t("wt.nav.general")}>
       <Group>
-        <SettingRow title={t("wt.general.autostart")} description={t("wt.general.autostartDesc")}>
+        <SettingRow
+          title={t("wt.general.autostart")}
+          description={t("wt.general.autostartDesc")}
+        >
           {({ labelId, descId }) => (
             <Switch
               labelledBy={labelId}
@@ -56,7 +66,10 @@ export function GeneralSection(props: { platform: WtPlatform }) {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.general.sounds")} description={t("wt.general.soundsDesc")}>
+        <SettingRow
+          title={t("wt.general.sounds")}
+          description={t("wt.general.soundsDesc")}
+        >
           {({ labelId, descId }) => (
             <Switch
               labelledBy={labelId}
@@ -69,7 +82,11 @@ export function GeneralSection(props: { platform: WtPlatform }) {
       </Group>
 
       <Group title={t("wt.general.pillGroup")}>
-        <SettingRow title={t("wt.general.pillPlace")} description={t("wt.general.pillPlaceDesc")} stacked>
+        <SettingRow
+          title={t("wt.general.pillPlace")}
+          description={t("wt.general.pillPlaceDesc")}
+          stacked
+        >
           {({ labelId }) => (
             <ChoiceGroup<PillPlace>
               labelledBy={labelId}
@@ -83,7 +100,10 @@ export function GeneralSection(props: { platform: WtPlatform }) {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.general.pillForPhone")} description={t("wt.general.pillForPhoneDesc")}>
+        <SettingRow
+          title={t("wt.general.pillForPhone")}
+          description={t("wt.general.pillForPhoneDesc")}
+        >
           {({ labelId, descId, locked }) => (
             <Switch
               labelledBy={labelId}
@@ -114,7 +134,11 @@ export function GeneralSection(props: { platform: WtPlatform }) {
         </SettingRow>
         <div className="wt-row wt-row--stacked">
           <span className="wt-row-desc">{t("wt.general.preview")}</span>
-          <div className="wt-notice-preview" data-testid="notice-preview" aria-hidden>
+          <div
+            className="wt-notice-preview"
+            data-testid="notice-preview"
+            aria-hidden
+          >
             <Notice
               show
               platform={props.platform === "windows" ? "windows" : "mac"}
@@ -132,7 +156,11 @@ export function GeneralSection(props: { platform: WtPlatform }) {
       </Group>
 
       <Group>
-        <SettingRow title={t("wt.general.language")} description={t("wt.general.languageDesc")} htmlFor={languageId}>
+        <SettingRow
+          title={t("wt.general.language")}
+          description={t("wt.general.languageDesc")}
+          htmlFor={languageId}
+        >
           <Select
             id={languageId}
             value={handy?.app_language ?? i18n.language}

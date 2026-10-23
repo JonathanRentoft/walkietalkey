@@ -98,7 +98,10 @@ export const useModelSetup = create<ModelSetup>()((set, get) => {
       if (e.payload === get().modelId) void onDownloaded(e.payload);
     });
     void listen<{ model_id: string }>("model-download-failed", (e) => {
-      if (e.payload.model_id === get().modelId && !done.has(e.payload.model_id)) {
+      if (
+        e.payload.model_id === get().modelId &&
+        !done.has(e.payload.model_id)
+      ) {
         set({ phase: "failed" });
       }
     });

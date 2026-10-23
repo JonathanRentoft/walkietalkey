@@ -69,7 +69,9 @@ export function Onboarding(props: {
     const selected = useModelStore.getState().currentModel;
     const ready = useModelSetup.getState().phase === "ready";
     // Without a model yet, a restart comes back to the download.
-    await updateWt({ onboarding_resume_step: ready || selected ? null : "model" });
+    await updateWt({
+      onboarding_resume_step: ready || selected ? null : "model",
+    });
     props.onDone();
   };
 
@@ -110,11 +112,19 @@ export function Onboarding(props: {
     <GradientBackground palette="morgengry" className="wt-onb-bg" noise={0.6}>
       <main className="wt-onb" aria-label={t("wt.onboarding.label")}>
         {step !== "welcome" ? (
-          <ol className="wt-onb-progress" aria-label={t("wt.onboarding.progress", { step: index + 1, total: steps.length })}>
+          <ol
+            className="wt-onb-progress"
+            aria-label={t("wt.onboarding.progress", {
+              step: index + 1,
+              total: steps.length,
+            })}
+          >
             {steps.map((s, i) => (
               <li
                 key={s}
-                className={i <= index ? "wt-onb-dot wt-onb-dot--on" : "wt-onb-dot"}
+                className={
+                  i <= index ? "wt-onb-dot wt-onb-dot--on" : "wt-onb-dot"
+                }
                 aria-current={s === step ? "step" : undefined}
               />
             ))}

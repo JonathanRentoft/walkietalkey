@@ -78,7 +78,9 @@ export function PairingCode() {
               <span>{t("wt.pairing.validFor")}</span>{" "}
               <time
                 className="wt-countdown"
-                aria-label={t("wt.pairing.timeLeft", { time: formatClock(left) })}
+                aria-label={t("wt.pairing.timeLeft", {
+                  time: formatClock(left),
+                })}
               >
                 {formatClock(left)}
               </time>
@@ -91,7 +93,9 @@ export function PairingCode() {
         {state.kind === "expired" ? (
           <>
             <Status tone="warn">{t("wt.pairing.expired")}</Status>
-            <Button onClick={() => void start()}>{t("wt.pairing.newCode")}</Button>
+            <Button onClick={() => void start()}>
+              {t("wt.pairing.newCode")}
+            </Button>
           </>
         ) : null}
         {state.kind === "failed" ? (

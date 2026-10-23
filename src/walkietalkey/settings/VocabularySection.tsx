@@ -13,9 +13,22 @@ import {
   parseWordList,
   removeWord,
 } from "../lib/helpers";
-import { exportTextFile, importTextFile, type ExportResult } from "../lib/files";
+import {
+  exportTextFile,
+  importTextFile,
+  type ExportResult,
+} from "../lib/files";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { Button, Group, LockNote, Page, SettingRow, Status, Switch, TextInput } from "../ui/controls";
+import {
+  Button,
+  Group,
+  LockNote,
+  Page,
+  SettingRow,
+  Status,
+  Switch,
+  TextInput,
+} from "../ui/controls";
 
 export function VocabularySection() {
   const { t } = useTranslation();
@@ -23,7 +36,9 @@ export function VocabularySection() {
   const updateHandy = useSettingsStore((s) => s.updateSetting);
   const wt = useWtSettings();
   const update = useWtStore((s) => s.update);
-  const sourceLocked = useWtStore((s) => !!s.view?.locked.includes("vocabulary_source"));
+  const sourceLocked = useWtStore(
+    (s) => !!s.view?.locked.includes("vocabulary_source"),
+  );
   const [word, setWord] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -44,7 +59,9 @@ export function VocabularySection() {
     const f = from.trim();
     const w = to.trim();
     if (!f || !w) return;
-    const rest = replacements.filter((r) => r.from.toLowerCase() !== f.toLowerCase());
+    const rest = replacements.filter(
+      (r) => r.from.toLowerCase() !== f.toLowerCase(),
+    );
     void update({ replacements: [...rest, { from: f, to: w }] });
     setFrom("");
     setTo("");
@@ -69,15 +86,21 @@ export function VocabularySection() {
     if (text == null) return;
     const imported = parseReplacements(text);
     const keep = replacements.filter(
-      (r) => !imported.some((i) => i.from.toLowerCase() === r.from.toLowerCase()),
+      (r) =>
+        !imported.some((i) => i.from.toLowerCase() === r.from.toLowerCase()),
     );
     void update({ replacements: [...keep, ...imported] });
-    setMessage(t("wt.vocabulary.importedReplacements", { count: imported.length }));
+    setMessage(
+      t("wt.vocabulary.importedReplacements", { count: imported.length }),
+    );
   };
 
   return (
     <Page title={t("wt.nav.vocabulary")}>
-      <Group title={t("wt.vocabulary.words")} description={t("wt.vocabulary.wordsDesc")}>
+      <Group
+        title={t("wt.vocabulary.words")}
+        description={t("wt.vocabulary.wordsDesc")}
+      >
         <form className="wt-row" onSubmit={submitWord}>
           <div className="wt-inline">
             <TextInput
@@ -112,14 +135,19 @@ export function VocabularySection() {
         {wt?.vocabulary_source ? (
           <div className="wt-row">
             <div className="wt-row-text">
-              <span className="wt-row-desc">{t("wt.vocabulary.companyList")}</span>
+              <span className="wt-row-desc">
+                {t("wt.vocabulary.companyList")}
+              </span>
               {sourceLocked ? <LockNote /> : null}
             </div>
           </div>
         ) : null}
       </Group>
 
-      <Group title={t("wt.vocabulary.replacements")} description={t("wt.vocabulary.replacementsDesc")}>
+      <Group
+        title={t("wt.vocabulary.replacements")}
+        description={t("wt.vocabulary.replacementsDesc")}
+      >
         <form className="wt-row" onSubmit={submitReplacement}>
           <div className="wt-inline">
             <TextInput
@@ -143,12 +171,21 @@ export function VocabularySection() {
           <ul className="wt-list" aria-label={t("wt.vocabulary.replacements")}>
             {newestFirst(replacements).map((r) => (
               <li key={r.from} className="wt-list-item">
-                <span>{t("wt.vocabulary.replacementItem", { from: r.from, to: r.to })}</span>
+                <span>
+                  {t("wt.vocabulary.replacementItem", {
+                    from: r.from,
+                    to: r.to,
+                  })}
+                </span>
                 <Button
                   variant="quiet"
                   aria-label={t("wt.vocabulary.removeItem", { item: r.from })}
                   onClick={() =>
-                    void update({ replacements: replacements.filter((x) => x.from !== r.from) })
+                    void update({
+                      replacements: replacements.filter(
+                        (x) => x.from !== r.from,
+                      ),
+                    })
                   }
                 >
                   {t("wt.common.remove")}
@@ -162,7 +199,10 @@ export function VocabularySection() {
       </Group>
 
       <Group>
-        <SettingRow title={t("wt.vocabulary.developerWords")} description={t("wt.vocabulary.developerWordsDesc")}>
+        <SettingRow
+          title={t("wt.vocabulary.developerWords")}
+          description={t("wt.vocabulary.developerWordsDesc")}
+        >
           {({ labelId, descId }) => (
             <Switch
               labelledBy={labelId}
@@ -172,10 +212,20 @@ export function VocabularySection() {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.vocabulary.importExport")} description={t("wt.vocabulary.importExportDesc")} stacked>
+        <SettingRow
+          title={t("wt.vocabulary.importExport")}
+          description={t("wt.vocabulary.importExportDesc")}
+          stacked
+        >
           <div className="wt-inline">
-            <Button onClick={() => void importWordFile()}>{t("wt.vocabulary.importWords")}</Button>
-            <Button onClick={() => void exportTextFile("ord.txt", exportWordList(words)).then(say)}>
+            <Button onClick={() => void importWordFile()}>
+              {t("wt.vocabulary.importWords")}
+            </Button>
+            <Button
+              onClick={() =>
+                void exportTextFile("ord.txt", exportWordList(words)).then(say)
+              }
+            >
               {t("wt.vocabulary.exportWords")}
             </Button>
             <Button onClick={() => void importReplacementFile()}>
@@ -183,7 +233,10 @@ export function VocabularySection() {
             </Button>
             <Button
               onClick={() =>
-                void exportTextFile("erstatninger.txt", exportReplacements(replacements)).then(say)
+                void exportTextFile(
+                  "erstatninger.txt",
+                  exportReplacements(replacements),
+                ).then(say)
               }
             >
               {t("wt.vocabulary.exportReplacements")}

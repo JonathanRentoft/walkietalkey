@@ -9,30 +9,35 @@ import { useTauriEvent } from "./hooks";
 export function useHandyToasts() {
   const { t } = useTranslation();
 
-  useTauriEvent<RecordingErrorEvent>("recording-error", ({ error_type, detail }) => {
-    if (error_type === "microphone_permission_denied") {
-      let os = "generic";
-      try {
-        os = platform();
-      } catch {
-        // keep generic
+  useTauriEvent<RecordingErrorEvent>(
+    "recording-error",
+    ({ error_type, detail }) => {
+      if (error_type === "microphone_permission_denied") {
+        let os = "generic";
+        try {
+          os = platform();
+        } catch {
+          // keep generic
+        }
+        toast.error(t("errors.micPermissionDeniedTitle"), {
+          description: t(`errors.micPermissionDenied.${os}`, {
+            defaultValue: t("errors.micPermissionDenied.generic"),
+          }),
+        });
+      } else if (error_type === "no_input_device") {
+        toast.error(t("errors.noInputDeviceTitle"), {
+          description: t("errors.noInputDevice"),
+        });
+      } else {
+        toast.error(t("errors.recordingFailed", { error: detail ?? "" }));
       }
-      toast.error(t("errors.micPermissionDeniedTitle"), {
-        description: t(`errors.micPermissionDenied.${os}`, {
-          defaultValue: t("errors.micPermissionDenied.generic"),
-        }),
-      });
-    } else if (error_type === "no_input_device") {
-      toast.error(t("errors.noInputDeviceTitle"), {
-        description: t("errors.noInputDevice"),
-      });
-    } else {
-      toast.error(t("errors.recordingFailed", { error: detail ?? "" }));
-    }
-  });
+    },
+  );
 
   useTauriEvent("paste-error", () => {
-    toast.error(t("errors.pasteFailedTitle"), { description: t("errors.pasteFailed") });
+    toast.error(t("errors.pasteFailedTitle"), {
+      description: t("errors.pasteFailed"),
+    });
   });
 
   useTauriEvent<string>("transcription-error", (detail) => {

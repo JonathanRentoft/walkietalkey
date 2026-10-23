@@ -24,7 +24,8 @@ export function KeySection(props: { platform: WtPlatform }) {
   const mode: Mode | null =
     handy?.shortcut_activation === "toggle"
       ? "toggle"
-      : handy?.shortcut_activation === "push_to_talk" || !handy?.shortcut_activation
+      : handy?.shortcut_activation === "push_to_talk" ||
+          !handy?.shortcut_activation
         ? "push_to_talk"
         : null;
   const binding = handy?.bindings?.[DICTATION_BINDING]?.current_binding ?? "";
@@ -35,7 +36,9 @@ export function KeySection(props: { platform: WtPlatform }) {
         <SettingRow
           title={t("wt.key.key")}
           description={
-            props.platform === "macos" ? t("wt.key.keyDescMac") : t("wt.key.keyDescWindows")
+            props.platform === "macos"
+              ? t("wt.key.keyDescMac")
+              : t("wt.key.keyDescWindows")
           }
           stacked
         >
@@ -47,18 +50,38 @@ export function KeySection(props: { platform: WtPlatform }) {
               labelledBy={labelId}
               value={mode}
               vertical
-              onChange={(v) => void updateHandy("shortcut_activation", v as ShortcutActivation)}
+              onChange={(v) =>
+                void updateHandy("shortcut_activation", v as ShortcutActivation)
+              }
               options={[
-                { value: "push_to_talk", label: t("wt.key.hold"), description: t("wt.key.holdDesc") },
-                { value: "toggle", label: t("wt.key.tap"), description: t("wt.key.tapDesc") },
+                {
+                  value: "push_to_talk",
+                  label: t("wt.key.hold"),
+                  description: t("wt.key.holdDesc"),
+                },
+                {
+                  value: "toggle",
+                  label: t("wt.key.tap"),
+                  description: t("wt.key.tapDesc"),
+                },
               ]}
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.key.test")} description={t("wt.key.testDesc")} stacked>
+        <SettingRow
+          title={t("wt.key.test")}
+          description={t("wt.key.testDesc")}
+          stacked
+        >
           <div className="wt-inline">
-            <KeyCaps binding={binding} platform={props.platform} pressed={down} />
-            {worked ? <Status tone="ok">{t("wt.onboarding.key.works")}</Status> : null}
+            <KeyCaps
+              binding={binding}
+              platform={props.platform}
+              pressed={down}
+            />
+            {worked ? (
+              <Status tone="ok">{t("wt.onboarding.key.works")}</Status>
+            ) : null}
           </div>
         </SettingRow>
       </Group>

@@ -97,7 +97,9 @@ export function MainWindow(props: { platform: WtPlatform }) {
               >
                 {t(`wt.nav.${id}`)}
               </button>
-              {id === "history" ? <div className="wt-nav-sep" role="presentation" /> : null}
+              {id === "history" ? (
+                <div className="wt-nav-sep" role="presentation" />
+              ) : null}
             </li>
           ))}
         </ul>

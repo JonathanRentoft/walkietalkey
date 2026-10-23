@@ -660,7 +660,8 @@
     "open": "Open",
     "copy": "Copy",
     "clear": "Clear",
-    "noOptionsFound": "No options found"
+    "noOptionsFound": "No options found",
+    "reset": "Reset"
   },
   "accessibility": {
     "permissionsDescription": "WalkieTalkey needs accessibility permissions to type transcribed text.",

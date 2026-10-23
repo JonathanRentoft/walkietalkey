@@ -54,12 +54,17 @@ export function PhoneSection() {
                 <div className="wt-list-main">
                   <span>{p.name || t("wt.phone.noName")}</span>
                   <span className="wt-list-sub">
-                    <span className={p.online ? "wt-dot wt-dot--on" : "wt-dot"} aria-hidden />
+                    <span
+                      className={p.online ? "wt-dot wt-dot--on" : "wt-dot"}
+                      aria-hidden
+                    />
                     {p.online ? t("wt.phone.online") : t("wt.phone.offline")}
                   </span>
                 </div>
                 <Button
-                  aria-label={t("wt.phone.removeNamed", { name: p.name || t("wt.phone.noName") })}
+                  aria-label={t("wt.phone.removeNamed", {
+                    name: p.name || t("wt.phone.noName"),
+                  })}
                   onClick={() => void remove(p.id, p.name)}
                 >
                   {t("wt.common.remove")}
@@ -71,7 +76,11 @@ export function PhoneSection() {
           <p className="wt-empty">{t("wt.phone.none")}</p>
         )}
       </Group>
-      {failed ? <Status tone="warn">{t("wt.phone.removeFailedNamed", { name: failed })}</Status> : null}
+      {failed ? (
+        <Status tone="warn">
+          {t("wt.phone.removeFailedNamed", { name: failed })}
+        </Status>
+      ) : null}
 
       <Group>
         <div className="wt-row">
@@ -89,7 +98,9 @@ export function PhoneSection() {
         {relay ? (
           <div className="wt-row">
             <Status tone={relay.connected ? "muted" : "warn"}>
-              {relay.connected ? t("wt.phone.connected") : t("wt.phone.disconnected")}
+              {relay.connected
+                ? t("wt.phone.connected")
+                : t("wt.phone.disconnected")}
             </Status>
           </div>
         ) : null}

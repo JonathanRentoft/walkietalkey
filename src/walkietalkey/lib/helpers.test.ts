@@ -93,11 +93,10 @@ describe("pairing countdown (spec 5.3)", () => {
 
 describe("word lists (DESK-66, DESK-68)", () => {
   test("plain text import: one entry per line, trimmed, no blanks or repeats", () => {
-    assert.deepEqual(parseWordList(" Rentoft \n\nWalkieTalkey\nrentoft\r\nEdda"), [
-      "Rentoft",
-      "WalkieTalkey",
-      "Edda",
-    ]);
+    assert.deepEqual(
+      parseWordList(" Rentoft \n\nWalkieTalkey\nrentoft\r\nEdda"),
+      ["Rentoft", "WalkieTalkey", "Edda"],
+    );
   });
 
   test("export writes one word per line", () => {
@@ -144,7 +143,10 @@ describe("AI cleanup (DESK-80..82)", () => {
     assert.equal(isCloudProvider("apple", null), false);
     assert.equal(isCloudProvider("custom", "http://localhost:11434/v1"), false);
     assert.equal(isCloudProvider("custom", "http://127.0.0.1:1234/v1"), false);
-    assert.equal(isCloudProvider("custom", "https://example.openai.azure.com"), true);
+    assert.equal(
+      isCloudProvider("custom", "https://example.openai.azure.com"),
+      true,
+    );
     assert.equal(isCloudProvider("custom", null), false);
     assert.equal(isCloudProvider("openai", null), true);
   });

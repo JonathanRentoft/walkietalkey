@@ -150,7 +150,10 @@ export function parseReplacements(text: string): Replacement[] {
 }
 
 export function exportReplacements(list: readonly Replacement[]): string {
-  return list.map((r) => `${r.from} => ${r.to}`).join("\n") + (list.length ? "\n" : "");
+  return (
+    list.map((r) => `${r.from} => ${r.to}`).join("\n") +
+    (list.length ? "\n" : "")
+  );
 }
 
 /* ------------------------------------------------------------ AI cleanup */
@@ -263,7 +266,9 @@ export function pillStateFromEnd(state: string): DictationPillStateName {
 export const EDDA_MODEL_ID = "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf";
 const FAST_MODEL_REPO = "walkietalkey/ekko-v1-tiny-gguf/";
 
-export function findFastModelId(models: readonly { id: string }[]): string | null {
+export function findFastModelId(
+  models: readonly { id: string }[],
+): string | null {
   return models.find((m) => m.id.startsWith(FAST_MODEL_REPO))?.id ?? null;
 }
 
@@ -277,7 +282,9 @@ export const UNLOAD_OPTIONS = [
 ] as const;
 export type UnloadChoice = (typeof UNLOAD_OPTIONS)[number]["value"];
 
-export function unloadChoice(value: string | null | undefined): UnloadChoice | null {
+export function unloadChoice(
+  value: string | null | undefined,
+): UnloadChoice | null {
   if (!value) return "never";
   return UNLOAD_OPTIONS.find((o) => o.value === value)?.value ?? null;
 }

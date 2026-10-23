@@ -5,7 +5,15 @@ import { commands, type OutputMode, type PunctuationMode } from "@/bindings";
 import type { WtPlatform } from "../lib/helpers";
 import { hasPermission, pasteKey, requestPermission } from "../lib/system";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { Button, ChoiceGroup, Group, Page, SettingRow, Status, Switch } from "../ui/controls";
+import {
+  Button,
+  ChoiceGroup,
+  Group,
+  Page,
+  SettingRow,
+  Status,
+  Switch,
+} from "../ui/controls";
 
 export function TextSection(props: { platform: WtPlatform }) {
   const { t } = useTranslation();
@@ -29,7 +37,9 @@ export function TextSection(props: { platform: WtPlatform }) {
       <Group>
         <SettingRow
           title={t("wt.text.output")}
-          description={t("wt.text.outputDesc", { key: pasteKey(props.platform) })}
+          description={t("wt.text.outputDesc", {
+            key: pasteKey(props.platform),
+          })}
           lockField="output_mode"
           stacked
         >
@@ -45,7 +55,9 @@ export function TextSection(props: { platform: WtPlatform }) {
                   { value: "clipboard", label: t("wt.text.clipboard") },
                 ]}
               />
-              {mac && wt?.output_mode !== "clipboard" && accessibility === false ? (
+              {mac &&
+              wt?.output_mode !== "clipboard" &&
+              accessibility === false ? (
                 <div className="wt-inline">
                   <Status tone="warn">{t("wt.text.noAccessibility")}</Status>
                   <Button onClick={() => void allow()}>
@@ -56,7 +68,11 @@ export function TextSection(props: { platform: WtPlatform }) {
             </>
           )}
         </SettingRow>
-        <SettingRow title={t("wt.text.punctuation")} description={t("wt.text.punctuationDesc")} stacked>
+        <SettingRow
+          title={t("wt.text.punctuation")}
+          description={t("wt.text.punctuationDesc")}
+          stacked
+        >
           {({ labelId }) => (
             <ChoiceGroup<PunctuationMode>
               labelledBy={labelId}
@@ -72,7 +88,9 @@ export function TextSection(props: { platform: WtPlatform }) {
         </SettingRow>
         <SettingRow
           title={t("wt.text.share")}
-          description={mac ? t("wt.text.shareDescMac") : t("wt.text.shareDescWindows")}
+          description={
+            mac ? t("wt.text.shareDescMac") : t("wt.text.shareDescWindows")
+          }
           lockField="share_clipboard_with_devices"
         >
           {({ labelId, descId, locked }) => (

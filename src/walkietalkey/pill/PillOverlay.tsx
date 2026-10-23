@@ -64,11 +64,15 @@ export function PillOverlay() {
   });
   useTauriEvent<number[]>("mic-level", (levels) => {
     const values = Array.isArray(levels) ? levels.slice(0, 9) : [];
-    const avg = values.length ? values.reduce((a, b) => a + (b || 0), 0) / values.length : 0;
+    const avg = values.length
+      ? values.reduce((a, b) => a + (b || 0), 0) / values.length
+      : 0;
     smoothed.current = smoothed.current * 0.6 + Math.min(1, avg) * 0.4;
     setLevel(smoothed.current);
   });
-  useTauriEvent<PillCountdownEvent>("wt-pill-countdown", (e) => setCountdown(e.seconds_left));
+  useTauriEvent<PillCountdownEvent>("wt-pill-countdown", (e) =>
+    setCountdown(e.seconds_left),
+  );
   useTauriEvent<PillEndEvent>("wt-pill-end", (e) => {
     setCapturing(false);
     setCountdown(null);
@@ -77,7 +81,10 @@ export function PillOverlay() {
   });
   useTauriEvent<ModelStateEvent>("model-state-changed", (e) => {
     if (e.event_type === "loading_started") setModelLoading(true);
-    else if (e.event_type === "loading_completed" || e.event_type === "loading_failed")
+    else if (
+      e.event_type === "loading_completed" ||
+      e.event_type === "loading_failed"
+    )
       setModelLoading(false);
   });
 
@@ -94,7 +101,9 @@ export function PillOverlay() {
   const spoken = countdown != null ? Math.ceil(countdown / 5) * 5 : null;
   const shown: DictationPillState =
     state === "processing" && modelLoading ? "notready" : state;
-  const style = { "--wt-level": (0.35 + 0.65 * level).toFixed(2) } as CSSProperties;
+  const style = {
+    "--wt-level": (0.35 + 0.65 * level).toFixed(2),
+  } as CSSProperties;
   return (
     <div
       className="wt-pill-host"

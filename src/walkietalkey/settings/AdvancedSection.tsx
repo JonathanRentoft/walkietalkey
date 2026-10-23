@@ -14,7 +14,15 @@ import { KeyboardDiagnostic } from "@/components/settings/debug/KeyboardDiagnost
 import { LiveLogViewer } from "@/components/settings/debug/LiveLogViewer";
 import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
-import { Button, Group, Page, SettingRow, Status, Switch, TextInput } from "../ui/controls";
+import {
+  Button,
+  Group,
+  Page,
+  SettingRow,
+  Status,
+  Switch,
+  TextInput,
+} from "../ui/controls";
 
 /** Saves on Enter or blur. */
 function AddressField(props: {
@@ -64,7 +72,9 @@ export function AdvancedSection() {
   const updateHandy = useSettingsStore((s) => s.updateSetting);
   const relayId = useId();
   const phoneId = useId();
-  const [importState, setImportState] = useState<"idle" | "ok" | "failed">("idle");
+  const [importState, setImportState] = useState<"idle" | "ok" | "failed">(
+    "idle",
+  );
 
   const importModel = async () => {
     setImportState("idle");
@@ -127,8 +137,13 @@ export function AdvancedSection() {
       </Group>
 
       <Group title={t("wt.advanced.manualModels")}>
-        <SettingRow title={t("wt.model.importFile")} description={t("wt.advanced.importDesc")}>
-          <Button onClick={() => void importModel()}>{t("wt.model.importFile")}</Button>
+        <SettingRow
+          title={t("wt.model.importFile")}
+          description={t("wt.advanced.importDesc")}
+        >
+          <Button onClick={() => void importModel()}>
+            {t("wt.model.importFile")}
+          </Button>
         </SettingRow>
         {importState === "ok" ? (
           <div className="wt-row">
@@ -139,20 +154,32 @@ export function AdvancedSection() {
             <Status tone="warn">{t("wt.model.importFailed")}</Status>
           </div>
         ) : null}
-        <SettingRow title={t("wt.advanced.dataFolder")} description={t("wt.advanced.dataFolderDesc")}>
-          <Button onClick={() => void commands.openAppDataDir().catch(() => {})}>
+        <SettingRow
+          title={t("wt.advanced.dataFolder")}
+          description={t("wt.advanced.dataFolderDesc")}
+        >
+          <Button
+            onClick={() => void commands.openAppDataDir().catch(() => {})}
+          >
             {t("wt.advanced.openFolder")}
           </Button>
         </SettingRow>
         {wt?.model_base_url ? (
-          <SettingRow title={t("wt.advanced.modelServer")} lockField="model_base_url" stacked>
+          <SettingRow
+            title={t("wt.advanced.modelServer")}
+            lockField="model_base_url"
+            stacked
+          >
             <span className="wt-mono">{wt.model_base_url}</span>
           </SettingRow>
         ) : null}
       </Group>
 
       <Group title={t("wt.advanced.debugging")}>
-        <SettingRow title={t("wt.advanced.debugMode")} description={t("wt.advanced.debugModeDesc")}>
+        <SettingRow
+          title={t("wt.advanced.debugMode")}
+          description={t("wt.advanced.debugModeDesc")}
+        >
           {({ labelId, descId }) => (
             <Switch
               labelledBy={labelId}
@@ -162,7 +189,10 @@ export function AdvancedSection() {
             />
           )}
         </SettingRow>
-        <SettingRow title={t("wt.advanced.logs")} description={t("wt.advanced.logsDesc")}>
+        <SettingRow
+          title={t("wt.advanced.logs")}
+          description={t("wt.advanced.logsDesc")}
+        >
           <Button onClick={() => void commands.openLogDir().catch(() => {})}>
             {t("wt.advanced.openLogs")}
           </Button>
@@ -171,11 +201,16 @@ export function AdvancedSection() {
           <MicrophoneSelector descriptionMode="inline" grouped />
           <LogLevelSelector descriptionMode="inline" grouped />
           <KeyboardDiagnostic />
-          {handy?.debug_mode ? <LiveLogViewer descriptionMode="inline" grouped /> : null}
+          {handy?.debug_mode ? (
+            <LiveLogViewer descriptionMode="inline" grouped />
+          ) : null}
         </div>
       </Group>
 
-      <Group title={t("wt.advanced.pasteDelays")} description={t("wt.advanced.pasteDelaysDesc")}>
+      <Group
+        title={t("wt.advanced.pasteDelays")}
+        description={t("wt.advanced.pasteDelaysDesc")}
+      >
         <div className="wt-handy">
           <PasteDelay descriptionMode="inline" grouped />
           <PasteDelay
@@ -189,7 +224,10 @@ export function AdvancedSection() {
         </div>
       </Group>
 
-      <Group title={t("wt.advanced.cli.title")} description={t("wt.advanced.cli.desc")}>
+      <Group
+        title={t("wt.advanced.cli.title")}
+        description={t("wt.advanced.cli.desc")}
+      >
         <ul className="wt-credits">
           {CLI_FLAGS.map(([flag, key]) => (
             <li key={flag}>
