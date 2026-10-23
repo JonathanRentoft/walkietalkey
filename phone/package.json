@@ -2,5 +2,38 @@
   "name": "@walkietalkey/phone",
   "version": "0.1.0",
   "private": true,
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "description": "WalkieTalkey phone web app (PWA): hold the button, talk, and the audio goes end-to-end encrypted to your computer.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:e2e": "vite build --mode e2e --outDir dist-e2e",
+    "preview": "bun scripts/serve.ts dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "bun run build:e2e && playwright test",
+    "deploy": "WRANGLER_SEND_METRICS=false wrangler pages deploy dist --project-name walkietalkey-app --branch main"
+  },
+  "dependencies": {
+    "@walkietalkey/protocol": "workspace:*",
+    "@walkietalkey/ui": "workspace:*",
+    "jsqr": "^1.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^24.9.1",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "fake-indexeddb": "^6.0.0",
+    "qrcode": "^1.5.4",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.152.0"
+  }
 }
