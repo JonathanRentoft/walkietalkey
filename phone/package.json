@@ -33,7 +33,7 @@
     "fake-indexeddb": "^6.0.0",
     "qrcode": "^1.5.4",
     "typescript": "^5.9.3",
-    "vite": "^6.4.1",
+    "vite": "^8.3.4",
     "vitest": "^4.1.12",
     "wrangler": "^4.152.0"
   }
