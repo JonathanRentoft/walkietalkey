@@ -48,10 +48,14 @@ if [[ ! -f "$TURBO" ]]; then
 fi
 echo "b2e30cc286bc9f3aba4db9099fc7403543497c05ce7100d0d83091ddfd25a183  $TURBO" | shasum -a 256 -c - >/dev/null
 
+# Whisper models run both ways: timestamps off (<|notimestamps|>, how Edda was
+# fine-tuned and how WalkieTalkey decodes) and the engine default "auto"
+# (segment timestamps, stock Handy), so the difference is on record.
 MODELS=(
   --model "edda-v0.2-q8_0=$EDDA@none"
   --model "edda-v0.2-q8_0-ts-auto=$EDDA@auto"
-  --model "whisper-turbo-q8_0=$TURBO@auto"
+  --model "whisper-turbo-q8_0=$TURBO@none"
+  --model "whisper-turbo-q8_0-ts-auto=$TURBO@auto"
 )
 EKKO="$WORK/models-final/ekko-v1-tiny/ekko-v1-tiny-Q8_0.gguf"
 if [[ -f "$EKKO" || -x "$REPO/models/ekko-v1-tiny/convert.sh" ]]; then

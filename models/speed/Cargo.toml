@@ -1,0 +1,24 @@
+[package]
+name = "wt-speed"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Raw transcription speed of a GGUF model through transcribe-cpp 0.4.0, the engine binding the app links (DESK-31, DESK-43)"
+publish = false
+
+# Standalone tool, not part of any workspace.
+[workspace]
+
+[dependencies]
+serde_json = "1"
+# Pin the native library to the exact release Handy locks (Cargo.lock: transcribe-cpp-sys 0.4.0).
+transcribe-cpp-sys = "=0.4.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+transcribe-cpp = { version = "=0.4.0", default-features = false, features = ["metal"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+transcribe-cpp = { version = "=0.4.0", default-features = false }
+
+[profile.release]
+debug = false

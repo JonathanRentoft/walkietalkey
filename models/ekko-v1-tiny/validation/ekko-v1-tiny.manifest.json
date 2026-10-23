@@ -1,0 +1,59 @@
+{
+  "schema": "transcribe-golden-manifest-v1",
+  "family": "parakeet",
+  "variant": "ekko-v1-tiny",
+  "source_model": {
+    "hf_repo": "RyeAI/ekko-v1-tiny",
+    "hf_revision": "3658535e7b2fa98d5d9aad8114573c0fab1e6203"
+  },
+  "reference": {
+    "kind": "nemo",
+    "source": "https://github.com/NVIDIA-NeMo/NeMo",
+    "revision": "v2.7.2",
+    "entrypoint": "scripts/dump_reference_parakeet_nemo.py"
+  },
+  "expected_dtype": "float32",
+  "dtype_source": "manual",
+  "frontend": {
+    "sample_rate": 16000,
+    "n_mels": 80,
+    "hop_length": 160,
+    "fft_size": 512,
+    "win_length": 400,
+    "window": "hann_periodic",
+    "normalization": "per_feature",
+    "preemphasis": 0.97,
+    "dither": 1e-05
+  },
+  "tokenizer_summary": {
+    "type": "bpe",
+    "vocab_size": 44,
+    "special_tokens": {
+      "blank": 44
+    }
+  },
+  "capabilities": {
+    "languages": [
+      "da"
+    ],
+    "language_detection": false,
+    "translation": false,
+    "timestamps": [
+      "token",
+      "word"
+    ],
+    "streaming": false,
+    "speaker_diarization": false
+  },
+  "tolerance_file": "tests/tolerances/parakeet.json",
+  "cases": [
+    {
+      "audio": "fleurs-da-6263195548503774343",
+      "language": "da"
+    },
+    {
+      "audio": "fleurs-da-17924706686437869147",
+      "language": "da"
+    }
+  ]
+}
