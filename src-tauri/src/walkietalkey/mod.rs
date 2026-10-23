@@ -23,6 +23,7 @@ pub mod history;
 pub mod keys;
 pub mod limits;
 pub mod managed;
+pub mod models;
 pub mod notify;
 pub mod output;
 pub mod pill;

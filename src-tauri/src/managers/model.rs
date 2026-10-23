@@ -1724,6 +1724,38 @@ impl ModelManager {
             disarmed: false,
         };
 
+        // WalkieTalkey (DESK-32): a company's own model server replaces
+        // Hugging Face entirely (many companies block huggingface.co). The
+        // file is checked against the compiled-in SHA-256; a failed check
+        // deletes it and retries once, then reports the error.
+        let model_base_url = crate::walkietalkey::store::get(&self.app_handle).model_base_url;
+        if let Some(mirror) =
+            crate::walkietalkey::models::company_mirror(model_base_url.as_deref(), &model_id)
+        {
+            info!("Downloading {} from the company model server", model_id);
+            let mut last_error = None;
+            for _ in 0..2 {
+                match self
+                    .download_from_mirror(&model_id, &filename, &mirror, cancel_token.clone())
+                    .await
+                {
+                    Ok(true) => {
+                        cleanup.disarmed = true;
+                        self.update_download_status()?;
+                        self.cancel_flags.lock().unwrap().remove(&model_id);
+                        let _ = self.app_handle.emit("model-download-complete", &model_id);
+                        return Ok(());
+                    }
+                    Ok(false) => return Ok(()),
+                    Err(e) => {
+                        warn!("Company model server download failed for {}: {:?}", model_id, e);
+                        last_error = Some(e);
+                    }
+                }
+            }
+            return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("download failed")));
+        }
+
         info!(
             "Downloading HF model {} from {}@{} ({})",
             model_id, repo_id, revision, filename

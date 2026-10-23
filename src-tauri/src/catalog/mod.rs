@@ -386,6 +386,25 @@ pub fn mirror_fallbacks(model_id: &str) -> Vec<MirrorFile> {
         .collect()
 }
 
+/// WalkieTalkey (DESK-32): every offered catalog file as `(registry id, file
+/// name, sha256, size)`, so a company model server or an imported file can be
+/// checked against the hashes compiled into the app.
+pub fn file_hashes() -> Vec<(String, String, String, u64)> {
+    transcription_models()
+        .filter(|m| m.is_offered())
+        .flat_map(|m| {
+            m.files.values().map(move |f| {
+                (
+                    format!("{}/{}", m.repository, f.filename),
+                    f.filename.clone(),
+                    f.sha256.to_ascii_lowercase(),
+                    f.size,
+                )
+            })
+        })
+        .collect()
+}
+
 /// The catalog descriptor + specific `files[]` entry owning `filename`,
 /// matched across every listed quant (not just the default) of every offered
 /// transcription model. `repo_id`, when given, must also match — the HF-cache
