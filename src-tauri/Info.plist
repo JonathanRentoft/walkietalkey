@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Request microphone access to transcribe audio locally</string>
+  <string>WalkieTalkey skal bruge mikrofonen for at høre dig</string>
 </dict>
 </plist>

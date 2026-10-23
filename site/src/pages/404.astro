@@ -1,0 +1,17 @@
+---
+import { LiquidBackground, ShinyButton } from "@walkietalkey/ui";
+import Header from "../components/Header.astro";
+import Base from "../layouts/Base.astro";
+---
+<Base page="notFound">
+  <LiquidBackground as="header" className="sub-hero" palette="morgengry">
+    <Header current="home" />
+    <div class="container sub-hero-copy" id="indhold">
+      <!-- TODO(copy) -->
+      <p class="eyebrow">404</p>
+      <h1>Siden findes ikke</h1>
+      <p class="lead">Måske er den flyttet. Prøv forsiden.</p>
+      <div style="margin-top: var(--space-8)"><ShinyButton href="/" size="lg">Til forsiden</ShinyButton></div>
+    </div>
+  </LiquidBackground>
+</Base>

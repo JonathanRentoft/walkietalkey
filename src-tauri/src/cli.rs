@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug, Clone, Default)]
-#[command(name = "handy", about = "Handy - Speech to Text")]
+#[command(name = "walkietalkey", about = "WalkieTalkey - Danish speech to text")]
 pub struct CliArgs {
     /// Start with the main window hidden
     #[arg(long)]
@@ -61,4 +61,33 @@ pub struct CliArgs {
     /// Emit --transcribe-file results as JSON.
     #[arg(long)]
     pub json: bool,
+
+    /// WalkieTalkey bench (DESK-43, DESK-46): feed --transcribe-file through
+    /// the live recording path in 200 ms pieces at real-time speed, as the
+    /// microphone does, and report the wait from the end of the audio to the
+    /// final text.
+    #[arg(long)]
+    pub live: bool,
+
+    /// WalkieTalkey end-to-end test (DESK-61): receive phone dictations
+    /// headlessly. Prints the pairing URL as a JSON line, then each
+    /// transcript, and exits after --count dictations.
+    #[arg(long)]
+    pub phone_receive: bool,
+
+    /// Relay for --phone-receive (default: the settings' relay).
+    #[arg(long, value_name = "URL")]
+    pub relay_url: Option<String>,
+
+    /// Phone app URL for the pairing link (default: the settings').
+    #[arg(long, value_name = "URL")]
+    pub phone_app_url: Option<String>,
+
+    /// Dictations to receive before exiting (--phone-receive).
+    #[arg(long, value_name = "N")]
+    pub count: Option<usize>,
+
+    /// Give up after this many seconds (--phone-receive, default 300).
+    #[arg(long, value_name = "SECONDS")]
+    pub timeout_secs: Option<u64>,
 }

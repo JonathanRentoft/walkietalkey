@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
+    "Accuracy: WER on FLEURS da_dk test (930 clips), Q8_0, language da, timestamps none, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
+    "Replace `revision` with the commit models/upload.sh prints; description_da is draft UI copy."
+  ],
+  "model": {
+    "id": "edda-v0.2",
+    "name": "Edda v0.2",
+    "description": "Most accurate Danish model. Needs a GPU or Apple Silicon to be fast",
+    "repository": "walkietalkey/edda-v0.2-gguf",
+    "revision": "REPLACE-WITH-COMMIT-FROM-models/upload.sh",
+    "previousRevisions": [],
+    "license": "apache-2.0",
+    "family": "whisper",
+    "parameters": "809M",
+    "languages": ["da"],
+    "capabilities": {
+      "streaming": false,
+      "translate": false,
+      "languageDetection": false,
+      "timestamps": false
+    },
+    "quant": "Q8_0",
+    "role": "asr",
+    "curated": true,
+    "minEngine": "0.4.0",
+    "files": {
+      "Q8_0": {
+        "filename": "edda-v0.2-Q8_0.gguf",
+        "size": 886381920,
+        "sha256": "63ac884ad3d436642e8599ed3bda6c2b3456a0bb939a497c796589dee3f3b18d"
+      }
+    }
+  },
+  "description_da": "Den mest præcise danske talemodel. TODO(copy)",
+  "results": {
+    "edda-v0.2": {
+      "accuracy": {
+        "da": {
+          "error": 7.17,
+          "ciLower": 6.64
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.walkietalkey.ios"],
+        "components": [
+          {
+            "/": "/p",
+            "#": "*",
+            "comment": "Pairing links (spec 5.3): the secrets are in the fragment, which never reaches a server."
+          }
+        ]
+      }
+    ]
+  }
+}

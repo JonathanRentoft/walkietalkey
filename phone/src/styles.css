@@ -1,0 +1,527 @@
+/* The phone app's own layout, built only from the design system's tokens. The main screen is the
+   design system's PhoneApp unchanged; .wt-stage only scales it to the screen. */
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--surface-100);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* ---------------------------------------------------------------- main screen */
+
+/* PhoneApp is laid out in em on a 27.4em x 59.2em screen (the PhoneFrame's screen); 1em is set so
+   that it fills the phone's width, or its height in landscape. */
+.wt-stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface-100);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.wt-stage-inner {
+  position: relative;
+  height: 100%;
+  width: min(100%, calc(100vh * 27.4 / 59.2));
+  width: min(100%, calc(100dvh * 27.4 / 59.2));
+  font-size: min(calc(100vw / 27.4), calc(100vh / 59.2));
+  font-size: min(calc(100vw / 27.4), calc(100dvh / 59.2));
+}
+
+.wt-stage .wt-app {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* A long computer name ("Jonathans MacBook Pro") ends in an ellipsis instead of leaving the screen. */
+.wt-stage .wt-app-dev {
+  display: block;
+  max-width: 10.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-stage .wt-app-dev i {
+  display: inline-block;
+  vertical-align: 0.1em;
+  margin-right: 0.5em;
+}
+
+/* The computer is not online: the chip's dot goes quiet. */
+.wt-stage--away .wt-app-dev i {
+  background: var(--perle-dyb);
+}
+
+/* Appendix D: LogoLoader `ekko` on the button while sending. */
+.wt-stage-ekko {
+  position: absolute;
+  left: 50%;
+  top: 25.5em;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  color: var(--on-night);
+}
+.wt-stage-ekko .wt-loader {
+  width: 8.4em !important;
+  height: auto !important;
+}
+.wt-stage-ekko .wt-loader > svg {
+  width: 100%;
+  height: auto;
+}
+.wt-stage--sending .wt-app-face > svg {
+  opacity: 0;
+}
+
+/* PHONE-29: the last 15 seconds. */
+.wt-stage-countdown {
+  position: absolute;
+  left: 1em;
+  right: 1em;
+  top: 43.4em;
+  text-align: center;
+  pointer-events: none;
+}
+.wt-stage-countdown > span {
+  font: 500 1.3em/1.3 var(--font-sans);
+  color: var(--signal-rec);
+}
+
+/* The cancel control of a recording that ends with a tap (tap mode, Start diktering). */
+.wt-stage-cancel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 46.6em;
+  display: flex;
+  justify-content: center;
+}
+.wt-stage-cancel-btn {
+  font-size: 1.2em;
+  background: var(--surface-300);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.08em var(--line);
+}
+
+/* ---------------------------------------------------------------- other screens */
+
+.wt-screen {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) 24px
+    max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  background: var(--surface-100);
+  color: var(--ink);
+}
+
+.wt-screen--center {
+  align-items: center;
+  justify-content: center;
+}
+
+.wt-screen-brand {
+  padding-top: var(--space-4);
+}
+
+.wt-screen-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.wt-screen h1 {
+  margin: 0;
+  font: var(--type-title);
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.wt-screen h2 {
+  margin: 0;
+  font: var(--type-heading);
+  font-size: 18px;
+}
+
+.wt-screen p {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink-muted);
+  text-wrap: pretty;
+}
+
+.wt-screen-status {
+  text-align: center;
+}
+
+.wt-screen-alert {
+  color: var(--ink) !important;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.wt-screen-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.wt-screen-actions .wt-shiny {
+  justify-content: center;
+}
+
+.wt-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  font: var(--type-body);
+  color: var(--ink);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wt-link {
+  align-self: center;
+  border: 0;
+  background: none;
+  padding: var(--space-3) var(--space-4);
+  font: var(--type-label);
+  font-size: 15px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.wt-link:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.wt-muted {
+  font: var(--type-caption) !important;
+  color: var(--ink-muted);
+}
+
+.wt-field {
+  display: grid;
+  gap: var(--space-2);
+  font: var(--type-label);
+  color: var(--ink-muted);
+}
+.wt-field input {
+  font: var(--type-body-lg);
+  color: var(--ink);
+  background: var(--surface-200);
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+  padding: 14px 16px;
+  outline: none;
+}
+.wt-field input:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--line-control),
+    var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------- scanner */
+
+.wt-scan {
+  position: fixed;
+  inset: 0;
+  background: var(--night);
+  color: var(--on-night);
+  overflow: hidden;
+}
+.wt-scan-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wt-scan-frame {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(70vw, 340px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 0 0 100vmax #0e0d0c99,
+    inset 0 0 0 2px #ffffffcc;
+}
+.wt-scan-text {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: calc(44% + min(35vw, 170px) + 24px);
+  text-align: center;
+}
+.wt-scan-text p {
+  margin: 0;
+  font: var(--type-body-lg);
+}
+.wt-scan-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(32px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.wt-settings {
+  justify-content: flex-start;
+  gap: var(--space-8);
+}
+.wt-settings section {
+  display: grid;
+  gap: var(--space-3);
+}
+.wt-settings-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: calc(-1 * var(--space-4));
+}
+.wt-settings-head h1 {
+  font-size: 24px;
+}
+
+.wt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.wt-list-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.wt-list-main b {
+  font: var(--type-label);
+  font-size: 16px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.wt-list-main span {
+  font: var(--type-caption);
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wt-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--perle-dyb);
+  display: inline-block;
+}
+.wt-dot--on {
+  background: var(--rav-dyb);
+}
+
+.wt-confirm {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-confirm p:first-child {
+  color: var(--ink);
+}
+.wt-confirm-actions,
+.wt-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.wt-pill-btn {
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-300);
+  color: var(--ink);
+  font: var(--type-label);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.wt-pill-btn--ink {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-soft);
+}
+.wt-pill-btn--danger {
+  background: var(--signal-rec);
+  color: #ffffff;
+  box-shadow: none;
+}
+.wt-pill-btn:disabled {
+  opacity: 0.5;
+}
+.wt-pill-btn:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
+
+.wt-choices {
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: var(--type-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+.wt-choice input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ink);
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- sheets */
+
+.wt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: #0e0d0c66;
+  animation: wt-fade var(--duration-base) var(--ease-flow);
+}
+.wt-sheet {
+  box-sizing: border-box;
+  width: min(100%, 480px);
+  max-height: 80dvh;
+  overflow: auto;
+  padding: var(--space-6) var(--space-6)
+    max(var(--space-6), env(safe-area-inset-bottom));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface-100);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  display: grid;
+  gap: var(--space-4);
+  animation: wt-rise var(--duration-slow) var(--ease-flow);
+}
+.wt-sheet h2 {
+  margin: 0;
+  font: var(--type-heading);
+}
+.wt-sheet p {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink-muted);
+}
+.wt-sheet .wt-sheet-lead {
+  font: var(--type-body-lg);
+  color: var(--ink);
+}
+.wt-pick {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+}
+.wt-pick b {
+  font-weight: 600;
+}
+.wt-pick span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+.wt-pick--on {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.wt-pick:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes wt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes wt-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-sheet-backdrop,
+  .wt-sheet {
+    animation: none;
+  }
+}

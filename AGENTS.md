@@ -2,6 +2,34 @@
 
 This file provides guidance to AI coding assistants working with code in this repository.
 
+## WalkieTalkey first
+
+WalkieTalkey is a fork of [Handy](https://github.com/cjpais/Handy): free, open-source Danish dictation for Mac, Windows and the phone. The behaviour is specified in `docs/SPEC.md`; requirement IDs (`DESK-`, `PHONE-`, `RELAY-`, `SEC-`, `SITE-`, `PRIV-`, `OSS-`) are cited in tests, commits and pull requests. The code map is `docs/ARCHITECTURE.md`; the protocol is `docs/PROTOCOL.md`; the models are `docs/MODELS.md`.
+
+Rules that keep the fork maintainable and the product honest:
+
+- **Handy's folders stay where they are** (DESK-05), so the monthly "Sync med Handy" merge stays easy. Our code lives in our own modules: `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`, `crates/`, and the workspaces `phone/`, `relay/`, `site/`, `packages/`. A change to a Handy file is a small hook into one of ours, marked with a `WalkieTalkey` comment.
+- **Tests first.** The relay tests count storage writes per dictation; the protocol has shared test vectors in TypeScript and Rust (`packages/protocol/test-vectors.json`); AI providers are always fakes in tests. Never use real API keys.
+- **English** for code, comments, commits and docs. **Danish** for user-facing text, from spec Appendix A; new strings not in the spec are marked `TODO(copy)`. No em dashes in user-facing text.
+- **Privacy**: no telemetry, no analytics, no crash reporting. Audio is never stored unless "Gem lyd til fejlfinding" is on; text never goes back to the phone.
+- **Secrets** live in the OS keychain (`walkietalkey::secrets`, `wt-native`), never in settings files or logs.
+
+| Part                              | Folder                                                          | Commands                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Desktop app                       | `src-tauri/`, `src/`                                            | `bun run tauri dev`, `cargo test --manifest-path src-tauri/Cargo.toml --lib`                                          |
+| Protocol                          | `packages/protocol/` (Rust in `rust/`)                          | `bun run --cwd packages/protocol test`, `cargo test --manifest-path packages/protocol/rust/Cargo.toml`                |
+| Relay client, native, punctuation | `crates/wt-relay-client`, `crates/wt-native`, `crates/ekko-pnc` | `cargo test --manifest-path crates/<crate>/Cargo.toml`                                                                |
+| Relay                             | `relay/`                                                        | `bun run --cwd relay test`, `bun run --cwd relay dev`                                                                 |
+| Phone app                         | `phone/`                                                        | `bun run --cwd phone dev`, `bun run --cwd phone test`, `bun run --cwd phone test:e2e`                                 |
+| iOS shell                         | `ios/`                                                          | XcodeGen (`ios/project.yml`); built in CI                                                                             |
+| Website                           | `site/`                                                         | `bun run --cwd site dev`, `bun run --cwd site test`                                                                   |
+| Design system                     | `packages/ui/`                                                  | `bun run --cwd packages/ui test`                                                                                      |
+| Licences                          | `deny.toml`, `scripts/walkietalkey/check-js-licenses.ts`        | `cargo deny --manifest-path src-tauri/Cargo.toml check`, `bun scripts/walkietalkey/check-js-licenses.ts`, `bun audit` |
+
+On macOS, if linking fails against a beta SDK, point `SDKROOT` at the release SDK (`/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
+
+The rest of this file is Handy's development guide, adapted. "Handy" below means the shared desktop code.
+
 ## Development Commands
 
 **Prerequisites:**
@@ -40,12 +68,9 @@ bun run format:frontend   # Prettier only
 bun run format:backend    # cargo fmt only
 ```
 
-**Model Setup (Required for Development):**
+**Models:**
 
-```bash
-mkdir -p src-tauri/resources/models
-curl -L -o src-tauri/resources/models/silero-vad-v6.2-F32.gguf https://huggingface.co/handy-computer/silero-vad-v6.2-gguf/resolve/main/silero-vad-v6.2-F32.gguf
-```
+The Silero VAD model is committed (`src-tauri/resources/models/silero-vad-v6.2-F32.gguf`). Speech models live in the app data folder (`~/Library/Application Support/WalkieTalkey/models/`, `%LOCALAPPDATA%\WalkieTalkey\models\`); the app downloads them, or you build them with `models/` (see `docs/MODELS.md`) and import the file in the model settings. Never upload model weights anywhere: the training-data licence question is open (spec section 11).
 
 For detailed platform-specific build setup, see [BUILD.md](BUILD.md).
 
@@ -150,7 +175,7 @@ src/i18n/
     └── ...
 ```
 
-For translation contribution guidelines, see [CONTRIBUTING_TRANSLATIONS.md](CONTRIBUTING_TRANSLATIONS.md).
+WalkieTalkey ships Danish (default) and English only (`src/walkietalkey/i18n.ts`). Danish copy comes from spec Appendix A; `bun run check:translations` checks that every key exists in every locale.
 
 ## Code Style
 
@@ -173,14 +198,17 @@ Handy supports command-line parameters on all platforms for integration with scr
 
 **Implementation:** `cli.rs` (definitions), `main.rs` (parsing), `lib.rs` (applying), `signal_handle.rs` (shared logic)
 
-| Flag                     | Description                                                |
-| ------------------------ | ---------------------------------------------------------- |
-| `--toggle-transcription` | Toggle recording on/off on a running instance              |
-| `--toggle-post-process`  | Toggle recording with post-processing on/off               |
-| `--cancel`               | Cancel the current operation on a running instance         |
-| `--start-hidden`         | Launch without showing the main window (tray icon visible) |
-| `--no-tray`              | Launch without system tray (closing window quits the app)  |
-| `--debug`                | Enable debug mode with verbose (Trace) logging             |
+| Flag                      | Description                                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `--toggle-transcription`  | Toggle recording on/off on a running instance                                                                                             |
+| `--toggle-post-process`   | Toggle recording with post-processing on/off                                                                                              |
+| `--cancel`                | Cancel the current operation on a running instance                                                                                        |
+| `--start-hidden`          | Launch without showing the main window (tray icon visible)                                                                                |
+| `--no-tray`               | Launch without system tray (closing window quits the app)                                                                                 |
+| `--debug`                 | Enable debug mode with verbose (Trace) logging                                                                                            |
+| `-f`, `--transcribe-file` | Transcribe a 16 kHz mono WAV headlessly and exit                                                                                          |
+| `--live`                  | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46)                         |
+| `--phone-receive`         | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
 
 **Key design decisions:**
 
@@ -201,16 +229,16 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 
 ## Troubleshooting
 
-See the [Troubleshooting](README.md#troubleshooting) section in README.md.
+See the [Troubleshooting](BUILD.md#troubleshooting) section in BUILD.md.
 
 ## GitHub workflow for AI coding assistants
 
-**MANDATORY. Before opening any PR, issue, or discussion in this repo: you MUST read the relevant template file and follow it strictly.** That includes sections that look "ceremonial" — checklists, AI Assistance disclosures, "Human Written Description". A generic Summary/Test-plan layout is not acceptable.
+**Before opening a PR, issue or discussion in this repo, read the relevant template and fill in every section.**
 
-- **Opening a PR:** Read [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Every section listed there is mandatory. If a section requires a human-written paragraph (e.g. "Human Written Description"), leave a clear TODO placeholder and ask the human contributor to fill it in — do not invent their voice.
-- **Opening an issue:** Read [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/). Blank issues are disabled; pick the right template (`bug_report.md` for bugs). Feature requests do not belong in issues — they go to [Discussions](https://github.com/cjpais/Handy/discussions) (see `.github/ISSUE_TEMPLATE/config.yml`).
-- **Proposing a feature:** Handy is under a feature freeze. New features require community support gathered in [Discussions](https://github.com/cjpais/Handy/discussions) before any PR is opened — see the PR template's "Community Feedback" section.
-- **Translations:** Follow [CONTRIBUTING_TRANSLATIONS.md](CONTRIBUTING_TRANSLATIONS.md).
+- **Opening a PR:** Read [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md): What and why (with the requirement IDs from `docs/SPEC.md`), Tests, Screenshots for UI changes, and the checklist. Say plainly which parts an AI assistant wrote.
+- **Opening an issue:** Read [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/). Blank issues are disabled: `fejl.md` for bugs (version, OS, model, steps), `oenske.md` for feature wishes. Questions go to [Discussions](https://github.com/JonathanRentoft/walkietalkey/discussions); vulnerabilities go to private reporting ([SECURITY.md](SECURITY.md)), never to a public issue.
+- **Changes that belong upstream:** fixes that are useful to Handy (not branding or Danish-specific) are offered to [Handy](https://github.com/cjpais/Handy) as separate PRs, following Handy's own templates there.
+- **Translations:** WalkieTalkey's UI is Danish (spec Appendix A); new strings are drafted in Danish and marked `TODO(copy)`.
 - **Full contributor workflow:** [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Commits:** Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`). Focus the message on _why_, not _what_.
+**Commits:** Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `ci:`). Focus the message on _why_, not _what_, and name the requirement IDs.

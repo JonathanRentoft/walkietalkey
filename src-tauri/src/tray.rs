@@ -31,7 +31,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 use tauri::image::Image;
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::TrayIcon;
 use tauri::{AppHandle, Manager, Theme};
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -63,6 +63,11 @@ struct MenuInputs {
     downloaded_models: Vec<(String, String)>,
     locale: String,
     update_checks_enabled: bool,
+    /// WalkieTalkey (DESK-96): the last five dictations `(id, label)`.
+    recent: Vec<(i64, String)>,
+    paused: bool,
+    update_ready: bool,
+    phone_pairing: bool,
 }
 
 /// Complete description of what the tray should look like.
@@ -195,12 +200,19 @@ pub fn get_icon_path(theme: AppTheme, state: TrayIconState, warning: bool) -> &'
             AppTheme::Light => "resources/tray_idle_warning_dark.png",
             // Linux never sets the warning flag (Secure Input is macOS-only),
             // but fall back to the normal icon just in case.
-            AppTheme::Colored => "resources/handy.png",
+            AppTheme::Colored => "resources/walkietalkey.png",
         };
     }
     match (theme, state) {
         // Dark theme uses light icons
         (AppTheme::Dark, TrayIconState::Idle) => "resources/tray_idle.png",
+        // WalkieTalkey (DESK-95): listening pulses between two frames.
+        (AppTheme::Dark, TrayIconState::Recording) if crate::walkietalkey::tray::pulse_phase() => {
+            "resources/tray_recording_pulse.png"
+        }
+        (AppTheme::Light, TrayIconState::Recording) if crate::walkietalkey::tray::pulse_phase() => {
+            "resources/tray_recording_pulse_dark.png"
+        }
         (AppTheme::Dark, TrayIconState::Recording) => "resources/tray_recording.png",
         (AppTheme::Dark, TrayIconState::Transcribing) => "resources/tray_transcribing.png",
         // Light theme uses dark icons
@@ -208,7 +220,7 @@ pub fn get_icon_path(theme: AppTheme, state: TrayIconState, warning: bool) -> &'
         (AppTheme::Light, TrayIconState::Recording) => "resources/tray_recording_dark.png",
         (AppTheme::Light, TrayIconState::Transcribing) => "resources/tray_transcribing_dark.png",
         // Colored theme uses pink icons (for Linux)
-        (AppTheme::Colored, TrayIconState::Idle) => "resources/handy.png",
+        (AppTheme::Colored, TrayIconState::Idle) => "resources/walkietalkey.png",
         (AppTheme::Colored, TrayIconState::Recording) => "resources/recording.png",
         (AppTheme::Colored, TrayIconState::Transcribing) => "resources/transcribing.png",
     }
@@ -334,6 +346,10 @@ fn compute_desired(app: &AppHandle, icon_state: TrayIconState) -> TrayDesired {
             downloaded_models,
             locale: settings.app_language,
             update_checks_enabled: settings.update_checks_enabled,
+            recent: crate::walkietalkey::tray::recent_items(app),
+            paused: crate::walkietalkey::tray::is_paused(),
+            update_ready: crate::walkietalkey::tray::update_ready(),
+            phone_pairing: crate::walkietalkey::store::get(app).allow_phone_pairing,
         },
     }
 }
@@ -445,9 +461,9 @@ pub fn tray_tooltip() -> String {
 
 fn version_label() -> String {
     if cfg!(debug_assertions) {
-        format!("Handy v{} (Dev)", env!("CARGO_PKG_VERSION"))
+        format!("WalkieTalkey v{} (Dev)", env!("CARGO_PKG_VERSION"))
     } else {
-        format!("Handy v{}", env!("CARGO_PKG_VERSION"))
+        format!("WalkieTalkey v{}", env!("CARGO_PKG_VERSION"))
     }
 }
 
@@ -530,46 +546,78 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
             ],
         )?
     } else {
-        // Build model submenu — label is the active model name
-        let submenu_label = inputs
-            .downloaded_models
-            .iter()
-            .find(|(id, _)| *id == inputs.selected_model)
-            .map(|(_, name)| name.clone())
-            .unwrap_or_else(|| strings.model.clone());
-
-        let model_submenu = Submenu::with_id(app, "model_submenu", &submenu_label, true)?;
-        for (id, name) in &inputs.downloaded_models {
-            let is_active = *id == inputs.selected_model;
-            let item_id = format!("model_select:{}", id);
-            let item = CheckMenuItem::with_id(app, &item_id, name, true, is_active, None::<&str>)?;
-            model_submenu.append(&item)?;
+        // WalkieTalkey (DESK-96): Seneste, Par en telefon, Sæt på pause,
+        // Indstillinger, Søg efter opdateringer, Afslut. The model is chosen
+        // in Indstillinger › Model.
+        let recent_submenu = Submenu::with_id(app, "recent_submenu", &strings.recent, true)?;
+        if inputs.recent.is_empty() {
+            recent_submenu.append(&MenuItem::with_id(
+                app,
+                "recent_none",
+                &strings.no_recent,
+                false,
+                None::<&str>,
+            )?)?;
         }
-
-        let unload_model_i = MenuItem::with_id(
+        for (id, label) in &inputs.recent {
+            recent_submenu.append(&MenuItem::with_id(
+                app,
+                format!("recent:{id}"),
+                label,
+                true,
+                None::<&str>,
+            )?)?;
+        }
+        let pair_phone_i = MenuItem::with_id(
             app,
-            "unload_model",
-            &strings.unload_model,
-            inputs.model_loaded,
+            "pair_phone",
+            &strings.pair_phone,
+            inputs.phone_pairing,
             None::<&str>,
         )?;
-
-        Menu::with_items(
+        let pause_i = MenuItem::with_id(
+            app,
+            "pause_toggle",
+            if inputs.paused {
+                &strings.resume
+            } else {
+                &strings.pause
+            },
+            true,
+            None::<&str>,
+        )?;
+        let menu = Menu::with_items(
             app,
             &[
                 &version_i,
                 &separator()?,
-                &copy_last_transcript_i,
+                &recent_submenu,
                 &separator()?,
-                &model_submenu,
-                &unload_model_i,
+                &pair_phone_i,
+                &pause_i,
                 &separator()?,
                 &settings_i,
                 &check_updates_i,
                 &separator()?,
                 &quit_i,
             ],
-        )?
+        )?;
+        if inputs.update_ready {
+            let restart_i = MenuItem::with_id(
+                app,
+                "restart_update",
+                &strings.restart_now,
+                true,
+                None::<&str>,
+            )?;
+            menu.insert(&restart_i, 9)?;
+        }
+        let _ = (
+            &copy_last_transcript_i,
+            &inputs.downloaded_models,
+            inputs.model_loaded,
+        );
+        menu
     };
 
     // When update checks are forced off (e.g. HANDY_DISABLE_UPDATER, set by
@@ -694,6 +742,10 @@ mod tests {
             downloaded_models: vec![("small".to_string(), "Small".to_string())],
             locale: "en".to_string(),
             update_checks_enabled: true,
+            recent: Vec::new(),
+            paused: false,
+            update_ready: false,
+            phone_pairing: true,
         }
     }
 

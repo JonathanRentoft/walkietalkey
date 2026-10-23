@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use log::{debug, error, info};
 use transcribe_cpp::StreamOptions;
 
-use super::chunked::ChunkedDecode;
+use super::chunked::{ChunkObserver, ChunkedDecode};
 use super::policy::LiveDecode;
 use super::{
     effective_language_for_model, emit_stream_text, join_chunks, lock_perf, run_setup,
@@ -40,6 +40,7 @@ impl<'a> LiveSession<'a> {
         mode: LiveDecode,
         info: &LoadedInfo,
         model_id: &str,
+        on_chunk: Option<ChunkObserver>,
     ) -> Option<Self> {
         if mode == LiveDecode::None {
             return None;
@@ -57,12 +58,29 @@ impl<'a> LiveSession<'a> {
             }
             LiveDecode::Chunked => {
                 info!("Live long-form chunking started (model '{}')", model_id);
+                // WalkieTalkey (DESK-46): 10-20 s chunks, each with the end of
+                // the previous chunk's text as its context prompt.
+                // Chunks are at most 25 s, one Whisper window, so they are
+                // decoded as text only: Hugging Face fine-tunes such as Edda
+                // are trained without timestamp tokens, and decoding them with
+                // timestamps drops the first words of a window.
+                let mut run_options = setup.run_options.clone();
+                run_options.timestamps = transcribe_cpp::TimestampKind::None;
                 LiveDecoder::Chunked(Box::new(ChunkedDecode::new(
                     tm,
                     tm.engine.cancel_mark(),
-                    setup.run_options.clone(),
+                    run_options,
                     model_id,
                     settings.vad_backend,
+                    // Edda: one piece per sentence-like stretch, decoded while
+                    // the user talks (docs/MODELS.md, "Edda and pauses").
+                    if crate::walkietalkey::catalog::decodes_by_segment(model_id) {
+                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS
+                    } else {
+                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA
+                    },
+                    info.supports_initial_prompt,
+                    on_chunk,
                 )))
             }
         };

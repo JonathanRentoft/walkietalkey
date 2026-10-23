@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
+    "Accuracy: WER on FLEURS da_dk test (930 clips), Q8_0, language da, timestamps auto, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
+    "Replace `revision` with the commit models/upload.sh prints; description_da is draft UI copy."
+  ],
+  "model": {
+    "id": "ekko-v1-tiny",
+    "name": "Ekko v1 Tiny",
+    "description": "Fast Danish model for computers without a GPU. No punctuation of its own",
+    "repository": "walkietalkey/ekko-v1-tiny-gguf",
+    "revision": "REPLACE-WITH-COMMIT-FROM-models/upload.sh",
+    "previousRevisions": [],
+    "license": "other",
+    "family": "parakeet",
+    "parameters": "110M",
+    "languages": ["da"],
+    "capabilities": {
+      "streaming": false,
+      "translate": false,
+      "languageDetection": false,
+      "timestamps": true
+    },
+    "quant": "Q8_0",
+    "role": "asr",
+    "curated": true,
+    "minEngine": "0.4.0",
+    "files": {
+      "Q8_0": {
+        "filename": "ekko-v1-tiny-Q8_0.gguf",
+        "size": 133940896,
+        "sha256": "ccb40917c85575a6045b63e97896b882d778de1632bd99296dd94a6dc4039a1d"
+      }
+    }
+  },
+  "description_da": "Hurtig dansk talemodel til computere uden grafikkort. TODO(copy)",
+  "results": {
+    "ekko-v1-tiny": {
+      "accuracy": {
+        "da": {
+          "error": 10.11,
+          "ciLower": 9.47
+        }
+      }
+    }
+  }
+}

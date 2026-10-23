@@ -1,0 +1,26 @@
+---
+/* The footer of ForsideKomplet. LogoIntro plays once on the homepage; the other pages show the still lockup.
+   The navigation reaches every page, GitHub and the contact (GitHub Discussions until the domain's e-mail works). */
+import { Logo, LogoIntro } from "@walkietalkey/ui";
+import { CONTACT_URL, FOOTER_NAV, PAGES, REPO_URL, SITE_URL } from "../lib/site";
+
+interface Props {
+  intro?: boolean;
+}
+const { intro = false } = Astro.props;
+const domain = new URL(SITE_URL).host;
+---
+<footer class="foot">
+  <div class="container foot-in">
+    <div>
+      {intro ? <LogoIntro client:visible size={30} /> : <Logo variant="lockup" size={30} />}
+      <small>© 2026 WalkieTalkey · Apache-2.0 · {domain}</small>
+    </div>
+    <!-- TODO(copy): aria-label -->
+    <nav aria-label="Alle sider">
+      {FOOTER_NAV.map((k) => <a href={PAGES[k].path}>{PAGES[k].nav}</a>)}
+      <a href={REPO_URL}>GitHub</a>
+      <a href={CONTACT_URL}>Kontakt</a>
+    </nav>
+  </div>
+</footer>

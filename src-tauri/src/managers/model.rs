@@ -1682,7 +1682,57 @@ impl ModelManager {
     /// hf-hub, reporting progress through the same `model-download-progress`
     /// event the URL path uses. Uses hf-hub's stock cache, but deliberately
     /// disables authentication because every catalog repository is public.
+    /// WalkieTalkey (DESK-32): a Hugging Face download (or a file already in
+    /// the cache or the models folder) is only used once its SHA-256 matches
+    /// the catalog's. A failed check deletes the file and downloads once
+    /// more, then reports the error.
     async fn download_hf_model(
+        &self,
+        model_info: &ModelInfo,
+        repo_id: String,
+        revision: String,
+    ) -> Result<()> {
+        for attempt in 1..=2 {
+            self.download_hf_model_unverified(model_info, repo_id.clone(), revision.clone())
+                .await?;
+            let path = hf_cached_path(&repo_id, &revision, &model_info.filename).or_else(|| {
+                let local = self.models_dir.join(&model_info.filename);
+                local.is_file().then_some(local)
+            });
+            let Some(path) = path else {
+                // Cancelled: nothing complete to check.
+                return Ok(());
+            };
+            let model_id = model_info.id.clone();
+            let check_path = path.clone();
+            let verified = tokio::task::spawn_blocking(move || {
+                crate::walkietalkey::models::verify_catalog_file(&model_id, &check_path)
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+            match verified {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    warn!(
+                        "Downloaded file for {} failed its check (attempt {attempt}): {e:#}",
+                        model_info.id
+                    );
+                    // The cache keeps blobs behind snapshot links: remove both.
+                    if let Ok(blob) = fs::canonicalize(&path) {
+                        let _ = fs::remove_file(&blob);
+                    }
+                    let _ = fs::remove_file(&path);
+                    self.update_download_status()?;
+                    if attempt == 2 {
+                        return Err(e);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn download_hf_model_unverified(
         &self,
         model_info: &ModelInfo,
         repo_id: String,
@@ -1723,6 +1773,41 @@ impl ModelManager {
             model_id: model_id.clone(),
             disarmed: false,
         };
+
+        // WalkieTalkey (DESK-32): a company's own model server replaces
+        // Hugging Face entirely (many companies block huggingface.co). The
+        // file is checked against the compiled-in SHA-256; a failed check
+        // deletes it and retries once, then reports the error.
+        let model_base_url = crate::walkietalkey::store::get(&self.app_handle).model_base_url;
+        if let Some(mirror) =
+            crate::walkietalkey::models::company_mirror(model_base_url.as_deref(), &model_id)
+        {
+            info!("Downloading {} from the company model server", model_id);
+            let mut last_error = None;
+            for _ in 0..2 {
+                match self
+                    .download_from_mirror(&model_id, &filename, &mirror, cancel_token.clone())
+                    .await
+                {
+                    Ok(true) => {
+                        cleanup.disarmed = true;
+                        self.update_download_status()?;
+                        self.cancel_flags.lock().unwrap().remove(&model_id);
+                        let _ = self.app_handle.emit("model-download-complete", &model_id);
+                        return Ok(());
+                    }
+                    Ok(false) => return Ok(()),
+                    Err(e) => {
+                        warn!(
+                            "Company model server download failed for {}: {:?}",
+                            model_id, e
+                        );
+                        last_error = Some(e);
+                    }
+                }
+            }
+            return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("download failed")));
+        }
 
         info!(
             "Downloading HF model {} from {}@{} ({})",

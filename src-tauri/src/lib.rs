@@ -17,6 +17,7 @@ mod managers;
 mod memory;
 mod overlay;
 mod paste_tx;
+pub mod pipeline;
 pub mod portable;
 mod secure_input;
 mod settings;
@@ -26,6 +27,7 @@ mod transcription_coordinator;
 mod tray;
 mod tray_i18n;
 mod utils;
+pub mod walkietalkey;
 
 pub use cli::CliArgs;
 #[cfg(debug_assertions)]
@@ -96,7 +98,7 @@ fn build_console_filter() -> env_filter::Filter {
     builder.build()
 }
 
-fn show_main_window(app: &AppHandle) {
+pub(crate) fn show_main_window(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
@@ -214,6 +216,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(history_manager.clone());
     app_handle.manage(tray::TrayState::new());
 
+    // WalkieTalkey: model loaded at start, relay, managed settings (DESK-05).
+    walkietalkey::startup(app_handle);
+
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
     // after permissions are confirmed (on macOS) or after onboarding completes.
@@ -288,14 +293,31 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 show_main_window(app);
             }
             "check_updates" => {
+                // WalkieTalkey: updates are checked and fetched in Rust
+                // (channel, background download, DESK-111).
                 let settings = settings::get_settings(app);
                 if settings::update_checks_effectively_enabled(&settings) {
-                    show_main_window(app);
-                    let _ = app.emit("check-for-updates", ());
+                    walkietalkey::updates::check_now(app);
                 }
             }
             "copy_last_transcript" => {
                 tray::copy_last_transcript(app);
+            }
+            // WalkieTalkey tray items (DESK-96, DESK-111).
+            "pair_phone" => {
+                show_main_window(app);
+                let _ = app.emit("wt-open-pairing", ());
+            }
+            "pause_toggle" => {
+                walkietalkey::tray::set_paused(app, !walkietalkey::tray::is_paused());
+            }
+            "restart_update" => {
+                walkietalkey::updates::restart_now(app);
+            }
+            id if id.starts_with("recent:") => {
+                if let Ok(entry) = id.trim_start_matches("recent:").parse::<i64>() {
+                    walkietalkey::tray::copy_recent(app, entry);
+                }
             }
             "unload_model" => {
                 let transcription_manager = app.state::<Arc<TranscriptionManager>>();
@@ -492,6 +514,27 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         }
     }
 
+    // WalkieTalkey --phone-receive: the desktop side of the phone e2e test.
+    if args.phone_receive {
+        let tm = app.state::<Arc<TranscriptionManager>>();
+        let model_id = args
+            .model
+            .clone()
+            .unwrap_or_else(|| get_settings(app).selected_model);
+        if let Err(e) = tm.load_model_with_device(&model_id, args.device_index) {
+            eprintln!("error: load_model('{}') failed: {}", model_id, e);
+            return 1;
+        }
+        let wt = crate::walkietalkey::store::get(app);
+        return crate::walkietalkey::relay::headless::run(
+            app,
+            args.relay_url.as_deref().unwrap_or(&wt.relay_url),
+            args.phone_app_url.as_deref().unwrap_or(&wt.phone_app_url),
+            args.count.unwrap_or(1),
+            std::time::Duration::from_secs(args.timeout_secs.unwrap_or(300)),
+        );
+    }
+
     let Some(wav) = args.transcribe_file.clone() else {
         return 0;
     };
@@ -560,6 +603,8 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
 
     let runs = args.repeat.unwrap_or(1).max(1);
     let mut times_ms: Vec<u64> = Vec::new();
+    // WalkieTalkey --live: the wait after the end of the audio, per run.
+    let mut waits_ms: Vec<u64> = Vec::new();
     let mut text = String::new();
     for i in 0..runs {
         // If the model's unload-timeout is "Immediately", transcribe() unloads
@@ -572,7 +617,15 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             }
         }
         let t = Instant::now();
-        match tm.transcribe(samples.clone()) {
+        let result = if args.live {
+            crate::walkietalkey::bench::transcribe_live(&tm, &samples).map(|(out, wait)| {
+                waits_ms.push(wait.as_millis() as u64);
+                out
+            })
+        } else {
+            tm.transcribe(samples.clone())
+        };
+        match result {
             Ok(out) => text = out,
             Err(e) => {
                 eprintln!("error: transcribe failed: {}", e);
@@ -600,6 +653,8 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
                 "transcribe_ms": times_ms,
                 "best_ms": best_ms,
                 "rtf": rtf,
+                "live": args.live,
+                "wait_after_end_ms": waits_ms,
                 "text": text,
             })
         );
@@ -614,6 +669,9 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             best_ms,
             rtf,
         );
+        if args.live {
+            println!("wait after end of audio: {:?} ms", waits_ms);
+        }
         println!("text: {}", text);
     }
     0
@@ -641,6 +699,9 @@ pub fn run(cli_args: CliArgs) {
 
     // Detect portable mode before anything else
     portable::init();
+
+    // WalkieTalkey: managed settings before anything reads the settings.
+    walkietalkey::early_init();
 
     // Parse console logging directives from RUST_LOG, falling back to info-level logging
     // when the variable is unset
@@ -725,6 +786,28 @@ pub fn run(cli_args: CliArgs) {
             commands::open_recordings_folder,
             commands::open_log_dir,
             commands::open_app_data_dir,
+            walkietalkey::commands::wt_get_settings,
+            walkietalkey::commands::wt_update_settings,
+            walkietalkey::commands::wt_import_model_file,
+            walkietalkey::commands::wt_pairing_start,
+            walkietalkey::commands::wt_pairing_cancel,
+            walkietalkey::commands::wt_relay_status,
+            walkietalkey::commands::wt_phone_remove,
+            walkietalkey::commands::wt_set_cleanup_key,
+            walkietalkey::commands::wt_has_cleanup_key,
+            walkietalkey::commands::wt_history_list,
+            walkietalkey::commands::wt_history_delete,
+            walkietalkey::commands::wt_history_copy,
+            walkietalkey::commands::wt_set_paused,
+            walkietalkey::commands::wt_is_paused,
+            walkietalkey::commands::wt_punctuation_status,
+            walkietalkey::commands::wt_punctuation_download,
+            walkietalkey::commands::wt_restart_now,
+            walkietalkey::commands::wt_announce,
+            walkietalkey::commands::wt_check_updates,
+            walkietalkey::commands::wt_measure_speed,
+            walkietalkey::commands::wt_notification_permission,
+            walkietalkey::commands::wt_request_notification_permission,
             commands::check_apple_intelligence_available,
             commands::initialize_enigo,
             commands::initialize_shortcuts,
@@ -787,8 +870,10 @@ pub fn run(cli_args: CliArgs) {
 
     // The headless path must run as its own instance (see the single-instance
     // note below), not forward to an already-running app.
-    let headless_mode =
-        cli_args.transcribe_file.is_some() || cli_args.list_devices || cli_args.list_models;
+    let headless_mode = cli_args.transcribe_file.is_some()
+        || cli_args.list_devices
+        || cli_args.list_models
+        || cli_args.phone_receive;
 
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
@@ -815,14 +900,14 @@ pub fn run(cli_args: CliArgs) {
                         move |metadata| console_filter.enabled(metadata)
                     }),
                     // File logs respect the user's settings (stored in FILE_LOG_LEVEL atomic)
-                    Target::new(if let Some(data_dir) = portable::data_dir() {
+                    Target::new(if let Some(data_dir) = portable::named_data_dir() {
                         TargetKind::Folder {
                             path: data_dir.join("logs"),
-                            file_name: Some("handy".into()),
+                            file_name: Some("walkietalkey".into()),
                         }
                     } else {
                         TargetKind::LogDir {
-                            file_name: Some("handy".into()),
+                            file_name: Some("walkietalkey".into()),
                         }
                     })
                     .filter(|metadata| {
@@ -944,7 +1029,7 @@ pub fn run(cli_args: CliArgs) {
             // for portable mode (redirects WebView2 cache to portable Data dir)
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
-                    .title("Handy")
+                    .title("WalkieTalkey")
                     .inner_size(680.0, 570.0)
                     .min_inner_size(680.0, 570.0)
                     .resizable(true)
@@ -1122,6 +1207,7 @@ pub fn run(cli_args: CliArgs) {
         // worker process, which exits by itself as soon as this process's end
         // of its stdin closes, even if it is hung. Waiting on an unload here
         // could block quitting behind a hung model load.
+        tauri::RunEvent::Exit => walkietalkey::updates::install_pending_on_exit(),
         _ => {}
     });
 }

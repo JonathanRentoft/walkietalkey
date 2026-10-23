@@ -77,6 +77,10 @@ struct Hold {
     /// ignored. Always set for toggle; set for hold-or-toggle once a release
     /// has been classified as a tap.
     locked: bool,
+    /// WalkieTalkey (DESK-26): in push-to-talk, a hold shorter than this was
+    /// an accidental tap and the recording is dropped silently. Zero in the
+    /// other modes.
+    discard_below: Duration,
 }
 
 /// What to do with an input that arrives while the pipeline is busy
@@ -165,13 +169,19 @@ enum Effect {
         binding_id: String,
         hotkey_string: String,
     },
+    /// Drop the recording without output or sound (WalkieTalkey, DESK-26).
+    Discard { binding_id: String },
 }
 
 /// Commands processed sequentially by the coordinator thread.
 enum Command {
     Input(InputEvent),
-    Cancel { recording_was_active: bool },
+    Cancel {
+        recording_was_active: bool,
+    },
     ProcessingFinished,
+    /// WalkieTalkey (DESK-24): the recording reached its maximum length.
+    ForceStop,
 }
 
 /// Decide whether a key-up should be deferred (so auto-repeat can cancel it)
@@ -346,11 +356,17 @@ impl CoordinatorState {
                 Stage::Idle => {
                     // Toggle never ends on a release: locked from the start.
                     let locked = input.mode == ShortcutActivation::Toggle;
+                    let discard_below = if input.mode == ShortcutActivation::PushToTalk {
+                        input.hold_threshold
+                    } else {
+                        Duration::ZERO
+                    };
                     return Some(self.begin_recording(
                         input.binding_id,
                         input.hotkey_string,
                         now,
                         locked,
+                        discard_below,
                     ));
                 }
                 Stage::Recording(id) if id == &input.binding_id => {
@@ -448,6 +464,12 @@ impl CoordinatorState {
             // No hold bookkeeping means we cannot tell a tap from a hold;
             // stopping is the safe reading (it is what push-to-talk always did).
             .unwrap_or(Duration::MAX);
+        if self.hold.as_ref().is_some_and(|h| held < h.discard_below) {
+            debug!("Tap ({held:?}) for '{binding_id}': dropped as an accidental press");
+            self.stage = Stage::Idle;
+            self.hold = None;
+            return Some(Effect::Discard { binding_id });
+        }
         if held >= threshold {
             return Some(self.begin_processing(binding_id, hotkey_string));
         }
@@ -472,6 +494,18 @@ impl CoordinatorState {
         }
     }
 
+    /// The recording reached its limit: stop and transcribe it, whatever the
+    /// mode. A pending deferred release is dropped; the key's real release
+    /// arrives later as an input to the busy pipeline.
+    fn on_force_stop(&mut self) -> Option<Effect> {
+        let Stage::Recording(binding_id) = &self.stage else {
+            return None;
+        };
+        let binding_id = binding_id.clone();
+        self.pending_release = None;
+        Some(self.begin_processing(binding_id.clone(), binding_id))
+    }
+
     fn on_processing_finished(&mut self) -> Option<Effect> {
         self.stage = Stage::Idle;
         self.hold = None;
@@ -485,6 +519,7 @@ impl CoordinatorState {
             pending.hotkey_string,
             pending.pressed_at,
             pending.locked,
+            Duration::ZERO,
         ))
     }
 
@@ -506,9 +541,14 @@ impl CoordinatorState {
         hotkey_string: String,
         pressed_at: Instant,
         locked: bool,
+        discard_below: Duration,
     ) -> Effect {
         self.stage = Stage::Recording(binding_id.clone());
-        self.hold = Some(Hold { pressed_at, locked });
+        self.hold = Some(Hold {
+            pressed_at,
+            locked,
+            discard_below,
+        });
         Effect::Start {
             binding_id,
             hotkey_string,
@@ -576,6 +616,11 @@ impl TranscriptionCoordinator {
                         } => state.on_cancel(recording_was_active),
                         Command::ProcessingFinished => {
                             if let Some(effect) = state.on_processing_finished() {
+                                run_effect(&app, &mut state, effect);
+                            }
+                        }
+                        Command::ForceStop => {
+                            if let Some(effect) = state.on_force_stop() {
                                 run_effect(&app, &mut state, effect);
                             }
                         }
@@ -661,6 +706,13 @@ impl TranscriptionCoordinator {
         }
     }
 
+    /// WalkieTalkey (DESK-24): stop the recording at its maximum length.
+    pub fn force_stop(&self) {
+        if self.tx.send(Command::ForceStop).is_err() {
+            warn!("Transcription coordinator channel closed");
+        }
+    }
+
     pub fn notify_processing_finished(&self) {
         if self.tx.send(Command::ProcessingFinished).is_err() {
             warn!("Transcription coordinator channel closed");
@@ -681,6 +733,10 @@ fn run_effect(app: &AppHandle, state: &mut CoordinatorState, effect: Effect) {
             binding_id,
             hotkey_string,
         } => stop(app, &binding_id, &hotkey_string),
+        Effect::Discard { binding_id } => {
+            debug!("Discarding the recording for '{binding_id}' (held too briefly)");
+            crate::utils::cancel_current_operation(app);
+        }
     }
 }
 
@@ -920,6 +976,8 @@ mod tests {
             match effect {
                 Some(Effect::Start { .. }) => starts += 1,
                 Some(Effect::Stop { .. }) => stops += 1,
+                // ptt_input has a zero threshold, so nothing is discarded here.
+                Some(Effect::Discard { .. }) => unreachable!("zero threshold never discards"),
                 None => {}
             }
         }
@@ -1406,10 +1464,11 @@ mod tests {
         ));
     }
 
-    /// Push-to-talk: even a very short press stops on release — there is no
-    /// tap-to-lock in this mode (hold threshold of zero).
+    /// Push-to-talk (WalkieTalkey, DESK-26): a press shorter than the
+    /// threshold was an accidental tap, so the recording is dropped silently
+    /// instead of transcribed. There is still no tap-to-lock in this mode.
     #[test]
-    fn push_to_talk_short_press_still_stops_on_release() {
+    fn push_to_talk_short_press_is_discarded() {
         let mode = ShortcutActivation::PushToTalk;
         let mut state = CoordinatorState::new();
         let t0 = Instant::now();
@@ -1421,8 +1480,85 @@ mod tests {
         assert!(state.on_input(input(mode, false), t0 + ms(40)).is_none());
         assert!(matches!(
             state.on_grace_expired(),
+            Some(Effect::Discard { .. })
+        ));
+        assert_eq!(state.stage, Stage::Idle);
+        assert!(!state.is_locked(), "a discarded tap never locks");
+
+        // The next press starts a fresh recording.
+        assert!(matches!(
+            state.on_input(input(mode, true), t0 + ms(500)),
+            Some(Effect::Start { .. })
+        ));
+    }
+
+    /// WalkieTalkey (DESK-24): at the 5-minute limit the recording is
+    /// stopped and transcribed whatever the mode; the key's later release is
+    /// then just a busy-pipeline input.
+    #[test]
+    fn force_stop_ends_a_recording_in_every_mode() {
+        for mode in [
+            ShortcutActivation::PushToTalk,
+            ShortcutActivation::Toggle,
+            ShortcutActivation::HoldOrToggle,
+        ] {
+            let mut state = CoordinatorState::new();
+            let t0 = Instant::now();
+            state.on_input(input(mode, true), t0);
+            assert!(
+                matches!(state.on_force_stop(), Some(Effect::Stop { .. })),
+                "{mode:?}"
+            );
+            assert_eq!(state.stage, Stage::Processing);
+            // The physical release after the limit changes nothing.
+            assert!(state
+                .on_input(input(mode, false), t0 + ms(301_000))
+                .is_none());
+            assert!(state.on_grace_expired().is_none());
+        }
+    }
+
+    #[test]
+    fn force_stop_without_a_recording_does_nothing() {
+        let mut state = CoordinatorState::new();
+        assert!(state.on_force_stop().is_none());
+        assert_eq!(state.stage, Stage::Idle);
+    }
+
+    /// Push-to-talk: a hold of at least the threshold stops and transcribes.
+    #[test]
+    fn push_to_talk_hold_past_threshold_stops_on_release() {
+        let mode = ShortcutActivation::PushToTalk;
+        let mut state = CoordinatorState::new();
+        let t0 = Instant::now();
+
+        assert!(matches!(
+            state.on_input(input(mode, true), t0),
+            Some(Effect::Start { .. })
+        ));
+        assert!(state.on_input(input(mode, false), t0 + ms(300)).is_none());
+        assert!(matches!(
+            state.on_grace_expired(),
             Some(Effect::Stop { .. })
         ));
+        assert_eq!(state.stage, Stage::Processing);
+    }
+
+    /// Hold-or-toggle and toggle never discard: their short presses keep
+    /// Handy's meaning (a tap locks, a toggle press starts).
+    #[test]
+    fn only_push_to_talk_discards_short_presses() {
+        for mode in [ShortcutActivation::HoldOrToggle, ShortcutActivation::Toggle] {
+            let mut state = CoordinatorState::new();
+            let t0 = Instant::now();
+            state.on_input(input(mode, true), t0);
+            state.on_input(input(mode, false), t0 + ms(40));
+            let effect = state.on_grace_expired();
+            assert!(
+                !matches!(effect, Some(Effect::Discard { .. })),
+                "{mode:?} must not discard"
+            );
+        }
     }
 
     /// Cancel (Escape) during a locked hold-or-toggle session resets cleanly so

@@ -93,6 +93,9 @@ struct CatalogModel {
     min_engine: Option<String>,
     /// Every published file, keyed by quant.
     files: HashMap<String, CatalogFile>,
+    /// WalkieTalkey: the model's licence id, to leave out non-commercial ones.
+    #[serde(default)]
+    license: String,
 }
 
 #[derive(Deserialize)]
@@ -146,6 +149,8 @@ impl CatalogModel {
             && self
                 .default_file()
                 .is_some_and(|file| !file.filename.contains('/'))
+            // WalkieTalkey (spec 11): only models companies may use too.
+            && !crate::walkietalkey::catalog::non_commercial(&self.license)
     }
 
     /// Files ordered largest first, so the list reads F32 → Q4 like the HF repo.
@@ -270,7 +275,8 @@ impl From<&CatalogModel> for ModelDescriptor {
         let default_filename = default_quant_file(&files, Some(&m.quant))
             .map(|f| f.filename.clone())
             .unwrap_or_default();
-        let ranking = HANDY_RANKING.iter().find(|(id, _, _)| *id == m.id);
+        let ranking = crate::walkietalkey::catalog::ranking(&m.id)
+            .or_else(|| HANDY_RANKING.iter().find(|(id, _, _)| *id == m.id));
         let results = ROOT.results.get(&m.id);
 
         ModelDescriptor {
@@ -312,12 +318,19 @@ impl From<&CatalogModel> for ModelDescriptor {
 /// stays out of [`ModelDescriptor`] (mirrors, results) can
 /// be looked up separately.
 static ROOT: Lazy<CatalogRoot> = Lazy::new(|| {
-    let root: CatalogRoot = serde_json::from_str(include_str!("catalog.json"))
+    let mut root: CatalogRoot = serde_json::from_str(include_str!("catalog.json"))
         .expect("bundled catalog.json is valid JSON matching the catalog schema");
     assert_eq!(
         root.schema, SCHEMA,
         "bundled catalog.json has an unsupported schema"
     );
+    // WalkieTalkey: the Danish models are an overlay in front of the package
+    // catalog, which stays a verbatim copy.
+    let overlay: CatalogRoot = serde_json::from_str(crate::walkietalkey::catalog::CATALOG_JSON)
+        .expect("WalkieTalkey's catalog.json matches the catalog schema");
+    assert_eq!(overlay.schema, SCHEMA, "WalkieTalkey's catalog.json schema");
+    root.models.splice(0..0, overlay.models);
+    root.results.extend(overlay.results);
     root
 });
 
@@ -374,6 +387,25 @@ pub fn mirror_fallbacks(model_id: &str) -> Vec<MirrorFile> {
             ),
             sha256: file.sha256.clone(),
             size_bytes: file.size,
+        })
+        .collect()
+}
+
+/// WalkieTalkey (DESK-32): every offered catalog file as `(registry id, file
+/// name, sha256, size)`, so a company model server or an imported file can be
+/// checked against the hashes compiled into the app.
+pub fn file_hashes() -> Vec<(String, String, String, u64)> {
+    transcription_models()
+        .filter(|m| m.is_offered())
+        .flat_map(|m| {
+            m.files.values().map(move |f| {
+                (
+                    format!("{}/{}", m.repository, f.filename),
+                    f.filename.clone(),
+                    f.sha256.to_ascii_lowercase(),
+                    f.size,
+                )
+            })
         })
         .collect()
 }
@@ -454,6 +486,8 @@ mod tests {
     fn all_flat_asr_models_are_offered_at_the_package_default() {
         for m in transcription_models()
             .filter(|m| m.default_file().is_some_and(|f| !f.filename.contains('/')))
+            // WalkieTalkey: non-commercial models are left out (spec 11).
+            .filter(|m| !crate::walkietalkey::catalog::non_commercial(&m.license))
         {
             let id = format!("{}/{}", m.repository, m.default_file().unwrap().filename);
             let desc = CATALOG
@@ -488,9 +522,14 @@ mod tests {
                 .unwrap_or_else(|| panic!("ranked model {id} is not in the catalog"));
             assert!(model.is_offered(), "ranked model {id} is not offered");
         }
+        // WalkieTalkey's own ranking adds its recommended models.
+        let walkietalkey = crate::walkietalkey::catalog::RANKING
+            .iter()
+            .filter(|(_, _, r)| *r)
+            .count();
         assert_eq!(
             CATALOG.iter().filter(|d| d.recommended).count(),
-            HANDY_RANKING.iter().filter(|(_, _, r)| *r).count()
+            HANDY_RANKING.iter().filter(|(_, _, r)| *r).count() + walkietalkey
         );
     }
 

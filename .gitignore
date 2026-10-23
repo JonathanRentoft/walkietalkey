@@ -45,3 +45,23 @@ result
 
 # Python bytecode (scripts/)
 __pycache__/
+
+# WalkieTalkey: local kit and scratch work (never committed)
+_kit/
+walkietalkey-kit*.zip
+
+# Model weights are never committed (spec section 11)
+*.gguf
+!src-tauri/resources/models/silero-vad-v6.2-F32.gguf
+*.onnx
+*.nemo
+*.safetensors
+
+# Tooling caches
+.wrangler/
+.astro/
+.vitest-cache/
+src-tauri/tauri.ci.conf.json
+
+# The owner's local instructions for coding agents (not part of the repository)
+CLAUDE.local.md

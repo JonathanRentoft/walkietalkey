@@ -1,0 +1,84 @@
+---
+/* PRIV-02: the table of spec 12.1 in plain Danish, the operator of the public relay and the website, Cloudflare as
+   processor, and how to reach the operator. The operator is the owner's open decision 18.1 (OPERATOR in lib/site.ts).
+   Until the domain's e-mail works (review finding 18), the operator is reached through GitHub: Discussions for
+   questions, and GitHub's private form for anything about a person's own data. */
+import PageHero from "../components/PageHero.astro";
+import { Check } from "../components/home/Icons";
+import Base from "../layouts/Base.astro";
+import { DISCUSSIONS_URL, OPERATOR, PAGES, SECURITY_REPORT_URL } from "../lib/site";
+
+// TODO(copy): every row of the table (spec 12.1)
+const rows: [string, string, string, string][] = [
+  ["Lyd fra tasten", "I computerens hukommelse.", "Indtil den er skrevet ud.", "Dig."],
+  ["Lyd fra telefonen", "I telefonens hukommelse. Krypteret undervejs. Krypteret i relæets buffer, hvis computeren ikke er online.", "Indtil den er skrevet ud. I bufferen højst 10 minutter.", "Kun dine egne enheder."],
+  ["Teksten", "I historikken på den computer, du dikterede til. Den sendes aldrig til telefonen eller til andre computere.", "Så længe du har valgt i indstillingerne (14 dage, hvis du ikke ændrer det).", "Dig."],
+  ["Tekst til AI-oprydning (kun hvis du slår det til)", "Hos den udbyder, du selv har valgt.", "Efter udbyderens vilkår.", "Udbyderen."],
+  ["Enhedernes offentlige nøgler og rummenes id'er", "På relæet.", "Indtil de fjernes, eller efter 90 dage uden brug.", "Relæets operatør. De siger ikke noget om dig i sig selv."],
+  ["IP-adresser og tidspunkter for forbindelser", "Hos Cloudflare, som databehandler for relæets operatør.", "Cloudflares almindelige opbevaring.", "Relæets operatør."],
+  ["Besøg på hjemmesiden og filerne til telefonappen", "Hos Cloudflare Pages (eller på jeres egen server, hvis jeres virksomhed har sin egen udgave af telefonappen).", "Cloudflares almindelige logfiler. Ingen analyse.", "Sidens operatør."],
+  ["Søgning efter opdateringer", "Hos GitHub, hvor udgivelserne og opdateringsfilerne ligger.", "Efter GitHubs regler.", "GitHub: din IP-adresse og appens version."],
+  ["Hentning af talemodeller", "Hos Hugging Face, eller på jeres virksomheds egen modelserver.", "Efter deres regler.", "Hugging Face: din IP-adresse."],
+  ["Fælles ordliste fra en virksomhed", "På virksomhedens egen server.", "Efter virksomhedens regler.", "Virksomheden."],
+];
+---
+<Base page="privacy">
+  <!-- TODO(copy): eyebrow, title, lead -->
+  <PageHero current="privacy" eyebrow="Privatliv" title="Hvad der sker med din tale" lead="Her står præcis, hvilke data der findes hvor, hvor længe de bliver, og hvem der kan læse dem." />
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <!-- the claims of spec principle 6, verbatim -->
+      <ul class="facts-list">
+        <li><Check s={16} />Talen bliver til tekst på din egen computer.</li>
+        <li><Check s={16} />Krypteret fra telefon til computer.</li>
+        <li><Check s={16} />Ingen konto.</li>
+        <li><Check s={16} />Ingen sporing.</li>
+      </ul>
+
+      <!-- TODO(copy): the sections below -->
+      <h2>Hvem står bag</h2>
+      <!-- TODO(copy): the contact through GitHub, until the domain's e-mail works (review finding 18) -->
+      <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. Det er den dataansvarlige for de få data, der findes på relæet og hjemmesiden. Spørgsmål kan du stille i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>. Vil du skrive privat, så brug <a href={SECURITY_REPORT_URL}>GitHubs private formular</a>, og skriv Privatliv i titlen.</p>
+      <p>Relæet og hjemmesiden kører hos Cloudflare (Workers, Durable Objects og Pages). Cloudflare er databehandler: de behandler IP-adresser og tidspunkter for forbindelser på operatørens vegne og efter operatørens instruks.</p>
+
+      <h2>Hvilke data findes hvor</h2>
+    </div>
+    <div class="table">
+      <table class="data">
+        <thead><tr><th scope="col">Data</th><th scope="col">Hvor</th><th scope="col">Hvor længe</th><th scope="col">Hvem kan læse dem</th></tr></thead>
+        <tbody>
+          {rows.map(([what, where, howLong, who]) => (
+            <tr><td>{what}</td><td data-label="Hvor">{where}</td><td data-label="Hvor længe">{howLong}</td><td data-label="Hvem">{who}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <!-- TODO(copy) -->
+      <h2>Historikken på din computer</h2>
+      <p>Hver diktering gemmes i appens datamappe på din computer med tidspunkt, kilde (tasten eller telefonens navn) og teksten, så du kan finde den igen. Du vælger selv, hvor længe: Gem ikke, 1 dag, 14 dage, 90 dage eller Altid. Du kan slette alt med Slet al historik.</p>
+      <p>Historikken er kun krypteret på disken, hvis computerens diskkryptering (FileVault eller BitLocker) er slået til.</p>
+      <p>Lyd bliver ikke gemt. Den eneste undtagelse er indstillingen Gem lyd til fejlfinding, som er slået fra, og som højst gemmer lyd i 7 dage.</p>
+
+      <h2>Telefonen og relæet</h2>
+      <p>Telefonen optager og krypterer lyden, før den sendes. Lyden går gennem relæet til din computer, og kun telefonen og computeren har nøglen. Relæet ser rummenes id'er, enhedernes offentlige nøgler, IP-adresser, tidspunkter og hvor store beskederne er. Det ser aldrig lyd eller tekst. Teksten sendes aldrig tilbage til telefonen.</p>
+      <p>Er computeren ikke online, venter den krypterede lyd højst 10 minutter i relæet. Telefonen gemmer aldrig lyd på sin disk.</p>
+
+      <h2>AI-oprydning</h2>
+      <p>Oprydning med AI er valgfri og slået fra. Slår du den til med en udbyder i skyen, viser appen præcis: Teksten (ikke lyden) sendes til udbyderen, hver gang du dikterer. Teksten går fra din computer til den udbyder, du har valgt, med din egen nøgle. WalkieTalkey har ingen server imellem. Under hver diktering i historikken kan du se, præcis hvad der blev sendt, til hvem, og hvor lang tid det tog.</p>
+      <p>På en Mac med Apple Silicon og macOS 26 kan oprydningen også køre på selve computeren med Apple Intelligence, uden at noget sendes.</p>
+
+      <h2>Ingen sporing</h2>
+      <p>Appen har ingen analyse og ingen telemetri, og den sender ikke fejlrapporter af sig selv. Hjemmesiden bruger ingen cookies og ingen analyse, og den henter intet fra andre sider. Derfor er der heller ingen cookie-banner.</p>
+
+      <h2>Virksomheder</h2>
+      <p>En virksomhed, der ikke vil have, at noget passerer servere, vi driver, kan køre sit eget relæ og sin egen udgave af telefonappen og hente talemodellerne fra sin egen server. Søgning efter opdateringer går stadig til GitHub, medmindre virksomheden slår automatiske opdateringer fra og installerer dem selv. Se <a href={PAGES.business.path}>Virksomheder</a>.</p>
+
+      <h2>Dine rettigheder</h2>
+      <!-- TODO(copy): the private contact through GitHub (review finding 18) -->
+      <p>Der er ingen konto, så vi kender hverken dit navn eller din e-mail, og vi kan ikke knytte relæets data til dig. Har du spørgsmål om dine data, så skriv til os privat gennem <a href={SECURITY_REPORT_URL}>GitHubs private formular</a> med Privatliv i titlen. Du kan også klage til Datatilsynet.</p>
+      <p class="muted">Senest opdateret 23. oktober 2026.</p>
+    </div>
+  </main>
+</Base>

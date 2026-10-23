@@ -1,83 +1,184 @@
-name: "Release"
+name: Release
 
-on: workflow_dispatch
+# A tag vX.Y.Z on main (OSS-20, OSS-21): builds macOS (Apple Silicon and
+# Intel) and Windows x64, signs the updater artifacts with our key (DESK-110),
+# signs and notarizes the Mac app and signs the Windows installer only when
+# those secrets exist, publishes the GitHub release with latest.json and the
+# release notes from CHANGELOG.md. Every release also becomes the website's
+# updates/beta.json, so beta users get stable releases too; stable users read
+# GitHub's latest release, which skips pre-releases (DESK-112, SITE-08).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   create-release:
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
-      release-id: ${{ steps.create-release.outputs.result }}
-      version: ${{ steps.get-version.outputs.version }}
+      release-id: ${{ steps.release.outputs.result }}
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Get version from tauri.conf.json
-        id: get-version
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: The tag is on main (OSS-20)
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag ${GITHUB_REF_NAME} is not on main; releases come from main only." >&2
+            exit 1
+          fi
+      - name: Version from the tag and tauri.conf.json
+        id: version
         shell: bash
         run: |
-          VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | cut -d'"' -f4)
-          echo "Application version from tauri.conf.json: $VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Create Draft Release
-        id: create-release
+          TAG="${GITHUB_REF_NAME#v}"
+          CONF=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | head -1 | cut -d'"' -f4)
+          if [ "$TAG" != "$CONF" ]; then
+            echo "Tag v$TAG does not match tauri.conf.json version $CONF" >&2
+            exit 1
+          fi
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Release notes from CHANGELOG.md
+        shell: bash
+        run: |
+          python3 - "${{ steps.version.outputs.version }}" <<'PY'
+          import re, sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.M | re.S)
+          if not match:
+              sys.exit(f"CHANGELOG.md has no section for {version}")
+          open("release-notes.md", "w", encoding="utf-8").write(match.group(1).strip() + "\n")
+          PY
+      - name: Create the draft release
+        id: release
         uses: actions/github-script@v9
         with:
           script: |
+            const fs = require("fs");
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: `v${{ steps.get-version.outputs.version }}`,
-              name: `v${{ steps.get-version.outputs.version }}`,
+              tag_name: context.ref.replace("refs/tags/", ""),
+              name: `WalkieTalkey ${context.ref.replace("refs/tags/v", "")}`,
+              body: fs.readFileSync("release-notes.md", "utf8"),
               draft: true,
-              prerelease: false,
-              generate_release_notes: true
-            })
-            return data.id
+              prerelease: ${{ steps.version.outputs.prerelease }},
+            });
+            return data.id;
 
-  publish-tauri:
-    permissions:
-      contents: write
-    needs: create-release
+  # Which signing secrets exist; signing steps run only for those.
+  # Spec 15.1: the accuracy harness runs before each release. It reports in
+  # this run's summary and does not hold the release back.
+  accuracy:
+    uses: ./.github/workflows/accuracy.yml
+
+  signing:
+    runs-on: ubuntu-24.04
+    outputs:
+      apple: ${{ steps.check.outputs.apple }}
+      windows: ${{ steps.check.outputs.windows }}
+    steps:
+      - id: check
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          WINDOWS_SIGN_COMMAND: ${{ secrets.WINDOWS_SIGN_COMMAND }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_ID" ]; then echo "apple=true" >> "$GITHUB_OUTPUT"; else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -n "$WINDOWS_SIGN_COMMAND" ]; then echo "windows=true" >> "$GITHUB_OUTPUT"; else echo "windows=false" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    needs: [create-release, signing]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-26" # for Arm based macs (M1 and above). Uses macOS 26 for Apple Intelligence SDK.
+          - platform: macos-26
+            target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
-            target: "aarch64-apple-darwin"
-          - platform: "macos-latest" # for Intel based macs.
+            os: mac
+          - platform: macos-26
+            target: x86_64-apple-darwin
             args: "--target x86_64-apple-darwin"
-            target: "x86_64-apple-darwin"
-          - platform: "ubuntu-22.04" # Build .deb on 22.04
-            args: "--bundles deb"
-            target: "x86_64-unknown-linux-gnu"
-          - platform: "ubuntu-24.04" # Build AppImage and RPM on 24.04
-            args: "--bundles appimage,rpm"
-            target: "x86_64-unknown-linux-gnu"
-          - platform: "ubuntu-24.04-arm" # Build for ARM64 Linux
-            args: "--bundles appimage,deb,rpm"
-            target: "aarch64-unknown-linux-gnu"
-          - platform: "windows-latest"
-            args: ""
-            target: "x86_64-pc-windows-msvc"
-          - platform: "windows-11-arm" # for ARM64 Windows runner
-            args: "--target aarch64-pc-windows-msvc"
-            target: "aarch64-pc-windows-msvc"
-
+            os: mac
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: "--bundles nsis"
+            os: windows
     uses: ./.github/workflows/build.yml
     with:
       platform: ${{ matrix.platform }}
       target: ${{ matrix.target }}
       build-args: ${{ matrix.args }}
-      sign-binaries: true
-      asset-prefix: "handy"
-      upload-artifacts: false
+      sign-binaries: ${{ (matrix.os == 'mac' && needs.signing.outputs.apple == 'true') || (matrix.os == 'windows' && needs.signing.outputs.windows == 'true') }}
+      sign-updater: true
+      asset-prefix: walkietalkey
       release-id: ${{ needs.create-release.outputs.release-id }}
-      # Releases always build from scratch — never restore the Rust cache, so a
-      # stale cached native lib can never be linked into a shipped artifact.
       no-cache: true
     secrets: inherit
+
+  publish:
+    needs: [create-release, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: latest.json has every platform, signed (DESK-110)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets" \
+            --jq '.[] | select(.name == "latest.json") | .id')
+          if [ -z "$ASSET" ]; then echo "The release has no latest.json" >&2; exit 1; fi
+          gh api -H "Accept: application/octet-stream" "repos/${GITHUB_REPOSITORY}/releases/assets/$ASSET" > latest.json
+          python3 - <<'PY'
+          import json, sys
+          platforms = json.load(open("latest.json")).get("platforms", {})
+          missing = [p for p in ("darwin-aarch64", "darwin-x86_64", "windows-x86_64")
+                     if not platforms.get(p, {}).get("signature")]
+          if missing:
+              sys.exit(f"latest.json lacks a signed entry for {', '.join(missing)}")
+          print("latest.json:", ", ".join(sorted(platforms)))
+          PY
+      - name: Publish the release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release-id }},
+              draft: false,
+            });
+      # The beta channel gets every release, stable ones too (DESK-112).
+      - name: Beta manifest for the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${GITHUB_REF_NAME}" --pattern latest.json --output site/public/updates/beta.json --clobber
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Deploy the website with the beta manifest (only with a Cloudflare token)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "No CLOUDFLARE_API_TOKEN secret: the beta manifest is in the release (latest.json) but not on the website."
+            exit 0
+          fi
+          bun install --frozen-lockfile
+          cd site && bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-site --branch main

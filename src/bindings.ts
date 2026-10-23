@@ -617,6 +617,194 @@ async openAppDataDir() : Promise<Result<null, string>> {
 }
 },
 /**
+ * The WalkieTalkey settings in effect, with the managed locks.
+ */
+async wtGetSettings() : Promise<WtSettingsView> {
+    return await TAURI_INVOKE("wt_get_settings");
+},
+/**
+ * Stores the user's WalkieTalkey settings; locked fields are ignored.
+ */
+async wtUpdateSettings(settings: WtSettings) : Promise<Result<WtSettingsView, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_update_settings", { settings }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * "Importér modelfil" (DESK-32): installs a model file the user already
+ * has, if its SHA-256 matches a known model. Returns the model id.
+ */
+async wtImportModelFile(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_import_model_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Indstillinger › Telefon › "Par en telefon": a new pairing code as a QR.
+ */
+async wtPairingStart() : Promise<Result<PairingView, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_pairing_start") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The pairing window was closed: cancel the code (spec 5.3 step 1).
+ */
+async wtPairingCancel() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_pairing_cancel") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Connection state and the paired phones.
+ */
+async wtRelayStatus() : Promise<RelayView> {
+    return await TAURI_INVOKE("wt_relay_status");
+},
+/**
+ * "Fjern" next to a phone (SEC-04).
+ */
+async wtPhoneRemove(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_phone_remove", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Stores the user's own API key for a cleanup provider in the keychain
+ * (DESK-81). An empty key removes it.
+ */
+async wtSetCleanupKey(provider: string, key: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_set_cleanup_key", { provider, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Whether a key is stored for a provider (the key itself never goes to the UI).
+ */
+async wtHasCleanupKey(provider: string) : Promise<boolean> {
+    return await TAURI_INVOKE("wt_has_cleanup_key", { provider });
+},
+/**
+ * History, newest first, optionally searched (DESK-93).
+ */
+async wtHistoryList(query: string | null) : Promise<Result<HistoryItem[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_list", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Deletes one history item, or everything with `id` = None ("Slet al historik").
+ */
+async wtHistoryDelete(id: number | null) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_delete", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Copies a history item, privately like every clipboard write (DESK-54).
+ */
+async wtHistoryCopy(id: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_copy", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Pause or resume (DESK-96), for the settings window.
+ */
+async wtSetPaused(paused: boolean) : Promise<void> {
+    await TAURI_INVOKE("wt_set_paused", { paused });
+},
+/**
+ * Whether dictation is paused, for a window that opens while it is.
+ */
+async wtIsPaused() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_is_paused");
+},
+/**
+ * Ekko PnC's state for Indstillinger › Model (DESK-41).
+ */
+async wtPunctuationStatus() : Promise<PncStatus> {
+    return await TAURI_INVOKE("wt_punctuation_status");
+},
+/**
+ * "Prøv igen" for the punctuation model's download.
+ */
+async wtPunctuationDownload() : Promise<void> {
+    await TAURI_INVOKE("wt_punctuation_download");
+},
+/**
+ * "Genstart nu" in the settings: installs a downloaded update and restarts
+ * (DESK-111), as the menu's "Genstart nu" does.
+ */
+async wtRestartNow() : Promise<void> {
+    await TAURI_INVOKE("wt_restart_now");
+},
+/**
+ * Announces the pill's text to VoiceOver (spec 6.17); the overlay calls it
+ * when its text changes.
+ */
+async wtAnnounce(text: string) : Promise<void> {
+    await TAURI_INVOKE("wt_announce", { text });
+},
+/**
+ * Checks for an update now ("Søg efter opdateringer").
+ */
+async wtCheckUpdates() : Promise<void> {
+    await TAURI_INVOKE("wt_check_updates");
+},
+/**
+ * DESK-31: transcribes the bundled 10-second Danish clip with the selected
+ * model (warm) and says whether to offer the fast model.
+ */
+async wtMeasureSpeed() : Promise<Result<SpeedVerdict, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_measure_speed") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Notification permission for onboarding (DESK-15): "granted", "denied" or
+ * "not_determined"; "unavailable" outside a bundled app.
+ */
+async wtNotificationPermission() : Promise<string> {
+    return await TAURI_INVOKE("wt_notification_permission");
+},
+/**
+ * Asks for notification permission (DESK-15); true when granted.
+ */
+async wtRequestNotificationPermission() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_request_notification_permission");
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -1056,10 +1244,82 @@ export type ChineseScript =
  * Keep whatever script the model produced.
  */
 "as_transcribed" | "simplified" | "traditional"
+/**
+ * "Ryd op med AI" (DESK-80; managed `CleanupMode`).
+ */
+export type CleanupMode = 
+/**
+ * Fra.
+ */
+"off" | 
+/**
+ * Når der er noget at rette.
+ */
+"when-needed" | 
+/**
+ * Altid.
+ */
+"always" | 
+/**
+ * Kun når jeg holder Shift med.
+ */
+"shift"
+/**
+ * What a cloud cleanup call sent, for "Vis hvad der blev sendt" (DESK-85).
+ */
+export type CleanupRecord = { provider: string; 
+/**
+ * The exact text sent.
+ */
+sent_text: string; duration_ms: number }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
+/**
+ * One history item as the history screen shows it.
+ */
+export type HistoryItem = { id: number; 
+/**
+ * Unix seconds.
+ */
+timestamp: number; 
+/**
+ * "tast" or the phone's name.
+ */
+source: string; text: string; 
+/**
+ * Whether AI cleanup changed this text.
+ */
+cleaned: boolean; cleanup: CleanupRecord | null; 
+/**
+ * Debugging audio exists for this item.
+ */
+has_audio: boolean }
+/**
+ * History retention (DESK-91; managed `HistoryRetentionDays`).
+ */
+export type HistoryRetention = 
+/**
+ * Gem ikke.
+ */
+"dont_keep" | 
+/**
+ * 1 dag.
+ */
+"day" | 
+/**
+ * 14 dage.
+ */
+"two_weeks" | 
+/**
+ * 90 dage.
+ */
+"ninety_days" | 
+/**
+ * Altid.
+ */
+"forever"
 export type HistoryUpdatePayload = { action: "added"; entry: HistoryEntry } | { action: "updated"; entry: HistoryEntry } | { action: "deleted"; id: number } | { action: "toggled"; id: number }
 /**
  * Result of changing keyboard implementation
@@ -1103,7 +1363,23 @@ sha256: string | null } } |
  * in a shared cache. Nothing to download.
  */
 "Local"
-export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
+export type ModelUnloadTimeout = 
+/**
+ * WalkieTalkey keeps the speech model loaded by default (DESK-45).
+ */
+"never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
+/**
+ * Where a key dictation goes (DESK-50, DESK-51; managed `OutputMode`).
+ */
+export type OutputMode = 
+/**
+ * Indsæt automatisk.
+ */
+"paste" | 
+/**
+ * Kun udklipsholder.
+ */
+"clipboard"
 export type OverlayPosition = "top" | "bottom"
 /**
  * Which recording overlay to display. `Minimal` and `Live` share one base
@@ -1113,8 +1389,36 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
+/**
+ * The pairing window's data (spec 5.3, DESK-16).
+ */
+export type PairingView = { 
+/**
+ * The QR code as SVG; the URL itself stays in the backend.
+ */
+qr_svg: string; 
+/**
+ * Unix milliseconds when the code expires (10 minutes, SEC-02).
+ */
+expires_at_ms: number }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
+/**
+ * A paired phone as Indstillinger › Telefon lists it.
+ */
+export type PhoneView = { id: string; name: string; platform: string | null; online: boolean; 
+/**
+ * Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
+ */
+last_seen_day: number | null }
+/**
+ * The punctuation model's state, for Indstillinger › Model.
+ */
+export type PncStatus = { state: "ready" } | { state: "missing" } | { state: "downloading" } | { state: "failed"; message: string } | 
+/**
+ * An Intel Mac: punctuation is not available (deviation, docs/MODELS.md).
+ */
+{ state: "unsupported" }
 /**
  * Request format a post-processing endpoint speaks. Built-in providers have a
  * fixed format; only the custom provider lets the user change it.
@@ -1129,7 +1433,28 @@ export type PostProcessApiFormat =
  */
 "anthropic"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean; api_format?: PostProcessApiFormat }
+/**
+ * The "Tegnsætning" setting.
+ */
+export type PunctuationMode = 
+/**
+ * Automatisk: only when the text lacks punctuation.
+ */
+"automatic" | 
+/**
+ * Altid.
+ */
+"always" | 
+/**
+ * Aldrig.
+ */
+"never"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+export type RelayView = { enabled: boolean; connected: boolean; phones: PhoneView[]; pairing_active: boolean }
+/**
+ * "Når jeg siger X, skriv Y".
+ */
+export type Replacement = { from: string; to: string }
 /**
  * A retired ONNX model found on disk.
  */
@@ -1187,6 +1512,15 @@ export type ShortcutActivation =
 "hold_or_toggle"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type SpeedVerdict = { seconds: number; 
+/**
+ * Offer the fast model instead of Edda.
+ */
+offer_fast_model: boolean; 
+/**
+ * The one sentence the UI shows when it offers the fast model.
+ */
+reason: string | null }
 /**
  * Phase of the streaming overlay card, emitted to drive its UI state.
  */
@@ -1226,8 +1560,79 @@ export type StreamWorkKind = "transcribing" | "polishing"
 export type Theme = "system" | "light" | "dark"
 export type TranscribeAcceleratorSetting = "auto" | "cpu" | "gpu"
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
+/**
+ * Update channel (DESK-112; managed `UpdateChannel`).
+ */
+export type UpdateChannel = "stable" | "beta"
 export type VadBackend = "silero" | "earshot"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
+export type WtSettings = { output_mode: OutputMode; punctuation: PunctuationMode; 
+/**
+ * "Del med mine andre enheder" (DESK-54): off keeps the clipboard on
+ * this computer only.
+ */
+share_clipboard_with_devices: boolean; 
+/**
+ * "Vis teksten i notifikationen" (DESK-56).
+ */
+show_text_in_notifications: boolean; 
+/**
+ * "Vis aldrig" for the pill (DESK-55); its position is Handy's
+ * overlay_position.
+ */
+pill_hidden: boolean; 
+/**
+ * Show the pill for phone dictations too (DESK-58, optional).
+ */
+pill_for_phone: boolean; replacements: Replacement[]; 
+/**
+ * The built-in "Udviklerord" pack (DESK-67).
+ */
+developer_words: boolean; 
+/**
+ * Company word list, a path or an https URL (managed only, DESK-68).
+ */
+vocabulary_source: string | null; cleanup_mode: CleanupMode; 
+/**
+ * Provider id: apple, openai, anthropic, groq, cerebras, openrouter, custom.
+ */
+cleanup_provider: string | null; cleanup_model: string | null; 
+/**
+ * For `custom` (any OpenAI-compatible endpoint, Azure OpenAI, Ollama).
+ */
+cleanup_base_url: string | null; 
+/**
+ * Providers the user has agreed to send text to (DESK-82).
+ */
+cleanup_consented: string[]; 
+/**
+ * Managed `AllowCloudCleanup`: false allows only on-device cleanup.
+ */
+allow_cloud_cleanup: boolean; relay_url: string; phone_app_url: string; 
+/**
+ * Managed `AllowPhonePairing`.
+ */
+allow_phone_pairing: boolean; 
+/**
+ * Managed `ModelBaseUrl`; `None` is our Hugging Face organisation.
+ */
+model_base_url: string | null; history_retention: HistoryRetention; 
+/**
+ * "Gem lyd til fejlfinding" (DESK-92), at most 7 days.
+ */
+keep_audio_for_debugging: boolean; auto_update: boolean; update_channel: UpdateChannel; onboarding_resume_step: string | null }
+/**
+ * The settings and their locks, as the settings screens get them.
+ */
+export type WtSettingsView = { settings: WtSettings; 
+/**
+ * Locked field names: show a lock and "Styret af din organisation".
+ */
+locked: string[]; 
+/**
+ * A managed API key is in use for cleanup (its value is never shown).
+ */
+managed_api_key: boolean }
 
 /** tauri-specta globals **/
 

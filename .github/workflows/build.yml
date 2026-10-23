@@ -19,7 +19,7 @@ on:
       asset-prefix:
         required: false
         type: string
-        default: "handy"
+        default: "walkietalkey"
       asset-name-pattern:
         required: false
         type: string
@@ -29,6 +29,13 @@ on:
         type: boolean
         default: false
       sign-binaries:
+        required: false
+        type: boolean
+        default: false
+      # WalkieTalkey: Tauri updater signatures (our own key, DESK-110) are
+      # separate from Apple and Windows code signing, which only run when
+      # their secrets exist.
+      sign-updater:
         required: false
         type: boolean
         default: false
@@ -53,8 +60,9 @@ env:
 
 jobs:
   build:
-    permissions:
-      contents: write
+    # No permissions of its own: a called workflow may only keep or lower the
+    # caller's, so CI (contents: read) and the release workflow (contents:
+    # write, to upload release assets) each pass theirs.
     runs-on: ${{ inputs.platform }}
     steps:
       # Kept for git checkout and general tooling headroom. The native
@@ -100,6 +108,8 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -208,7 +218,7 @@ jobs:
 
       - name: install frontend dependencies
         if: ${{ !(contains(inputs.platform, 'windows') && contains(inputs.target, 'aarch64')) }}
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: install frontend dependencies (Windows ARM64)
         if: ${{ contains(inputs.platform, 'windows') && contains(inputs.target, 'aarch64') }}
@@ -446,22 +456,61 @@ jobs:
           chmod +x "$tools_dir/linuxdeploy-${arch}.AppImage"
           "$tools_dir/linuxdeploy-${arch}.AppImage" --appimage-extract-and-run --version
 
+      # WalkieTalkey: build-time config overlay. Without the updater key (pull
+      # requests) no updater artifacts are made; Windows code signing runs only
+      # when its secret exists (the route is the owner's decision 18.2).
+      - name: Tauri config overlay
+        id: overlay
+        shell: bash
+        env:
+          SIGN_UPDATER: ${{ inputs.sign-updater }}
+          WINDOWS_SIGN_COMMAND: ${{ contains(inputs.platform, 'windows') && inputs.sign-binaries && secrets.WINDOWS_SIGN_COMMAND || '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          overlay = {"bundle": {}}
+          if os.environ.get("SIGN_UPDATER") != "true":
+              overlay["bundle"]["createUpdaterArtifacts"] = False
+          if os.environ.get("WINDOWS_SIGN_COMMAND"):
+              overlay["bundle"]["windows"] = {"signCommand": os.environ["WINDOWS_SIGN_COMMAND"]}
+          json.dump(overlay, open("src-tauri/tauri.ci.conf.json", "w"))
+          PY
+          echo "args=--config src-tauri/tauri.ci.conf.json" >> "$GITHUB_OUTPUT"
+
+      # WalkieTalkey: Tauri treats a signing variable that is set but empty as
+      # a value (an empty APPLE_CERTIFICATE fails the build at "security
+      # import"), so only the ones that have a value are exported.
+      - name: Signing environment (only what exists)
+        shell: bash
+        env:
+          S_APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
+          S_APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
+          S_APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
+          S_APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
+          S_APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
+          S_APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          S_APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
+          S_AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
+          S_AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
+          S_AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+        run: |
+          for name in APPLE_ID APPLE_ID_PASSWORD APPLE_PASSWORD APPLE_TEAM_ID APPLE_CERTIFICATE \
+            APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY AZURE_CLIENT_ID AZURE_CLIENT_SECRET \
+            AZURE_TENANT_ID TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            value="$(printenv "S_$name" || true)"
+            if [ -n "$value" ]; then
+              delimiter="WT_${RANDOM}${RANDOM}${RANDOM}"
+              { echo "$name<<$delimiter"; echo "$value"; echo "$delimiter"; } >> "$GITHUB_ENV"
+              echo "$name is set"
+            fi
+          done
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
-          APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
-          APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
-          APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
-          AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
-          AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
-          AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           # The Vulkan loader and Wayland client library must come from the host
           # graphics stack. Bundling Ubuntu's copies ahead of the system libraries can
           # prevent a newer distro's Vulkan ICD or Mesa stack from loading.
@@ -477,7 +526,7 @@ jobs:
           releaseName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
           releaseId: ${{ inputs.release-id }}
           assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
-          args: ${{ inputs.build-args }}
+          args: ${{ inputs.build-args }} ${{ steps.overlay.outputs.args }}
 
       # tauri-action uploads release assets before returning. All AppImage
       # filtering therefore happens inside linuxdeploy above; this verifies the
@@ -742,9 +791,9 @@ jobs:
           function Assert-PackageContents {
             param([string]$Root, [string]$Label)
 
-            $handy = Get-ChildItem $Root -Filter "handy.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            $handy = Get-ChildItem $Root -Filter "walkietalkey.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if (-not $handy) {
-              throw "$Label package is missing handy.exe"
+              throw "$Label package is missing walkietalkey.exe"
             }
             foreach ($dll in $stagedDlls) {
               if (-not (Get-ChildItem $Root -Filter $dll.Name -Recurse -ErrorAction SilentlyContinue)) {
@@ -755,7 +804,7 @@ jobs:
             $deviceOutput = (& $handy.FullName --list-devices | Out-String)
             $deviceOutput | Write-Host
             if ($LASTEXITCODE -ne 0) {
-              throw "$Label handy.exe --list-devices failed"
+              throw "$Label walkietalkey.exe --list-devices failed"
             }
             if ("${{ inputs.target }}" -like "aarch64*" -and $deviceOutput -match "kind=(vulkan|cuda|metal|gpu)") {
               throw "$Label Windows ARM64 package unexpectedly exposed a GPU compute device"
@@ -785,7 +834,8 @@ jobs:
           # Administrative install extracts the MSI payload without elevation.
           $msiPackages = Get-ChildItem (Join-Path $bundleBase "msi") -Filter "*.msi" -ErrorAction SilentlyContinue
           if (-not $msiPackages) {
-            throw "No MSI packages found under $bundleBase for runtime DLL audit"
+            # WalkieTalkey builds the NSIS installer only (audited above).
+            Write-Host "No MSI packages under $bundleBase; the NSIS audit above covers this build."
           }
 
           foreach ($pkg in $msiPackages) {

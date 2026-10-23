@@ -1,0 +1,40 @@
+WalkieTalkey
+Copyright 2026 the WalkieTalkey contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software from Handy (MIT, Copyright (c) CJ Pais),
+https://github.com/cjpais/Handy. Files inherited from Handy remain available
+under the MIT License as well; its licence text is in licenses/Handy-MIT.txt.
+
+This product includes transcribe.cpp (MIT, Copyright (c) 2026 The
+transcribe.cpp authors) and ggml (MIT, Copyright (c) 2023-2026 The ggml
+authors). Licence texts: licenses/transcribe.cpp-MIT.txt, licenses/ggml-MIT.txt.
+
+This product uses Silero VAD (MIT, Copyright (c) 2020-present Silero Team).
+Licence text: licenses/Silero-VAD-MIT.txt.
+
+This product uses ONNX Runtime (MIT, Copyright (c) Microsoft Corporation) to
+run the punctuation model. Licence text: licenses/ONNX-Runtime-MIT.txt.
+
+Speech model: Edda v0.2 by the Alexandra Institute (Apache-2.0), a fine-tune of
+OpenAI Whisper large-v3-turbo (MIT), converted to GGUF and quantised by the
+WalkieTalkey project. Training data includes the CoRal dataset, whose terms
+forbid speech synthesis and biometric identification. See docs/MODELS.md.
+
+Punctuation model: Ekko PnC by RyeAI (CC BY 4.0, plus the CoRal terms).
+See docs/MODELS.md.
+
+Fast speech model: Ekko v1 Tiny by RyeAI, fine-tuned from NVIDIA's
+parakeet-rnnt-110m-da-dk. Licensed by NVIDIA Corporation under the NVIDIA
+Open Model License. RyeAI's changes are CC BY 4.0; the CoRal terms apply, and
+the FT Speech statement travels with the model. Converted to GGUF and
+quantised by the WalkieTalkey project. See docs/MODELS.md.
+
+The bundled speed-check clip is from FLEURS (Google, CC BY 4.0);
+see src-tauri/resources/speed-check/ATTRIBUTION.md.
+
+Font: Albert Sans by Andreas Rasmussen (SIL Open Font License 1.1).
+
+The WalkieTalkey name and logo are not covered by the code licence.
+See TRADEMARKS.md.

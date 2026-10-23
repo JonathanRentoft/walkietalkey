@@ -11,9 +11,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, AppSettings, OverlayStyle, APPLE_INTELLIGENCE_PROVIDER_ID};
 use crate::shortcut;
 use crate::tray::{set_tray_state, TrayIconState};
-use crate::utils::{
-    self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
-};
+use crate::utils::{self, show_recording_overlay, show_transcribing_overlay};
 use crate::TranscriptionCoordinator;
 use log::{debug, error, warn};
 use once_cell::sync::Lazy;
@@ -392,13 +390,17 @@ pub(crate) async fn process_transcription_output(
 }
 
 impl ShortcutAction for TranscribeAction {
-    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+    fn start(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str) {
         let start_time = Instant::now();
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
         // Load model in the background
         let tm = app.state::<Arc<TranscriptionManager>>();
         let rm = app.state::<Arc<AudioRecordingManager>>();
+
+        // WalkieTalkey (DESK-87): open the cleanup provider's connection while
+        // the user talks.
+        crate::walkietalkey::cleanup::warm(app);
 
         // Load ASR model and VAD model in parallel
         let kickoff_started = Instant::now();
@@ -420,14 +422,24 @@ impl ShortcutAction for TranscribeAction {
                 .get_model_path(&selected_model)
             {
                 warn!("Not starting recording: no model can transcribe it ({})", e);
+                // WalkieTalkey (Appendix A): say so instead of doing nothing.
+                crate::walkietalkey::pill::not_ready(app);
                 return;
             }
         }
 
         let binding_id = binding_id.to_string();
-        RECORDING_SESSION.fetch_add(1, Ordering::SeqCst);
+        let session = RECORDING_SESSION.fetch_add(1, Ordering::SeqCst) + 1;
         let tray_started = Instant::now();
         set_tray_state(app, TrayIconState::Recording);
+        // WalkieTalkey (DESK-95): the listening icon pulses for key
+        // recordings too.
+        {
+            let rm_pulse = Arc::clone(&rm);
+            crate::walkietalkey::tray::pulse_while(app.clone(), move || {
+                RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_pulse.is_recording()
+            });
+        }
         let tray_elapsed = tray_started.elapsed();
 
         // Get the microphone mode to determine audio feedback timing
@@ -469,10 +481,34 @@ impl ShortcutAction for TranscribeAction {
         // doesn't stream (or whose capability is not known yet) gets the compact
         // pill instead of an oversized transparent live window.
         let overlay_started = Instant::now();
-        match settings.overlay_style {
-            OverlayStyle::Live if model_supports_streaming => utils::show_streaming_overlay(app),
-            OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(app),
-            OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
+        let show_overlay = {
+            let app = app.clone();
+            let style = settings.overlay_style;
+            move || match style {
+                OverlayStyle::Live if model_supports_streaming => {
+                    utils::show_streaming_overlay(&app)
+                }
+                OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(&app),
+                OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
+            }
+        };
+        // WalkieTalkey (DESK-23): in hold mode the pill (and below, the start
+        // sound) appear once the key has been held for the threshold, so quick
+        // taps and fn shortcuts stay silent. Recording itself starts now.
+        let reveal_delay = crate::walkietalkey::keys::reveal_delay(&settings);
+        match reveal_delay {
+            None => show_overlay(),
+            Some(delay) => {
+                let rm_reveal = Arc::clone(&rm);
+                crate::walkietalkey::keys::reveal_at(
+                    start_time + delay,
+                    move || {
+                        RECORDING_SESSION.load(Ordering::SeqCst) == session
+                            && rm_reveal.is_recording()
+                    },
+                    show_overlay,
+                );
+            }
         }
         // Everything above runs before capture can begin, so each span here is
         // added keypress->capture latency.
@@ -525,6 +561,14 @@ impl ShortcutAction for TranscribeAction {
                     debug!("Microphone is receiving samples; recording is ready");
                     utils::emit_recording_ready(&app_clone);
 
+                    // WalkieTalkey (DESK-23): the start sound waits for the
+                    // hold threshold too; a tap ends the recording before it.
+                    if let Some(delay) = reveal_delay {
+                        std::thread::sleep(
+                            (start_time + delay).saturating_duration_since(Instant::now()),
+                        );
+                    }
+
                     // The start chime is a readiness cue, so it must follow the
                     // first real input callback rather than Stream::play() or a
                     // fixed delay. The helper returns immediately when feedback
@@ -546,6 +590,24 @@ impl ShortcutAction for TranscribeAction {
         if recording_error.is_none() {
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
+            // WalkieTalkey (DESK-24): at most 5 minutes, with a countdown.
+            let rm_limit = Arc::clone(&rm);
+            crate::walkietalkey::limits::watch(app.clone(), start_time, move || {
+                RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_limit.is_recording()
+            });
+            // WalkieTalkey (DESK-26): fn is also a modifier, so another key
+            // pressed with it (fn+Delete, fn+arrows) cancels silently.
+            if crate::walkietalkey::keys::is_modifier_only(shortcut_str) {
+                let rm_watch = Arc::clone(&rm);
+                crate::walkietalkey::keys::cancel_on_other_key(
+                    app.clone(),
+                    shortcut_str,
+                    move || {
+                        RECORDING_SESSION.load(Ordering::SeqCst) == session
+                            && rm_watch.is_recording()
+                    },
+                );
+            }
         } else {
             // Starting failed (for example due to blocked microphone permissions).
             // Revert UI state so we don't stay stuck in the recording overlay.
@@ -610,6 +672,10 @@ impl ShortcutAction for TranscribeAction {
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
         let cancel_generation = rm.cancel_generation();
+        // WalkieTalkey (DESK-27): outputs go in the order recordings end.
+        let ticket = crate::walkietalkey::sequence::take_ticket();
+        // "Kun når jeg holder Shift med" (DESK-80): Shift held at release.
+        let shift_held = crate::walkietalkey::cleanup::shift_held();
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone(), Arc::clone(&tm));
@@ -642,14 +708,18 @@ impl ShortcutAction for TranscribeAction {
                     utils::hide_recording_overlay(&ah);
                     set_tray_state(&ah, TrayIconState::Idle);
                 } else {
-                    // Save WAV concurrently with transcription
+                    // WalkieTalkey (DESK-92): audio is only kept, concurrently
+                    // with transcription, when "Gem lyd til fejlfinding" is on.
+                    let keep_audio = crate::walkietalkey::store::get(&ah).keep_audio_for_debugging;
                     let sample_count = samples.len();
-                    let file_name = format!("handy-{}.wav", chrono::Utc::now().timestamp());
+                    let file_name = format!("walkietalkey-{}.wav", chrono::Utc::now().timestamp());
                     let wav_path = hm.recordings_dir().join(&file_name);
                     let wav_path_for_verify = wav_path.clone();
-                    let samples_for_wav = samples.clone();
-                    let wav_handle = tauri::async_runtime::spawn_blocking(move || {
-                        crate::audio_toolkit::save_wav_file(&wav_path, &samples_for_wav)
+                    let wav_handle = keep_audio.then(|| {
+                        let samples_for_wav = samples.clone();
+                        tauri::async_runtime::spawn_blocking(move || {
+                            crate::audio_toolkit::save_wav_file(&wav_path, &samples_for_wav)
+                        })
                     });
 
                     // Transcribe concurrently with WAV save: the live decode's
@@ -660,27 +730,30 @@ impl ShortcutAction for TranscribeAction {
                     let transcription_result = tm.transcribe_recording(samples);
 
                     // Await WAV save and verify
-                    let wav_saved = match wav_handle.await {
-                        Ok(Ok(())) => {
-                            match crate::audio_toolkit::verify_wav_file(
-                                &wav_path_for_verify,
-                                sample_count,
-                            ) {
-                                Ok(()) => true,
-                                Err(e) => {
-                                    error!("WAV verification failed: {}", e);
-                                    false
+                    let wav_saved = match wav_handle {
+                        None => false,
+                        Some(wav_handle) => match wav_handle.await {
+                            Ok(Ok(())) => {
+                                match crate::audio_toolkit::verify_wav_file(
+                                    &wav_path_for_verify,
+                                    sample_count,
+                                ) {
+                                    Ok(()) => true,
+                                    Err(e) => {
+                                        error!("WAV verification failed: {}", e);
+                                        false
+                                    }
                                 }
                             }
-                        }
-                        Ok(Err(e)) => {
-                            error!("Failed to save WAV file: {}", e);
-                            false
-                        }
-                        Err(e) => {
-                            error!("WAV save task panicked: {}", e);
-                            false
-                        }
+                            Ok(Err(e)) => {
+                                error!("Failed to save WAV file: {}", e);
+                                false
+                            }
+                            Err(e) => {
+                                error!("WAV save task panicked: {}", e);
+                                false
+                            }
+                        },
                     };
 
                     if rm.was_cancelled_since(cancel_generation) {
@@ -698,15 +771,16 @@ impl ShortcutAction for TranscribeAction {
                                 utils::redact_text(&transcription)
                             );
 
-                            if post_process {
-                                if use_streaming_overlay {
-                                    tm.emit_stream_working(StreamWorkKind::Polishing);
-                                } else {
-                                    show_processing_overlay(&ah);
-                                }
-                            }
-                            let Some(processed) = complete_unless_cancelled(
-                                process_transcription_output(&ah, &transcription, post_process),
+                            // WalkieTalkey: the user's replacements and the
+                            // optional AI cleanup (spec 6.4 steps 6-7).
+                            let _ = post_process;
+                            let Some(finished) = complete_unless_cancelled(
+                                crate::walkietalkey::dictation::process(
+                                    &ah,
+                                    &transcription,
+                                    true,
+                                    shift_held,
+                                ),
                                 || rm.was_cancelled_since(cancel_generation),
                             )
                             .await
@@ -724,30 +798,39 @@ impl ShortcutAction for TranscribeAction {
                                 return;
                             }
 
-                            // Save to history if WAV was saved
-                            if wav_saved {
-                                if let Err(err) = hm.save_entry(
-                                    file_name,
-                                    transcription,
-                                    post_process,
-                                    processed.post_processed_text.clone(),
-                                    processed.post_process_prompt.clone(),
-                                ) {
-                                    error!("Failed to save history entry: {}", err);
-                                }
-                            }
+                            // WalkieTalkey: history with its source, under
+                            // WalkieTalkey's retention (DESK-90..92).
+                            crate::walkietalkey::dictation::save_history(
+                                &ah,
+                                &finished,
+                                &crate::walkietalkey::output::Source::Key,
+                                wav_saved.then_some(file_name.as_str()),
+                            );
 
-                            if processed.final_text.is_empty() {
-                                utils::hide_recording_overlay(&ah);
+                            // Taken before the paste thread exists, and so
+                            // before the next session can start.
+                            let session = RECORDING_SESSION.load(Ordering::SeqCst);
+                            if finished.final_text.trim().is_empty() {
+                                // "Hørte ikke noget" (spec 6.4 step 2).
+                                crate::walkietalkey::pill::finish(
+                                    &ah,
+                                    crate::walkietalkey::output::PillEnd::NoSpeech,
+                                    move || RECORDING_SESSION.load(Ordering::SeqCst) == session,
+                                );
                                 set_tray_state(&ah, TrayIconState::Idle);
                             } else {
+                                // DESK-50, DESK-51: paste where allowed, else the
+                                // clipboard; the pill says which.
+                                let delivery = crate::walkietalkey::output::delivery_for(
+                                    &crate::walkietalkey::output::Source::Key,
+                                    &crate::walkietalkey::store::get(&ah),
+                                    crate::walkietalkey::dictation::can_paste().await,
+                                );
+                                let cleanup_fell_back = finished.cleanup_fell_back;
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
-                                let final_text = processed.final_text;
+                                let final_text = finished.final_text;
                                 let rm_for_paste = Arc::clone(&rm);
-                                // Taken before the paste thread exists, and so
-                                // before the next session can start.
-                                let session = RECORDING_SESSION.load(Ordering::SeqCst);
                                 // Paste on its own thread, not the main one: it
                                 // sleeps between steps, and a paste into Handy's
                                 // own windows needs the main thread free to land.
@@ -763,20 +846,42 @@ impl ShortcutAction for TranscribeAction {
                                             return;
                                         }
 
-                                        match utils::paste(final_text, ah_clone.clone()) {
-                                            Ok(()) => debug!(
-                                                "Text pasted successfully in {:?}",
-                                                paste_time.elapsed()
-                                            ),
+                                        // DESK-27: wait for earlier dictations' output.
+                                        ticket.wait_turn();
+                                        let end = match crate::walkietalkey::dictation::deliver(
+                                            &ah_clone,
+                                            final_text.clone(),
+                                            delivery,
+                                        ) {
+                                            Ok(delivered) => {
+                                                debug!(
+                                                    "Text delivered ({:?}) in {:?}",
+                                                    delivered,
+                                                    paste_time.elapsed()
+                                                );
+                                                crate::walkietalkey::output::pill_end(
+                                                    &final_text,
+                                                    delivered,
+                                                    cleanup_fell_back,
+                                                )
+                                            }
                                             Err(e) => {
                                                 error!("Failed to paste transcription: {}", e);
                                                 let _ = ah_clone.emit("paste-error", ());
+                                                crate::walkietalkey::output::PillEnd::Clipboard
                                             }
-                                        }
+                                        };
                                         // A new session may have started while
                                         // this paste ran; the UI is now its.
                                         if RECORDING_SESSION.load(Ordering::SeqCst) == session {
-                                            utils::hide_recording_overlay(&ah_clone);
+                                            crate::walkietalkey::pill::finish(
+                                                &ah_clone,
+                                                end,
+                                                move || {
+                                                    RECORDING_SESSION.load(Ordering::SeqCst)
+                                                        == session
+                                                },
+                                            );
                                             set_tray_state(&ah_clone, TrayIconState::Idle);
                                         }
                                     })

@@ -1,0 +1,25 @@
+---
+/* The top of every sub page: the navigation on a calm LiquidBackground band (the page's one living surface),
+   an eyebrow, the title and a short lead. */
+import { LiquidBackground } from "@walkietalkey/ui";
+import Header from "./Header.astro";
+import type { PageKey, Palette } from "../lib/types";
+
+interface Props {
+  current: PageKey;
+  eyebrow: string;
+  title: string;
+  lead?: string;
+  palette?: Palette;
+}
+const { current, eyebrow, title, lead, palette = "morgengry" } = Astro.props;
+---
+<LiquidBackground as="header" className="sub-hero" palette={palette}>
+  <Header current={current} />
+  <div class="container sub-hero-copy">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1>{title}</h1>
+    {lead ? <p class="lead">{lead}</p> : null}
+    <slot />
+  </div>
+</LiquidBackground>

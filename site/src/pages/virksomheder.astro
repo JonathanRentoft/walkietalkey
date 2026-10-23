@@ -1,0 +1,77 @@
+---
+/* SITE-02 Virksomheder: free for companies, managed settings (spec Appendix B), self-hosting (RELAY-14, SITE-03,
+   PRIV-03), and paid help that is a service, never a licence. */
+import { ShinyButton } from "@walkietalkey/ui";
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { CONTACT_URL, DISCUSSIONS_URL, PAGES, PHONE_APP_URL, RELAY_URL } from "../lib/site";
+
+// TODO(copy): the meaning of each setting (spec Appendix B)
+/* The defaults are the desktop app's own (src-tauri/src/walkietalkey/settings.rs): the test deployments until
+   walkietalkey.com is registered (review finding 18). */
+const settings: [string, string, string, string][] = [
+  ["RelayUrl", "tekst", RELAY_URL, "Jeres eget relæ."],
+  ["PhoneAppUrl", "tekst", PHONE_APP_URL, "Jeres egen udgave af telefonappen. Bruges i parringskoden."],
+  ["ModelBaseUrl", "tekst", "vores Hugging Face", "Jeres egen modelserver med de samme filnavne og SHA-256-summer."],
+  ["AllowPhonePairing", "ja/nej", "ja", "Slå telefonen fra."],
+  ["CleanupMode", "off, when-needed, always, shift", "off", "Hvornår AI-oprydningen bruges."],
+  ["CleanupProvider", "apple, openai, anthropic, groq, cerebras, openrouter, custom", "", "Lås udbyderen."],
+  ["AllowCloudCleanup", "ja/nej", "ja", "Nej tillader kun oprydning på selve computeren (Apple Intelligence eller et custom-endpoint på localhost)."],
+  ["CleanupBaseUrl, CleanupModel", "tekst", "", "For eksempel jeres egen Azure OpenAI."],
+  ["CleanupApiKey", "tekst", "", "Læses fra profilen ved hver start og kopieres ikke andre steder hen. Alle lokale brugere kan læse værdier i en profil, så brug en nøgle lavet til formålet, med en grænse for forbrug."],
+  ["VocabularySource", "sti eller https-URL", "", "Fælles ordliste, hentes igen hver dag."],
+  ["OutputMode", "paste, clipboard", "paste", "Indsæt automatisk eller kun udklipsholder ved diktering med tasten."],
+  ["ShowTextInNotifications", "ja/nej", "ja", "Skjul teksten i notifikationen på delte skærme."],
+  ["HistoryRetentionDays", "tal", "14", "0 er Gem ikke, -1 er Altid."],
+  ["AutoUpdate", "ja/nej", "ja", "Automatiske opdateringer."],
+  ["UpdateChannel", "stable, beta", "stable", "Kanal for opdateringer."],
+  ["Model", "model-id", "efter computerens hardware", "Lås talemodellen."],
+];
+---
+<Base page="business">
+  <!-- TODO(copy): the whole page -->
+  <PageHero current="business" eyebrow="Virksomheder" title="Gratis for alle, også for jer" lead="I må bruge WalkieTalkey frit i hele virksomheden. Vil I have hjælp til at sætte det op, er det betalt hjælp, ikke en licens." palette="rav">
+    <div class="ctas-row"><ShinyButton href={CONTACT_URL} size="lg">Skriv til os</ShinyButton></div>
+  </PageHero>
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <h2>Gratis, også for virksomheder</h2>
+      <p>WalkieTalkey er open source under Apache-2.0. Der er ingen licens at købe, ingen grænse for antal brugere og intet abonnement. Talen bliver til tekst på hver medarbejders egen computer, så I betaler ikke for en server pr. bruger.</p>
+
+      <h2>Udrul med færdige indstillinger</h2>
+      <p>Appen læser indstillinger, som I sætter centralt, fra jeres værktøj til at styre enheder (Jamf, Intune, Kandji og lignende):</p>
+      <ul>
+        <li>macOS: en konfigurationsprofil for domænet <code>com.walkietalkey.app</code>.</li>
+        <li>Windows: registreringsdatabasen under <code>HKLM\SOFTWARE\Policies\WalkieTalkey</code>, med færdige skabeloner (ADMX og ADML) til Group Policy og Intune.</li>
+      </ul>
+      <p>Alt, I sætter, er låst for brugeren og vises med en lille lås og teksten Styret af din organisation.</p>
+    </div>
+    <div class="table">
+      <table class="settings">
+        <thead><tr><th scope="col">Nøgle</th><th scope="col">Værdi</th><th scope="col">Standard</th><th scope="col">Betydning</th></tr></thead>
+        <tbody>
+          {settings.map(([k, type, def, meaning]) => <tr><td><code>{k}</code></td><td data-label="Værdi">{type}</td><td data-label="Standard">{def || "ingen"}</td><td data-label="Betydning">{meaning}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h2>Kør det hele selv</h2>
+      <p>Vil I have, at intet passerer servere, vi driver, kan I køre det selv:</p>
+      <ul>
+        <li><strong>Relæet</strong> ligger i projektet og kommer op på jeres egen Cloudflare-konto med én <code>wrangler deploy</code>. En virksomheds trafik kan være inden for Cloudflares gratis niveau. Peg appen på det med <code>RelayUrl</code>.</li>
+        <li><strong>Telefonappen</strong> er almindelige statiske filer, som I kan lægge på jeres egen server. Peg appen på den med <code>PhoneAppUrl</code>.</li>
+        <li><strong>Talemodellerne</strong> kan hentes fra jeres egen server med <code>ModelBaseUrl</code>, hvis I blokerer for huggingface.co.</li>
+        <li><strong>Opdateringer</strong> hentes stadig fra GitHub, medmindre I slår <code>AutoUpdate</code> fra og installerer nye versioner selv.</li>
+      </ul>
+      <p>Se også <a href={PAGES.privacy.path}>Privatliv</a> og <a href={PAGES.security.path}>Sikkerhed</a>, som I kan sende videre til IT og jura.</p>
+
+      <h2>Betalt hjælp til opsætning</h2>
+      <p>Vil I have hjælp til at rulle WalkieTalkey ud, lave en fælles ordliste eller sætte oprydning op på jeres egen Azure OpenAI i EU, kan I købe hjælp til det. Det er en service, ikke en licens: appen er og bliver gratis, uanset om I køber hjælp. Skriv til os i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>.</p>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .ctas-row { margin-top: var(--space-8); display: flex; gap: var(--space-3); }
+</style>

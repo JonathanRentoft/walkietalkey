@@ -1,0 +1,35 @@
+---
+/* SITE-02 Spørgsmål. The first four answers are ForsideKomplet's; the rest are new. */
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { DISCUSSIONS_URL, PAGES } from "../lib/site";
+
+const faq: [string, string][] = [
+  /* from ForsideKomplet */
+  ["Er det virkelig gratis?", "Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den."],
+  ["Hvor bliver min stemme af?", "Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den."],
+  ["Hvilken talemodel bruger I?", "Edda, en dansk udgave af Whisper, der er trænet på over 2.600 timers dansk tale. Den kører på din egen computer."],
+  /* TODO(copy): the answer names the optional AI cleanup, as on the homepage (review finding 17) */
+  ["Kan den forstå, når jeg blander dansk og engelsk?", "Ja, og din ordliste hjælper med fagord og navne. Slår du AI-oprydning til, retter den også, når du siger \"nej, jeg mente\"."],
+  /* TODO(copy): the questions and answers below */
+  ["Skal jeg have en konto?", "Nej. Der er intet login, ingen e-mail og ingen adgangskode. Telefonen og computeren finder hinanden ved, at du scanner en kode."],
+  ["Virker det uden internet?", "Ja, når du dikterer med tasten. Talemodellen kører på computeren. Telefonen skal bruge internet, fordi lyden går gennem relæet til din computer."],
+  ["Hvilke computere virker det på?", "Mac med macOS 13 Ventura eller nyere og Windows 10 (22H2) eller Windows 11 i 64-bit. Du skal bruge 8 GB RAM og omkring 2 GB fri plads til talemodellen."],
+  ["Hvilke telefoner virker det på?", "iPhone med iOS 17 eller nyere og Android 10 eller nyere med Chrome."],
+  ["Hvad gør AI-oprydningen?", "Den er valgfri og slået fra. Slår du den til, retter en sprogmodel teksten, fx fjerner selvrettelser som \"onsdag, nej, torsdag\". Teksten, ikke lyden, går til den udbyder, du vælger, med din egen nøgle, og du kan se præcis, hvad der blev sendt. På en Mac med Apple Silicon og macOS 26 kan den køre på selve computeren."],
+  ["Hvad sker der, hvis jeg mister telefonen?", "Tryk Fjern ud for telefonen under Indstillinger › Telefon på computeren. Så kan den ikke sende mere, og dine andre telefoner virker som før."],
+  ["Hvor længe gemmes mine dikteringer?", "I historikken på din computer, 14 dage som standard. Du kan vælge Gem ikke, 1 dag, 90 dage eller Altid, og slette alt, når du vil. Lyd gemmes ikke."],
+  ["Kan min arbejdsplads bruge det?", "Ja, gratis. Jeres IT kan rulle det ud med færdige indstillinger og køre relæet selv."],
+];
+---
+<Base page="faq">
+  <!-- TODO(copy): eyebrow, title, lead -->
+  <PageHero current="faq" eyebrow="Spørgsmål" title="Det, folk plejer at spørge om" lead="Finder du ikke svaret her, så skriv til os." />
+  <main class="container page-body" id="indhold">
+    <div class="prose faq-list">
+      {faq.map(([q, a], i) => <details open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}
+      <!-- TODO(copy) -->
+      <p class="muted" style="margin-top: var(--space-8)">Mere om <a href={PAGES.privacy.path}>privatliv</a>, <a href={PAGES.security.path}>sikkerhed</a> og <a href={PAGES.business.path}>virksomheder</a>. Eller spørg i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>.</p>
+    </div>
+  </main>
+</Base>

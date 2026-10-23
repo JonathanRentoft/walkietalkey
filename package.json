@@ -1,7 +1,14 @@
 {
-  "name": "handy-app",
+  "name": "walkietalkey",
   "private": true,
-  "version": "0.9.8",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*",
+    "phone",
+    "relay",
+    "site"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +22,12 @@
     "format:frontend": "prettier --write .",
     "format:backend": "cd src-tauri && cargo fmt",
     "test:keyboard": "bun src/lib/utils/keyboard.test.ts",
+    "test:wt": "bun test src/walkietalkey",
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
     "check:translations": "bun scripts/check-translations.ts",
+    "copy:list": "bun scripts/walkietalkey/copy-list.ts",
+    "check:copy": "bun scripts/walkietalkey/copy-list.ts --check",
     "check:model-languages": "bun scripts/check-model-language-coverage.ts",
     "sync:catalog": "bun scripts/sync-catalog.ts",
     "check:catalog": "bun scripts/sync-catalog.ts --check",

@@ -17,11 +17,11 @@ use anyhow::Result;
 use chunked::ChunkedDecode;
 use live::LiveSession;
 use log::{debug, error, info, warn};
-use policy::{batch_decode, live_decode, BatchDecode, ModelTraits};
+use policy::{batch_decode, live_decode, BatchDecode, LiveDecode, ModelTraits};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
@@ -29,7 +29,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_specta::Event;
 use transcribe_cpp::{Backend, RunOptions, Task, Transcript};
 
-mod chunked;
+pub(crate) mod chunked;
 mod live;
 pub mod policy;
 
@@ -109,6 +109,34 @@ enum StreamCmd {
 }
 
 type StreamFinalizeReply = Result<Option<RunOutcome>, EngineError>;
+
+/// WalkieTalkey: the feed end of a phone dictation's own live decode
+/// ([`TranscriptionManager::start_side_stream`]).
+pub struct SideStream {
+    tx: mpsc::Sender<StreamCmd>,
+    _active: SideStreamGuard,
+}
+
+/// Counts a phone dictation as in progress until its `SideStream` is gone
+/// (finished, cancelled or dropped), so a key cancel can leave it alone.
+struct SideStreamGuard(Arc<AtomicUsize>);
+
+impl Drop for SideStreamGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+impl SideStream {
+    pub fn feed(&self, pcm: Vec<f32>) {
+        let _ = self.tx.send(StreamCmd::Feed(pcm));
+    }
+
+    /// Abandons the decode (the phone cancelled).
+    pub fn cancel(self) {
+        let _ = self.tx.send(StreamCmd::Cancel);
+    }
+}
 
 /// Routes real-time audio frames to the active streaming worker. Shared between
 /// the [`TranscriptionManager`] (opens/closes the route) and the audio recorder's
@@ -263,6 +291,8 @@ pub struct TranscriptionManager {
     /// yet. This prevents a second worker from starting after finalize/cancel
     /// closes the router but before the first worker has fully exited.
     active_stream_worker: Arc<AtomicU64>,
+    /// WalkieTalkey (DESK-61): phone dictations decoding right now.
+    side_streams: Arc<AtomicUsize>,
 }
 
 impl TranscriptionManager {
@@ -282,6 +312,7 @@ impl TranscriptionManager {
             stream_active: Arc::new(AtomicBool::new(false)),
             next_stream_worker_id: Arc::new(AtomicU64::new(1)),
             active_stream_worker: Arc::new(AtomicU64::new(0)),
+            side_streams: Arc::new(AtomicUsize::new(0)),
         };
 
         // Start the idle watcher
@@ -797,7 +828,9 @@ impl TranscriptionManager {
             ModelTraits::of(&info),
             get_settings(&self.app_handle).long_form_chunking,
         );
-        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id) else {
+        // WalkieTalkey (DESK-47): AI cleanup follows the key recording's chunks.
+        let on_chunk = crate::walkietalkey::cleanup::key_chunk_observer(&self.app_handle);
+        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id, on_chunk) else {
             // Nothing to decode live: the recording is transcribed in batch.
             self.router.clear();
             drain_until_finalize(rx);
@@ -826,6 +859,94 @@ impl TranscriptionManager {
         // The channel closed without finalize/cancel; dropping the session
         // resets the worker's stream. `_worker` drops after, clearing this
         // worker's flags.
+    }
+
+    /// WalkieTalkey (DESK-61): a live decode of its own for a phone
+    /// dictation, fed as the phone's audio arrives and independent of the key
+    /// recording's stream route, so a key release never finalizes it. Chunks
+    /// from both decode on the one engine in turn; their outputs are put in
+    /// order by `walkietalkey::sequence` (DESK-27).
+    pub fn start_side_stream(&self) -> SideStream {
+        let (tx, rx) = mpsc::channel();
+        let manager = self.clone();
+        self.side_streams.fetch_add(1, Ordering::AcqRel);
+        let active = SideStreamGuard(Arc::clone(&self.side_streams));
+        thread::spawn(move || manager.run_side_stream(rx));
+        SideStream {
+            tx,
+            _active: active,
+        }
+    }
+
+    /// Whether a phone dictation is being decoded (from its first audio
+    /// until its text is done).
+    pub fn phone_dictation_active(&self) -> bool {
+        self.side_streams.load(Ordering::Acquire) > 0
+    }
+
+    fn run_side_stream(&self, rx: mpsc::Receiver<StreamCmd>) {
+        {
+            let mut is_loading = self.is_loading.lock().unwrap();
+            while *is_loading {
+                is_loading = self.loading_condvar.wait(is_loading).unwrap();
+            }
+        }
+        let model_id = self.get_current_model().unwrap_or_default();
+        let Some(info) = self.engine.loaded() else {
+            drain_until_finalize(rx);
+            return;
+        };
+        let mode = live_decode(
+            ModelTraits::of(&info),
+            get_settings(&self.app_handle).long_form_chunking,
+        );
+        // A streaming model's stream belongs to the key recording; a phone
+        // dictation then decodes in batch when it ends.
+        if mode != LiveDecode::Chunked {
+            drain_until_finalize(rx);
+            return;
+        }
+        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id, None) else {
+            drain_until_finalize(rx);
+            return;
+        };
+        while let Ok(cmd) = rx.recv() {
+            match cmd {
+                StreamCmd::Feed(pcm) => {
+                    self.touch_activity();
+                    session.feed(pcm);
+                }
+                StreamCmd::Finalize { reply, samples } => {
+                    let _ = reply.send(session.finish(samples));
+                    return;
+                }
+                StreamCmd::Cancel => return,
+            }
+        }
+    }
+
+    /// The final text of a side stream's recording: its live result, or a
+    /// batch run of `samples` when there is none.
+    pub fn transcribe_side(&self, side: SideStream, samples: Vec<f32>) -> Result<String> {
+        let started = Instant::now();
+        let (reply, reply_rx) = mpsc::channel();
+        let live = if side
+            .tx
+            .send(StreamCmd::Finalize {
+                reply,
+                samples: samples.len(),
+            })
+            .is_ok()
+        {
+            match reply_rx.recv() {
+                Ok(Ok(outcome)) => outcome,
+                Ok(Err(e)) => return Err(e.into()),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        self.complete(started, samples, live)
     }
 
     /// Flush the live decode (a stream, or chunks decoded while recording)
@@ -894,6 +1015,10 @@ impl TranscriptionManager {
     pub fn transcribe_recording(&self, samples: Vec<f32>) -> Result<String> {
         let started = Instant::now();
         let live = self.finalize_live(samples.len())?;
+        debug!(
+            "Live decode finalized {:.0} ms after release",
+            started.elapsed().as_secs_f64() * 1000.0
+        );
         self.complete(started, samples, live)
     }
 
@@ -920,10 +1045,12 @@ impl TranscriptionManager {
             return Ok(String::new());
         }
 
-        let outcome = match live {
+        let mut outcome = match live {
             Some(outcome) => outcome,
             None => self.decode_batch(audio)?,
         };
+        // WalkieTalkey (DESK-41): punctuation before filler removal (6.4).
+        outcome.text = crate::walkietalkey::punctuation::apply(&self.app_handle, outcome.text);
         let settings = get_settings(&self.app_handle);
         let final_result = finish_text(outcome, &settings);
 
@@ -1039,6 +1166,29 @@ impl TranscriptionManager {
         };
         // `mark` covers every chunk, so a cancel between two stops the rest.
         // A failed chunk fails the whole transcription.
+        // WalkieTalkey: Edda is decoded in batch as it is live: text only, one
+        // piece per sentence-like stretch (docs/MODELS.md, "Edda and pauses").
+        if crate::walkietalkey::catalog::decodes_by_segment(active_model) {
+            let mut run_options = setup.run_options.clone();
+            run_options.timestamps = transcribe_cpp::TimestampKind::None;
+            let transcripts = ChunkedDecode::decode_clip_with(
+                self,
+                mark,
+                run_options,
+                audio,
+                active_model,
+                settings.vad_backend,
+                crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS,
+                info.supports_initial_prompt,
+            )
+            .map_err(engine_error)?;
+            let (text, model_detected_language) = join_chunks(transcripts);
+            return Ok(RunOutcome {
+                setup,
+                text,
+                model_detected_language,
+            });
+        }
         let transcripts = match batch_decode(ModelTraits::of(&info), settings.long_form_chunking) {
             BatchDecode::Chunked => ChunkedDecode::decode_clip(
                 self,
@@ -1172,7 +1322,12 @@ fn run_setup(info: &LoadedInfo, settings: &AppSettings, validated_language: &str
         task: run_plan.task,
         language: run_plan.language,
         target_language: run_plan.target_language,
-        vocabulary: vocabulary_for_model(info.supports_vocabulary, &settings.custom_words),
+        // WalkieTalkey (DESK-66..68): Ord, the company list and Udviklerord
+        // within the token budget the chunk context needs.
+        vocabulary: crate::walkietalkey::vocabulary::for_run(
+            info.supports_vocabulary,
+            &settings.custom_words,
+        ),
         ..Default::default()
     };
 
