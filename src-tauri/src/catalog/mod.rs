@@ -93,6 +93,9 @@ struct CatalogModel {
     min_engine: Option<String>,
     /// Every published file, keyed by quant.
     files: HashMap<String, CatalogFile>,
+    /// WalkieTalkey: the model's licence id, to leave out non-commercial ones.
+    #[serde(default)]
+    license: String,
 }
 
 #[derive(Deserialize)]
@@ -146,6 +149,8 @@ impl CatalogModel {
             && self
                 .default_file()
                 .is_some_and(|file| !file.filename.contains('/'))
+            // WalkieTalkey (spec 11): only models companies may use too.
+            && !crate::walkietalkey::catalog::non_commercial(&self.license)
     }
 
     /// Files ordered largest first, so the list reads F32 → Q4 like the HF repo.
@@ -481,6 +486,8 @@ mod tests {
     fn all_flat_asr_models_are_offered_at_the_package_default() {
         for m in transcription_models()
             .filter(|m| m.default_file().is_some_and(|f| !f.filename.contains('/')))
+            // WalkieTalkey: non-commercial models are left out (spec 11).
+            .filter(|m| !crate::walkietalkey::catalog::non_commercial(&m.license))
         {
             let id = format!("{}/{}", m.repository, m.default_file().unwrap().filename);
             let desc = CATALOG

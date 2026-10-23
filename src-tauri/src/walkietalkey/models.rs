@@ -26,6 +26,26 @@ pub fn company_mirror(model_base_url: Option<&str>, model_id: &str) -> Option<Mi
     })
 }
 
+/// Checks a downloaded catalog model file against the catalog's SHA-256
+/// (DESK-32). A model without a known hash passes.
+pub fn verify_catalog_file(model_id: &str, path: &Path) -> Result<()> {
+    let Some((_, _, expected, _)) = crate::catalog::file_hashes()
+        .into_iter()
+        .find(|(id, _, _, _)| id == model_id)
+    else {
+        return Ok(());
+    };
+    let got = sha256_of(path)?;
+    if got.eq_ignore_ascii_case(&expected) {
+        Ok(())
+    } else {
+        // TODO(copy): the error the UI shows for a damaged download.
+        Err(anyhow!(
+            "Talemodellen kom ikke rigtigt frem (SHA-256 {got}, forventet {expected}). Prøv igen."
+        ))
+    }
+}
+
 /// SHA-256 of a file, streamed.
 pub fn sha256_of(path: &Path) -> Result<String> {
     let mut file = fs::File::open(path)?;
@@ -135,6 +155,17 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn a_download_must_match_the_catalogs_sha256() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("edda-v0.2-Q8_0.gguf");
+        fs::write(&file, b"not the model").unwrap();
+        let err = verify_catalog_file(DEFAULT_MODEL_ID, &file).unwrap_err();
+        assert!(err.to_string().contains("SHA-256"));
+        // A model the catalog has no hash for is not blocked.
+        assert!(verify_catalog_file("someone/else.gguf", &file).is_ok());
     }
 
     #[test]

@@ -22,6 +22,16 @@ pub fn ranking(id: &str) -> Option<&'static (&'static str, u32, bool)> {
     RANKING.iter().find(|(model, _, _)| *model == id)
 }
 
+/// Spec 11 and principle 3: everything WalkieTalkey offers may be used by
+/// anyone, companies included, so models under a non-commercial licence
+/// (Handy's catalog has Canary and a Granite model) are not offered.
+pub fn non_commercial(license: &str) -> bool {
+    let license = license.to_ascii_lowercase();
+    license.contains("-nc")
+        || license.contains("noncommercial")
+        || license.contains("non-commercial")
+}
+
 /// Models decoded one speech segment at a time (docs/MODELS.md, "Edda and
 /// pauses"): Edda, decoded greedily, stops at the first pause of a window
 /// that holds more than one sentence. Whisper turbo gets worse that way, so
@@ -33,6 +43,22 @@ pub fn decodes_by_segment(model_id: &str) -> bool {
 #[cfg(test)]
 mod segment_tests {
     use super::*;
+
+    #[test]
+    fn non_commercial_models_are_not_offered() {
+        assert!(non_commercial("cc-by-nc-4.0"));
+        assert!(non_commercial("cc-by-nc-sa-4.0"));
+        assert!(!non_commercial("cc-by-4.0"));
+        assert!(!non_commercial("apache-2.0"));
+        assert!(!non_commercial("other"));
+        let offered = |repo: &str| crate::catalog::CATALOG.iter().any(|m| m.id.contains(repo));
+        assert!(!offered("/canary-1b-gguf/"), "cc-by-nc-4.0");
+        assert!(
+            !offered("/granite-speech-5.0-470m-turboctc-nc-gguf/"),
+            "cc-by-nc-sa-4.0"
+        );
+        assert!(offered("/canary-1b-v2-gguf/"), "cc-by-4.0 stays");
+    }
 
     #[test]
     fn only_edda_is_decoded_by_segment() {
