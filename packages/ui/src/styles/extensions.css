@@ -27,8 +27,10 @@ button.wt-app-dev { border: 0; margin: 0; cursor: pointer; -webkit-tap-highlight
 
 /* PhoneApp: cancel (finger slid off the button), and the waiting and problem states */
 .wt-app--cancel .wt-app-btn { transform: scale(.88); opacity: .7; }
-.wt-app--offline .wt-app-face, .wt-app--failed .wt-app-face, .wt-app--error .wt-app-face, .wt-app--paused .wt-app-face { opacity: .55; }
+.wt-app--offline .wt-app-ring, .wt-app--failed .wt-app-ring, .wt-app--error .wt-app-ring, .wt-app--paused .wt-app-ring { opacity: .35; }
+.wt-app--offline .wt-app-face svg, .wt-app--failed .wt-app-face svg, .wt-app--error .wt-app-face svg, .wt-app--paused .wt-app-face svg { opacity: .6; }
 .wt-app--offline .wt-app-halo, .wt-app--failed .wt-app-halo, .wt-app--error .wt-app-halo, .wt-app--paused .wt-app-halo { opacity: .12; }
+.wt-app-dev { white-space: nowrap; }
 .wt-app-label--long > span:last-child { font-size: 1.4em; line-height: 1.25; max-width: 18em; }
 
 @media (prefers-reduced-motion: reduce) {

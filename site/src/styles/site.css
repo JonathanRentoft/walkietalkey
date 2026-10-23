@@ -54,6 +54,8 @@ a:focus-visible, summary:focus-visible { outline: 2px solid #ffffff00; box-shado
 .page-body { padding-top: var(--space-12); }
 .prose { max-width: 760px; }
 .prose > :first-child { margin-top: 0; }
+.table + .prose > h2:first-child { margin-top: var(--space-16); }
+.table + .prose > p:first-child { margin-top: var(--space-6); }
 .prose h2 { margin: var(--space-16) 0 var(--space-4); font-size: 34px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; }
 .prose h3 { margin: var(--space-8) 0 var(--space-2); font-size: 22px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .prose p, .prose li { font-size: 17px; line-height: 1.65; }
