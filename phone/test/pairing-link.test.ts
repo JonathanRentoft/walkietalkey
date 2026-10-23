@@ -89,6 +89,18 @@ describe("pairing link (PHONE-11, PHONE-15)", () => {
     );
   });
 
+  it("returns to the app root from the folder form of the pairing path (nginx and IIS redirect /p to /p/)", () => {
+    expect(cleanAppUrl("https://intra.example.dk/walkie/p/#abc")).toBe(
+      "https://intra.example.dk/walkie/",
+    );
+    expect(cleanAppUrl("https://app.example.dk/p/index.html#abc")).toBe(
+      "https://app.example.dk/",
+    );
+    expect(cleanAppUrl("https://app.example.dk/pp/#abc")).toBe(
+      "https://app.example.dk/pp/",
+    );
+  });
+
   it("accepts the link from the app's own scanner, any origin", () => {
     const url = encodePairingUrl("https://intra.example.dk/walkie/", payload);
     expect(parseScanned(url).n).toBe("Jonathans MacBook");

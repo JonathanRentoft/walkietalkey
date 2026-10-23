@@ -33,6 +33,10 @@ Every managed value is locked. It wins over the user's own value, the setting sh
 | `UpdateChannel`           | `stable`, `beta`                                                           | `stable`                                                                                                       |                                                                                                                                                                                                           |
 | `Model`                   | model id                                                                   | by hardware                                                                                                    | Pins a speech model, for example `walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf`.                                                                                                                       |
 
+### Hosting the phone app for `PhoneAppUrl`
+
+The pairing QR code opens `<PhoneAppUrl>/p#<pairing data>`, so your server must answer `/p` with the app; the part after `#` never reaches the server. `bun run --cwd phone build` writes plain static files to `phone/dist/` with the app page three times: `index.html`, `p.html` (Cloudflare Pages serves it at `/p`) and `p/index.html` (nginx, IIS and most other servers redirect `/p` to `/p/` and serve that file; browsers keep the `#` part through the redirect, and the page's `<base href="../">` loads everything from the app's own folder). So copying `phone/dist/` as it is works at the root of a host or in a folder (`https://intra.example.com/diktat` as `PhoneAppUrl` serves `/diktat/p`), over `https://` only. `phone/dist/_headers` lists the response headers we send on Cloudflare (Content-Security-Policy, `Permissions-Policy: microphone=(self)` and `no-cache` for `sw.js` and the pages); set the same ones on your server.
+
 ## Templates
 
 - `deploy/windows/WalkieTalkey.admx` with `en-US` and `da-DK` ADML files: copy them into the Group Policy Central Store or import them into Intune (Administrative templates).

@@ -186,6 +186,11 @@ test("Hent recommends the visitor's platform and always shows both", async ({
       if (other === os)
         await expect(card).toHaveAttribute("data-recommended", "true");
       else await expect(card).not.toHaveAttribute("data-recommended", "true");
+      /* review finding 20: the first builds are unsigned, and every card says what to do about it */
+      await expect(card.locator(".unsigned")).toBeVisible();
+      await expect(card.locator(".unsigned")).toContainText(
+        other === "mac" ? "Åbn alligevel" : "Kør alligevel",
+      );
     }
     await ctx.close();
   }
@@ -224,6 +229,24 @@ test("keyboard focus is visible (6.17)", async ({ page }) => {
       page.evaluate(() => getComputedStyle(document.activeElement!).boxShadow),
     )
     .toContain("0px 0px 0px 4px");
+});
+
+test("the font licence is served next to the font, the trademark READMEs are not (spec 11, 14.8)", async ({
+  page,
+  request,
+}) => {
+  const fonts: string[] = [];
+  page.on("request", (r) => {
+    if (/albert-sans[^/]*\.woff2$/.test(r.url())) fonts.push(r.url());
+  });
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+  expect(fonts.length).toBeGreaterThan(0);
+  const licence = await request.get(new URL("OFL.txt", fonts[0]).href);
+  expect(licence.status()).toBe(200);
+  expect(licence.headers()["content-type"]).toContain("text/plain");
+  expect(await licence.text()).toContain("SIL OPEN FONT LICENSE Version 1.1");
+  expect((await request.get("/README.md")).status()).toBe(404);
 });
 
 test("/updates/beta.json is served as JSON", async ({ request }) => {

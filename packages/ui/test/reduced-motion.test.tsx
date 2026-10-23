@@ -132,4 +132,18 @@ describe("reduced motion", () => {
     expect(container.querySelectorAll(".wt-sc-row--in")).toHaveLength(4);
     expect(screen.getAllByText("Klar på MacBook").length).toBeGreaterThan(0);
   });
+
+  /* Self-corrections ("onsdag, nej, altså torsdag") come from the optional AI cleanup, not from the local steps
+     (spec 6.4, 6.10; review finding 17). */
+  it("SceneCleanup credits its self-correction to the AI cleanup", () => {
+    vi.useFakeTimers();
+    setReducedMotion(true);
+    const { container } = render(<SceneCleanup />);
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
+    const meta = container.querySelector(".wt-sc-card-meta")!;
+    expect(meta).toHaveTextContent("AI-oprydning");
+    expect(container).not.toHaveTextContent("Lokal oprydning");
+  });
 });

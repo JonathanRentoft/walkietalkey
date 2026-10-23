@@ -1,17 +1,24 @@
 /**
  * Build-time PWA pieces (PHONE-01): the web app manifest, a service worker that caches the app
  * shell (never audio: the app never fetches audio, and the worker caches only the files listed
- * here), `p.html` for the pairing path `/p`, and the e2e variant of public/_headers.
+ * here), `p.html` and `p/index.html` for the pairing path `/p`, the font licence (spec 11), and
+ * the e2e variant of public/_headers.
  */
 import { createHash } from "node:crypto";
 import {
   copyFileSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { join, relative, sep } from "node:path";
+import {
+  FONT_LICENCE_FILE,
+  copyFontLicence,
+  removeReadmes,
+} from "@walkietalkey/ui/build/assets";
 import type { Plugin, ResolvedConfig } from "vite";
 
 export const MANIFEST = {
@@ -63,7 +70,27 @@ function e2eHeaders(text: string): string {
 }
 
 /** Never cached by the service worker. */
-const NOT_SHELL = ["sw.js", "_headers", "_redirects", "p.html", "index.html"];
+const NOT_SHELL = [
+  "sw.js",
+  "_headers",
+  "_redirects",
+  "p.html",
+  "p/index.html",
+  "index.html",
+];
+
+/**
+ * The app page for `p/index.html`. Servers such as nginx and IIS answer `/p` by redirecting to
+ * `/p/` (browsers keep the `#` fragment) and serving `p/index.html`, so the page's relative URLs
+ * would point into `p/`. `<base href="../">` points them back at the app root, wherever the app
+ * lives (PhoneAppUrl may include a folder). Served at `/p` itself, `../` is the root as well.
+ */
+export function nestedPairingPage(html: string): string {
+  const base = '<base href="../" />';
+  const charset = html.match(/<meta charset[^>]*>/i);
+  if (charset) return html.replace(charset[0], charset[0] + base);
+  return html.replace(/<head[^>]*>/i, (head) => head + base);
+}
 
 function swSource(version: string, shell: string[]): string {
   return `/* WalkieTalkey service worker (PHONE-01): caches the app shell so the app opens without a
@@ -136,8 +163,18 @@ export function pwa(): Plugin {
       const out = config.build.outDir.startsWith("/")
         ? config.build.outDir
         : join(config.root, config.build.outDir);
-      // `/p#<payload>` (spec 5.3) is the same app: Cloudflare Pages serves p.html at /p.
+      // `/p#<payload>` (spec 5.3) is the same app: Cloudflare Pages serves p.html at /p, and a
+      // plain static server (nginx, IIS) serves p/index.html at /p/ (SITE-03, PRIV-03).
       copyFileSync(join(out, "index.html"), join(out, "p.html"));
+      mkdirSync(join(out, "p"), { recursive: true });
+      writeFileSync(
+        join(out, "p", "index.html"),
+        nestedPairingPage(readFileSync(join(out, "index.html"), "utf8")),
+      );
+      // Spec 11: the Albert Sans licence next to the font. Spec 14.8: the trademark READMEs of
+      // public/ stay in the repository.
+      copyFontLicence(out);
+      removeReadmes(out);
       if (config.mode === "e2e")
         writeFileSync(
           join(out, "_headers"),
@@ -149,6 +186,7 @@ export function pwa(): Plugin {
           (f) =>
             !NOT_SHELL.includes(f) &&
             !f.startsWith(".well-known/") &&
+            f.split("/").pop() !== FONT_LICENCE_FILE &&
             !f.endsWith(".map"),
         )
         .sort();

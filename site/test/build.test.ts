@@ -1,15 +1,19 @@
-/* Checks on the built site (run `bun run build` first). SITE-01 to SITE-08, PRIV-02, 14.8. */
+/* Checks on the built site (run `bun run build` first). SITE-01 to SITE-08, PRIV-02, 11, 14.8. */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { parse, type HTMLElement } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import {
-  CONTACT_EMAIL,
+  CONTACT_URL,
+  DISCUSSIONS_URL,
   OPERATOR,
   PAGES,
+  PHONE_APP_URL,
+  RELAY_URL,
   RELEASES_URL,
   REPO_URL,
   SECURITY_REPORT_URL,
+  SITE_URL,
   type PageKey,
 } from "../src/lib/site";
 
@@ -39,6 +43,9 @@ function visibleText(root: HTMLElement): string {
     .forEach((n) => n.remove());
   return clone.querySelector("body")!.textContent.replace(/\s+/g, " ");
 }
+/** visible text of one element */
+const textOf = (el: HTMLElement) =>
+  visibleText(parse(`<body>${el.toString()}</body>`));
 
 describe("pages (SITE-02)", () => {
   it.each(KEYS)(
@@ -56,7 +63,14 @@ describe("pages (SITE-02)", () => {
       ).toBe(PAGES[key].title);
       expect(
         d.querySelector('meta[property="og:image"]')!.getAttribute("content"),
-      ).toMatch(/^https:\/\/walkietalkey\.com\/.+\.jpg$/);
+      ).toMatch(new RegExp(`^${SITE_URL.replace(/\./g, "\\.")}/.+\\.jpg$`));
+      const canonical = key === "home" ? SITE_URL : SITE_URL + PAGES[key].path;
+      expect(
+        d.querySelector('link[rel="canonical"]')!.getAttribute("href"),
+      ).toBe(canonical);
+      expect(
+        d.querySelector('meta[property="og:url"]')!.getAttribute("content"),
+      ).toBe(canonical);
       expect(d.querySelector('link[rel="icon"]')!.getAttribute("href")).toMatch(
         /\.svg$/,
       );
@@ -157,6 +171,80 @@ describe("updates (SITE-08, DESK-112)", () => {
   });
 });
 
+describe("licence and trademark files (spec 11, 14.8)", () => {
+  const fonts = files.filter((f) => /\/albert-sans[^/]*\.woff2$/.test(f));
+  const ofl = readFileSync(
+    resolve(__dirname, "../../packages/ui/assets/fonts/OFL.txt"),
+    "utf8",
+  );
+  it("ships the SIL Open Font License next to every copy of Albert Sans", () => {
+    expect(fonts.length).toBeGreaterThan(0);
+    for (const font of fonts)
+      expect(readFileSync(join(dirname(font), "OFL.txt"), "utf8"), font).toBe(
+        ofl,
+      );
+  });
+  it("carries the trademark note next to the logo copy in public/, and never deploys it", () => {
+    expect(
+      readFileSync(resolve(__dirname, "../public/README.md"), "utf8"),
+    ).toContain("Ikke omfattet af kodelicensen. Se TRADEMARKS.md.");
+    expect(files.filter((f) => basename(f) === "README.md")).toEqual([]);
+  });
+});
+
+/* Review finding 18: nobody owns walkietalkey.com yet, so nothing on the site may send a visitor there. Canonical and
+   Open Graph URLs stay on the domain and come from SITE_URL, the one constant to change once it is registered. */
+describe("while walkietalkey.com is not registered (SITE-03, SITE-05, PRIV-02)", () => {
+  const all: [string, HTMLElement][] = [
+    ...KEYS.map((k): [string, HTMLElement] => [PAGES[k].path, doc(k)]),
+    ["/404", parse(readFileSync(join(dist, "404.html"), "utf8"))],
+  ];
+  it("takes the site's own address from SITE_URL, also in the Astro config", () => {
+    expect(SITE_URL).toBe("https://walkietalkey.com");
+    const config = readFileSync(
+      resolve(__dirname, "../astro.config.mjs"),
+      "utf8",
+    );
+    expect(config).toMatch(/site: SITE_URL/);
+    expect(config).not.toMatch(/walkietalkey\.com/);
+  });
+  it.each(all)(
+    "%s links to no address on the domain and to no e-mail address",
+    (_path, d) => {
+      for (const a of d.querySelectorAll("a[href]")) {
+        const href = a.getAttribute("href")!;
+        expect(href).not.toMatch(/walkietalkey\.com/);
+        expect(href).not.toMatch(/^mailto:/);
+      }
+      expect(visibleText(d)).not.toMatch(
+        /@walkietalkey\.com|app\.walkietalkey\.com|relay\.walkietalkey\.com/,
+      );
+    },
+  );
+  it.each(all)("%s has a Kontakt link in the footer to GitHub", (_path, d) => {
+    const kontakt = d
+      .querySelectorAll("footer a")
+      .find((a) => a.textContent === "Kontakt")!;
+    expect(kontakt.getAttribute("href")).toBe(CONTACT_URL);
+  });
+  it("sends questions to GitHub Discussions", () => {
+    expect(CONTACT_URL).toBe(DISCUSSIONS_URL);
+    expect(DISCUSSIONS_URL).toBe(REPO_URL + "/discussions");
+  });
+  it("links the phone app and names the relay at their test deployments", () => {
+    expect(PHONE_APP_URL).toBe("https://walkietalkey-app.pages.dev");
+    expect(RELAY_URL).toMatch(
+      /^wss:\/\/walkietalkey-relay\.[\w-]+\.workers\.dev$/,
+    );
+    const hent = doc("hent");
+    const link = hent.querySelector(`a[href="${PHONE_APP_URL}"]`)!;
+    expect(link.textContent).toBe("walkietalkey-app.pages.dev");
+    const business = visibleText(doc("business"));
+    expect(business).toContain(PHONE_APP_URL);
+    expect(business).toContain(RELAY_URL);
+  });
+});
+
 describe("copy rules (spec 2.6, design system)", () => {
   it.each(KEYS)(
     "%s has no em dash, exclamation mark, 'direkte' or 'gratis for private'",
@@ -240,7 +328,39 @@ describe("Forside is ForsideKomplet", () => {
       .map((a) => [a.textContent, a.getAttribute("href")]);
     expect(links).toContainEqual(["Hent gratis", "/hent"]);
     expect(links).toContainEqual(["Se koden på GitHub", REPO_URL]);
-    expect(links).toContainEqual(["Skriv til os", "mailto:" + CONTACT_EMAIL]);
+    expect(links).toContainEqual(["Skriv til os", CONTACT_URL]);
+  });
+  /* Review finding 6: other computers never get the text (spec 12.1, PHONE-40/41), as Privatliv and Sådan virker det say. */
+  it("says that only the computer you use gets the text", () => {
+    const card = d
+      .querySelectorAll(".bento .wt-show")
+      .find(
+        (c) =>
+          c.querySelector(".wt-show-title")?.textContent ===
+          "Til den computer, du sidder ved",
+      )!;
+    const text = card.querySelector(".wt-show-text")!.textContent;
+    expect(text).toContain("Den computer, du bruger, får teksten.");
+    expect(text).toContain("De andre får den ikke.");
+    expect(visibleText(d)).not.toMatch(/historikken/);
+    expect(visibleText(doc("privacy"))).toContain(
+      "Den sendes aldrig til telefonen eller til andre computere.",
+    );
+    expect(visibleText(doc("how"))).toContain(
+      "Teksten lander kun på den, du sender til.",
+    );
+  });
+  /* Review finding 17: self-corrections need the optional AI cleanup, which is off by default (spec 6.10, PRIV-04). */
+  it("ties every self-correction claim to the optional AI cleanup", () => {
+    const claims = /omformuleringer|onsdag, nej, torsdag|nej, jeg mente/i;
+    const blocks = d
+      .querySelectorAll("main p")
+      .filter((p) => claims.test(p.textContent));
+    expect(blocks.length).toBe(3);
+    for (const p of blocks)
+      expect(p.textContent, p.textContent).toMatch(
+        /slår du AI-oprydning til|med AI-oprydning, hvis du slår den til/i,
+      );
   });
 });
 
@@ -254,6 +374,19 @@ describe("content of the other pages", () => {
     for (const el of d.querySelectorAll("[data-platform]"))
       expect(el.hasAttribute("hidden")).toBe(false);
   });
+  /* Review finding 20: until the signing secrets exist, the builds are not signed by Apple or Microsoft (OSS-21). */
+  it("Hent says on each card that the first builds are unsigned, and what the visitor then does", () => {
+    const d = doc("hent");
+    const mac = textOf(d.querySelector('[data-platform="mac"]')!),
+      win = textOf(d.querySelector('[data-platform="win"]')!);
+    expect(mac).toContain("endnu ikke signeret af Apple");
+    expect(mac).toContain("Systemindstillinger › Anonymitet og sikkerhed");
+    expect(mac).toContain("Åbn alligevel");
+    expect(win).toContain("endnu ikke signeret af Microsoft");
+    expect(win).toContain("Flere oplysninger › Kør alligevel");
+    for (const card of d.querySelectorAll("[data-platform] .unsigned"))
+      expect(card.hasAttribute("hidden")).toBe(false);
+  });
   it("Privatliv states the data table, the operator, Cloudflare as processor and the contact (PRIV-02)", () => {
     const d = doc("privacy");
     const text = visibleText(d);
@@ -262,7 +395,8 @@ describe("content of the other pages", () => {
     expect(text).toContain("Cloudflare");
     expect(text).toContain("databehandler");
     expect(text).toContain("FileVault eller BitLocker");
-    expect(d.querySelector(`a[href="mailto:${CONTACT_EMAIL}"]`)).not.toBeNull();
+    expect(d.querySelector(`a[href="${DISCUSSIONS_URL}"]`)).not.toBeNull();
+    expect(d.querySelector(`a[href="${SECURITY_REPORT_URL}"]`)).not.toBeNull();
   });
   it("Sikkerhed explains private reporting through GitHub, answered within 7 days", () => {
     const d = doc("security");
@@ -272,6 +406,15 @@ describe("content of the other pages", () => {
     expect(
       d.querySelectorAll("table.threats tbody tr").length,
     ).toBeGreaterThanOrEqual(9);
+  });
+  /* Review finding 5: no claim of Apple notarisation or Authenticode until signed releases exist (principle 6). */
+  it("Sikkerhed claims only the signature the updates really have", () => {
+    const text = visibleText(doc("security"));
+    expect(text).not.toMatch(
+      /notarisering|Authenticode|styresystemets signatur/i,
+    );
+    expect(text).toContain("Opdateringer er signeret med vores egen nøgle.");
+    expect(text).toContain("Signering fra Apple og Microsoft kommer senere.");
   });
   it("Open source names the licence, Handy and every credit", () => {
     const text = visibleText(doc("oss"));
@@ -289,6 +432,27 @@ describe("content of the other pages", () => {
     ])
       expect(text).toContain(s);
     expect(doc("oss").querySelector(`a[href="${REPO_URL}"]`)).not.toBeNull();
+  });
+  /* Review finding 19: Ekko v1 Tiny, the fast model, with its layered licence (spec 11, DESK-35). */
+  it("Open source credits Ekko v1 Tiny with NVIDIA's notice", () => {
+    const d = doc("oss");
+    const row = d
+      .querySelectorAll("table.credits tbody tr")
+      .find((r) => r.querySelector("td")!.textContent === "Ekko v1 Tiny")!;
+    expect(row.querySelector("a")!.getAttribute("href")).toBe(
+      "https://huggingface.co/RyeAI/ekko-v1-tiny",
+    );
+    const cells = textOf(row);
+    for (const s of [
+      "RyeAI",
+      "NVIDIA Open Model License",
+      "CC BY 4.0",
+      "CoRal",
+    ])
+      expect(cells).toContain(s);
+    expect(visibleText(d)).toContain(
+      "Licensed by NVIDIA Corporation under the NVIDIA Open Model License",
+    );
   });
   it("Virksomheder lists the managed settings, self-hosting and paid help as a service", () => {
     const text = visibleText(doc("business"));

@@ -380,6 +380,10 @@ kbd.inline {
   margin: 0;
   padding-left: 1.2em;
 }
+.card p.unsigned {
+  font-size: 14px;
+  line-height: 1.5;
+}
 .card .wt-shiny {
   align-self: flex-start;
   margin-top: auto;

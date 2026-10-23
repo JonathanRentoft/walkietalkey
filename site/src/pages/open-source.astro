@@ -5,11 +5,15 @@ import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
 import { CONTRIBUTING_URL, LICENSE_URL, PAGES, REPO_URL } from "../lib/site";
 
+const NVIDIA_OML_URL = "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/";
+
 // TODO(copy): what each project does for WalkieTalkey
 const credits: [string, string, string, string][] = [
   ["Handy", "MIT, Copyright (c) CJ Pais", "Appen bygger på Handy: optagelse med en tast, lokale talemodeller, indsættelse og historik.", "https://github.com/cjpais/Handy"],
   ["transcribe.cpp og ggml", "MIT", "Motoren, der kører talemodellen på din computer.", "https://github.com/handy-computer/transcribe.cpp"],
   ["Edda v0.2", "Apache-2.0, Alexandra Instituttet", "Den danske talemodel, bygget på Whisper large-v3-turbo (MIT, OpenAI) og trænet på omkring 2.600 timers dansk tale.", "https://huggingface.co/danish-foundation-models/edda-v0.2"],
+  /* TODO(copy): the Ekko v1 Tiny row (review finding 19; licences as in models/ekko-v1-tiny/README.md) */
+  ["Ekko v1 Tiny", "NVIDIA Open Model License (grundmodellen fra NVIDIA), CC BY 4.0 (RyeAI's ændringer) og CoRal-vilkårene, RyeAI", "En hurtig dansk talemodel til langsomme computere, bygget på NVIDIA Parakeet.", "https://huggingface.co/RyeAI/ekko-v1-tiny"],
   ["Ekko PnC", "CC BY 4.0, RyeAI", "Sætter punktummer, kommaer og store bogstaver.", "https://huggingface.co/RyeAI/ekko-pnc"],
   ["ONNX Runtime", "MIT, Microsoft", "Kører tegnsætningsmodellen.", "https://github.com/microsoft/onnxruntime"],
   ["Silero VAD", "MIT", "Finder, hvor der er tale i lyden.", "https://github.com/snakers4/silero-vad"],
@@ -40,6 +44,9 @@ const credits: [string, string, string, string][] = [
     </div>
     <div class="prose">
       <p>Edda og Ekko er trænet på data med vilkår fra CoRal-projektet: ingen talesyntese og ingen biometrisk identifikation. Diktering er i orden.</p>
+      <!-- TODO(copy): the label "Ekko v1 Tiny:". The sentence is NVIDIA's required notice, verbatim in English
+           (NVIDIA Open Model License 3.1, docs/MODELS.md); keep it as it is. -->
+      <p>Ekko v1 Tiny: <span lang="en">Licensed by NVIDIA Corporation under the <a href={NVIDIA_OML_URL}>NVIDIA Open Model License</a>.</span></p>
 
       <h2>Vær med</h2>
       <p>Du behøver ingen tilladelse til at hente koden, bygge appen eller lave din egen udgave. Bidrag modtages under Apache-2.0, uden en særlig aftale at skrive under på. Sådan bygger og tester du hver del, står i <a href={CONTRIBUTING_URL}>CONTRIBUTING.md</a>.</p>

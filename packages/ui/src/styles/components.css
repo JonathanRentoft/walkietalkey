@@ -2880,29 +2880,6 @@ body {
   opacity: 1;
   transform: none;
 }
-.wt-sc-dev-hist {
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #1b1a19d9;
-  color: #f4f1ec;
-  font: 500 10.5px/1 var(--font-sans);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translate(-50%, 8px);
-  transition:
-    opacity 0.4s var(--ease-flow),
-    transform 0.5s var(--ease-flow);
-}
-.wt-sc-dev-hist--in {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
 .wt-sc-dev-phone {
   position: absolute;
   left: 50%;
@@ -3088,7 +3065,6 @@ body {
   .wt-sc-row,
   .wt-sc-ok,
   .wt-sc-dev-note,
-  .wt-sc-dev-hist,
   .wt-sc-dev-dot,
   .wt-sc-dev-lines path {
     animation: none !important;

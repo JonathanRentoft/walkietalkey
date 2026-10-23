@@ -2,14 +2,15 @@
 /* SITE-02 Spørgsmål. The first four answers are ForsideKomplet's; the rest are new. */
 import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
-import { CONTACT_EMAIL, PAGES } from "../lib/site";
+import { DISCUSSIONS_URL, PAGES } from "../lib/site";
 
 const faq: [string, string][] = [
   /* from ForsideKomplet */
   ["Er det virkelig gratis?", "Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den."],
   ["Hvor bliver min stemme af?", "Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den."],
   ["Hvilken talemodel bruger I?", "Edda, en dansk udgave af Whisper, der er trænet på over 2.600 timers dansk tale. Den kører på din egen computer."],
-  ["Kan den forstå, når jeg blander dansk og engelsk?", "Ja, og din ordliste hjælper med fagord og navne. Oprydningen retter også, når du siger \"nej, jeg mente\"."],
+  /* TODO(copy): the answer names the optional AI cleanup, as on the homepage (review finding 17) */
+  ["Kan den forstå, når jeg blander dansk og engelsk?", "Ja, og din ordliste hjælper med fagord og navne. Slår du AI-oprydning til, retter den også, når du siger \"nej, jeg mente\"."],
   /* TODO(copy): the questions and answers below */
   ["Skal jeg have en konto?", "Nej. Der er intet login, ingen e-mail og ingen adgangskode. Telefonen og computeren finder hinanden ved, at du scanner en kode."],
   ["Virker det uden internet?", "Ja, når du dikterer med tasten. Talemodellen kører på computeren. Telefonen skal bruge internet, fordi lyden går gennem relæet til din computer."],
@@ -28,7 +29,7 @@ const faq: [string, string][] = [
     <div class="prose faq-list">
       {faq.map(([q, a], i) => <details open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}
       <!-- TODO(copy) -->
-      <p class="muted" style="margin-top: var(--space-8)">Mere om <a href={PAGES.privacy.path}>privatliv</a>, <a href={PAGES.security.path}>sikkerhed</a> og <a href={PAGES.business.path}>virksomheder</a>. Eller skriv til <a href={"mailto:" + CONTACT_EMAIL}>{CONTACT_EMAIL}</a>.</p>
+      <p class="muted" style="margin-top: var(--space-8)">Mere om <a href={PAGES.privacy.path}>privatliv</a>, <a href={PAGES.security.path}>sikkerhed</a> og <a href={PAGES.business.path}>virksomheder</a>. Eller spørg i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>.</p>
     </div>
   </main>
 </Base>

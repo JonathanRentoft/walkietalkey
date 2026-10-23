@@ -29,4 +29,4 @@ The user-facing privacy policy is the website's Danish page `/privatliv` (`site/
 
 ## Operator
 
-The operator of the public relay and the website, the name in the privacy policy and the contact address, depend on the owner's decision 18.1 (the owner personally, or Navigent.io ApS). The website has one marked placeholder for it (`OPERATOR` in `site/src/lib/site.ts`). Contact: kontakt@walkietalkey.com (forwarded with Cloudflare Email Routing once the domain is set up).
+The operator of the public relay and the website, the name in the privacy policy and the contact address, depend on the owner's decision 18.1 (the owner personally, or Navigent.io ApS). The website has one marked placeholder for it (`OPERATOR` in `site/src/lib/site.ts`). Contact: kontakt@walkietalkey.com, forwarded with Cloudflare Email Routing, once the domain is registered and set up. Until then the privacy policy sends questions to GitHub Discussions and private requests (for example about a person's own data) to GitHub's private reporting form with "Privatliv" in the title (`DISCUSSIONS_URL`, `SECURITY_REPORT_URL` and `CONTACT_URL` in `site/src/lib/site.ts`).

@@ -22,5 +22,5 @@
       "@testing-library/jest-dom/vitest"
     ]
   },
-  "include": ["src", "test", "scripts", "vitest.config.ts"]
+  "include": ["src", "test", "scripts", "build", "vitest.config.ts"]
 }

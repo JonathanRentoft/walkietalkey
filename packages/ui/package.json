@@ -17,11 +17,13 @@
     "./components.css": "./src/styles/components.css",
     "./extensions.css": "./src/styles/extensions.css",
     "./assets/*": "./assets/*",
+    "./build/assets": "./build/assets.ts",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
     "assets",
+    "build",
     "tokens"
   ],
   "scripts": {
