@@ -21,5 +21,18 @@
     "enabled": true,
     "logs": { "enabled": true, "invocation_logs": false },
     "traces": { "enabled": false }
+  },
+  "env": {
+    // Local integration tests only (`wrangler dev --env integration`); never deployed. Same
+    // relay, but per-IP limits high enough for many test rooms from 127.0.0.1 per minute.
+    "integration": {
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+      },
+      "ratelimits": [
+        { "name": "CREATE_LIMITER", "namespace_id": "4801", "simple": { "limit": 1000, "period": 60 } },
+        { "name": "JOIN_LIMITER", "namespace_id": "4802", "simple": { "limit": 1000, "period": 60 } }
+      ]
+    }
   }
 }

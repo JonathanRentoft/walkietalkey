@@ -139,8 +139,12 @@ export class ScriptedPhone {
     return b64uDecode((await socket.control("challenge")).n, 32);
   }
 
-  /** Scans the pairing QR URL, joins the room, derives the pair keys, sends device_info. */
-  async pair(url: string): Promise<void> {
+  /**
+   * Scans the pairing QR URL, joins the room, derives the pair keys, sends device_info.
+   * Test knobs: `corruptMac` sends a wrong join MAC (the computer must refuse, SEC-03);
+   * `skipDeviceInfo` never sends a name (DESK-62 "en telefon uden navn").
+   */
+  async pair(url: string, knobs: { corruptMac?: boolean; skipDeviceInfo?: boolean } = {}): Promise<void> {
     this.pairing = decodePairingUrl(url, { allowInsecureLocalhost: this.options.allowInsecureLocalhost });
     const p = this.pairing;
     const socket = await RelaySocket.open(this.socketUrl("join"));
@@ -149,6 +153,7 @@ export class ScriptedPhone {
       const ch = await this.challenge(socket);
       const sig = await signChallenge(this.keys.signing.privateKey, "wt-join-v1", p.r, ch);
       const mac = await computeJoinMac(p.s, p.r, this.keys.signingSpki, this.keys.agreementSpki);
+      if (knobs.corruptMac) mac[0]! ^= 0xff;
       socket.sendControl({
         t: "join",
         a: b64uEncode(p.a),
@@ -163,7 +168,7 @@ export class ScriptedPhone {
       if (e instanceof SocketClosedError && e.code === CloseCode.NotAuthorised) {
         // The join may have succeeded with its answer lost; a member can simply authenticate.
         await this.connect();
-        await this.sendDeviceInfo();
+        if (!knobs.skipDeviceInfo) await this.sendDeviceInfo();
         return;
       }
       throw e;
@@ -171,7 +176,7 @@ export class ScriptedPhone {
     await this.deriveFromOwner(members);
     this.adopt(socket, members);
     this.emit({ event: "paired", deviceId: this.deviceId, computerId: b64uEncode(this.computerId!) });
-    await this.sendDeviceInfo();
+    if (!knobs.skipDeviceInfo) await this.sendDeviceInfo();
   }
 
   /** The computer's device id comes from the member list; then both direction keys. */
@@ -422,7 +427,7 @@ async function stdioMode(insecure: boolean, name: string | undefined): Promise<v
       try {
         switch (cmd.cmd) {
           case "pair":
-            await phone.pair(String(cmd.url));
+            await phone.pair(String(cmd.url), { corruptMac: cmd.corruptMac === true, skipDeviceInfo: cmd.skipDeviceInfo === true });
             return reply({ ok: true, deviceId: phone.deviceId, computerId: b64uEncode(phone.computerId!) });
           case "connect":
             await phone.connect();
