@@ -146,4 +146,18 @@ mod tests {
         assert!(settings.filler_word_removal_enabled, "DESK-44");
         assert!(!settings.post_process_enabled, "cleanup is WalkieTalkey's own mode");
     }
+
+    #[test]
+    fn kept_handy_defaults_cover_cancel_paste_restore_and_login() {
+        let settings = get_default_settings();
+        // DESK-25: Esc while recording cancels without output (Handy's binding).
+        assert_eq!(settings.bindings["cancel"].current_binding, "escape");
+        // DESK-53: auto-paste restores the previous clipboard afterwards.
+        assert_eq!(
+            settings.clipboard_handling,
+            crate::settings::ClipboardHandling::DontModify
+        );
+        // DESK-97: off until onboarding finishes, which turns it on.
+        assert!(!settings.autostart_enabled);
+    }
 }
