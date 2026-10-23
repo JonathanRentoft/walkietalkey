@@ -54,6 +54,11 @@ fn with_enigo<T: Send + 'static>(
 }
 
 fn write_text_to_clipboard(app_handle: &AppHandle, text: &str) -> Result<(), String> {
+    // WalkieTalkey (DESK-54): this computer only, unless sharing is on.
+    if let Some(result) = crate::walkietalkey::clipboard::write_private(app_handle, text) {
+        return result;
+    }
+
     #[cfg(target_os = "linux")]
     if is_wayland() && is_wl_copy_available() {
         info!("Using wl-copy for clipboard write on Wayland");

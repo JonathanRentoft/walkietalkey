@@ -14,9 +14,12 @@ use crate::settings::get_settings;
 /// Runs once the managers exist. Loads the speech model right away, so the
 /// first dictation after starting is as fast as the rest (DESK-45).
 pub mod bench;
+pub mod clipboard;
 pub mod commands;
+pub mod history;
 pub mod keys;
 pub mod managed;
+pub mod output;
 pub mod settings;
 pub mod store;
 

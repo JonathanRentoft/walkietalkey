@@ -647,7 +647,9 @@ fn default_history_limit() -> usize {
 }
 
 fn default_recording_retention_period() -> RecordingRetentionPeriod {
-    RecordingRetentionPeriod::PreserveLimit
+    // WalkieTalkey: retention is its own (walkietalkey::history, DESK-91), so
+    // Handy's count- and time-based cleanup stays off.
+    RecordingRetentionPeriod::Never
 }
 
 fn default_audio_feedback_volume() -> f32 {
