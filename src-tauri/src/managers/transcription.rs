@@ -17,7 +17,7 @@ use anyhow::Result;
 use chunked::ChunkedDecode;
 use live::LiveSession;
 use log::{debug, error, info, warn};
-use policy::{batch_decode, live_decode, BatchDecode, ModelTraits};
+use policy::{batch_decode, live_decode, BatchDecode, LiveDecode, ModelTraits};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -109,6 +109,23 @@ enum StreamCmd {
 }
 
 type StreamFinalizeReply = Result<Option<RunOutcome>, EngineError>;
+
+/// WalkieTalkey: the feed end of a phone dictation's own live decode
+/// ([`TranscriptionManager::start_side_stream`]).
+pub struct SideStream {
+    tx: mpsc::Sender<StreamCmd>,
+}
+
+impl SideStream {
+    pub fn feed(&self, pcm: Vec<f32>) {
+        let _ = self.tx.send(StreamCmd::Feed(pcm));
+    }
+
+    /// Abandons the decode (the phone cancelled).
+    pub fn cancel(self) {
+        let _ = self.tx.send(StreamCmd::Cancel);
+    }
+}
 
 /// Routes real-time audio frames to the active streaming worker. Shared between
 /// the [`TranscriptionManager`] (opens/closes the route) and the audio recorder's
@@ -826,6 +843,83 @@ impl TranscriptionManager {
         // The channel closed without finalize/cancel; dropping the session
         // resets the worker's stream. `_worker` drops after, clearing this
         // worker's flags.
+    }
+
+    /// WalkieTalkey (DESK-61): a live decode of its own for a phone
+    /// dictation, fed as the phone's audio arrives and independent of the key
+    /// recording's stream route, so a key release never finalizes it. Chunks
+    /// from both decode on the one engine in turn; their outputs are put in
+    /// order by `walkietalkey::sequence` (DESK-27).
+    pub fn start_side_stream(&self) -> SideStream {
+        let (tx, rx) = mpsc::channel();
+        let manager = self.clone();
+        thread::spawn(move || manager.run_side_stream(rx));
+        SideStream { tx }
+    }
+
+    fn run_side_stream(&self, rx: mpsc::Receiver<StreamCmd>) {
+        {
+            let mut is_loading = self.is_loading.lock().unwrap();
+            while *is_loading {
+                is_loading = self.loading_condvar.wait(is_loading).unwrap();
+            }
+        }
+        let model_id = self.get_current_model().unwrap_or_default();
+        let Some(info) = self.engine.loaded() else {
+            drain_until_finalize(rx);
+            return;
+        };
+        let mode = live_decode(
+            ModelTraits::of(&info),
+            get_settings(&self.app_handle).long_form_chunking,
+        );
+        // A streaming model's stream belongs to the key recording; a phone
+        // dictation then decodes in batch when it ends.
+        if mode != LiveDecode::Chunked {
+            drain_until_finalize(rx);
+            return;
+        }
+        let Some(mut session) = LiveSession::begin(self, mode, &info, &model_id) else {
+            drain_until_finalize(rx);
+            return;
+        };
+        while let Ok(cmd) = rx.recv() {
+            match cmd {
+                StreamCmd::Feed(pcm) => {
+                    self.touch_activity();
+                    session.feed(pcm);
+                }
+                StreamCmd::Finalize { reply, samples } => {
+                    let _ = reply.send(session.finish(samples));
+                    return;
+                }
+                StreamCmd::Cancel => return,
+            }
+        }
+    }
+
+    /// The final text of a side stream's recording: its live result, or a
+    /// batch run of `samples` when there is none.
+    pub fn transcribe_side(&self, side: SideStream, samples: Vec<f32>) -> Result<String> {
+        let started = Instant::now();
+        let (reply, reply_rx) = mpsc::channel();
+        let live = if side
+            .tx
+            .send(StreamCmd::Finalize {
+                reply,
+                samples: samples.len(),
+            })
+            .is_ok()
+        {
+            match reply_rx.recv() {
+                Ok(Ok(outcome)) => outcome,
+                Ok(Err(e)) => return Err(e.into()),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        self.complete(started, samples, live)
     }
 
     /// Flush the live decode (a stream, or chunks decoded while recording)
