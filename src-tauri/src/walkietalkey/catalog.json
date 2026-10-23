@@ -12,7 +12,9 @@
       "license": "apache-2.0",
       "family": "whisper",
       "parameters": "809M",
-      "languages": ["da"],
+      "languages": [
+        "da"
+      ],
       "capabilities": {
         "streaming": false,
         "translate": false,
@@ -28,6 +30,37 @@
           "filename": "edda-v0.2-Q8_0.gguf",
           "size": 886381920,
           "sha256": "63ac884ad3d436642e8599ed3bda6c2b3456a0bb939a497c796589dee3f3b18d"
+        }
+      }
+    },
+    {
+      "id": "ekko-v1-tiny",
+      "name": "Ekko v1 Tiny",
+      "description": "Hurtig dansk talemodel fra RyeAI til langsommere computere. Tegnsætning tilføjes bagefter.",
+      "repository": "walkietalkey/ekko-v1-tiny-gguf",
+      "revision": "main",
+      "previousRevisions": [],
+      "license": "other",
+      "family": "parakeet",
+      "parameters": "110M",
+      "languages": [
+        "da"
+      ],
+      "capabilities": {
+        "streaming": false,
+        "translate": false,
+        "languageDetection": false,
+        "timestamps": true
+      },
+      "quant": "Q8_0",
+      "role": "asr",
+      "curated": true,
+      "minEngine": "0.4.0",
+      "files": {
+        "Q8_0": {
+          "filename": "ekko-v1-tiny-Q8_0.gguf",
+          "size": 133940896,
+          "sha256": "ccb40917c85575a6045b63e97896b882d778de1632bd99296dd94a6dc4039a1d"
         }
       }
     }

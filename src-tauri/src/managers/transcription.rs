@@ -1020,10 +1020,12 @@ impl TranscriptionManager {
             return Ok(String::new());
         }
 
-        let outcome = match live {
+        let mut outcome = match live {
             Some(outcome) => outcome,
             None => self.decode_batch(audio)?,
         };
+        // WalkieTalkey (DESK-41): punctuation before filler removal (6.4).
+        outcome.text = crate::walkietalkey::punctuation::apply(&self.app_handle, outcome.text);
         let settings = get_settings(&self.app_handle);
         let final_result = finish_text(outcome, &settings);
 

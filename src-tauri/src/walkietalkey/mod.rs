@@ -28,6 +28,7 @@ pub mod notify;
 pub mod output;
 pub mod pill;
 pub mod presence;
+pub mod punctuation;
 pub mod relay;
 pub mod secrets;
 pub mod sequence;
