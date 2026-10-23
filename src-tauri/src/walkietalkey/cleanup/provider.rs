@@ -23,7 +23,11 @@ pub trait Provider: Send + Sync {
     fn label(&self) -> String;
     /// Whether the text leaves this computer (consent, DESK-82).
     fn is_cloud(&self) -> bool;
-    fn complete<'a>(&'a self, system: &'a str, user: &'a str) -> BoxFuture<'a, Result<String, String>>;
+    fn complete<'a>(
+        &'a self,
+        system: &'a str,
+        user: &'a str,
+    ) -> BoxFuture<'a, Result<String, String>>;
     /// Opens the connection ahead of the call (DESK-87). Best effort.
     fn warm(&self) {}
 }
@@ -45,7 +49,8 @@ pub struct HttpProvider {
     pub format: Format,
 }
 
-static CLIENTS: Lazy<Mutex<HashMap<String, reqwest::Client>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static CLIENTS: Lazy<Mutex<HashMap<String, reqwest::Client>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// The pooled client for an endpoint, created once and reused (DESK-87).
 fn client_for(base_url: &str) -> reqwest::Client {
@@ -77,11 +82,15 @@ impl HttpProvider {
         if let Some(key) = self.api_key.as_deref().filter(|k| !k.is_empty()) {
             match self.format {
                 Format::OpenAi => {
-                    let value = HeaderValue::from_str(&format!("Bearer {key}")).map_err(|e| e.to_string())?;
+                    let value = HeaderValue::from_str(&format!("Bearer {key}"))
+                        .map_err(|e| e.to_string())?;
                     headers.insert(AUTHORIZATION, value);
                 }
                 Format::Anthropic => {
-                    headers.insert("x-api-key", HeaderValue::from_str(key).map_err(|e| e.to_string())?);
+                    headers.insert(
+                        "x-api-key",
+                        HeaderValue::from_str(key).map_err(|e| e.to_string())?,
+                    );
                 }
             }
         }
@@ -148,16 +157,16 @@ impl HttpProvider {
 
     fn answer(&self, value: &Value) -> Option<String> {
         match self.format {
-            Format::OpenAi => value["choices"][0]["message"]["content"].as_str().map(str::to_string),
-            Format::Anthropic => value["content"]
-                .as_array()
-                .map(|parts| {
-                    parts
-                        .iter()
-                        .filter_map(|p| p["text"].as_str())
-                        .collect::<Vec<_>>()
-                        .join("")
-                }),
+            Format::OpenAi => value["choices"][0]["message"]["content"]
+                .as_str()
+                .map(str::to_string),
+            Format::Anthropic => value["content"].as_array().map(|parts| {
+                parts
+                    .iter()
+                    .filter_map(|p| p["text"].as_str())
+                    .collect::<Vec<_>>()
+                    .join("")
+            }),
         }
     }
 }
@@ -172,7 +181,11 @@ impl Provider for HttpProvider {
         !(base.starts_with("http://localhost") || base.starts_with("http://127.0.0.1"))
     }
 
-    fn complete<'a>(&'a self, system: &'a str, user: &'a str) -> BoxFuture<'a, Result<String, String>> {
+    fn complete<'a>(
+        &'a self,
+        system: &'a str,
+        user: &'a str,
+    ) -> BoxFuture<'a, Result<String, String>> {
         Box::pin(async move {
             let reasoning_off = self.format == Format::OpenAi;
             let (status, value) = self.post(&self.body(system, user, reasoning_off)).await?;
@@ -185,7 +198,8 @@ impl Provider for HttpProvider {
             if !(200..300).contains(&status) {
                 return Err(format!("HTTP {status}"));
             }
-            self.answer(&value).ok_or_else(|| "no answer in the response".to_string())
+            self.answer(&value)
+                .ok_or_else(|| "no answer in the response".to_string())
         })
     }
 
@@ -219,7 +233,11 @@ impl Provider for AppleProvider {
         false
     }
 
-    fn complete<'a>(&'a self, system: &'a str, user: &'a str) -> BoxFuture<'a, Result<String, String>> {
+    fn complete<'a>(
+        &'a self,
+        system: &'a str,
+        user: &'a str,
+    ) -> BoxFuture<'a, Result<String, String>> {
         let (system, user) = (system.to_string(), user.to_string());
         Box::pin(async move {
             #[cfg(target_os = "macos")]
@@ -263,7 +281,10 @@ mod tests {
         assert_eq!(body["temperature"], json!(0));
         assert_eq!(body["reasoning_effort"], json!("none"));
         assert_eq!(body["messages"][0]["role"], "system");
-        assert_eq!(body["messages"][1]["content"], "<dictation>\nhej\n</dictation>");
+        assert_eq!(
+            body["messages"][1]["content"],
+            "<dictation>\nhej\n</dictation>"
+        );
     }
 
     #[test]
@@ -298,7 +319,11 @@ mod tests {
     /// A fake OpenAI-compatible server: answers every request with a chat
     /// completion that echoes the dictation in upper case, records the
     /// requests, and counts TCP connections.
-    async fn fake_server() -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+    async fn fake_server() -> (
+        String,
+        std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+        std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    ) {
         use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::{Arc, Mutex};
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -322,22 +347,36 @@ mod tests {
                         };
                         buf.extend_from_slice(&chunk[..n]);
                         // One request per loop: headers, then Content-Length body.
-                        let Some(end) = buf.windows(4).position(|w| w == b"\r\n\r\n") else { continue };
+                        let Some(end) = buf.windows(4).position(|w| w == b"\r\n\r\n") else {
+                            continue;
+                        };
                         let head = String::from_utf8_lossy(&buf[..end]).to_string();
                         let len = head
                             .lines()
-                            .find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse::<usize>().unwrap()))
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(|v| v.trim().parse::<usize>().unwrap())
+                            })
                             .unwrap_or(0);
                         if buf.len() < end + 4 + len {
                             continue;
                         }
-                        let body = String::from_utf8_lossy(&buf[end + 4..end + 4 + len]).to_string();
+                        let body =
+                            String::from_utf8_lossy(&buf[end + 4..end + 4 + len]).to_string();
                         buf.drain(..end + 4 + len);
                         reqs.lock().unwrap().push(format!("{head}\n\n{body}"));
                         let answer = if head.starts_with("POST") {
                             let value: Value = serde_json::from_str(&body).unwrap();
-                            let user = value["messages"][1]["content"].as_str().unwrap_or("").to_string();
-                            let text = user.replace("<dictation>", "").replace("</dictation>", "").trim().to_uppercase();
+                            let user = value["messages"][1]["content"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string();
+                            let text = user
+                                .replace("<dictation>", "")
+                                .replace("</dictation>", "")
+                                .trim()
+                                .to_uppercase();
                             json!({"choices": [{"message": {"content": text}}]}).to_string()
                         } else {
                             json!({"data": []}).to_string()
@@ -377,15 +416,23 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
-        let first = provider.complete("sys", "<dictation>\nvi ses\n</dictation>").await.unwrap();
-        let second = provider.complete("sys", "<dictation>\nhej\n</dictation>").await.unwrap();
+        let first = provider
+            .complete("sys", "<dictation>\nvi ses\n</dictation>")
+            .await
+            .unwrap();
+        let second = provider
+            .complete("sys", "<dictation>\nhej\n</dictation>")
+            .await
+            .unwrap();
         assert_eq!(first, "VI SES");
         assert_eq!(second, "HEJ");
         let requests = requests.lock().unwrap().clone();
         assert_eq!(requests.len(), 3, "warm-up plus two calls");
         assert!(requests[0].starts_with("GET /v1/models"));
         assert!(requests[1].starts_with("POST /v1/chat/completions"));
-        assert!(requests[1].to_ascii_lowercase().contains("authorization: bearer sk-local"));
+        assert!(requests[1]
+            .to_ascii_lowercase()
+            .contains("authorization: bearer sk-local"));
         assert!(requests[1].contains("\"temperature\":0"));
         assert_eq!(
             connections.load(std::sync::atomic::Ordering::SeqCst),

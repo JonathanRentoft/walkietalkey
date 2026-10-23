@@ -195,9 +195,7 @@ fn plan_cuts(
                 0.05 * (target - position)
             };
             let score = candidate.gap_seconds.min(1.0) - off_target;
-            if samples - candidate.cut >= min_chunk
-                && best.is_none_or(|(_, best)| score > best)
-            {
+            if samples - candidate.cut >= min_chunk && best.is_none_or(|(_, best)| score > best) {
                 best = Some((candidate.cut, score));
             }
             if fallback.is_none_or(|(_, fallback)| score > fallback) {
@@ -467,10 +465,15 @@ mod tests {
     fn plan(seconds: f64, pauses: &[(f64, f64)]) -> Vec<f64> {
         let samples = s(seconds);
         let segments = speech_segments(&probs_with_pauses(seconds, pauses), FRAME, samples);
-        plan_cuts(&ChunkPlan::HANDY, &cut_candidates(&segments, samples), samples, 0)
-            .into_iter()
-            .map(|cut| (cut as f64 / RATE as f64 * 10.0).round() / 10.0)
-            .collect()
+        plan_cuts(
+            &ChunkPlan::HANDY,
+            &cut_candidates(&segments, samples),
+            samples,
+            0,
+        )
+        .into_iter()
+        .map(|cut| (cut as f64 / RATE as f64 * 10.0).round() / 10.0)
+        .collect()
     }
 
     fn lengths(chunks: &[Vec<f32>]) -> Vec<usize> {
@@ -668,11 +671,13 @@ mod tests {
 
     /// A chunker with WalkieTalkey's live plan (DESK-46).
     fn live_da_chunker() -> Chunker {
-        let make = || Ok(Box::new(ScriptedScorer {
-            scored: Arc::new(AtomicUsize::new(0)),
-            calls: 0,
-            fail_on: None,
-        }) as Box<dyn SpeechScorer>);
+        let make = || {
+            Ok(Box::new(ScriptedScorer {
+                scored: Arc::new(AtomicUsize::new(0)),
+                calls: 0,
+                fail_on: None,
+            }) as Box<dyn SpeechScorer>)
+        };
         Chunker::with_plan(Box::new(make), ChunkPlan::LIVE_DA)
     }
 
@@ -700,7 +705,11 @@ mod tests {
         let pcm = dictation(120.0, 7.0);
         let mut chunker = live_da_chunker();
         let live = feed_live(&mut chunker, &pcm);
-        assert!(live.len() >= 5, "most of 2 min is decoded while talking, got {}", live.len());
+        assert!(
+            live.len() >= 5,
+            "most of 2 min is decoded while talking, got {}",
+            live.len()
+        );
         for chunk in &live {
             let secs = chunk.len() as f64 / RATE as f64;
             assert!((10.0..=18.0).contains(&secs), "chunk of {secs:.1}s");

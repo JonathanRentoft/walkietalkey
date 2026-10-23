@@ -6,6 +6,17 @@
   "permissions": [
     "core:default",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "x-apple.systempreferences:*"
+        },
+        {
+          "url": "ms-settings:*"
+        }
+      ]
+    },
     "store:default",
     "updater:default",
     "process:default",
@@ -16,10 +27,18 @@
     "global-shortcut:allow-unregister-all",
     "macos-permissions:default",
     "fs:read-files",
+    "fs:allow-write-text-file",
     "fs:allow-resource-read-recursive",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**/*" }]
+      "allow": [
+        {
+          "path": "$APPDATA"
+        },
+        {
+          "path": "$APPDATA/**/*"
+        }
+      ]
     }
   ]
 }

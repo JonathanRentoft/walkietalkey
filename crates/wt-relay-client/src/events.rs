@@ -133,6 +133,9 @@ pub struct PhoneSummary {
     pub name: Option<String>,
     pub platform: Option<String>,
     pub online: bool,
+    /// Days since 1970-01-01 UTC that the relay last saw the phone; today
+    /// while it is online, `None` when it was never seen.
+    pub last_seen_day: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -72,17 +72,31 @@ mod tests {
 
     #[test]
     fn markers_are_whole_words() {
-        assert!(!needs_cleanup("Nejlikerne står i vinduet."), "nej inside a word");
+        assert!(
+            !needs_cleanup("Nejlikerne står i vinduet."),
+            "nej inside a word"
+        );
         assert!(!needs_cleanup("Undskyldningen var god."));
         assert!(!needs_cleanup("Hej, det her er min første diktering."));
     }
 
     #[test]
     fn repeated_phrases_are_found() {
-        assert!(has_repeated_phrase("Vi mødes på torsdag på torsdag kl. 10."));
+        assert!(has_repeated_phrase(
+            "Vi mødes på torsdag på torsdag kl. 10."
+        ));
         assert!(has_repeated_phrase("Det det er fint."));
-        assert!(!has_repeated_phrase("Det er fint, det er godt."), "not back to back");
-        assert!(!has_repeated_phrase("Version 2 2 kom ud."), "numbers do not count");
-        assert!(!has_repeated_phrase("Rum A A er ledigt."), "single letters do not count");
+        assert!(
+            !has_repeated_phrase("Det er fint, det er godt."),
+            "not back to back"
+        );
+        assert!(
+            !has_repeated_phrase("Version 2 2 kom ud."),
+            "numbers do not count"
+        );
+        assert!(
+            !has_repeated_phrase("Rum A A er ledigt."),
+            "single letters do not count"
+        );
     }
 }

@@ -603,11 +603,20 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
             ],
         )?;
         if inputs.update_ready {
-            let restart_i =
-                MenuItem::with_id(app, "restart_update", &strings.restart_now, true, None::<&str>)?;
+            let restart_i = MenuItem::with_id(
+                app,
+                "restart_update",
+                &strings.restart_now,
+                true,
+                None::<&str>,
+            )?;
             menu.insert(&restart_i, 9)?;
         }
-        let _ = (&copy_last_transcript_i, &inputs.downloaded_models, inputs.model_loaded);
+        let _ = (
+            &copy_last_transcript_i,
+            &inputs.downloaded_models,
+            inputs.model_loaded,
+        );
         menu
     };
 

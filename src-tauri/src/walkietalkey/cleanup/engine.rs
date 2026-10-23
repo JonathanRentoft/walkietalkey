@@ -30,7 +30,11 @@ pub struct Cleaned {
 
 /// One call: the message, the deadline, the guardrails. `input` is the text
 /// the answer is checked against.
-async fn call(provider: &dyn Provider, user: &str, input: &str) -> Result<(String, u64), Violation> {
+async fn call(
+    provider: &dyn Provider,
+    user: &str,
+    input: &str,
+) -> Result<(String, u64), Violation> {
     let started = Instant::now();
     let answer = tokio::time::timeout(
         guardrails::deadline(input),
@@ -203,7 +207,11 @@ pub(crate) mod tests {
         fn is_cloud(&self) -> bool {
             true
         }
-        fn complete<'a>(&'a self, _system: &'a str, user: &'a str) -> BoxFuture<'a, Result<String, String>> {
+        fn complete<'a>(
+            &'a self,
+            _system: &'a str,
+            user: &'a str,
+        ) -> BoxFuture<'a, Result<String, String>> {
             self.calls.lock().unwrap().push(user.to_string());
             Box::pin(async move {
                 tokio::time::sleep(self.delay).await;
@@ -215,9 +223,14 @@ pub(crate) mod tests {
     /// The text inside a message's <new> part, or inside <dictation>.
     fn new_part(user: &str) -> String {
         let inner = |open: &str, close: &str| {
-            user.split(open).nth(1).and_then(|r| r.split(close).next()).map(|s| s.trim().to_string())
+            user.split(open)
+                .nth(1)
+                .and_then(|r| r.split(close).next())
+                .map(|s| s.trim().to_string())
         };
-        inner("<new>", "</new>").or_else(|| inner("<dictation>", "</dictation>")).unwrap_or_default()
+        inner("<new>", "</new>")
+            .or_else(|| inner("<dictation>", "</dictation>"))
+            .unwrap_or_default()
     }
 
     fn previous_part(user: &str) -> Option<String> {
@@ -233,7 +246,9 @@ pub(crate) mod tests {
             Some(prev) => format!("{prev} {}", new_part(user)),
             None => new_part(user),
         };
-        let text = text.replace("onsdag. nej vent torsdag", "torsdag").replace("onsdag nej torsdag", "torsdag");
+        let text = text
+            .replace("onsdag. nej vent torsdag", "torsdag")
+            .replace("onsdag nej torsdag", "torsdag");
         let mut chars = text.chars();
         match chars.next() {
             Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
@@ -254,7 +269,9 @@ pub(crate) mod tests {
 
     #[tokio::test]
     async fn guardrails_fall_back_to_the_local_text() {
-        let chatty = Fake::new(|_| "Selvfølgelig! Her er din tekst, pænt redigeret og forbedret: Vi ses.".into());
+        let chatty = Fake::new(|_| {
+            "Selvfølgelig! Her er din tekst, pænt redigeret og forbedret: Vi ses.".into()
+        });
         let cleaned = clean_once(chatty.as_ref(), "vi ses").await;
         assert!(cleaned.fell_back);
         assert_eq!(cleaned.text, "vi ses");
@@ -283,7 +300,11 @@ pub(crate) mod tests {
         assert_eq!(cleaned.text, "Vi ses torsdag kl. 10");
         let calls = fake.calls.lock().unwrap().clone();
         assert_eq!(calls.len(), 2);
-        assert!(calls[1].contains("<previous>\nVi ses onsdag.\n</previous>"), "{}", calls[1]);
+        assert!(
+            calls[1].contains("<previous>\nVi ses onsdag.\n</previous>"),
+            "{}",
+            calls[1]
+        );
         assert!(cleaned.record.unwrap().sent_text.contains("<new>"));
     }
 
@@ -303,7 +324,11 @@ pub(crate) mod tests {
         cleaner.push("vi ses onsdag.".into());
         cleaner.push("nej vent torsdag".into());
         let cleaned = cleaner.finish().await;
-        assert_eq!(fake.calls.lock().unwrap().len(), 1, "only the chunk that needs it");
+        assert_eq!(
+            fake.calls.lock().unwrap().len(),
+            1,
+            "only the chunk that needs it"
+        );
         assert_eq!(cleaned.text, "Vi ses torsdag");
     }
 
@@ -324,7 +349,10 @@ pub(crate) mod tests {
         let released = Instant::now();
         let cleaned = cleaner.finish().await;
         let wait = released.elapsed();
-        assert!(wait < Duration::from_millis(550), "waited {wait:?}: only one call left");
+        assert!(
+            wait < Duration::from_millis(550),
+            "waited {wait:?}: only one call left"
+        );
         assert!(cleaned.text.ends_with("sidste del"));
     }
 

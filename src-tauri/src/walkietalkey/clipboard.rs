@@ -24,9 +24,8 @@ fn write_this_computer_only(text: &str) -> Option<Result<(), String>> {
     // Clears the pasteboard and marks the new contents as this Mac's only.
     pasteboard.prepareForNewContentsWithOptions(NSPasteboardContentsOptions::CurrentHostOnly);
     // SAFETY: NSPasteboardTypeString is a read-only framework static.
-    let written = pasteboard.setString_forType(&NSString::from_str(text), unsafe {
-        NSPasteboardTypeString
-    });
+    let written =
+        pasteboard.setString_forType(&NSString::from_str(text), unsafe { NSPasteboardTypeString });
     Some(if written {
         Ok(())
     } else {

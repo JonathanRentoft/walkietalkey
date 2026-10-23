@@ -57,7 +57,11 @@ fn punctuate_with(dir: &Path, text: String) -> String {
     let started = Instant::now();
     match guard.as_ref().expect("loaded above").punctuate(&text) {
         Ok(punctuated) => {
-            info!("Punctuated {} words in {:?}", text.split_whitespace().count(), started.elapsed());
+            info!(
+                "Punctuated {} words in {:?}",
+                text.split_whitespace().count(),
+                started.elapsed()
+            );
             punctuated
         }
         Err(e) => {

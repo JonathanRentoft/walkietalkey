@@ -91,8 +91,11 @@ const NAMED_DATA_DIR_NAME: &str = "WalkieTalkey";
 fn platform_data_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
-        std::env::var_os("HOME")
-            .map(|home| PathBuf::from(home).join("Library").join("Application Support"))
+        std::env::var_os("HOME").map(|home| {
+            PathBuf::from(home)
+                .join("Library")
+                .join("Application Support")
+        })
     }
     #[cfg(target_os = "windows")]
     {
@@ -102,7 +105,9 @@ fn platform_data_dir() -> Option<PathBuf> {
     {
         std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+            .or_else(|| {
+                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share"))
+            })
     }
 }
 

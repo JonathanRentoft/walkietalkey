@@ -9,7 +9,9 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use tauri::AppHandle;
 
-use crate::pipeline::da::vocabulary::{parse_word_lines, vocabulary_terms, DEVELOPER_WORDS, VOCABULARY_TOKEN_BUDGET};
+use crate::pipeline::da::vocabulary::{
+    parse_word_lines, vocabulary_terms, DEVELOPER_WORDS, VOCABULARY_TOKEN_BUDGET,
+};
 
 /// The company list as last fetched.
 static COMPANY_WORDS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| RwLock::new(Vec::new()));
@@ -17,7 +19,11 @@ static COMPANY_WORDS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| RwLock::new(Vec::
 /// The terms for the model, in priority order and within the budget: the
 /// user's own words first (newest first), then the company's, then the pack.
 /// `user_words` is Handy's custom_words, stored oldest first.
-pub fn compose(user_words: &[String], company_words: &[String], developer_pack: bool) -> Vec<String> {
+pub fn compose(
+    user_words: &[String],
+    company_words: &[String],
+    developer_pack: bool,
+) -> Vec<String> {
     // vocabulary_terms takes the end of the list first, so the list is built
     // lowest priority first.
     let mut ordered: Vec<String> = Vec::new();

@@ -3,6 +3,8 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addWord,
+  dayNumber,
+  lastSeen,
   cleanupConsentNeeded,
   consentProviderName,
   EDDA_MODEL_ID,
@@ -254,5 +256,22 @@ describe("history (DESK-91)", () => {
       "ninety_days",
       "forever",
     ]);
+  });
+});
+
+describe("lastSeen", () => {
+  test("today, yesterday or the date the relay last saw the phone", () => {
+    const today = dayNumber(Date.UTC(2026, 9, 23, 12));
+    assert.equal(today, 20_749);
+    assert.deepEqual(lastSeen(today, today), { kind: "today" });
+    assert.deepEqual(lastSeen(today - 1, today), { kind: "yesterday" });
+    const old = lastSeen(today - 3, today);
+    assert.equal(old?.kind, "date");
+    assert.equal(
+      old?.kind === "date" ? old.date.toISOString().slice(0, 10) : "",
+      "2026-10-20",
+    );
+    assert.equal(lastSeen(null, today), null);
+    assert.equal(lastSeen(0, today), null);
   });
 });

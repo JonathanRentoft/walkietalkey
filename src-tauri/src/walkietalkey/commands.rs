@@ -98,13 +98,19 @@ pub fn wt_has_cleanup_key(provider: String) -> bool {
 fn history_db(app: &AppHandle) -> Result<(rusqlite::Connection, std::path::PathBuf), String> {
     let dir = crate::portable::app_data_dir(app).map_err(|e| e.to_string())?;
     let (db, recordings) = super::history::paths(&dir);
-    Ok((super::history::open(&db).map_err(|e| e.to_string())?, recordings))
+    Ok((
+        super::history::open(&db).map_err(|e| e.to_string())?,
+        recordings,
+    ))
 }
 
 /// History, newest first, optionally searched (DESK-93).
 #[tauri::command]
 #[specta::specta]
-pub fn wt_history_list(app: AppHandle, query: Option<String>) -> Result<Vec<super::history::HistoryItem>, String> {
+pub fn wt_history_list(
+    app: AppHandle,
+    query: Option<String>,
+) -> Result<Vec<super::history::HistoryItem>, String> {
     let (conn, _) = history_db(&app)?;
     super::history::list(&conn, query.as_deref(), 500).map_err(|e| e.to_string())
 }
@@ -115,7 +121,8 @@ pub fn wt_history_list(app: AppHandle, query: Option<String>) -> Result<Vec<supe
 pub fn wt_history_delete(app: AppHandle, id: Option<i64>) -> Result<usize, String> {
     let (conn, recordings) = history_db(&app)?;
     let ids = id.map(|id| vec![id]);
-    let deleted = super::history::delete(&conn, &recordings, ids.as_deref()).map_err(|e| e.to_string())?;
+    let deleted =
+        super::history::delete(&conn, &recordings, ids.as_deref()).map_err(|e| e.to_string())?;
     let _ = tauri::Emitter::emit(&app, "wt-history-changed", ());
     crate::tray::update_tray_menu(&app);
     Ok(deleted)
@@ -139,6 +146,21 @@ pub fn wt_set_paused(app: AppHandle, paused: bool) {
     super::tray::set_paused(&app, paused);
 }
 
+/// Whether dictation is paused, for a window that opens while it is.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_is_paused() -> bool {
+    super::tray::is_paused()
+}
+
+/// Announces the pill's text to VoiceOver (spec 6.17); the overlay calls it
+/// when its text changes.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_announce(app: AppHandle, text: String) {
+    super::a11y::announce(&app, &text);
+}
+
 /// Checks for an update now ("Søg efter opdateringer").
 #[tauri::command]
 #[specta::specta]
@@ -156,7 +178,10 @@ pub async fn wt_measure_speed(app: AppHandle) -> Result<super::speed::SpeedVerdi
 
     let clip = app
         .path()
-        .resolve("resources/speed-check/da-fleurs-10s.wav", tauri::path::BaseDirectory::Resource)
+        .resolve(
+            "resources/speed-check/da-fleurs-10s.wav",
+            tauri::path::BaseDirectory::Resource,
+        )
         .map_err(|e| e.to_string())?;
     let samples = crate::audio_toolkit::read_wav_samples(&clip).map_err(|e| e.to_string())?;
     let tm = app
@@ -201,7 +226,9 @@ pub fn wt_notification_permission() -> String {
 #[tauri::command]
 #[specta::specta]
 pub async fn wt_request_notification_permission() -> bool {
-    tauri::async_runtime::spawn_blocking(|| wt_native::notifications::request_permission().unwrap_or(false))
-        .await
-        .unwrap_or(false)
+    tauri::async_runtime::spawn_blocking(|| {
+        wt_native::notifications::request_permission().unwrap_or(false)
+    })
+    .await
+    .unwrap_or(false)
 }

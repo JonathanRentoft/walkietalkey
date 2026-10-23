@@ -1748,7 +1748,10 @@ impl ModelManager {
                     }
                     Ok(false) => return Ok(()),
                     Err(e) => {
-                        warn!("Company model server download failed for {}: {:?}", model_id, e);
+                        warn!(
+                            "Company model server download failed for {}: {:?}",
+                            model_id, e
+                        );
                         last_error = Some(e);
                     }
                 }

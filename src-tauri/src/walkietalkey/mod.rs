@@ -13,6 +13,7 @@ use crate::settings::get_settings;
 
 /// Runs once the managers exist. Loads the speech model right away, so the
 /// first dictation after starting is as fast as the rest (DESK-45).
+pub mod a11y;
 pub mod bench;
 pub mod catalog;
 pub mod cleanup;
@@ -97,7 +98,10 @@ fn select_default_model(app: &AppHandle) {
         .get_model_info(catalog::DEFAULT_MODEL_ID)
         .is_some_and(|model| model.is_downloaded)
     {
-        info!("Selecting {} as the default model", catalog::DEFAULT_MODEL_ID);
+        info!(
+            "Selecting {} as the default model",
+            catalog::DEFAULT_MODEL_ID
+        );
         settings.selected_model = catalog::DEFAULT_MODEL_ID.to_string();
         crate::settings::write_settings(app, settings);
     }
@@ -116,7 +120,10 @@ mod tests {
         #[cfg(target_os = "windows")]
         assert_eq!(binding.current_binding, "ctrl_right", "DESK-21");
         assert_eq!(binding.current_binding, binding.default_binding);
-        assert!(binding.current_binding.parse::<handy_keys::Hotkey>().is_ok());
+        assert!(binding
+            .current_binding
+            .parse::<handy_keys::Hotkey>()
+            .is_ok());
     }
 
     #[test]
@@ -128,23 +135,34 @@ mod tests {
         assert!(edda.recommended);
         assert_eq!(edda.recommended_rank, Some(0));
         // Handy's own models are still offered under "Andre modeller" (DESK-34).
-        assert!(crate::catalog::CATALOG
-            .iter()
-            .any(|m| m.id.starts_with("handy-computer/whisper-large-v3-turbo-gguf/")));
+        assert!(crate::catalog::CATALOG.iter().any(|m| m
+            .id
+            .starts_with("handy-computer/whisper-large-v3-turbo-gguf/")));
     }
 
     #[test]
     fn default_dictation_behaviour_follows_the_spec() {
         let settings = get_default_settings();
-        assert_eq!(settings.shortcut_activation, ShortcutActivation::PushToTalk, "DESK-22");
+        assert_eq!(
+            settings.shortcut_activation,
+            ShortcutActivation::PushToTalk,
+            "DESK-22"
+        );
         assert_eq!(settings.hold_threshold_ms, 300, "DESK-26");
         assert!(settings.audio_feedback, "DESK-23: sounds on by default");
         assert_eq!(settings.selected_language, "da", "DESK-70");
         assert_eq!(settings.app_language, "da", "DESK-03");
-        assert_eq!(settings.model_unload_timeout, ModelUnloadTimeout::Never, "DESK-45");
+        assert_eq!(
+            settings.model_unload_timeout,
+            ModelUnloadTimeout::Never,
+            "DESK-45"
+        );
         assert!(settings.long_form_chunking, "DESK-46");
         assert!(settings.filler_word_removal_enabled, "DESK-44");
-        assert!(!settings.post_process_enabled, "cleanup is WalkieTalkey's own mode");
+        assert!(
+            !settings.post_process_enabled,
+            "cleanup is WalkieTalkey's own mode"
+        );
     }
 
     #[test]

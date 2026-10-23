@@ -742,6 +742,19 @@ async wtSetPaused(paused: boolean) : Promise<void> {
     await TAURI_INVOKE("wt_set_paused", { paused });
 },
 /**
+ * Whether dictation is paused, for a window that opens while it is.
+ */
+async wtIsPaused() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_is_paused");
+},
+/**
+ * Announces the pill's text to VoiceOver (spec 6.17); the overlay calls it
+ * when its text changes.
+ */
+async wtAnnounce(text: string) : Promise<void> {
+    await TAURI_INVOKE("wt_announce", { text });
+},
+/**
  * Checks for an update now ("Søg efter opdateringer").
  */
 async wtCheckUpdates() : Promise<void> {
@@ -1374,7 +1387,11 @@ export type PermissionAccess = "allowed" | "denied" | "unknown"
 /**
  * A paired phone as Indstillinger › Telefon lists it.
  */
-export type PhoneView = { id: string; name: string; platform: string | null; online: boolean }
+export type PhoneView = { id: string; name: string; platform: string | null; online: boolean; 
+/**
+ * Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
+ */
+last_seen_day: number | null }
 /**
  * Request format a post-processing endpoint speaks. Built-in providers have a
  * fixed format; only the custom provider lets the user change it.

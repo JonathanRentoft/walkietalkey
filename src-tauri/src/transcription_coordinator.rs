@@ -170,15 +170,15 @@ enum Effect {
         hotkey_string: String,
     },
     /// Drop the recording without output or sound (WalkieTalkey, DESK-26).
-    Discard {
-        binding_id: String,
-    },
+    Discard { binding_id: String },
 }
 
 /// Commands processed sequentially by the coordinator thread.
 enum Command {
     Input(InputEvent),
-    Cancel { recording_was_active: bool },
+    Cancel {
+        recording_was_active: bool,
+    },
     ProcessingFinished,
     /// WalkieTalkey (DESK-24): the recording reached its maximum length.
     ForceStop,
@@ -1511,7 +1511,9 @@ mod tests {
             );
             assert_eq!(state.stage, Stage::Processing);
             // The physical release after the limit changes nothing.
-            assert!(state.on_input(input(mode, false), t0 + ms(301_000)).is_none());
+            assert!(state
+                .on_input(input(mode, false), t0 + ms(301_000))
+                .is_none());
             assert!(state.on_grace_expired().is_none());
         }
     }

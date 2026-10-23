@@ -11,9 +11,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, AppSettings, OverlayStyle, APPLE_INTELLIGENCE_PROVIDER_ID};
 use crate::shortcut;
 use crate::tray::{set_tray_state, TrayIconState};
-use crate::utils::{
-    self, show_recording_overlay, show_transcribing_overlay,
-};
+use crate::utils::{self, show_recording_overlay, show_transcribing_overlay};
 use crate::TranscriptionCoordinator;
 use log::{debug, error, warn};
 use once_cell::sync::Lazy;
@@ -697,11 +695,9 @@ impl ShortcutAction for TranscribeAction {
                 } else {
                     // WalkieTalkey (DESK-92): audio is only kept, concurrently
                     // with transcription, when "Gem lyd til fejlfinding" is on.
-                    let keep_audio =
-                        crate::walkietalkey::store::get(&ah).keep_audio_for_debugging;
+                    let keep_audio = crate::walkietalkey::store::get(&ah).keep_audio_for_debugging;
                     let sample_count = samples.len();
-                    let file_name =
-                        format!("walkietalkey-{}.wav", chrono::Utc::now().timestamp());
+                    let file_name = format!("walkietalkey-{}.wav", chrono::Utc::now().timestamp());
                     let wav_path = hm.recordings_dir().join(&file_name);
                     let wav_path_for_verify = wav_path.clone();
                     let wav_handle = keep_audio.then(|| {

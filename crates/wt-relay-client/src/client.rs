@@ -396,11 +396,20 @@ impl Actor {
             phones: self
                 .phones
                 .values()
-                .map(|p| PhoneSummary {
-                    id: p.stored.id,
-                    name: p.stored.name.clone(),
-                    platform: p.stored.platform.clone(),
-                    online: *self.online.get(&p.stored.id).unwrap_or(&false),
+                .map(|p| {
+                    let online = *self.online.get(&p.stored.id).unwrap_or(&false);
+                    let reported = self
+                        .members
+                        .iter()
+                        .find(|m| m.id == p.stored.id)
+                        .map(|m| m.last_seen_day);
+                    PhoneSummary {
+                        id: p.stored.id,
+                        name: p.stored.name.clone(),
+                        platform: p.stored.platform.clone(),
+                        online,
+                        last_seen_day: last_seen_day(online, reported, today()),
+                    }
                 })
                 .collect(),
             pairing_active: !self.pairings.is_empty(),
@@ -1019,6 +1028,12 @@ impl Actor {
             }
             ControlMessage::Peer { id, online } => {
                 if self.phones.contains_key(&id) {
+                    if !online {
+                        // Last seen is the moment it went offline.
+                        if let Some(m) = self.members.iter_mut().find(|m| m.id == id) {
+                            m.last_seen_day = today();
+                        }
+                    }
                     self.online.insert(id, online);
                     self.emit(RelayEvent::PeerStatus { phone: id, online });
                 }
@@ -1355,6 +1370,38 @@ async fn close_normal(sink: &mut Sink) {
 }
 
 #[allow(dead_code)]
+/// Days since 1970-01-01 UTC, the unit of the relay's `lastSeenDay`.
+fn today() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() / 86_400)
+        .unwrap_or(0)
+}
+
+/// The day a phone was last seen: today while it is online, otherwise what
+/// the relay reported, where `0` means never.
+fn last_seen_day(online: bool, reported: Option<u64>, today: u64) -> Option<u64> {
+    if online {
+        Some(today)
+    } else {
+        reported.filter(|&day| day > 0)
+    }
+}
+
+#[cfg(test)]
+mod last_seen_tests {
+    use super::last_seen_day;
+
+    #[test]
+    fn online_phones_are_seen_today_and_offline_ones_keep_the_relays_day() {
+        assert_eq!(last_seen_day(true, Some(20_000), 20_384), Some(20_384));
+        assert_eq!(last_seen_day(true, None, 20_384), Some(20_384));
+        assert_eq!(last_seen_day(false, Some(20_380), 20_384), Some(20_380));
+        assert_eq!(last_seen_day(false, Some(0), 20_384), None);
+        assert_eq!(last_seen_day(false, None, 20_384), None);
+    }
+}
+
 fn _assert_send() {
     fn is_send<T: Send>() {}
     is_send::<RelayClient>();

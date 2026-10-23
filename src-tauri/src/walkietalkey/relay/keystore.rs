@@ -135,7 +135,8 @@ impl KeyStore for DesktopKeyStore {
 
     fn save_phone(&self, phone: &StoredPhone) -> Result<(), StoreError> {
         let bytes = Zeroizing::new(serde_json::to_vec(phone).map_err(store_err)?);
-        super::super::secrets::set(SERVICE, &phone_account(&phone.id), &bytes).map_err(store_err)?;
+        super::super::secrets::set(SERVICE, &phone_account(&phone.id), &bytes)
+            .map_err(store_err)?;
         let mut state = self.state.lock().unwrap();
         let id = phone.id.to_b64u();
         if !state.phones.contains(&id) {
@@ -153,7 +154,14 @@ impl KeyStore for DesktopKeyStore {
     }
 
     fn load_counter(&self, name: &str) -> Result<u64, StoreError> {
-        Ok(self.state.lock().unwrap().counters.get(name).copied().unwrap_or(0))
+        Ok(self
+            .state
+            .lock()
+            .unwrap()
+            .counters
+            .get(name)
+            .copied()
+            .unwrap_or(0))
     }
 
     fn save_counter(&self, name: &str, value: u64) -> Result<(), StoreError> {

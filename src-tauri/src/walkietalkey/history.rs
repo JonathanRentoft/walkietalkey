@@ -155,8 +155,14 @@ pub fn delete(conn: &Connection, recordings_dir: &Path, ids: Option<&[i64]>) -> 
         }
     };
     for (id, file_name) in &targets {
-        conn.execute("DELETE FROM transcription_history WHERE id = ?1", params![id])?;
-        conn.execute("DELETE FROM wt_history_meta WHERE entry_id = ?1", params![id])?;
+        conn.execute(
+            "DELETE FROM transcription_history WHERE id = ?1",
+            params![id],
+        )?;
+        conn.execute(
+            "DELETE FROM wt_history_meta WHERE entry_id = ?1",
+            params![id],
+        )?;
         remove_audio(recordings_dir, file_name);
     }
     Ok(targets.len())
@@ -226,7 +232,10 @@ pub fn apply_retention(
 
 /// The history database and recordings folder in the app data folder.
 pub fn paths(app_data_dir: &Path) -> (PathBuf, PathBuf) {
-    (app_data_dir.join("history.db"), app_data_dir.join("recordings"))
+    (
+        app_data_dir.join("history.db"),
+        app_data_dir.join("recordings"),
+    )
 }
 
 /// Opens the history database (Handy's file; SQLite handles the second
@@ -322,7 +331,11 @@ mod tests {
         let recent = insert(&conn, now - 2 * DAY, "ny", None, "");
         let removed = apply_retention(&conn, dir.path(), HistoryRetention::TwoWeeks, now).unwrap();
         assert_eq!(removed, 1);
-        let ids: Vec<i64> = list(&conn, None, 50).unwrap().iter().map(|i| i.id).collect();
+        let ids: Vec<i64> = list(&conn, None, 50)
+            .unwrap()
+            .iter()
+            .map(|i| i.id)
+            .collect();
         assert_eq!(ids, vec![recent]);
         assert!(!dir.path().join("old.wav").exists());
         assert!(old != recent);

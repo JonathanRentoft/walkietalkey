@@ -18,7 +18,10 @@ pub fn set(provider: &str, key: &str) -> Result<(), String> {
         return delete(provider);
     }
     super::super::secrets::set(SERVICE, provider, key.as_bytes())?;
-    CACHE.lock().unwrap().insert(provider.to_string(), key.to_string());
+    CACHE
+        .lock()
+        .unwrap()
+        .insert(provider.to_string(), key.to_string());
     Ok(())
 }
 
@@ -34,7 +37,10 @@ pub fn get(provider: &str) -> Option<String> {
     let key = super::super::secrets::get(SERVICE, provider)
         .and_then(|bytes| String::from_utf8(bytes).ok())
         .filter(|k| !k.is_empty())?;
-    CACHE.lock().unwrap().insert(provider.to_string(), key.clone());
+    CACHE
+        .lock()
+        .unwrap()
+        .insert(provider.to_string(), key.clone());
     Some(key)
 }
 

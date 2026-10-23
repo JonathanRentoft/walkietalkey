@@ -1,7 +1,7 @@
 // Dialogs and notices that can appear over any screen: "Var det dig?" after
 // a phone joins (DESK-62), the pairing window (spec 5.3), in-window notices
 // when system notifications are unavailable (DESK-56), and the pause state.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
@@ -34,6 +34,13 @@ export function GlobalDialogs(_props: { platform: WtPlatform }) {
     openHistory(typeof id === "number" ? id : null),
   );
   useTauriEvent<boolean>("wt-paused", (p) => setPaused(!!p));
+  // A window that opens while paused shows it at once (DESK-96).
+  useEffect(() => {
+    commands
+      .wtIsPaused()
+      .then((p) => setPaused(!!p))
+      .catch(() => {});
+  }, [setPaused]);
   useTauriEvent<NoticeEvent>("wt-notify", (n) => {
     // A new phone gets the "Var det dig?" dialog instead of a notice.
     if (n.history_id == null && Date.now() - lastJoinedAt.current < 3000)

@@ -190,7 +190,9 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
     );
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_static("WalkieTalkey/0.1 (+https://github.com/JonathanRentoft/walkietalkey)"),
+        HeaderValue::from_static(
+            "WalkieTalkey/0.1 (+https://github.com/JonathanRentoft/walkietalkey)",
+        ),
     );
     headers.insert("X-Title", HeaderValue::from_static("WalkieTalkey"));
 

@@ -72,7 +72,10 @@ fn plan(app: &AppHandle, shift_held: Option<bool>) -> Option<Plan> {
         let handy = crate::settings::get_settings(app);
         let preset = handy.post_process_providers.iter().find(|p| p.id == id)?;
         let base_url = if id == "custom" {
-            wt.cleanup_base_url.clone().filter(|u| !u.is_empty()).unwrap_or_else(|| preset.base_url.clone())
+            wt.cleanup_base_url
+                .clone()
+                .filter(|u| !u.is_empty())
+                .unwrap_or_else(|| preset.base_url.clone())
         } else {
             preset.base_url.clone()
         };
@@ -96,7 +99,11 @@ fn plan(app: &AppHandle, shift_held: Option<bool>) -> Option<Plan> {
     };
     let managed = applied.locked.iter().any(|f| f == "cleanup_provider");
     if provider.is_cloud()
-        && !cloud_allowed(wt.allow_cloud_cleanup, managed, wt.cleanup_consented.contains(&id))
+        && !cloud_allowed(
+            wt.allow_cloud_cleanup,
+            managed,
+            wt.cleanup_consented.contains(&id),
+        )
     {
         return None;
     }
@@ -117,13 +124,17 @@ pub(crate) fn key_chunk_observer(app: &AppHandle) -> Option<ChunkObserver> {
     let cleaner = Arc::new(ChunkCleaner::new(plan.provider, plan.only_when_needed));
     *KEY_CLEANER.lock().unwrap() = Some(Arc::clone(&cleaner));
     let app = app.clone();
-    Some(Arc::new(move |raw: &str| cleaner.push(local_chunk_text(&app, raw))))
+    Some(Arc::new(move |raw: &str| {
+        cleaner.push(local_chunk_text(&app, raw))
+    }))
 }
 
 /// A chunk's text after the local steps (filler words, replacements), as
 /// the whole dictation gets them.
 fn local_chunk_text(app: &AppHandle, raw: &str) -> String {
-    use crate::audio_toolkit::{normalize_transcription_output, remove_filler_words, OutputLanguageEvidence};
+    use crate::audio_toolkit::{
+        normalize_transcription_output, remove_filler_words, OutputLanguageEvidence,
+    };
     let settings = crate::settings::get_settings(app);
     let without_fillers = remove_filler_words(
         raw,
@@ -157,7 +168,12 @@ fn outcome(cleaned: Cleaned) -> CleanupOutcome {
 
 /// Runs the cleanup step on a finished dictation's local text. A key
 /// dictation uses the chunk-by-chunk result when there is one.
-pub async fn clean(app: &AppHandle, text: &str, key_dictation: bool, shift_held: bool) -> CleanupOutcome {
+pub async fn clean(
+    app: &AppHandle,
+    text: &str,
+    key_dictation: bool,
+    shift_held: bool,
+) -> CleanupOutcome {
     let live = if key_dictation {
         KEY_CLEANER.lock().unwrap().take()
     } else {
@@ -203,11 +219,31 @@ mod tests {
     #[test]
     fn every_mode_decides_as_the_spec_says() {
         assert_eq!(mode_applies(CleanupMode::Off, Some(true)), None, "Fra");
-        assert_eq!(mode_applies(CleanupMode::Always, None), Some(false), "Altid");
-        assert_eq!(mode_applies(CleanupMode::WhenNeeded, None), Some(true), "Når der er noget at rette");
-        assert_eq!(mode_applies(CleanupMode::Shift, Some(true)), Some(false), "Shift held");
-        assert_eq!(mode_applies(CleanupMode::Shift, Some(false)), None, "Shift not held");
-        assert_eq!(mode_applies(CleanupMode::Shift, None), None, "not known while recording");
+        assert_eq!(
+            mode_applies(CleanupMode::Always, None),
+            Some(false),
+            "Altid"
+        );
+        assert_eq!(
+            mode_applies(CleanupMode::WhenNeeded, None),
+            Some(true),
+            "Når der er noget at rette"
+        );
+        assert_eq!(
+            mode_applies(CleanupMode::Shift, Some(true)),
+            Some(false),
+            "Shift held"
+        );
+        assert_eq!(
+            mode_applies(CleanupMode::Shift, Some(false)),
+            None,
+            "Shift not held"
+        );
+        assert_eq!(
+            mode_applies(CleanupMode::Shift, None),
+            None,
+            "not known while recording"
+        );
     }
 
     #[test]

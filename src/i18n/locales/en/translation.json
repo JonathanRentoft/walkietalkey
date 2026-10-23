@@ -1004,6 +1004,11 @@
       "noName": "a phone without a name",
       "online": "Online",
       "offline": "Not online",
+      "lastSeen": {
+        "today": "Last seen today",
+        "yesterday": "Last seen yesterday",
+        "date": "Last seen {{date}}"
+      },
       "removeNamed": "Remove {{name}}",
       "removeFailed": "The phone could not be removed. Try again.",
       "removeFailedNamed": "{{name}} could not be removed. Try again.",

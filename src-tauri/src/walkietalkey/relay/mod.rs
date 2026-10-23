@@ -127,7 +127,11 @@ fn emit_phones_changed(app: &AppHandle) {
     let _ = app.emit("wt-phones-changed", ());
 }
 
-async fn event_loop(app: AppHandle, client: RelayClient, mut events: UnboundedReceiver<RelayEvent>) {
+async fn event_loop(
+    app: AppHandle,
+    client: RelayClient,
+    mut events: UnboundedReceiver<RelayEvent>,
+) {
     let sessions: Sessions = Arc::new(Mutex::new(HashMap::new()));
     while let Some(event) = events.recv().await {
         match event {
@@ -209,7 +213,8 @@ async fn event_loop(app: AppHandle, client: RelayClient, mut events: UnboundedRe
                     let ticket = super::sequence::take_ticket();
                     let (app, client) = (app.clone(), client.clone());
                     tauri::async_runtime::spawn(async move {
-                        finish_phone_dictation(app, client, phone, session, dictation, ticket).await;
+                        finish_phone_dictation(app, client, phone, session, dictation, ticket)
+                            .await;
                     });
                 }
             }
@@ -293,7 +298,8 @@ async fn finish_phone_dictation(
                 side.feed(rest);
             }
         }
-        let too_long = d.audio.duration() > TOO_LONG || d.started.elapsed() > TOO_LONG + RESEND_WAIT;
+        let too_long =
+            d.audio.duration() > TOO_LONG || d.started.elapsed() > TOO_LONG + RESEND_WAIT;
         (d.side.take(), d.audio.audio().to_vec(), d.paused, too_long)
     };
     let outcome = if paused {
@@ -319,7 +325,10 @@ async fn transcribe_and_deliver(
     audio: Vec<f32>,
     ticket: super::sequence::Ticket,
 ) -> ResultOutcome {
-    let Some(tm) = app.try_state::<Arc<TranscriptionManager>>().map(|tm| Arc::clone(&tm)) else {
+    let Some(tm) = app
+        .try_state::<Arc<TranscriptionManager>>()
+        .map(|tm| Arc::clone(&tm))
+    else {
         return ResultOutcome::Failed(ResultReason::Error);
     };
     if crate::settings::get_settings(app).selected_model.is_empty() {
@@ -347,7 +356,12 @@ async fn transcribe_and_deliver(
     }
     // DESK-27: after earlier dictations' output.
     let ticket = ticket.wait_turn_async().await;
-    let name = NAMES.lock().unwrap().get(&phone).cloned().unwrap_or_default();
+    let name = NAMES
+        .lock()
+        .unwrap()
+        .get(&phone)
+        .cloned()
+        .unwrap_or_default();
     let source = Source::Phone {
         device_id: phone.to_b64u(),
         name,
@@ -415,6 +429,8 @@ pub struct PhoneView {
     pub name: String,
     pub platform: Option<String>,
     pub online: bool,
+    /// Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
+    pub last_seen_day: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Type)]
@@ -451,6 +467,7 @@ pub async fn status(app: &AppHandle) -> RelayView {
                     .label(),
                     platform: p.platform,
                     online: p.online,
+                    last_seen_day: p.last_seen_day,
                 })
                 .collect(),
             pairing_active: status.pairing_active,

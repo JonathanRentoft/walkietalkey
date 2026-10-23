@@ -222,7 +222,10 @@ mod tests {
         assert_eq!(HistoryRetention::from_days(0), HistoryRetention::DontKeep);
         assert_eq!(HistoryRetention::from_days(-1), HistoryRetention::Forever);
         assert_eq!(HistoryRetention::from_days(14), HistoryRetention::TwoWeeks);
-        assert_eq!(HistoryRetention::from_days(30), HistoryRetention::NinetyDays);
+        assert_eq!(
+            HistoryRetention::from_days(30),
+            HistoryRetention::NinetyDays
+        );
         assert_eq!(HistoryRetention::TwoWeeks.days(), Some(14));
         assert_eq!(HistoryRetention::Forever.days(), None);
     }

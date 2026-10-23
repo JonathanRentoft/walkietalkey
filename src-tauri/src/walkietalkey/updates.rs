@@ -40,10 +40,16 @@ pub fn manifest_url(channel: UpdateChannel) -> &'static str {
 pub enum UpdateStatus {
     Checking,
     UpToDate,
-    Downloading { version: String },
+    Downloading {
+        version: String,
+    },
     /// Installs on restart; "Genstart nu" is in the menu.
-    Ready { version: String },
-    Failed { message: String },
+    Ready {
+        version: String,
+    },
+    Failed {
+        message: String,
+    },
 }
 
 /// A downloaded update not yet installed (Windows installs on restart,
@@ -88,13 +94,20 @@ async fn check(app: &AppHandle) {
     emit(app, UpdateStatus::Checking);
     let updater = match app
         .updater_builder()
-        .endpoints(vec![manifest_url(channel).parse().expect("valid manifest URL")])
+        .endpoints(vec![manifest_url(channel)
+            .parse()
+            .expect("valid manifest URL")])
         .and_then(|builder| builder.build())
     {
         Ok(updater) => updater,
         Err(e) => {
             warn!("Updater unavailable: {e}");
-            emit(app, UpdateStatus::Failed { message: e.to_string() });
+            emit(
+                app,
+                UpdateStatus::Failed {
+                    message: e.to_string(),
+                },
+            );
             return;
         }
     };
@@ -106,19 +119,34 @@ async fn check(app: &AppHandle) {
         }
         Err(e) => {
             info!("Update check failed: {e}");
-            emit(app, UpdateStatus::Failed { message: e.to_string() });
+            emit(
+                app,
+                UpdateStatus::Failed {
+                    message: e.to_string(),
+                },
+            );
             return;
         }
     };
     let version = update.version.clone();
     info!("Update {version} found on the {channel:?} channel; downloading");
-    emit(app, UpdateStatus::Downloading { version: version.clone() });
+    emit(
+        app,
+        UpdateStatus::Downloading {
+            version: version.clone(),
+        },
+    );
     // download() verifies the signature against our public key (SEC-07).
     let bytes = match update.download(|_, _| {}, || {}).await {
         Ok(bytes) => bytes,
         Err(e) => {
             warn!("Update download failed: {e}");
-            emit(app, UpdateStatus::Failed { message: e.to_string() });
+            emit(
+                app,
+                UpdateStatus::Failed {
+                    message: e.to_string(),
+                },
+            );
             return;
         }
     };
@@ -127,7 +155,12 @@ async fn check(app: &AppHandle) {
     if cfg!(target_os = "macos") {
         if let Err(e) = update.install(&bytes) {
             warn!("Update install failed: {e}");
-            emit(app, UpdateStatus::Failed { message: e.to_string() });
+            emit(
+                app,
+                UpdateStatus::Failed {
+                    message: e.to_string(),
+                },
+            );
             return;
         }
     } else {
@@ -154,7 +187,9 @@ mod tests {
 
     #[test]
     fn channels_have_their_own_manifests() {
-        assert!(manifest_url(UpdateChannel::Stable).ends_with("/releases/latest/download/latest.json"));
+        assert!(
+            manifest_url(UpdateChannel::Stable).ends_with("/releases/latest/download/latest.json")
+        );
         assert!(manifest_url(UpdateChannel::Beta).ends_with("/updates/beta.json"));
         assert!(manifest_url(UpdateChannel::Beta).starts_with("https://"));
         assert_eq!(CHECK_EVERY, Duration::from_secs(21_600));

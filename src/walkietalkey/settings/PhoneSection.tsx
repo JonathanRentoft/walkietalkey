@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { commands, type RelayView } from "@/bindings";
+import { dayNumber, lastSeen } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import { useUi } from "../lib/uiStore";
 import { useLocked, useWtSettings } from "../lib/wtStore";
 import { Button, Group, LockNote, Page, Status } from "../ui/controls";
 
 export function PhoneSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const wt = useWtSettings();
   const pairingLocked = useLocked("allow_phone_pairing");
   const openPairing = useUi((s) => s.openPairing);
@@ -43,6 +44,20 @@ export function PhoneSection() {
 
   const allowed = wt?.allow_phone_pairing ?? true;
   const phones = relay?.phones ?? [];
+  const seenLabel = (day: number | null | undefined) => {
+    const seen = lastSeen(day, dayNumber(Date.now()));
+    if (!seen) return t("wt.phone.offline");
+    if (seen.kind !== "date") return t(`wt.phone.lastSeen.${seen.kind}`);
+    const date = new Intl.DateTimeFormat(
+      i18n.language === "da" ? "da-DK" : "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      },
+    ).format(seen.date);
+    return t("wt.phone.lastSeen.date", { date });
+  };
 
   return (
     <Page title={t("wt.nav.phone")} description={t("wt.phone.intro")}>
@@ -58,7 +73,9 @@ export function PhoneSection() {
                       className={p.online ? "wt-dot wt-dot--on" : "wt-dot"}
                       aria-hidden
                     />
-                    {p.online ? t("wt.phone.online") : t("wt.phone.offline")}
+                    {p.online
+                      ? t("wt.phone.online")
+                      : seenLabel(p.last_seen_day)}
                   </span>
                 </div>
                 <Button

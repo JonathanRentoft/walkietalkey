@@ -75,7 +75,10 @@ mod tests {
     fn a_company_server_serves_the_same_file_names() {
         let mirror = company_mirror(Some("https://modeller.firma.dk/wt/"), DEFAULT_MODEL_ID)
             .expect("Edda has a catalog file");
-        assert_eq!(mirror.url, "https://modeller.firma.dk/wt/edda-v0.2-Q8_0.gguf");
+        assert_eq!(
+            mirror.url,
+            "https://modeller.firma.dk/wt/edda-v0.2-Q8_0.gguf"
+        );
         assert_eq!(mirror.sha256.len(), 64);
         assert!(mirror.size_bytes > 800_000_000);
         assert!(company_mirror(None, DEFAULT_MODEL_ID).is_none());

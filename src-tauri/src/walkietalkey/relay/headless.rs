@@ -25,8 +25,17 @@ fn print(value: serde_json::Value) {
 
 /// Runs until `count` dictations were transcribed or `timeout` passed.
 /// Returns the process exit code.
-pub fn run(app: &AppHandle, relay_url: &str, phone_app_url: &str, count: usize, timeout: Duration) -> i32 {
-    let Some(tm) = app.try_state::<Arc<TranscriptionManager>>().map(|tm| Arc::clone(&tm)) else {
+pub fn run(
+    app: &AppHandle,
+    relay_url: &str,
+    phone_app_url: &str,
+    count: usize,
+    timeout: Duration,
+) -> i32 {
+    let Some(tm) = app
+        .try_state::<Arc<TranscriptionManager>>()
+        .map(|tm| Arc::clone(&tm))
+    else {
         eprintln!("error: no transcription manager");
         return 1;
     };
@@ -43,8 +52,14 @@ pub fn run(app: &AppHandle, relay_url: &str, phone_app_url: &str, count: usize, 
             return 1;
         }
     };
-    let mut config = ClientConfig::new(relay_url, phone_app_url, "WalkieTalkey e2e", super::computer_os());
-    config.allow_insecure_localhost = relay_url.starts_with("ws://localhost") || relay_url.starts_with("ws://127.0.0.1");
+    let mut config = ClientConfig::new(
+        relay_url,
+        phone_app_url,
+        "WalkieTalkey e2e",
+        super::computer_os(),
+    );
+    config.allow_insecure_localhost =
+        relay_url.starts_with("ws://localhost") || relay_url.starts_with("ws://127.0.0.1");
     let app = app.clone();
     let dir_for_loop = dir.clone();
     tauri::async_runtime::block_on(async move {
@@ -130,7 +145,9 @@ pub fn run(app: &AppHandle, relay_url: &str, phone_app_url: &str, count: usize, 
                     .and_then(|r| r.ok());
                     let outcome = match &text {
                         Some(text) => {
-                            let finished = crate::walkietalkey::dictation::process(&app, text, false, false).await;
+                            let finished =
+                                crate::walkietalkey::dictation::process(&app, text, false, false)
+                                    .await;
                             print(json!({
                                 "event": "transcript",
                                 "text": finished.final_text,

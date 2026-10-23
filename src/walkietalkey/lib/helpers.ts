@@ -313,3 +313,25 @@ export const RETENTION_OPTIONS: readonly HistoryRetentionName[] = [
   "ninety_days",
   "forever",
 ];
+
+/** Days since 1970-01-01 UTC, the unit of the relay's last-seen day. */
+export function dayNumber(nowMs: number): number {
+  return Math.floor(nowMs / 86_400_000);
+}
+
+export type LastSeen =
+  | { kind: "today" }
+  | { kind: "yesterday" }
+  | { kind: "date"; date: Date };
+
+/** "Sidst set" for a phone that is not online, or null when never seen. */
+export function lastSeen(
+  day: number | null | undefined,
+  today: number,
+): LastSeen | null {
+  if (day == null || day <= 0) return null;
+  const ago = today - day;
+  if (ago <= 0) return { kind: "today" };
+  if (ago === 1) return { kind: "yesterday" };
+  return { kind: "date", date: new Date(day * 86_400_000) };
+}

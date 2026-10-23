@@ -33,6 +33,7 @@ export interface MockOptions {
       name: string;
       platform: string | null;
       online: boolean;
+      last_seen_day?: number | null;
     }[];
     pairing_active: boolean;
   };
@@ -40,6 +41,8 @@ export interface MockOptions {
   history?: unknown[];
   keys?: string[];
   appleIntelligence?: boolean;
+  /** Dictation is paused when the window opens. */
+  paused?: boolean;
   /** The webview label (main or recording_overlay). */
   window?: string;
 }
@@ -388,6 +391,7 @@ function mockBackend(options: MockOptions) {
       return before - state.history.length;
     },
     wt_history_copy: () => null,
+    wt_is_paused: () => options.paused ?? false,
     wt_set_paused: (a) => {
       setTimeout(() => emit("wt-paused", a.paused), 0);
       return null;

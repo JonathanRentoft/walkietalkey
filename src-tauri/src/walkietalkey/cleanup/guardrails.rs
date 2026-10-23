@@ -32,8 +32,8 @@ pub fn deadline(input: &str) -> Duration {
 /// Number and date forms cleanup may write that need not occur in the input:
 /// "kl." for "klokken", ordinal dots, and abbreviated months and weekdays.
 const NUMBER_FORMS: &[&str] = &[
-    "kl", "ca", "nr", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "okt",
-    "nov", "dec", "man", "tirs", "ons", "tors", "fre", "lør", "søn", "pct", "procent", "kr",
+    "kl", "ca", "nr", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "okt", "nov",
+    "dec", "man", "tirs", "ons", "tors", "fre", "lør", "søn", "pct", "procent", "kr",
 ];
 
 fn normalised_words(text: &str) -> Vec<String> {
@@ -95,18 +95,27 @@ mod tests {
     fn growing_more_than_30_percent_is_refused() {
         let input = "Vi ses torsdag.";
         let output = "Vi ses torsdag. Husk også at tage kaffe med til mødet.";
-        assert!(matches!(check(input, output), Err(Violation::TooLong { .. })));
+        assert!(matches!(
+            check(input, output),
+            Err(Violation::TooLong { .. })
+        ));
         // The same words, 20% longer: fine; 41% longer: refused.
         let words = |n: usize| vec!["ord"; n].join(" ");
         assert_eq!(check(&words(10), &words(12)), Ok(()));
-        assert!(matches!(check(&words(10), &words(14)), Err(Violation::TooLong { .. })));
+        assert!(matches!(
+            check(&words(10), &words(14)),
+            Err(Violation::TooLong { .. })
+        ));
     }
 
     #[test]
     fn more_than_20_percent_new_words_is_refused() {
         let input = "kan du svare på hvad klokken er nu og hvor vi skal hen";
         let output = "Klokken er tre om eftermiddagen, vi skal til Aarhus.";
-        assert!(matches!(check(input, output), Err(Violation::NewWords { .. })));
+        assert!(matches!(
+            check(input, output),
+            Err(Violation::NewWords { .. })
+        ));
     }
 
     #[test]

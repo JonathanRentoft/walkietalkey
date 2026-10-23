@@ -33,7 +33,12 @@ impl Finished {
 
 /// Steps 6 and 7 for a recognised text. A key dictation's cleanup may have
 /// run chunk by chunk already (DESK-47).
-pub async fn process(app: &AppHandle, transcription: &str, key_dictation: bool, shift_held: bool) -> Finished {
+pub async fn process(
+    app: &AppHandle,
+    transcription: &str,
+    key_dictation: bool,
+    shift_held: bool,
+) -> Finished {
     let settings = store::get(app);
     let local_text = output::local_text(transcription, &settings);
     if local_text.trim().is_empty() {
@@ -69,7 +74,12 @@ pub async fn process(app: &AppHandle, transcription: &str, key_dictation: bool, 
 /// Saves the dictation to history (DESK-90) unless retention is "Gem ikke",
 /// then applies retention. `audio_file` is set only when "Gem lyd til
 /// fejlfinding" kept the recording (DESK-92).
-pub fn save_history(app: &AppHandle, finished: &Finished, source: &Source, audio_file: Option<&str>) {
+pub fn save_history(
+    app: &AppHandle,
+    finished: &Finished,
+    source: &Source,
+    audio_file: Option<&str>,
+) {
     let settings = store::get(app);
     let Some(hm) = app.try_state::<Arc<HistoryManager>>() else {
         return;
@@ -97,11 +107,15 @@ pub fn save_history(app: &AppHandle, finished: &Finished, source: &Source, audio
     let (db_path, recordings) = history::paths(&dir);
     match history::open(&db_path) {
         Ok(conn) => {
-            if let Err(e) = history::save_meta(&conn, entry.id, &source.label(), finished.cleanup.as_ref()) {
+            if let Err(e) =
+                history::save_meta(&conn, entry.id, &source.label(), finished.cleanup.as_ref())
+            {
                 warn!("Failed to save history details: {e}");
             }
             let now = chrono::Utc::now().timestamp();
-            if let Err(e) = history::apply_retention(&conn, &recordings, settings.history_retention, now) {
+            if let Err(e) =
+                history::apply_retention(&conn, &recordings, settings.history_retention, now)
+            {
                 warn!("History retention failed: {e}");
             }
         }
@@ -138,6 +152,8 @@ pub fn deliver(app: &AppHandle, text: String, delivery: Delivery) -> Result<Deli
                 crate::clipboard::write_text(app, &text).map(|_| Delivery::Clipboard)
             }
         },
-        Delivery::Clipboard => crate::clipboard::write_text(app, &text).map(|_| Delivery::Clipboard),
+        Delivery::Clipboard => {
+            crate::clipboard::write_text(app, &text).map(|_| Delivery::Clipboard)
+        }
     }
 }

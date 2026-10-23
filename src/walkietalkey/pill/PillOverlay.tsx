@@ -95,12 +95,35 @@ export function PillOverlay() {
     return () => clearInterval(id);
   }, [visible, state, capturing]);
 
-  if (!visible) return null;
-
   // Screen readers hear the countdown every 5 seconds, not every second.
   const spoken = countdown != null ? Math.ceil(countdown / 5) * 5 : null;
   const shown: DictationPillState =
     state === "processing" && modelLoading ? "notready" : state;
+  const labels = {
+    idleBefore: t("wt.pill.holdBefore"),
+    idleAfter: t("wt.pill.holdAfter"),
+    listening: t("wt.pill.listening"),
+    processing: t("wt.pill.processing"),
+    ready: t("wt.pill.ready"),
+    pasted: t("wt.pill.pasted"),
+    noSpeech: t("wt.pill.noSpeech"),
+    raw: t("wt.pill.raw"),
+    notReady: t("wt.pill.notReady"),
+    error: t("wt.pill.error"),
+  };
+  const announcement =
+    spoken != null
+      ? t("wt.pill.countdown", { seconds: spoken })
+      : announcementFor(shown, labels, pasteKey);
+
+  // The panel never takes focus, so VoiceOver gets a native announcement
+  // as well as the live region (spec 6.17).
+  useEffect(() => {
+    if (!visible || !announcement) return;
+    commands.wtAnnounce(announcement).catch(() => {});
+  }, [visible, announcement]);
+
+  if (!visible) return null;
   const style = {
     "--wt-level": (0.35 + 0.65 * level).toFixed(2),
   } as CSSProperties;
@@ -116,18 +139,7 @@ export function PillOverlay() {
         state={shown}
         seconds={countdown ?? seconds}
         pasteKey={pasteKey}
-        labels={{
-          idleBefore: t("wt.pill.holdBefore"),
-          idleAfter: t("wt.pill.holdAfter"),
-          listening: t("wt.pill.listening"),
-          processing: t("wt.pill.processing"),
-          ready: t("wt.pill.ready"),
-          pasted: t("wt.pill.pasted"),
-          noSpeech: t("wt.pill.noSpeech"),
-          raw: t("wt.pill.raw"),
-          notReady: t("wt.pill.notReady"),
-          error: t("wt.pill.error"),
-        }}
+        labels={labels}
       />
       {spoken != null ? (
         <span className="wt-visually-hidden" aria-live="polite">
@@ -136,4 +148,32 @@ export function PillOverlay() {
       ) : null}
     </div>
   );
+}
+
+/** What a screen reader should hear for a pill state. */
+function announcementFor(
+  state: DictationPillState,
+  labels: Record<string, string>,
+  pasteKey: string,
+): string {
+  switch (state) {
+    case "listening":
+      return labels.listening;
+    case "processing":
+      return labels.processing;
+    case "ready":
+      return `${labels.ready} ${pasteKey}`;
+    case "pasted":
+      return labels.pasted;
+    case "nospeech":
+      return labels.noSpeech;
+    case "raw":
+      return labels.raw;
+    case "notready":
+      return labels.notReady;
+    case "error":
+      return labels.error;
+    default:
+      return "";
+  }
 }

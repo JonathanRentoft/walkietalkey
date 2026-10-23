@@ -799,6 +799,8 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_history_delete,
             walkietalkey::commands::wt_history_copy,
             walkietalkey::commands::wt_set_paused,
+            walkietalkey::commands::wt_is_paused,
+            walkietalkey::commands::wt_announce,
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,

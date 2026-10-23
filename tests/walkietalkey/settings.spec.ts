@@ -249,13 +249,22 @@ test.describe("settings", () => {
         pairing_active: false,
         phones: [
           { id: "p1", name: "Jonathans iPhone", platform: "ios", online: true },
-          { id: "p2", name: "Pixel", platform: "android", online: false },
+          {
+            id: "p2",
+            name: "Pixel",
+            platform: "android",
+            online: false,
+            last_seen_day: Math.floor(Date.now() / 86_400_000) - 1,
+          },
+          { id: "p3", name: "iPad", platform: "ios", online: false },
         ],
       },
     });
     await section(page, "Telefon");
     await expect(page.getByText("Jonathans iPhone")).toBeVisible();
     await expect(page.getByText("Online", { exact: true })).toBeVisible();
+    await expect(page.getByText("Sidst set i går")).toBeVisible();
+    await expect(page.getByText("Ikke online", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Fjern Pixel" }).click();
     await expect
       .poll(async () =>
@@ -406,6 +415,13 @@ test.describe("settings", () => {
     await expect
       .poll(async () => (await mockState(page)).wt.replacements)
       .toEqual([{ from: "walkie talkie", to: "WalkieTalkey" }]);
+  });
+
+  test("a window opened while paused says so at once", async ({ page }) => {
+    await openApp(page, { paused: true });
+    await expect(
+      page.getByText("WalkieTalkey er sat på pause.", { exact: false }),
+    ).toBeVisible();
   });
 
   test("paused: the main window says so and Genoptag resumes", async ({

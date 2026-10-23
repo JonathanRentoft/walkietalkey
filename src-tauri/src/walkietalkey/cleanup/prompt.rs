@@ -41,7 +41,14 @@ fn escape(text: &str) -> String {
 /// Removes tags a model echoes back anyway.
 pub fn strip_tags(answer: &str) -> String {
     let mut text = answer.trim().to_string();
-    for tag in ["<dictation>", "</dictation>", "<previous>", "</previous>", "<new>", "</new>"] {
+    for tag in [
+        "<dictation>",
+        "</dictation>",
+        "<previous>",
+        "</previous>",
+        "<new>",
+        "</new>",
+    ] {
         text = text.replace(tag, " ");
     }
     text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -68,7 +75,10 @@ mod tests {
 
     #[test]
     fn echoed_tags_are_removed() {
-        assert_eq!(strip_tags("<dictation>\nVi ses torsdag.\n</dictation>"), "Vi ses torsdag.");
+        assert_eq!(
+            strip_tags("<dictation>\nVi ses torsdag.\n</dictation>"),
+            "Vi ses torsdag."
+        );
     }
 
     #[test]

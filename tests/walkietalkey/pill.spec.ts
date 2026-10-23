@@ -1,6 +1,6 @@
 // The DictationPill in Handy's overlay window (DESK-24, DESK-55, 6.17).
 import { expect, test, type Page } from "@playwright/test";
-import { emit, installMock, type MockOptions } from "./mock";
+import { calls, emit, installMock, type MockOptions } from "./mock";
 
 async function openPill(page: Page, options: MockOptions = {}) {
   await installMock(page, { window: "recording_overlay", ...options });
@@ -34,6 +34,12 @@ test.describe("pill", () => {
 
     await emit(page, "wt-pill-end", { state: "pasted", shortcut: "⌘V" });
     await expect(page.getByText("Indsat")).toBeVisible();
+    // VoiceOver hears every state through a native announcement (6.17).
+    await expect
+      .poll(async () =>
+        (await calls(page, "wt_announce")).map((c) => c.args.text),
+      )
+      .toEqual(["Lytter", "Renskriver", "Indsat"]);
 
     await emit(page, "hide-overlay");
     await expect(page.getByTestId("pill")).toBeHidden();

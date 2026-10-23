@@ -1004,6 +1004,11 @@
       "noName": "en telefon uden navn",
       "online": "Online",
       "offline": "Ikke online",
+      "lastSeen": {
+        "today": "Sidst set i dag",
+        "yesterday": "Sidst set i går",
+        "date": "Sidst set {{date}}"
+      },
       "removeNamed": "Fjern {{name}}",
       "removeFailed": "Telefonen kunne ikke fjernes. Prøv igen.",
       "removeFailedNamed": "{{name}} kunne ikke fjernes. Prøv igen.",

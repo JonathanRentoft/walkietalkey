@@ -114,7 +114,10 @@ mod tests {
             o.lock().unwrap().push("phone");
         });
         thread::sleep(Duration::from_millis(50));
-        assert!(order.lock().unwrap().is_empty(), "the phone waits for the key");
+        assert!(
+            order.lock().unwrap().is_empty(),
+            "the phone waits for the key"
+        );
         first.wait_turn();
         order.lock().unwrap().push("key");
         drop(first);

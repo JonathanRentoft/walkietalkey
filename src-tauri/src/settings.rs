@@ -1719,10 +1719,7 @@ mod tests {
         let raw = serde_json::json!({ "selected_model": "" });
 
         apply_settings_migrations(&mut settings, &raw);
-        assert_eq!(
-            settings.shortcut_activation,
-            ShortcutActivation::PushToTalk
-        );
+        assert_eq!(settings.shortcut_activation, ShortcutActivation::PushToTalk);
     }
 
     #[test]

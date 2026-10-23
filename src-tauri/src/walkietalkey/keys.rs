@@ -126,7 +126,10 @@ mod tests {
         };
         assert!(is_shortcut_key(&event(Some(Key::Delete), true)));
         assert!(!is_shortcut_key(&event(Some(Key::Delete), false)));
-        assert!(!is_shortcut_key(&event(None, true)), "fn itself is a modifier");
+        assert!(
+            !is_shortcut_key(&event(None, true)),
+            "fn itself is a modifier"
+        );
     }
 
     #[test]
@@ -135,12 +138,23 @@ mod tests {
         use std::sync::Arc;
         let revealed = Arc::new(AtomicBool::new(false));
         let r = Arc::clone(&revealed);
-        reveal_at(Instant::now(), || false, move || r.store(true, Ordering::SeqCst));
+        reveal_at(
+            Instant::now(),
+            || false,
+            move || r.store(true, Ordering::SeqCst),
+        );
         let shown = Arc::new(AtomicBool::new(false));
         let s = Arc::clone(&shown);
-        reveal_at(Instant::now(), || true, move || s.store(true, Ordering::SeqCst));
+        reveal_at(
+            Instant::now(),
+            || true,
+            move || s.store(true, Ordering::SeqCst),
+        );
         thread::sleep(Duration::from_millis(50));
-        assert!(!revealed.load(Ordering::SeqCst), "a finished tap never reveals");
+        assert!(
+            !revealed.load(Ordering::SeqCst),
+            "a finished tap never reveals"
+        );
         assert!(shown.load(Ordering::SeqCst));
     }
 }

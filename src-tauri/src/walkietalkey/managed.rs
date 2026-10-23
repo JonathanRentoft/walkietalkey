@@ -245,9 +245,7 @@ pub fn apply(values: &ManagedValues, wt: &mut WtSettings, handy: &mut AppSetting
             other => Err(format!("unknown key {other}")),
         };
         match result {
-            Ok(fields) => applied
-                .locked
-                .extend(fields.iter().map(|f| f.to_string())),
+            Ok(fields) => applied.locked.extend(fields.iter().map(|f| f.to_string())),
             Err(why) => applied.rejected.push((key.clone(), why)),
         }
     }
@@ -257,10 +255,9 @@ pub fn apply(values: &ManagedValues, wt: &mut WtSettings, handy: &mut AppSetting
     if !wt.allow_cloud_cleanup {
         let on_device = match wt.cleanup_provider.as_deref() {
             Some("apple") => true,
-            Some("custom") => wt
-                .cleanup_base_url
-                .as_deref()
-                .is_some_and(|url| url_ok(url, "http://localhost") || url_ok(url, "http://127.0.0.1")),
+            Some("custom") => wt.cleanup_base_url.as_deref().is_some_and(|url| {
+                url_ok(url, "http://localhost") || url_ok(url, "http://127.0.0.1")
+            }),
             _ => false,
         };
         if !on_device {
@@ -321,11 +318,23 @@ mod tests {
         assert_eq!(wt.update_channel, UpdateChannel::Beta);
         assert_eq!(handy.selected_model, "edda-v0.2-Q8_0");
         assert_eq!(applied.cleanup_api_key.as_deref(), Some("sk-company"));
-        for field in ["relay_url", "selected_model", "cleanup_api_key", "update_checks_enabled"] {
-            assert!(applied.locked.contains(&field.to_string()), "{field} locked");
+        for field in [
+            "relay_url",
+            "selected_model",
+            "cleanup_api_key",
+            "update_checks_enabled",
+        ] {
+            assert!(
+                applied.locked.contains(&field.to_string()),
+                "{field} locked"
+            );
         }
         // Every Appendix B key was handled.
-        assert_eq!(values.len(), KEYS.len() - 1, "all but AllowCloudCleanup used here");
+        assert_eq!(
+            values.len(),
+            KEYS.len() - 1,
+            "all but AllowCloudCleanup used here"
+        );
     }
 
     #[test]

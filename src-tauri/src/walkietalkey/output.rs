@@ -132,7 +132,10 @@ mod tests {
             output_mode: OutputMode::Clipboard,
             ..WtSettings::default()
         };
-        assert_eq!(delivery_for(&Source::Key, &clipboard_only, true), Delivery::Clipboard);
+        assert_eq!(
+            delivery_for(&Source::Key, &clipboard_only, true),
+            Delivery::Clipboard
+        );
     }
 
     #[test]
@@ -147,9 +150,15 @@ mod tests {
     #[test]
     fn the_pill_ends_with_the_right_state() {
         assert_eq!(pill_end("Hej", Delivery::Paste, false), PillEnd::Pasted);
-        assert_eq!(pill_end("Hej", Delivery::Clipboard, false), PillEnd::Clipboard);
+        assert_eq!(
+            pill_end("Hej", Delivery::Clipboard, false),
+            PillEnd::Clipboard
+        );
         assert_eq!(pill_end("  ", Delivery::Paste, false), PillEnd::NoSpeech);
-        assert_eq!(pill_end("Hej", Delivery::Paste, true), PillEnd::CleanupSkipped);
+        assert_eq!(
+            pill_end("Hej", Delivery::Paste, true),
+            PillEnd::CleanupSkipped
+        );
     }
 
     #[test]

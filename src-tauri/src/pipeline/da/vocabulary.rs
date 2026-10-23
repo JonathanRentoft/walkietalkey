@@ -181,7 +181,12 @@ mod tests {
 
     #[test]
     fn empty_and_duplicate_words_are_skipped() {
-        let words = vec!["Jonathan".into(), " ".into(), "Navigent".into(), "jonathan".into()];
+        let words = vec![
+            "Jonathan".into(),
+            " ".into(),
+            "Navigent".into(),
+            "jonathan".into(),
+        ];
         assert_eq!(vocabulary_terms(&words, 150), vec!["jonathan", "Navigent"]);
     }
 
@@ -218,7 +223,10 @@ mod tests {
         assert_eq!(parse_word_lines("# kommentar\n\n Edda \n"), vec!["Edda"]);
 
         let rules = vec![r("walkie talkie", "WalkieTalkey"), r("kl", "kl.")];
-        assert_eq!(parse_replacement_lines(&format_replacement_lines(&rules)), rules);
+        assert_eq!(
+            parse_replacement_lines(&format_replacement_lines(&rules)),
+            rules
+        );
         assert_eq!(
             parse_replacement_lines("a -> b\nc\td\nugyldig linje\n"),
             vec![r("a", "b"), r("c", "d")]

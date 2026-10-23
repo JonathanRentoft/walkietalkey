@@ -37,6 +37,8 @@ jobs:
         run: bunx tsc --noEmit
       - name: Translations
         run: bun run check:translations
+      - name: Desktop UI unit tests and the owner's copy list
+        run: bun run test:wt && bun run check:copy
       - name: Model catalog in sync with its package
         run: bun run check:catalog
       - name: Protocol (TypeScript, shared test vectors)
