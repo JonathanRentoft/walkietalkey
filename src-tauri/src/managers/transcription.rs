@@ -1166,8 +1166,9 @@ impl TranscriptionManager {
         };
         // `mark` covers every chunk, so a cancel between two stops the rest.
         // A failed chunk fails the whole transcription.
-        // WalkieTalkey: Edda is decoded one speech segment at a time, text
-        // only, in batch as well as live (docs/MODELS.md, "Edda and pauses").
+        // WalkieTalkey: Edda is decoded in batch as it is live: text only, in
+        // the live plan's chunks, a cut-short chunk again piece by piece
+        // (docs/MODELS.md, "Edda and pauses").
         if crate::walkietalkey::catalog::decodes_by_segment(active_model) {
             let mut run_options = setup.run_options.clone();
             run_options.timestamps = transcribe_cpp::TimestampKind::None;
@@ -1178,7 +1179,7 @@ impl TranscriptionManager {
                 audio,
                 active_model,
                 settings.vad_backend,
-                crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS,
+                crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,
                 info.supports_initial_prompt,
             )
             .map_err(engine_error)?;

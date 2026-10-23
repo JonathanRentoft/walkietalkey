@@ -288,14 +288,26 @@ clip, some inside sentences) and decodes every segment as its own window
 without context: that brings Edda close to its single-utterance accuracy and
 below turbo, while it makes turbo worse.
 
-**For the app (lead's decision):** with timestamps off and live chunks of up
-to 25 s, feed Edda one VAD speech segment per decode (cut at every pause the
-VAD reports, merging only fragments shorter than about a second) rather than a
-multi-sentence chunk, and pass the previous segment's text as the context
-prompt (Edda v0.2 was trained with that slot; its effect on the split was not
-measured here). Each segment costs one encoder pass (about 0.9 s on Metal on
-this Mac), but segments are decoded while the user is still talking
-(DESK-46), so only the last one adds to the wait.
+**What the app does (measured through the app).** Splitting at every pause
+fixes multi-sentence windows but hurts single sentences: pieces of one or two
+seconds decoded on their own repeat phrases or drift into other scripts. So
+the app decodes Edda adaptively, text only, with the previous text as the
+context prompt: each 10-18 s live chunk (DESK-46) is decoded whole, and only a
+chunk whose text looks cut short (under 1.6 words per second of audio) is
+decoded again one VAD speech segment at a time; the pieces replace the whole
+only if they have at least 25 % more words. The app's batch path (the CLI, a
+history re-transcription) does the same. WER through the app
+(`walkietalkey -f <clip> --json`, the harness's normalisation), Metal:
+
+| Clips                       |                     Whole window | Every pause | Adaptive (shipped) |
+| --------------------------- | -------------------------------: | ----------: | -----------------: |
+| 100 single FLEURS sentences | (7.17 % on all 930, engine only) |     11.01 % |             6.89 % |
+| 100 x 2 utterances          |                          15.49 % |     10.68 % |             8.13 % |
+| 60 x 3 utterances           |                          22.09 % |      9.46 % |             7.09 % |
+
+Windows losing at least a quarter of their words: 0, 1 and 1 with the adaptive
+decode. A re-decoded chunk costs one encoder pass per piece (about 0.9 s on
+Metal), during talking; only a cut-short last chunk adds them to the wait.
 
 ## Licence terms
 

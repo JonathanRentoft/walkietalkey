@@ -28,6 +28,10 @@ pub(super) struct ChunkedDecode<'a> {
     /// Each chunk gets the end of the previous chunk's text as its context
     /// prompt (DESK-46), when the model takes one.
     context_prompts: bool,
+    /// WalkieTalkey (Edda): a chunk whose text is cut short is decoded again
+    /// piece by piece, see [`looks_cut_short`].
+    resplit_cut_short: bool,
+    backend: VadBackend,
     on_chunk: Option<ChunkObserver>,
     transcripts: Vec<Transcript>,
     /// The first run that failed or was cancelled; nothing more is decoded
@@ -58,6 +62,8 @@ impl<'a> ChunkedDecode<'a> {
                 plan,
             ),
             context_prompts,
+            resplit_cut_short: crate::walkietalkey::catalog::decodes_by_segment(model_id),
+            backend,
             on_chunk,
             transcripts: Vec::new(),
             failure: None,
@@ -181,11 +187,25 @@ impl<'a> ChunkedDecode<'a> {
                     self.run_options.language.as_deref(),
                 );
             }
+            let kept = self.resplit_cut_short.then(|| chunk.clone());
             match self
                 .tm
                 .run_batch(self.mark, chunk, &run_options, &self.model_id)
             {
                 Ok(transcript) => {
+                    let transcript = match kept {
+                        Some(audio) if looks_cut_short(&transcript.text, audio_secs) => {
+                            match self.decode_in_pieces(audio, transcript) {
+                                Ok(transcript) => transcript,
+                                Err(e) => {
+                                    info!("Chunk decoding stopped: {}", e);
+                                    self.failure = Some(e);
+                                    return;
+                                }
+                            }
+                        }
+                        _ => transcript,
+                    };
                     if let Some(on_chunk) = &self.on_chunk {
                         on_chunk(&transcript.text);
                     }
@@ -208,5 +228,115 @@ impl<'a> ChunkedDecode<'a> {
                 }
             }
         }
+    }
+
+    /// WalkieTalkey: decodes a chunk again one speech segment at a time (cut at
+    /// its pauses, [`ChunkPlan::LIVE_SEGMENTS`]), each with the text before it
+    /// as context, and keeps that only if it says clearly more than `whole`.
+    fn decode_in_pieces(
+        &self,
+        audio: Vec<f32>,
+        whole: Transcript,
+    ) -> Result<Transcript, EngineError> {
+        let app_handle = self.tm.app_handle.clone();
+        let backend = self.backend;
+        let mut chunker = Chunker::with_plan(
+            Box::new(move || create_detector(backend, &app_handle)),
+            ChunkPlan::LIVE_SEGMENTS,
+        );
+        let mut pieces = chunker.push(audio);
+        pieces.extend(chunker.finish());
+        if pieces.len() < 2 {
+            return Ok(whole);
+        }
+        let started = Instant::now();
+        let count = pieces.len();
+        let mut texts: Vec<String> = Vec::new();
+        let mut previous = self.transcripts.last().map(|t| t.text.clone());
+        for piece in pieces {
+            let mut run_options = self.run_options.clone();
+            if self.context_prompts {
+                run_options.prompt = crate::pipeline::da::context::chunk_prompt(
+                    previous.as_deref(),
+                    self.run_options.language.as_deref(),
+                );
+            }
+            let transcript = self
+                .tm
+                .run_batch(self.mark, piece, &run_options, &self.model_id)?;
+            previous = Some(transcript.text.clone());
+            texts.push(transcript.text);
+        }
+        let joined = crate::audio_toolkit::chunking::join_transcripts(&texts);
+        let (whole_words, piece_words) = (word_count(&whole.text), word_count(&joined));
+        let better = piece_words_win(whole_words, piece_words);
+        info!(
+            "A chunk looked cut short ({} words); in {} pieces it has {} ({:.2}s): {}",
+            whole_words,
+            count,
+            piece_words,
+            started.elapsed().as_secs_f64(),
+            if better {
+                "using the pieces"
+            } else {
+                "keeping the whole"
+            }
+        );
+        Ok(if better {
+            Transcript {
+                text: joined,
+                raw_text: String::new(),
+                segments: Vec::new(),
+                words: Vec::new(),
+                tokens: Vec::new(),
+                ..whole
+            }
+        } else {
+            whole
+        })
+    }
+}
+
+fn word_count(text: &str) -> usize {
+    text.split_whitespace().count()
+}
+
+/// Edda, decoded greedily, may stop at the first pause of a window that holds
+/// more than one sentence (docs/MODELS.md, "Edda and pauses"). Its text is
+/// then far shorter than the audio: below 1.6 words per second of a chunk
+/// longer than 4 s. Danish dictation runs at about 2 words per second
+/// (FLEURS windows: 5th percentile 1.4); the cut-short ones measured 0.5-1.75.
+fn looks_cut_short(text: &str, audio_secs: f64) -> bool {
+    audio_secs > 4.0 && (word_count(text) as f64) < 1.6 * audio_secs
+}
+
+/// The pieces replace the whole only when they say clearly more: a chunk that
+/// was not cut short (a slow speaker) keeps its one-window text.
+fn piece_words_win(whole_words: usize, piece_words: usize) -> bool {
+    piece_words as f64 >= 1.25 * whole_words as f64 && piece_words > whole_words
+}
+
+#[cfg(test)]
+mod cut_short_tests {
+    use super::*;
+
+    #[test]
+    fn short_text_for_long_audio_is_cut_short() {
+        // 17 of about 60 words on a 30 s window (the M0 finding).
+        let seventeen = vec!["ord"; 17].join(" ");
+        assert!(looks_cut_short(&seventeen, 30.0));
+        // An ordinary 14 s chunk at 2 words per second.
+        let twenty_eight = vec!["ord"; 28].join(" ");
+        assert!(!looks_cut_short(&twenty_eight, 14.0));
+        // Short audio is never judged.
+        assert!(!looks_cut_short("hej", 3.0));
+    }
+
+    #[test]
+    fn pieces_win_only_when_they_say_clearly_more() {
+        assert!(piece_words_win(17, 58));
+        assert!(!piece_words_win(20, 22), "a slow speaker keeps the whole");
+        assert!(!piece_words_win(0, 0));
+        assert!(piece_words_win(0, 3));
     }
 }

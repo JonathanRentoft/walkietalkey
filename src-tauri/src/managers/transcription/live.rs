@@ -72,12 +72,9 @@ impl<'a> LiveSession<'a> {
                     run_options,
                     model_id,
                     settings.vad_backend,
-                    // Edda: one speech segment per decode (docs/MODELS.md).
-                    if crate::walkietalkey::catalog::decodes_by_segment(model_id) {
-                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS
-                    } else {
-                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA
-                    },
+                    // Edda's cut-short chunks are decoded again piece by
+                    // piece (docs/MODELS.md, "Edda and pauses").
+                    crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,
                     info.supports_initial_prompt,
                     on_chunk,
                 )))
