@@ -134,6 +134,46 @@ let words: Vec<String> = pnc.punctuate_words(&["hej", "med", "dig"])?;
 - **Speed** (release build, M1 Pro CPU): model load 130 ms; a 15-word sentence
   3 ms; 1,324 words (11 windows) 190 ms.
 
+## Danish test harness (spec 15.1)
+
+`models/eval/` (Python, standard library only, run with uv). One command:
+
+```bash
+models/eval/run.sh                       # FLEURS da_dk test, all models (WT_WORK_DIR=_kit/work by default)
+models/eval/run.sh --limit 200           # evenly spread, deterministic subset
+models/eval/run.sh --clips-dir ~/diktater   # the owner's own <name>.wav + <name>.txt, outside the repo
+```
+
+It fetches and builds what is missing (transcribe.cpp 0.4.0, FLEURS, Edda Q8_0
+from the original, Handy's Whisper turbo Q8_0 checked against the catalog's
+SHA-256, Ekko v1 tiny Q8_0), transcribes every clip with each model through
+`transcribe-cli` in batch mode (model loaded once, greedy, language forced to
+Danish) and writes `summary.md`, `summary.json` and one `<model>.jsonl` with
+every clip's reference, hypothesis and scores. `--clips-dir` refuses folders
+inside the repository and converts audio that is not 16 kHz mono with ffmpeg.
+Unit tests: `cd models/eval && uv run --group dev pytest` (88 tests).
+
+- **Data.** FLEURS (google/fleurs, CC BY 4.0) `da_dk` test split, revision
+  `70bb2e84b976b7e960aa89f1c648e09c59f894dd`: 930 clips, 2.9 hours, read news
+  sentences (several speakers per sentence). The reference is FLEURS's raw
+  (cased, punctuated) transcription.
+- **WER normaliser** (`wt_eval/normalize.py`, applied to both sides): Unicode
+  NFKC and lower case; numbers as spoken Danish ("800.000" becomes "otte
+  hundrede tusind", "3,5" becomes "tre komma fem", a lone 1100 to 1999 is read as
+  a year, "nitten hundrede og seksoghalvfjerds", other integers as cardinals,
+  "%" becomes "procent"); every character that is not a letter or digit becomes
+  a space (punctuation, hyphens, quotes); "tusinde"/"tusind", "én"/"en" and "et
+  hundrede"/"hundrede" folded; whitespace collapsed. WER is the corpus total of
+  substitutions, deletions and insertions over reference words (Levenshtein),
+  with a 95 % bootstrap interval over clips. Known limits: ordinals ("5. maj"
+  reads as "fem maj"), clock times ("10.30" reads as a decimal) and
+  abbreviations ("f.eks.") are not folded.
+- **Punctuation measure** (`wt_eval/punctuation.py`, on the raw hypothesis):
+  marks are `. , ? ! ; :` except a mark between two digits ("3,5", "800.000");
+  words are whitespace-separated tokens. Reported as marks per 25 words over the
+  whole set, and the share of clips with fewer than 1 mark per 25 words, which
+  is exactly the DESK-41 trigger (`marks * 25 < words`, never for empty text).
+
 <!-- WER -->
 
 <!-- SPEED -->
