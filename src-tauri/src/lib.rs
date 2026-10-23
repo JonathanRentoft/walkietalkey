@@ -98,7 +98,7 @@ fn build_console_filter() -> env_filter::Filter {
     builder.build()
 }
 
-fn show_main_window(app: &AppHandle) {
+pub(crate) fn show_main_window(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
@@ -700,6 +700,9 @@ pub fn run(cli_args: CliArgs) {
     // Detect portable mode before anything else
     portable::init();
 
+    // WalkieTalkey: managed settings before anything reads the settings.
+    walkietalkey::early_init();
+
     // Parse console logging directives from RUST_LOG, falling back to info-level logging
     // when the variable is unset
     let console_filter = build_console_filter();
@@ -798,6 +801,8 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_set_paused,
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
+            walkietalkey::commands::wt_notification_permission,
+            walkietalkey::commands::wt_request_notification_permission,
             commands::check_apple_intelligence_available,
             commands::initialize_enigo,
             commands::initialize_shortcuts,

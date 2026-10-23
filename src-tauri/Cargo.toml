@@ -87,6 +87,9 @@ hf-hub = { git = "https://github.com/cjpais/hf-hub", branch = "cancellable-downl
 # WalkieTalkey: the relay client (crates/wt-relay-client, spec 5 and 8) and the
 # pairing QR code (rendered as SVG here, so the secret never leaves the process).
 wt-relay-client = { path = "../crates/wt-relay-client" }
+# OS keychain, private clipboard, notifications, managed settings, presence.
+wt-native = { path = "../crates/wt-native" }
+zeroize = "1"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 
 # WalkieTalkey: Ekko PnC punctuation (DESK-41) through ONNX Runtime. pyke's

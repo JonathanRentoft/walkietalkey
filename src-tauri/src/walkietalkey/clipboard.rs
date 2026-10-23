@@ -34,7 +34,14 @@ fn write_this_computer_only(text: &str) -> Option<Result<(), String>> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: the formats that keep the text out of Clipboard History and the
+/// Cloud Clipboard.
+#[cfg(target_os = "windows")]
+fn write_this_computer_only(text: &str) -> Option<Result<(), String>> {
+    Some(wt_native::clipboard_windows::write_text(text).map_err(|e| e.to_string()))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn write_this_computer_only(_text: &str) -> Option<Result<(), String>> {
     None
 }

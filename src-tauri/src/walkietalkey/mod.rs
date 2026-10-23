@@ -38,7 +38,25 @@ pub mod store;
 pub mod tray;
 pub mod updates;
 
+/// Before Tauri starts: the organisation's managed settings, so every read
+/// of the settings sees them (DESK-100).
+pub fn early_init() {
+    let values: managed::ManagedValues = wt_native::managed::read_managed()
+        .into_iter()
+        .map(|(key, value)| {
+            let value = match value {
+                wt_native::managed::ManagedValue::Text(t) => managed::ManagedValue::Text(t),
+                wt_native::managed::ManagedValue::Bool(b) => managed::ManagedValue::Bool(b),
+                wt_native::managed::ManagedValue::Int(i) => managed::ManagedValue::Int(i),
+            };
+            (key, value)
+        })
+        .collect();
+    store::set_managed_values(values);
+}
+
 pub fn startup(app: &AppHandle) {
+    notify::init(app);
     select_default_model(app);
     updates::start(app);
     relay::start(app);

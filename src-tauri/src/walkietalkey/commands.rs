@@ -181,3 +181,27 @@ pub async fn wt_measure_speed(app: AppHandle) -> Result<super::speed::SpeedVerdi
         .any(|m| m.id.starts_with("walkietalkey/ekko-v1-tiny-gguf/"));
     Ok(super::speed::verdict(seconds, fast_model))
 }
+
+/// Notification permission for onboarding (DESK-15): "granted", "denied" or
+/// "not_determined"; "unavailable" outside a bundled app.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_notification_permission() -> String {
+    use wt_native::notification_permission::{check, PermissionState};
+    match check() {
+        Ok(PermissionState::Granted) => "granted",
+        Ok(PermissionState::Denied) => "denied",
+        Ok(PermissionState::NotDetermined) => "not_determined",
+        Err(_) => "unavailable",
+    }
+    .to_string()
+}
+
+/// Asks for notification permission (DESK-15); true when granted.
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_request_notification_permission() -> bool {
+    tauri::async_runtime::spawn_blocking(|| wt_native::notifications::request_permission().unwrap_or(false))
+        .await
+        .unwrap_or(false)
+}

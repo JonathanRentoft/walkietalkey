@@ -1,8 +1,8 @@
-//! System notifications (DESK-56, DESK-57, Appendix A). Posting and the click
-//! handler (which opens the history with the item selected) are native code:
-//! a UNUserNotificationCenter delegate on macOS and a toast activation handler
-//! on Windows. Until that module is linked in, notifications go to the app's
-//! own window as `wt-notify` events.
+//! System notifications (DESK-56, DESK-57, Appendix A): posted through the
+//! native module (UNUserNotificationCenter on macOS, toasts on Windows); a
+//! click opens the history with that item selected. When notifications are
+//! unavailable (not a bundled app, or no permission yet) the app's own window
+//! gets the same notice as a `wt-notify` event.
 
 use serde::Serialize;
 use specta::Type;
@@ -16,9 +16,26 @@ pub struct Notice {
     pub history_id: Option<i64>,
 }
 
+/// Starts the native notifications and routes clicks to the history.
+pub fn init(app: &AppHandle) {
+    if let Err(e) = wt_native::notifications::init("com.walkietalkey.app") {
+        log::info!("System notifications unavailable: {e}");
+        return;
+    }
+    let app = app.clone();
+    wt_native::notifications::on_click(Box::new(move |history_id| {
+        crate::show_main_window(&app);
+        let _ = app.emit("wt-open-history", history_id);
+    }));
+}
+
 fn post(app: &AppHandle, notice: Notice) {
     log::info!("Notification: {}", notice.title);
-    let _ = app.emit("wt-notify", notice);
+    let posted = wt_native::notifications::available()
+        && wt_native::notifications::post(&notice.title, &notice.body, notice.history_id).is_ok();
+    if !posted {
+        let _ = app.emit("wt-notify", notice);
+    }
 }
 
 /// A phone dictation is on the clipboard (DESK-56).

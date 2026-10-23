@@ -5,6 +5,7 @@
 //! text (DESK-64), and presence answers (DESK-63).
 
 pub mod headless;
+pub mod keystore;
 pub mod session;
 
 use std::collections::HashMap;
@@ -18,7 +19,7 @@ use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc::UnboundedReceiver;
 use wt_relay_client::wt_protocol::{ComputerOs, DeviceId, ResultOutcome, ResultReason, SessionId};
-use wt_relay_client::{ClientConfig, JsonFileKeyStore, KeyStore, RelayClient, RelayEvent};
+use wt_relay_client::{ClientConfig, KeyStore, RelayClient, RelayEvent};
 
 use self::session::{SessionAudio, RESEND_WAIT};
 use super::output::Source;
@@ -61,19 +62,10 @@ fn computer_os() -> ComputerOs {
     }
 }
 
-/// Opens the key store in the app data folder.
+/// Opens the key store: keys in the keychain, the rest in the data folder.
 fn open_store(app: &AppHandle) -> anyhow::Result<Arc<dyn KeyStore>> {
     let dir = crate::portable::app_data_dir(app)?.join("relay");
-    std::fs::create_dir_all(&dir)?;
-    let path = dir.join("keys.json");
-    let store = JsonFileKeyStore::open(&path).map_err(|e| anyhow::anyhow!("{e}"))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if path.exists() {
-            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-        }
-    }
+    let store = keystore::DesktopKeyStore::open(&dir).map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(Arc::new(store))
 }
 

@@ -110,13 +110,18 @@ pub fn save_history(app: &AppHandle, finished: &Finished, source: &Source, audio
     let _ = tauri::Emitter::emit(app, "wt-history-changed", ());
 }
 
-/// Whether a key dictation may paste: macOS needs Accessibility (DESK-14).
+/// Whether a key dictation may paste: macOS needs Accessibility (DESK-14);
+/// Windows blocks pasting into apps running as administrator (DESK-50).
 pub async fn can_paste() -> bool {
     #[cfg(target_os = "macos")]
     {
         tauri_plugin_macos_permissions::check_accessibility_permission().await
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        !wt_native::elevation::foreground_window_is_elevated_above_us()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         true
     }

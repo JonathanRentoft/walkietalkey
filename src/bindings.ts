@@ -760,6 +760,19 @@ async wtMeasureSpeed() : Promise<Result<SpeedVerdict, string>> {
 }
 },
 /**
+ * Notification permission for onboarding (DESK-15): "granted", "denied" or
+ * "not_determined"; "unavailable" outside a bundled app.
+ */
+async wtNotificationPermission() : Promise<string> {
+    return await TAURI_INVOKE("wt_notification_permission");
+},
+/**
+ * Asks for notification permission (DESK-15); true when granted.
+ */
+async wtRequestNotificationPermission() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_request_notification_permission");
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
