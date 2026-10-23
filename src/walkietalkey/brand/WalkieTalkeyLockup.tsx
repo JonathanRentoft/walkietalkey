@@ -10,10 +10,15 @@ interface Props {
 const ASPECT = 716.8 / 103.3;
 const DEFAULT_WIDTH = 716.8;
 
-export default function WalkieTalkeyLockup({ width, height, className }: Props) {
+export default function WalkieTalkeyLockup({
+  width,
+  height,
+  className,
+}: Props) {
   // Numbers keep the logo's aspect ratio; strings (e.g. "1em") pass through.
   const w =
-    width ?? (typeof height === "number" ? height * ASPECT : height ?? DEFAULT_WIDTH);
+    width ??
+    (typeof height === "number" ? height * ASPECT : (height ?? DEFAULT_WIDTH));
   const h = height ?? (typeof w === "number" ? w / ASPECT : undefined);
   return (
     <svg

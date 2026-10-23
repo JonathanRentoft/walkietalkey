@@ -1,0 +1,938 @@
+/* WalkieTalkey's screens, built only from the design system's tokens
+   (@walkietalkey/ui). Handy's Tailwind setup (App.css) stays loaded for the
+   Handy components shown under Avanceret. */
+
+/* The design system switches to dark with data-theme="dark". Handy's
+   "system" theme leaves data-theme unset, so follow the OS here. Values are
+   the [data-theme="dark"] tokens from packages/ui/src/styles/tokens.css. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-100: #131211;
+    --surface-200: #1c1b19;
+    --surface-300: #0c0b0a;
+    --line: #2d2b28;
+    --line-control: #77716a;
+    --ink: #f4f1ec;
+    --ink-muted: #a9a39a;
+    --on-ink: #131211;
+    --on-gradient: #f4f1ec;
+    --on-gradient-muted: #d4cec5;
+    --glass: #ffffff0f;
+    --glass-line: #ffffff1f;
+    --signal-rec: #ff6a5c;
+    --shadow-soft: 0 1px 2px #00000080, 0 8px 24px -10px #000000b3;
+    --shadow-float: 0 2px 6px #00000099, 0 24px 48px -18px #000000e6;
+    --focus-ring: 0 0 0 2px #131211, 0 0 0 4px #f4f1ec;
+  }
+}
+
+:root {
+  /* Handy's colour tokens, mapped to ours so its components fit in. */
+  --color-text: var(--ink);
+  --color-background: var(--surface-100);
+  --color-logo-primary: var(--rav-dyb);
+  --color-background-ui: var(--rav-dyb);
+  --color-mid-gray: var(--ink-muted);
+  --color-logo-stroke: var(--ink);
+  --wt-ok: #2f6b45;
+  --wt-warn: #9a4a12;
+  color-scheme: light dark;
+}
+[data-theme="dark"] {
+  --wt-ok: #8fd1a5;
+  --wt-warn: #f2b38a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wt-ok: #8fd1a5;
+    --wt-warn: #f2b38a;
+  }
+}
+
+html,
+body {
+  background: var(--surface-100);
+  color: var(--ink);
+  font: var(--type-body);
+  font-size: 15px;
+}
+#root {
+  min-height: 100vh;
+}
+
+.wt-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Every focusable control shows the design system's focus ring. Headings
+   that receive focus when a screen changes (tabindex -1) do not. */
+.wt-app :focus-visible,
+.wt-onb :focus-visible,
+.wt-dialog :focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+.wt-app [tabindex="-1"]:focus-visible,
+.wt-onb [tabindex="-1"]:focus-visible {
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------- Layout */
+.wt-app {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+.wt-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-3);
+  background: var(--surface-300);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+.wt-nav-brand {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-2) var(--space-4);
+  color: var(--ink);
+}
+.wt-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wt-nav-item {
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  font: var(--type-label);
+  cursor: pointer;
+}
+.wt-nav-item:hover {
+  background: color-mix(in oklab, var(--surface-200) 70%, transparent);
+  color: var(--ink);
+}
+.wt-nav-item[aria-current="page"] {
+  background: var(--surface-200);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+.wt-nav-sep {
+  height: 1px;
+  background: var(--line);
+  margin: var(--space-2) 0;
+}
+.wt-main {
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-6) var(--space-12);
+}
+.wt-main-inner {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* --------------------------------------------------------------- Page */
+.wt-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.wt-page-title {
+  margin: 0;
+  font: var(--type-heading);
+  letter-spacing: var(--type-heading-tracking);
+}
+.wt-page-title:focus {
+  outline: none;
+}
+.wt-page-desc {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-muted);
+}
+.wt-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wt-group-title {
+  margin: 0;
+  font: var(--type-label);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.wt-group-desc {
+  margin: 0;
+  color: var(--ink-muted);
+  font: var(--type-label);
+  font-weight: 400;
+}
+.wt-card {
+  background: var(--surface-200);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+.wt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+.wt-row + .wt-row,
+.wt-card > * + .wt-row {
+  border-top: 1px solid var(--line);
+}
+.wt-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+.wt-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.wt-row-title {
+  font: var(--type-label);
+  color: var(--ink);
+}
+.wt-row-desc {
+  margin: 0;
+  font: var(--type-caption);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.wt-row-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  flex-wrap: wrap;
+}
+.wt-row--stacked .wt-row-control {
+  flex: 1 1 auto;
+}
+.wt-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+.wt-note {
+  margin: 0;
+  font: var(--type-caption);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.wt-status {
+  margin: 0;
+  font: var(--type-label);
+  color: var(--ink);
+}
+.wt-status--ok {
+  color: var(--wt-ok);
+}
+.wt-status--warn {
+  color: var(--wt-warn);
+}
+.wt-status--muted {
+  color: var(--ink-muted);
+}
+.wt-mono {
+  font: var(--type-code);
+}
+
+/* ------------------------------------------------------------ Controls */
+.wt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-control);
+  background: var(--surface-200);
+  color: var(--ink);
+  font: var(--type-label);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease-flow);
+}
+.wt-btn:hover:not(:disabled) {
+  background: var(--surface-300);
+}
+.wt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wt-btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.wt-btn--primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 86%, var(--surface-100));
+}
+.wt-btn--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.wt-btn--quiet:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--surface-300) 60%, transparent);
+}
+.wt-btn--danger {
+  color: var(--wt-warn);
+  border-color: var(--wt-warn);
+}
+
+.wt-switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-control);
+  background: var(--surface-300);
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-flow);
+}
+.wt-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  transition: transform var(--duration-base) var(--ease-flow);
+}
+.wt-switch[aria-checked="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.wt-switch[aria-checked="true"] .wt-switch-thumb {
+  transform: translateX(16px);
+  background: var(--on-ink);
+}
+.wt-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wt-choices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-300);
+  border: 1px solid var(--line);
+}
+.wt-choices--vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 6px;
+}
+.wt-choice {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px 12px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font: var(--type-label);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.wt-choices--vertical .wt-choice {
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-200);
+}
+.wt-choice input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: inherit;
+}
+.wt-choices--vertical .wt-choice input {
+  opacity: 1;
+  inset: auto;
+  left: 12px;
+  top: 11px;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--ink);
+}
+.wt-choice--on {
+  background: var(--surface-200);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+.wt-choices--vertical .wt-choice--on {
+  border-color: var(--ink);
+}
+.wt-choice:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+.wt-choice--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wt-choice-desc {
+  font: var(--type-caption);
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.wt-input,
+.wt-select {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-control);
+  background: var(--surface-200);
+  color: var(--ink);
+  font: var(--type-label);
+  font-weight: 400;
+  box-sizing: border-box;
+}
+.wt-input:disabled,
+.wt-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.wt-input::placeholder {
+  color: var(--ink-muted);
+}
+.wt-input--wide {
+  width: 100%;
+}
+textarea.wt-input {
+  width: 100%;
+  resize: vertical;
+  font: var(--type-body);
+}
+.wt-inline {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.wt-inline > .wt-input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+/* ----------------------------------------------------------- Keycaps */
+.wt-keycaps {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 10px;
+}
+.wt-keypicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.wt-keypicker-caps {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+}
+.wt-keypicker-prompt {
+  font: var(--type-label);
+  color: var(--ink-muted);
+}
+.wt-keypicker-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------ Dialog */
+.wt-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: color-mix(in oklab, var(--night) 45%, transparent);
+  animation: wt-fade var(--duration-base) var(--ease-flow) both;
+}
+.wt-dialog {
+  width: min(440px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--surface-200);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--line);
+}
+.wt-dialog:focus {
+  outline: none;
+}
+.wt-dialog--wide {
+  width: min(560px, 100%);
+}
+.wt-dialog-title {
+  margin: 0 0 var(--space-3);
+  font: var(--type-heading);
+  font-size: 19px;
+}
+.wt-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.wt-dialog-body p {
+  margin: 0;
+}
+.wt-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  flex-wrap: wrap;
+}
+@keyframes wt-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------------- Pairing */
+.wt-pairing {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.wt-pairing-code {
+  flex: none;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+.wt-qr {
+  display: block;
+  width: 168px;
+  height: 168px;
+}
+.wt-qr--empty {
+  background: var(--surface-300);
+  border-radius: var(--radius-sm);
+}
+.wt-pairing-text {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.wt-pairing-text p {
+  margin: 0;
+}
+.wt-countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------- Onboarding */
+.wt-onb-bg {
+  min-height: 100vh;
+}
+.wt-onb-bg > .wt-content {
+  min-height: 100vh;
+}
+.wt-onb {
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-6);
+  color: var(--ink);
+}
+.wt-onb-progress {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wt-onb-dot {
+  width: 22px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--ink) 18%, transparent);
+}
+.wt-onb-dot--on {
+  background: var(--ink);
+}
+.wt-onb-card {
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface-200) 92%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-float);
+  animation: wt-fade var(--duration-slow) var(--ease-flow) both;
+}
+.wt-onb-card p {
+  margin: 0;
+}
+.wt-onb-title {
+  margin: 0;
+  font: var(--type-title);
+  font-size: 28px;
+  letter-spacing: var(--type-title-tracking);
+}
+.wt-onb-title:focus,
+.wt-onb-hero:focus {
+  outline: none;
+}
+.wt-onb-lead {
+  font: var(--type-body-lg);
+}
+.wt-onb-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-8);
+  padding: var(--space-6) 0;
+}
+.wt-onb-hero {
+  margin: 0;
+  font: var(--type-title);
+  font-size: 30px;
+  letter-spacing: var(--type-title-tracking);
+  max-width: 22ch;
+}
+.wt-onb-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-100);
+  border: 1px solid var(--line);
+}
+.wt-onb-block-title {
+  margin: 0;
+  font: var(--type-label);
+  font-weight: 600;
+}
+.wt-onb-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wt-onb-actions--end {
+  justify-content: flex-end;
+}
+.wt-onb-model {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.wt-onb-footer {
+  width: min(560px, 100%);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+.wt-onb-footer > div:last-child {
+  justify-self: end;
+}
+.wt-onb-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+.wt-try-field {
+  min-height: 96px;
+}
+.wt-notice-preview {
+  position: relative;
+  font-size: 10px;
+  display: flex;
+  justify-content: center;
+}
+.wt-notice-preview .wt-notice {
+  position: relative;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  width: min(31em, 100%);
+  transform: none;
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------ Banner */
+.wt-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--sand);
+  color: var(--on-tone);
+}
+.wt-banner p {
+  margin: 0;
+  font: var(--type-label);
+}
+.wt-banner .wt-btn {
+  background: var(--surface-200);
+}
+
+/* ----------------------------------------------------------- History */
+.wt-history-tools {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wt-history-tools .wt-input {
+  flex: 1 1 200px;
+}
+.wt-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wt-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.wt-history-item + .wt-history-item {
+  border-top: 1px solid var(--line);
+}
+.wt-history-item[data-selected] {
+  background: color-mix(in oklab, var(--sand) 35%, var(--surface-200));
+}
+.wt-history-meta {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+.wt-history-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wt-history-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.wt-sent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-100);
+  border: 1px solid var(--line);
+}
+.wt-sent dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px var(--space-3);
+  font: var(--type-caption);
+}
+.wt-sent dt {
+  color: var(--ink-muted);
+}
+.wt-sent dd {
+  margin: 0;
+}
+.wt-sent pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--type-code);
+}
+.wt-empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--ink-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- Lists */
+.wt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wt-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+.wt-list-item + .wt-list-item {
+  border-top: 1px solid var(--line);
+}
+.wt-list-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wt-list-sub {
+  font: var(--type-caption);
+  color: var(--ink-muted);
+}
+.wt-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: var(--ink-muted);
+}
+.wt-dot--on {
+  background: var(--wt-ok);
+}
+.wt-credits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wt-credits li {
+  padding: var(--space-2) var(--space-4);
+}
+.wt-credits li + li {
+  border-top: 1px solid var(--line);
+}
+.wt-credits b {
+  font-weight: 600;
+}
+.wt-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.wt-code {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-300);
+  font: var(--type-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Handy's own components under Avanceret */
+.wt-handy {
+  border-radius: var(--radius-md);
+}
+
+/* ------------------------------------------------------------ Toasts */
+.wt-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-float);
+  font: var(--type-label);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-btn,
+  .wt-switch,
+  .wt-switch-thumb,
+  .wt-dialog-backdrop,
+  .wt-onb-card {
+    transition: none;
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .wt-app {
+    grid-template-columns: 168px minmax(0, 1fr);
+  }
+  .wt-main {
+    padding: var(--space-4) var(--space-4) var(--space-12);
+  }
+  .wt-onb-card {
+    padding: var(--space-6);
+  }
+}

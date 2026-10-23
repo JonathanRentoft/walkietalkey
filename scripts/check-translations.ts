@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { WALKIETALKEY_UI_LANGUAGES } from "../src/walkietalkey/i18n";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,10 +17,14 @@ interface ValidationResult {
   extra: string[][];
 }
 
+// WalkieTalkey ships Danish (checked against the English reference). Handy's
+// other locales stay in the tree for upstream merges but are never loaded
+// (src/walkietalkey/i18n.ts), so they are not checked.
 function getLanguages(): string[] {
   const entries = fs.readdirSync(LOCALES_DIR, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isDirectory() && entry.name !== REFERENCE_LANG)
+    .filter((entry) => WALKIETALKEY_UI_LANGUAGES.includes(entry.name))
     .map((entry) => entry.name)
     .sort();
 }

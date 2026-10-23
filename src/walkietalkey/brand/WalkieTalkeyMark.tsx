@@ -13,7 +13,8 @@ const DEFAULT_WIDTH = 127.34;
 export default function WalkieTalkeyMark({ width, height, className }: Props) {
   // Numbers keep the logo's aspect ratio; strings (e.g. "1em") pass through.
   const w =
-    width ?? (typeof height === "number" ? height * ASPECT : height ?? DEFAULT_WIDTH);
+    width ??
+    (typeof height === "number" ? height * ASPECT : (height ?? DEFAULT_WIDTH));
   const h = height ?? (typeof w === "number" ? w / ASPECT : undefined);
   return (
     <svg
