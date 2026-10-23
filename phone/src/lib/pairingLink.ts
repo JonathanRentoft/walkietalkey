@@ -19,12 +19,15 @@ export interface HistoryLike {
   replaceState(data: unknown, unused: string, url?: string | URL | null): void;
 }
 
-/** The app's own URL without fragment and query; `/p` (the pairing path) becomes the app root. */
+/**
+ * The app's own URL without fragment and query; the pairing path becomes the app root. That is
+ * `/p` (or `/p.html`), and `/p/` on servers that redirect a folder to its trailing slash.
+ */
 export function cleanAppUrl(href: string): string {
   const u = new URL(href);
   u.hash = "";
   u.search = "";
-  u.pathname = u.pathname.replace(/\/p(\.html)?$/, "/");
+  u.pathname = u.pathname.replace(/\/p(?:\.html|\/(?:index\.html)?)?$/, "/");
   return u.href.replace(/#$/, "");
 }
 

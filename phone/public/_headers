@@ -17,6 +17,8 @@
   Cache-Control: no-cache
 /p
   Cache-Control: no-cache
+/p/
+  Cache-Control: no-cache
 /
   Cache-Control: no-cache
 /assets/*
