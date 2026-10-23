@@ -79,9 +79,11 @@ test.describe("recording and streaming (PHONE-20..23, PHONE-30..32)", () => {
     await page.getByLabel("Tryk for at starte og stoppe").check();
     await page.getByRole("button", { name: "Tilbage" }).click();
     await holdButton(page).click();
-    await expect(label(page)).toHaveText("Slip for at sende");
+    // The recording goes on after the finger lifts; the next tap sends it.
+    await expect(label(page)).toHaveText("Tryk for at sende");
     await page.waitForTimeout(1200);
-    await expect(label(page)).toHaveText("Slip for at sende");
+    await expect(label(page)).toHaveText("Tryk for at sende");
+    await expect(page.getByRole("button", { name: "Annullér" })).toBeVisible();
     await holdButton(page).click();
     await computer.waitEnded();
     await expect(label(page)).toHaveText("Klar på Testcomputer");
