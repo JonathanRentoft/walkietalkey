@@ -16,7 +16,7 @@ struct ShellView: View {
     var body: some View {
         ShellWebView(controller: .shared)
             .ignoresSafeArea()
-            .background(Color("Background").ignoresSafeArea())
+            .background(Color(ShellRoutes.backgroundColorName).ignoresSafeArea())
             .onOpenURL { url in
                 ShellController.shared.open(url)
             }

@@ -37,7 +37,7 @@ targets:
         LSRequiresIPhoneOS: true
         LSApplicationCategoryType: public.app-category.productivity
         UILaunchScreen:
-          UIColorName: Background
+          UIColorName: ShellBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:

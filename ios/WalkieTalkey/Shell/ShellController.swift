@@ -32,7 +32,7 @@ final class ShellController: NSObject, WKNavigationDelegate, WKUIDelegate, WKScr
         webView.uiDelegate = self
         webView.allowsLinkPreview = false
         #if os(iOS)
-        let background = UIColor(named: "Background") ?? .systemBackground
+        let background = UIColor(named: ShellRoutes.backgroundColorName) ?? .systemBackground
         webView.isOpaque = false
         webView.backgroundColor = background
         webView.scrollView.backgroundColor = background

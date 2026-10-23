@@ -13,6 +13,10 @@ enum ShellRoutes {
     /// The folder reference in the app bundle that holds the phone build (ios/scripts/bundle-phone.sh).
     static let bundledFolderName = "Web"
 
+    /// The asset catalog colour behind the page (the design system's surface-100), also the launch
+    /// screen colour in project.yml, so dark mode never flashes white.
+    static let backgroundColorName = "ShellBackground"
+
     static let rootURL = URL(string: "walkietalkey://localhost/")!
 
     /// Cold start from "Start diktering": the web app starts a tap-mode recording once it is ready
