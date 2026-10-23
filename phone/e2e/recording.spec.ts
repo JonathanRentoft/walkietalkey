@@ -146,6 +146,41 @@ test.describe("offline computer (PHONE-24)", () => {
   });
 });
 
+test.describe("a computer that goes to sleep (PHONE-32, RELAY-10)", () => {
+  test("its socket goes quiet without closing; the dictation goes again when it reconnects, without Prøv igen", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    // The lid closes: the relay still counts the computer's socket as live, so it neither buffers
+    // nor tells the phone; everything sent now is lost.
+    computer.goQuiet();
+    await hold(page, 1500);
+    await expect(label(page)).toHaveText("Sender til Testcomputer");
+    await page.waitForTimeout(800);
+    expect(computer.sessions.size).toBe(0);
+
+    // The computer wakes and connects again; the relay sends the phone `peer {online: true}`.
+    await computer.connect();
+    const s = await computer.waitEnded();
+    expect(s.starts).toBe(1);
+    expect(s.mismatches).toBe(0);
+    expect(s.blocks.size).toBe(s.end!.chunks);
+    expect(s.end!.chunks).toBeGreaterThanOrEqual(7);
+    expect(
+      bestCorrelation(bytesToInt16(ScriptedComputer.pcm(s))),
+    ).toBeGreaterThan(0.9);
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+    await expect(sub(page)).toHaveText("Tryk ⌘V for at indsætte");
+    await expect(page.getByRole("button", { name: "Prøv igen" })).toHaveCount(
+      0,
+    );
+  });
+});
+
 test.describe("resend after reconnect (PHONE-32)", () => {
   test("the phone's socket drops mid-recording; the whole session is resent and nothing is lost", async ({
     page,

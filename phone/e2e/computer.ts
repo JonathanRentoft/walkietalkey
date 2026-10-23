@@ -62,6 +62,8 @@ export class ScriptedComputer {
   readonly name: string;
   readonly os: ComputerOs;
   socket: RelaySocket | null = null;
+  /** Sockets left open by goQuiet(). */
+  private readonly quiet: RelaySocket[] = [];
   created = false;
   readonly phones = new Map<string, PhoneLog>();
   readonly sessions = new Map<string, SessionLog>();
@@ -153,6 +155,21 @@ export class ScriptedComputer {
     this.socket?.close(1000, "bye");
     this.socket = null;
     this.log.push("disconnected");
+  }
+
+  /**
+   * A laptop whose lid just closed: its socket stays open, and the relay counts it as live for up
+   * to 75 s (RELAY-10), but no ping goes out and whatever arrives is lost. connect() later opens a
+   * new socket, as the computer does when it wakes.
+   */
+  goQuiet(): void {
+    const s = this.socket;
+    if (!s) return;
+    s.stopPing();
+    s.onMessage = () => true;
+    this.quiet.push(s);
+    this.socket = null;
+    this.log.push("quiet");
   }
 
   /** spec 5.3 step 1: register SHA-256(a) and make the QR's URL. */
@@ -376,6 +393,7 @@ export class ScriptedComputer {
   }
 
   async deleteRoom(): Promise<void> {
+    for (const q of this.quiet.splice(0)) q.close();
     if (!this.socket?.open) {
       try {
         await this.connect();

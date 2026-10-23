@@ -245,10 +245,14 @@ The phone sends `audio_start`, one `audio_chunk` per 200 ms block while recordin
 `audio_end`. It keeps every block in memory until the session's `result` arrives. After a
 reconnect it resends the whole session: `audio_start`, chunks of up to 10 blocks, at most 25
 frames per second, `audio_end`, each frame re-encrypted with a fresh counter and nonce (old frames
-are never replayed). The computer keys blocks by (phone, session, block index), drops
-duplicates, reports missing indices with `audio_end` and keeps delivering late blocks; the
-application waits up to 5 s for them (DESK-61). The computer remembers answered sessions for
-15 minutes and answers a resend of one with the same result instead of transcribing it twice.
+are never replayed). It also resends every open session that has not failed when the relay sends
+`peer {online: true}` for the computer: a computer's socket that went quiet still counts as live
+for up to 75 s (RELAY-10), so frames routed to it in that time are lost. A resend asked for while
+one is running runs once more afterwards. The computer keys blocks by (phone, session, block
+index), drops duplicates, reports missing indices with `audio_end` and keeps delivering late
+blocks; the application waits up to 5 s for them (DESK-61). The computer remembers answered
+sessions for 15 minutes and answers a resend of one with the same result instead of
+transcribing it twice.
 
 ## 9. Counters (spec 9.4)
 

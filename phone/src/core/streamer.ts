@@ -42,6 +42,8 @@ export interface AudioSession {
   /** Connection on which this session is live (audio_start sent and every block so far). -1: none. */
   conn: number;
   resending: boolean;
+  /** Another resend was asked for during a resend: send the whole session once more after it. */
+  again: boolean;
   endSent: boolean;
 }
 
@@ -61,6 +63,7 @@ export function newSession(roomId: string, now: number): AudioSession {
     result: null,
     conn: -1,
     resending: false,
+    again: false,
     endSent: false,
   };
 }
@@ -163,6 +166,18 @@ export class SessionStreamer {
     }
   }
 
+  /**
+   * The computer is back (a relay `peer` message saying it is online): what went to its old
+   * socket while that socket was quiet but still counted as live (RELAY-10) is lost, so every open
+   * session that has not failed goes again on the current connection, the one being recorded
+   * too. The computer drops duplicate blocks and answers a finished session again with the
+   * same result.
+   */
+  async peerReturned(sessions: readonly AudioSession[]): Promise<void> {
+    for (const s of sessions) if (isOpen(s) && !s.failed) s.conn = -1;
+    await this.resendOpen(sessions);
+  }
+
   /** "Prøv igen" (PHONE-24): the whole session again from memory. */
   async retry(s: AudioSession): Promise<void> {
     if (!isOpen(s)) return;
@@ -171,50 +186,66 @@ export class SessionStreamer {
     if (this.link.connected) await this.resend(s);
   }
 
-  /** The whole session on the current connection: audio_start, chunks of 10 blocks, audio_end. */
+  /**
+   * The whole session on the current connection: audio_start, chunks of 10 blocks, audio_end.
+   * Asked for while a resend runs (a new connection, the computer back), it runs once more when
+   * that one is done.
+   */
   async resend(s: AudioSession): Promise<void> {
-    if (s.resending || !this.link.connected) return;
+    if (!this.link.connected) return;
+    if (s.resending) {
+      s.again = true;
+      return;
+    }
+    s.resending = true;
+    try {
+      do {
+        s.again = false;
+        await this.resendOnce(s);
+      } while (s.again && this.link.connected && isOpen(s));
+    } finally {
+      s.resending = false;
+      s.again = false;
+    }
+  }
+
+  private async resendOnce(s: AudioSession): Promise<void> {
     const conn = this.link.connId;
     const stillHere = () =>
       this.link.connected && this.link.connId === conn && isOpen(s);
-    s.resending = true;
     s.conn = -1;
     s.endSent = false;
-    try {
+    await this.pacer.next();
+    if (!stillHere() || !(await this.link.send(this.startPayload(s)))) return;
+    let i = 0;
+    // Blocks recorded during the resend are picked up too; then the session is live again.
+    while (i < s.blocks.length) {
+      const [frame] = packBlocks(
+        s.blocks.slice(0, Math.min(s.blocks.length, i + 10)),
+        i,
+      );
       await this.pacer.next();
-      if (!stillHere() || !(await this.link.send(this.startPayload(s)))) return;
-      let i = 0;
-      // Blocks recorded during the resend are picked up too; then the session is live again.
-      while (i < s.blocks.length) {
-        const [frame] = packBlocks(
-          s.blocks.slice(0, Math.min(s.blocks.length, i + 10)),
-          i,
-        );
-        await this.pacer.next();
-        if (!stillHere() || !frame) return;
-        if (
-          !(await this.link.send({
-            type: "audio_chunk",
-            sessionId: s.id,
-            firstIndex: frame.firstIndex,
-            pcm: frame.pcm,
-          }))
-        )
-          return;
-        i += Math.ceil(frame.pcm.length / 6400);
+      if (!stillHere() || !frame) return;
+      if (
+        !(await this.link.send({
+          type: "audio_chunk",
+          sessionId: s.id,
+          firstIndex: frame.firstIndex,
+          pcm: frame.pcm,
+        }))
+      )
+        return;
+      i += Math.ceil(frame.pcm.length / 6400);
+    }
+    s.conn = conn;
+    if (s.ended) {
+      await this.pacer.next();
+      if (!stillHere()) {
+        s.conn = -1;
+        return;
       }
-      s.conn = conn;
-      if (s.ended) {
-        await this.pacer.next();
-        if (!stillHere()) {
-          s.conn = -1;
-          return;
-        }
-        if (await this.link.send(this.endPayload(s))) s.endSent = true;
-        else s.conn = -1;
-      }
-    } finally {
-      s.resending = false;
+      if (await this.link.send(this.endPayload(s))) s.endSent = true;
+      else s.conn = -1;
     }
   }
 }

@@ -213,7 +213,11 @@ export async function joinRoom(
 
 export type LinkEvent =
   | { type: "status"; connected: boolean }
-  | { type: "peer"; online: boolean }
+  /**
+   * The computer's status: from the member list in `ok` (`announced: false`), or from a relay
+   * `peer` message (`announced: true`), which also comes when the computer reconnects.
+   */
+  | { type: "peer"; online: boolean; announced: boolean }
   | { type: "payload"; payload: DevicePayload }
   | { type: "removed"; code: number }
   | { type: "relay_error"; code: string }
@@ -403,7 +407,7 @@ export class RoomLink implements StreamLink {
     this.startPing();
     this.markSettled();
     this.emit({ type: "status", connected: true });
-    this.emit({ type: "peer", online: this.peerOnline });
+    this.emit({ type: "peer", online: this.peerOnline, announced: false });
     this.emit({ type: "authenticated", connId: this.connId });
     for (const m of h.early.splice(0)) this.incoming(ws, m);
   }
@@ -435,7 +439,7 @@ export class RoomLink implements StreamLink {
     } else if (msg.t === "peer") {
       if (msg.id !== this.computerId) return;
       this.peerOnline = msg.online;
-      this.emit({ type: "peer", online: msg.online });
+      this.emit({ type: "peer", online: msg.online, announced: true });
     } else if (msg.t === "error") {
       this.emit({ type: "relay_error", code: msg.code });
     }

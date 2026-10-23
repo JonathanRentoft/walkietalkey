@@ -269,6 +269,10 @@ export class PhoneController {
         break;
       case "peer":
         if (isTarget) this.dispatch({ type: "peer", online: e.online });
+        // PHONE-32: the computer is back. Its old socket may have looked live at the relay for up
+        // to 75 s after it went to sleep and swallowed what was sent, so open sessions go again.
+        if (e.online && e.announced)
+          void entry.streamer.peerReturned(this.sessionsOf(roomId));
         break;
       case "authenticated":
         void entry.streamer.resendOpen(this.sessionsOf(roomId));
