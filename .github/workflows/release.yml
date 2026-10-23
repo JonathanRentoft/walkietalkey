@@ -65,6 +65,11 @@ jobs:
             return data.id;
 
   # Which signing secrets exist; signing steps run only for those.
+  # Spec 15.1: the accuracy harness runs before each release. It reports in
+  # this run's summary and does not hold the release back.
+  accuracy:
+    uses: ./.github/workflows/accuracy.yml
+
   signing:
     runs-on: ubuntu-24.04
     outputs:

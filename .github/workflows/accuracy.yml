@@ -1,0 +1,75 @@
+# Danish accuracy (spec 15.1): WER of Edda, Handy's Whisper turbo and Ekko v1
+# Tiny on FLEURS da_dk, nightly and before each release, not on every pull
+# request (model size). Everything is rebuilt from the original public models
+# by models/eval/run.sh, so nothing depends on our own model hosting. The
+# owner's own dictations stay outside the repository and run locally with
+# `models/eval/run.sh --clips-dir <folder>`; AI cleanup timings need the
+# owner's keys and also run locally.
+name: Danish accuracy
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Number of FLEURS clips
+        default: "50"
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accuracy
+  cancel-in-progress: false
+
+jobs:
+  accuracy:
+    name: WER on FLEURS da_dk
+    runs-on: macos-26
+    timeout-minutes: 240
+    env:
+      WT_WORK_DIR: ${{ github.workspace }}/../wt-work
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 50
+      - name: Nightly only when main changed in the last day
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -z "$(git log --since='25 hours ago' --format=%H -1)" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No commits in the last day; nothing to measure." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: astral-sh/setup-uv@v6
+        if: steps.changed.outputs.run == 'true'
+      - name: Cache the engine, converted models and FLEURS
+        if: steps.changed.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.WT_WORK_DIR }}/src
+            ${{ env.WT_WORK_DIR }}/models-final
+            ${{ env.WT_WORK_DIR }}/dl/whisper-large-v3-turbo-gguf
+            ${{ env.WT_WORK_DIR }}/datasets/fleurs-da_dk
+          key: accuracy-${{ runner.os }}-${{ hashFiles('models/tools/setup-transcribe-cpp.sh', 'models/edda/convert.sh', 'models/edda/convert_edda.py', 'models/ekko-v1-tiny/convert.sh', 'models/eval/fetch_fleurs.sh') }}
+      - name: Run the harness
+        if: steps.changed.outputs.run == 'true'
+        run: |
+          mkdir -p "$WT_WORK_DIR"
+          models/eval/run.sh --limit "${{ inputs.limit || '50' }}" --backend cpu --out "$RUNNER_TEMP/accuracy"
+      - name: Summary
+        if: always() && steps.changed.outputs.run == 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/accuracy/summary.md" ]; then
+            cat "$RUNNER_TEMP/accuracy/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.changed.outputs.run == 'true'
+        with:
+          name: accuracy-${{ github.run_id }}
+          path: ${{ runner.temp }}/accuracy
+          if-no-files-found: ignore
