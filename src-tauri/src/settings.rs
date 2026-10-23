@@ -1113,6 +1113,10 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
 
+    // WalkieTalkey: managed values win over the user's (DESK-101). Applied
+    // after any write above, so they are never persisted as user values.
+    crate::walkietalkey::store::overlay_handy(&mut settings);
+
     settings
 }
 
