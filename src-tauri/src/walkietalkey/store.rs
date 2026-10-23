@@ -72,6 +72,30 @@ pub fn overlay_handy(settings: &mut AppSettings) {
     managed::apply(&values, &mut scratch, settings);
 }
 
+/// The other half of [`overlay_handy`], for a write of Handy's settings:
+/// a locked field keeps the user's own stored value, so a managed value is
+/// never saved as the user's and nothing sticks once the profile is gone
+/// (DESK-101).
+pub fn restore_handy_locked(new: &mut AppSettings, stored: &AppSettings) {
+    restore_handy_locked_with(&managed_values(), new, stored);
+}
+
+fn restore_handy_locked_with(values: &ManagedValues, new: &mut AppSettings, stored: &AppSettings) {
+    if values.is_empty() {
+        return;
+    }
+    let mut scratch_wt = WtSettings::default();
+    let mut scratch_handy = new.clone();
+    let applied = managed::apply(values, &mut scratch_wt, &mut scratch_handy);
+    for field in &applied.locked {
+        match field.as_str() {
+            "selected_model" => new.selected_model = stored.selected_model.clone(),
+            "update_checks_enabled" => new.update_checks_enabled = stored.update_checks_enabled,
+            _ => {}
+        }
+    }
+}
+
 /// The settings and their locks, as the settings screens get them.
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct WtSettingsView {
@@ -140,5 +164,31 @@ mod tests {
         restore_locked(&mut new, &previous, &["relay_url".to_string()]);
         assert_eq!(new.relay_url, previous.relay_url, "locked");
         assert_eq!(new.cleanup_mode, CleanupMode::Always, "not locked");
+    }
+
+    #[test]
+    fn managed_handy_values_are_never_written_as_the_users() {
+        use crate::walkietalkey::managed::ManagedValue;
+        let values: ManagedValues = [
+            (
+                "Model".to_string(),
+                ManagedValue::Text("company/model.gguf".into()),
+            ),
+            ("AutoUpdate".to_string(), ManagedValue::Bool(false)),
+        ]
+        .into_iter()
+        .collect();
+        let mut stored = crate::settings::get_default_settings();
+        stored.selected_model = "mine.gguf".into();
+        stored.update_checks_enabled = true;
+        // What get_settings handed out, with the managed values laid over.
+        let mut written = stored.clone();
+        written.selected_model = "company/model.gguf".into();
+        written.update_checks_enabled = false;
+        written.audio_feedback = !stored.audio_feedback;
+        restore_handy_locked_with(&values, &mut written, &stored);
+        assert_eq!(written.selected_model, "mine.gguf");
+        assert!(written.update_checks_enabled);
+        assert_eq!(written.audio_feedback, !stored.audio_feedback, "not locked");
     }
 }

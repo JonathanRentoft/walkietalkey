@@ -79,6 +79,8 @@ export function PillOverlay() {
     setPasteKey(e.shortcut || "⌘V");
     setState(pillStateFromEnd(e.state));
   });
+  // The key was held but no model can transcribe yet (Appendix A).
+  useTauriEvent("wt-pill-not-ready", () => setState("notready"));
   useTauriEvent<ModelStateEvent>("model-state-changed", (e) => {
     if (e.event_type === "loading_started") setModelLoading(true);
     else if (

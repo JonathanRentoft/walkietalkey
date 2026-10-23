@@ -7,7 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 use log::{info, warn};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// "Sæt på pause" (DESK-96): the key does nothing and phone dictations are
 /// answered with `paused`, until "Genoptag" or the next start of the app.
@@ -25,6 +25,16 @@ pub fn is_paused() -> bool {
 }
 
 pub fn set_paused(app: &AppHandle, paused: bool) {
+    // A recording that is running when pausing would never be stopped by
+    // the key, which pausing ignores: it is cancelled instead (DESK-96).
+    if paused && !is_paused() {
+        let recording = app
+            .try_state::<std::sync::Arc<crate::managers::audio::AudioRecordingManager>>()
+            .is_some_and(|rm| rm.is_recording());
+        if recording {
+            crate::utils::cancel_current_operation(app);
+        }
+    }
     PAUSED.store(paused, Ordering::SeqCst);
     info!("WalkieTalkey {}", if paused { "paused" } else { "resumed" });
     let _ = app.emit("wt-paused", paused);

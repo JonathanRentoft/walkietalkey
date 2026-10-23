@@ -841,7 +841,8 @@
       "newCode": "Make a new code",
       "failed": "Could not make a code. Check the connection and try again.",
       "noScreenShare": "Do not pair while you share your screen. The code works for 10 minutes, and anyone who sees it can use it.",
-      "getApp": "No app yet? Open {{url}} on the phone."
+      "getApp": "No app yet? Open {{url}} on the phone.",
+      "paired": "{{name}} is paired."
     },
     "notify": {
       "textReady": "Text ready to paste",

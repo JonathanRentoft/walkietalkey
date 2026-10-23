@@ -76,4 +76,15 @@ test.describe("pill", () => {
     await page.waitForTimeout(200);
     await expect(page.getByTestId("pill")).toBeHidden();
   });
+
+  test("holding the key before the model is ready says so", async ({
+    page,
+  }) => {
+    await openPill(page);
+    await emit(page, "show-overlay", "transcribing");
+    await emit(page, "wt-pill-not-ready");
+    await expect(
+      page.getByText("Talemodellen er ikke klar endnu"),
+    ).toBeVisible();
+  });
 });

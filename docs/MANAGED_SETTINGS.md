@@ -28,7 +28,7 @@ Every managed value is locked. It wins over the user's own value, the setting sh
 | `VocabularySource` | file path or `https://` URL | | A shared word list, one word per line, fetched at start and every day. It goes to the speech model with the user's own words (within the vocabulary budget). |
 | `OutputMode` | `paste`, `clipboard` | `paste` | Key dictations: paste at the cursor, or only the clipboard. |
 | `ShowTextInNotifications` | bool | true | `false` hides dictated text in notifications (shared screens, meetings). |
-| `HistoryRetentionDays` | int | 14 | `0` = do not keep, `-1` = keep forever, `1` = one day, `2` to `14` = 14 days, `15` to `90` = 90 days, more = forever (the app offers only these choices). |
+| `HistoryRetentionDays` | int | 14 | `0` = do not keep, `-1` = keep forever. A retention period is a maximum, so other values round down to the periods the app offers: `1` to `13` = one day, `14` to `89` = 14 days, `90` or more = 90 days. |
 | `AutoUpdate` | bool | true | `false` turns update checks off; install updates yourself. |
 | `UpdateChannel` | `stable`, `beta` | `stable` | |
 | `Model` | model id | by hardware | Pins a speech model, for example `walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf`. |

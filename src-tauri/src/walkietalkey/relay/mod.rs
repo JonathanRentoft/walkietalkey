@@ -445,7 +445,13 @@ async fn transcribe_and_deliver(
     else {
         return ResultOutcome::Failed(ResultReason::Error);
     };
-    if crate::settings::get_settings(app).selected_model.is_empty() {
+    // DESK-64: no model chosen, or its file not here yet (still downloading).
+    let selected = crate::settings::get_settings(app).selected_model;
+    let downloaded = app
+        .try_state::<Arc<crate::managers::model::ModelManager>>()
+        .and_then(|mm| mm.get_model_info(&selected))
+        .is_some_and(|m| m.is_downloaded);
+    if selected.is_empty() || !downloaded {
         return ResultOutcome::Failed(ResultReason::ModelNotReady);
     }
     let transcribed = tauri::async_runtime::spawn_blocking(move || match side {

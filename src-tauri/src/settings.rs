@@ -1285,11 +1285,18 @@ pub fn update_checks_effectively_enabled(settings: &AppSettings) -> bool {
     settings.update_checks_enabled && !update_checks_forced_disabled()
 }
 
-pub fn write_settings(app: &AppHandle, settings: AppSettings) {
+pub fn write_settings(app: &AppHandle, mut settings: AppSettings) {
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
         .expect("Failed to initialize store");
 
+    // WalkieTalkey (DESK-101): a managed value is never saved as the user's.
+    if let Some(stored) = store
+        .get("settings")
+        .and_then(|value| serde_json::from_value::<AppSettings>(value).ok())
+    {
+        crate::walkietalkey::store::restore_handy_locked(&mut settings, &stored);
+    }
     store.set("settings", serde_json::to_value(&settings).unwrap());
 }
 

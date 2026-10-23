@@ -13,7 +13,8 @@ type State =
   | { kind: "loading" }
   | { kind: "shown"; pairing: PairingView }
   | { kind: "expired" }
-  | { kind: "failed" };
+  | { kind: "failed" }
+  | { kind: "paired"; name: string };
 
 export function PairingCode() {
   const { t } = useTranslation();
@@ -49,6 +50,11 @@ export function PairingCode() {
   }, [start]);
 
   useTauriEvent("wt-pairing-expired", () => setState({ kind: "expired" }));
+  // The code has been used: it disappears at once (SEC-02, DESK-16).
+  useTauriEvent<{ id: string; name: string }>("wt-phone-joined", (p) => {
+    generation.current++;
+    setState({ kind: "paired", name: p.name });
+  });
 
   const left = shown ? secondsLeft(state.pairing.expires_at_ms, now) : 0;
   useEffect(() => {
@@ -97,6 +103,11 @@ export function PairingCode() {
               {t("wt.pairing.newCode")}
             </Button>
           </>
+        ) : null}
+        {state.kind === "paired" ? (
+          <Status tone="ok">
+            {t("wt.pairing.paired", { name: state.name })}
+          </Status>
         ) : null}
         {state.kind === "failed" ? (
           <>

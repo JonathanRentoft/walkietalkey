@@ -43,3 +43,18 @@ where
         }
     });
 }
+
+/// "Talemodellen er ikke klar endnu" for a moment, when the key is held but
+/// no model can transcribe yet (still downloading, or none chosen).
+pub fn not_ready(app: &AppHandle) {
+    if super::store::get(app).pill_hidden {
+        return;
+    }
+    crate::overlay::show_transcribing_overlay(app);
+    let _ = app.emit("wt-pill-not-ready", ());
+    let app = app.clone();
+    thread::spawn(move || {
+        thread::sleep(LINGER);
+        crate::utils::hide_recording_overlay(&app);
+    });
+}

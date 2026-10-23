@@ -60,6 +60,26 @@ pub(crate) fn cloud_allowed(allow_cloud: bool, managed_provider: bool, consented
     allow_cloud && (managed_provider || consented)
 }
 
+/// What a consent covers (DESK-82): the provider, and for a custom endpoint
+/// also its host, so text never goes to a new destination unasked. The
+/// settings screen builds the same key.
+pub(crate) fn consent_key(id: &str, custom_base_url: Option<&str>) -> String {
+    if id != "custom" {
+        return id.to_string();
+    }
+    let host = custom_base_url
+        .and_then(|url| tauri::Url::parse(url.trim()).ok())
+        .map(|url| {
+            let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
+            match url.port() {
+                Some(port) => format!("{host}:{port}"),
+                None => host,
+            }
+        })
+        .unwrap_or_default();
+    format!("custom:{host}")
+}
+
 /// The provider to use now, if cleanup applies. `shift_held` is `None` when
 /// it is not known yet (while recording).
 fn plan(app: &AppHandle, shift_held: Option<bool>) -> Option<Plan> {
@@ -84,7 +104,15 @@ fn plan(app: &AppHandle, shift_held: Option<bool>) -> Option<Plan> {
             .clone()
             .or_else(|| handy.post_process_models.get(&id).cloned())
             .filter(|m| !m.is_empty())?;
-        let api_key = applied.cleanup_api_key.clone().or_else(|| keys::get(&id));
+        // A company's key goes only to the provider (and endpoint) the
+        // company chose, never to one the user picked (Appendix B).
+        let managed_endpoint =
+            id != "custom" || applied.locked.iter().any(|f| f == "cleanup_base_url");
+        let company_key = applied
+            .cleanup_api_key
+            .clone()
+            .filter(|_| applied.locked.iter().any(|f| f == "cleanup_provider") && managed_endpoint);
+        let api_key = company_key.or_else(|| keys::get(&id));
         Arc::new(HttpProvider {
             label: preset.label.clone(),
             base_url,
@@ -98,13 +126,10 @@ fn plan(app: &AppHandle, shift_held: Option<bool>) -> Option<Plan> {
         })
     };
     let managed = applied.locked.iter().any(|f| f == "cleanup_provider");
-    if provider.is_cloud()
-        && !cloud_allowed(
-            wt.allow_cloud_cleanup,
-            managed,
-            wt.cleanup_consented.contains(&id),
-        )
-    {
+    let consented = wt
+        .cleanup_consented
+        .contains(&consent_key(&id, wt.cleanup_base_url.as_deref()));
+    if provider.is_cloud() && !cloud_allowed(wt.allow_cloud_cleanup, managed, consented) {
         return None;
     }
     Some(Plan {
@@ -143,8 +168,10 @@ fn local_chunk_text(app: &AppHandle, raw: &str) -> String {
         normalize_transcription_output, remove_filler_words, OutputLanguageEvidence,
     };
     let settings = crate::settings::get_settings(app);
+    // Punctuation before filler removal, in the whole dictation's order (DESK-41).
+    let punctuated = super::punctuation::apply(app, raw.to_string());
     let without_fillers = remove_filler_words(
-        raw,
+        &punctuated,
         &OutputLanguageEvidence::UserSelected(settings.selected_language.clone()),
         &settings.custom_filler_words,
         settings.filler_word_removal_enabled,
@@ -224,6 +251,23 @@ pub fn shift_held() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn consent_for_a_custom_endpoint_covers_only_its_host() {
+        assert_eq!(consent_key("openai", None), "openai");
+        assert_eq!(
+            consent_key("custom", Some("https://Firma.openai.azure.com/v1")),
+            "custom:firma.openai.azure.com"
+        );
+        assert_eq!(
+            consent_key("custom", Some("http://gpu.lan:8080/v1")),
+            "custom:gpu.lan:8080"
+        );
+        assert_ne!(
+            consent_key("custom", Some("https://a.example/v1")),
+            consent_key("custom", Some("https://b.example/v1"))
+        );
+    }
 
     #[test]
     fn every_mode_decides_as_the_spec_says() {

@@ -422,6 +422,8 @@ impl ShortcutAction for TranscribeAction {
                 .get_model_path(&selected_model)
             {
                 warn!("Not starting recording: no model can transcribe it ({})", e);
+                // WalkieTalkey (Appendix A): say so instead of doing nothing.
+                crate::walkietalkey::pill::not_ready(app);
                 return;
             }
         }
@@ -430,6 +432,14 @@ impl ShortcutAction for TranscribeAction {
         let session = RECORDING_SESSION.fetch_add(1, Ordering::SeqCst) + 1;
         let tray_started = Instant::now();
         set_tray_state(app, TrayIconState::Recording);
+        // WalkieTalkey (DESK-95): the listening icon pulses for key
+        // recordings too.
+        {
+            let rm_pulse = Arc::clone(&rm);
+            crate::walkietalkey::tray::pulse_while(app.clone(), move || {
+                RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_pulse.is_recording()
+            });
+        }
         let tray_elapsed = tray_started.elapsed();
 
         // Get the microphone mode to determine audio feedback timing

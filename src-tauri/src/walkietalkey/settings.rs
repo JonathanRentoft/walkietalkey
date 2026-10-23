@@ -67,14 +67,15 @@ impl HistoryRetention {
 
     /// The setting for a managed `HistoryRetentionDays` value: 0 = Gem ikke,
     /// -1 = Altid, otherwise the nearest offered period at or above it.
+    /// A managed `HistoryRetentionDays` (Appendix B). A retention period is
+    /// a maximum, so other values round down to the periods the app offers.
     pub fn from_days(days: i64) -> Self {
         match days {
             d if d < 0 => Self::Forever,
             0 => Self::DontKeep,
-            1 => Self::Day,
-            2..=14 => Self::TwoWeeks,
-            15..=90 => Self::NinetyDays,
-            _ => Self::Forever,
+            1..=13 => Self::Day,
+            14..=89 => Self::TwoWeeks,
+            _ => Self::NinetyDays,
         }
     }
 }
@@ -222,8 +223,11 @@ mod tests {
         assert_eq!(HistoryRetention::from_days(0), HistoryRetention::DontKeep);
         assert_eq!(HistoryRetention::from_days(-1), HistoryRetention::Forever);
         assert_eq!(HistoryRetention::from_days(14), HistoryRetention::TwoWeeks);
+        // A policy is a maximum: other values round down.
+        assert_eq!(HistoryRetention::from_days(2), HistoryRetention::Day);
+        assert_eq!(HistoryRetention::from_days(30), HistoryRetention::TwoWeeks);
         assert_eq!(
-            HistoryRetention::from_days(30),
+            HistoryRetention::from_days(365),
             HistoryRetention::NinetyDays
         );
         assert_eq!(HistoryRetention::TwoWeeks.days(), Some(14));

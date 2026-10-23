@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addWord,
+  consentKey,
   dayNumber,
   lastSeen,
   cleanupConsentNeeded,
@@ -290,5 +291,23 @@ describe("isCloudProvider with tricky custom endpoints", () => {
       true,
     );
     assert.equal(isCloudProvider("custom", "http://127.0.0.1.nip.io/v1"), true);
+  });
+});
+
+describe("consentKey", () => {
+  test("a custom endpoint's consent covers only its host, as the backend's", () => {
+    assert.equal(consentKey("openai", null), "openai");
+    assert.equal(
+      consentKey("custom", "https://Firma.openai.azure.com/v1"),
+      "custom:firma.openai.azure.com",
+    );
+    assert.equal(
+      consentKey("custom", "http://gpu.lan:8080/v1"),
+      "custom:gpu.lan:8080",
+    );
+    assert.notEqual(
+      consentKey("custom", "https://a.example/v1"),
+      consentKey("custom", "https://b.example/v1"),
+    );
   });
 });

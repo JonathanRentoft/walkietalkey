@@ -276,7 +276,7 @@
       "overlay": {
         "style": {
           "title": "Overlay",
-          "description": "Vælg optagelses-overlay: Ingen skjuler det, Minimal viser en kompakt pille, Live viser transskription i realtid, mens du taler (kun modeller med streaming-understøttelse — se efter Streaming-mærket i modelvælgeren). På Linux anbefales 'Ingen'.",
+          "description": "Vælg optagelses-overlay: Ingen skjuler det, Minimal viser en kompakt pille, Live viser transskription i realtid, mens du taler (kun modeller med streaming-understøttelse, se efter Streaming-mærket i modelvælgeren). På Linux anbefales 'Ingen'.",
           "options": {
             "none": "Ingen",
             "minimal": "Minimal",
@@ -581,7 +581,7 @@
       },
       "keyboardDiagnostic": {
         "title": "Tastaturdiagnostik",
-        "description": "Kontrollerer, om tastaturhændelser når frem til WalkieTalkey. Kun antallet af hændelser registreres — aldrig hvilke taster du trykker på.",
+        "description": "Kontrollerer, om tastaturhændelser når frem til WalkieTalkey. Kun antallet af hændelser registreres, aldrig hvilke taster du trykker på.",
         "run": "Kør 10 s diagnostik",
         "running": "Lytter… tryk på din genvej et par gange (f.eks. Option+Space)",
         "secureInputLabel": "Secure Input",
@@ -593,10 +593,10 @@
         "keyUp": "Tast op",
         "flagsChanged": "Modifikatorer",
         "mouse": "Mus",
-        "verdictBlocked": "Secure Input blokerer tastehændelser — genveje med en almindelig tast kan ikke fungere, før det er løst.",
-        "verdictSuspicious": "Der kom modifikatorhændelser, men ingen tastehændelser — noget undertrykker taster, selvom Secure Input rapporteres som deaktiveret. Rapportér det gerne på GitHub.",
+        "verdictBlocked": "Secure Input blokerer tastehændelser, så genveje med en almindelig tast ikke kan fungere, før det er løst.",
+        "verdictSuspicious": "Der kom modifikatorhændelser, men ingen tastehændelser. Noget undertrykker taster, selvom Secure Input rapporteres som deaktiveret. Rapportér det gerne på GitHub.",
         "verdictOk": "Tastehændelser når frem til WalkieTalkey som normalt.",
-        "verdictNoEvents": "Ingen hændelser registreret — trykkede du på nogen taster under testen?",
+        "verdictNoEvents": "Ingen hændelser registreret. Trykkede du på nogen taster under testen?",
         "failed": "Diagnostik mislykkedes: {{error}}"
       }
     },
@@ -644,9 +644,9 @@
     "preparing": "Forbereder...",
     "checkForUpdates": "Tjek for opdateringer",
     "portableUpdateTitle": "Manuel opdatering påkrævet",
-    "portableUpdateMessage": "Flytbare installationer kan ikke opdateres automatisk. Download installeren til dit system nedenfor, kør den, og installer i den samme mappe — din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
+    "portableUpdateMessage": "Flytbare installationer kan ikke opdateres automatisk. Download installeren til dit system nedenfor, kør den, og installer i den samme mappe, din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
     "portableUpdateButton": "Download installer",
-    "portableUpdateBrowseMessage": "Flytbare installationer kan ikke opdateres automatisk. Download den nyeste version til dit system fra GitHub Releases, og installer den i den samme mappe — din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
+    "portableUpdateBrowseMessage": "Flytbare installationer kan ikke opdateres automatisk. Download den nyeste version til dit system fra GitHub Releases, og installer den i den samme mappe, din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
     "portableUpdateBrowseButton": "Åbn GitHub Releases"
   },
   "whatsNew": {
@@ -711,7 +711,7 @@
     "recorderBlockedWithCulprit": "{{name}} blokerer muligvis ændringer af genveje",
     "recorderBlockedNoCulprit": "macOS blokerer midlertidigt ændringer af genveje",
     "learnMore": "Sådan løser du det",
-    "recorderBlocked": "Genveje kan ikke optages lige nu — macOS Secure Input blokerer tastehændelser. Løs advarslen om Secure Input først.",
+    "recorderBlocked": "Genveje kan ikke optages lige nu: macOS Secure Input blokerer tastehændelser. Løs advarslen om Secure Input først.",
     "dismiss": "Afvis"
   },
   "wt": {
@@ -841,7 +841,8 @@
       "newCode": "Lav en ny kode",
       "failed": "Kunne ikke lave en kode. Tjek forbindelsen, og prøv igen.",
       "noScreenShare": "Par ikke, mens du deler din skærm. Koden virker i 10 minutter, og alle, der ser den, kan bruge den.",
-      "getApp": "Har du ikke appen? Åbn {{url}} på telefonen."
+      "getApp": "Har du ikke appen? Åbn {{url}} på telefonen.",
+      "paired": "{{name}} er parret."
     },
     "notify": {
       "textReady": "Tekst klar til at indsætte",

@@ -220,7 +220,11 @@ export function AdvancedSection() {
             labelKey="settings.debug.pasteDelayAfter.title"
             descriptionKey="settings.debug.pasteDelayAfter.description"
           />
-          <ReliablePasteToggle descriptionMode="inline" grouped />
+          {/* Handy's beta paste does not keep the clipboard on this computer
+              (DESK-54), so it is a debug option only. */}
+          {handy?.debug_mode ? (
+            <ReliablePasteToggle descriptionMode="inline" grouped />
+          ) : null}
         </div>
       </Group>
 

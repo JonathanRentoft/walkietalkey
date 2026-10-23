@@ -171,6 +171,12 @@ impl HttpProvider {
     }
 }
 
+/// Endpoints (`base_url|model`) that refused the reasoning field, as Handy
+/// remembers them, so they are not asked twice per dictation.
+static REJECTS_REASONING: once_cell::sync::Lazy<
+    std::sync::Mutex<std::collections::HashSet<String>>,
+> = once_cell::sync::Lazy::new(|| std::sync::Mutex::new(std::collections::HashSet::new()));
+
 /// Whether an endpoint is on this computer: its host is exactly `localhost`
 /// or a loopback address. A prefix check would let `http://localhost@host`
 /// or `http://localhost.example.com` through (DESK-102, PRIV-04).
@@ -203,11 +209,18 @@ impl Provider for HttpProvider {
         user: &'a str,
     ) -> BoxFuture<'a, Result<String, String>> {
         Box::pin(async move {
-            let reasoning_off = self.format == Format::OpenAi;
+            let endpoint = format!("{}|{}", self.base_url, self.model);
+            let reasoning_off = self.format == Format::OpenAi
+                && !REJECTS_REASONING.lock().unwrap().contains(&endpoint);
             let (status, value) = self.post(&self.body(system, user, reasoning_off)).await?;
-            // Some endpoints reject the reasoning field: retry once without it.
+            // Some endpoints reject the reasoning field: retry once without
+            // it, and remember, so later dictations make one call (DESK-87).
             let (status, value) = if reasoning_off && (status == 400 || status == 422) {
-                self.post(&self.body(system, user, false)).await?
+                let retried = self.post(&self.body(system, user, false)).await?;
+                if (200..300).contains(&retried.0) {
+                    REJECTS_REASONING.lock().unwrap().insert(endpoint);
+                }
+                retried
             } else {
                 (status, value)
             };
@@ -220,20 +233,26 @@ impl Provider for HttpProvider {
     }
 
     fn warm(&self) {
+        let provider = self.clone();
+        tauri::async_runtime::spawn(async move { provider.warm_up().await });
+    }
+}
+
+impl HttpProvider {
+    /// The warm-up request that [`Provider::warm`] runs in the background.
+    pub(crate) async fn warm_up(&self) {
         let client = client_for(&self.base_url);
         let url = match self.format {
             Format::OpenAi => format!("{}/models", self.base_url.trim_end_matches('/')),
             Format::Anthropic => self.base_url.trim_end_matches('/').to_string(),
         };
         let headers = self.headers().unwrap_or_default();
-        tauri::async_runtime::spawn(async move {
-            // The answer does not matter; the pooled connection does. Reading
-            // the body to the end returns the connection to the pool instead
-            // of closing it.
-            if let Ok(response) = client.get(url).headers(headers).send().await {
-                let _ = response.bytes().await;
-            }
-        });
+        // The answer does not matter; the pooled connection does. Reading the
+        // body to the end returns the connection to the pool instead of
+        // closing it.
+        if let Ok(response) = client.get(url).headers(headers).send().await {
+            let _ = response.bytes().await;
+        }
     }
 }
 
@@ -423,15 +442,9 @@ mod tests {
             api_key: Some("sk-local".into()),
             format: Format::OpenAi,
         };
-        provider.warm();
-        // The warm-up has opened its connection once the server saw it.
-        for _ in 0..250 {
-            if !requests.lock().unwrap().is_empty() {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // The warm-up as `warm` runs it, awaited here so its connection is
+        // back in the pool before the calls.
+        provider.warm_up().await;
         let first = provider
             .complete("sys", "<dictation>\nvi ses\n</dictation>")
             .await

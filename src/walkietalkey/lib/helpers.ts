@@ -204,6 +204,21 @@ export function isCloudProvider(
   return true;
 }
 
+/** What a consent is given for (DESK-82): the provider, and for a custom
+ *  endpoint also its host, so a new destination is asked about again. The
+ *  backend's `consent_key` is the same. */
+export function consentKey(
+  id: string,
+  customBaseUrl: string | null | undefined,
+): string {
+  if (id !== "custom") return id;
+  try {
+    return `custom:${new URL((customBaseUrl ?? "").trim()).host.toLowerCase()}`;
+  } catch {
+    return "custom:";
+  }
+}
+
 export function cleanupConsentNeeded(s: {
   cleanup_mode: CleanupMode;
   cleanup_provider: string | null;
@@ -212,7 +227,9 @@ export function cleanupConsentNeeded(s: {
 }): boolean {
   if (s.cleanup_mode === "off" || !s.cleanup_provider) return false;
   if (!isCloudProvider(s.cleanup_provider, s.cleanup_base_url)) return false;
-  return !s.cleanup_consented.includes(s.cleanup_provider);
+  return !s.cleanup_consented.includes(
+    consentKey(s.cleanup_provider, s.cleanup_base_url),
+  );
 }
 
 /** The {udbyder} of the consent text (DESK-82): the product name, or for a

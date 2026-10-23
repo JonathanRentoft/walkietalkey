@@ -7,6 +7,7 @@ import { commands, type CleanupMode, type WtSettings } from "@/bindings";
 import {
   CLEANUP_PROVIDERS,
   cleanupConsentNeeded,
+  consentKey,
   consentProviderName,
   isCloudProvider,
   type WtPlatform,
@@ -66,9 +67,10 @@ export function CleanupSection(props: { platform: WtPlatform }) {
     if (!pending) return;
     const next = { ...wt, ...pending };
     const provider = next.cleanup_provider;
+    const key = provider ? consentKey(provider, next.cleanup_base_url) : null;
     const consented =
-      provider && !next.cleanup_consented.includes(provider)
-        ? [...next.cleanup_consented, provider]
+      key && !next.cleanup_consented.includes(key)
+        ? [...next.cleanup_consented, key]
         : next.cleanup_consented;
     void update({ ...pending, cleanup_consented: consented });
     setPending(null);
@@ -91,7 +93,9 @@ export function CleanupSection(props: { platform: WtPlatform }) {
         provider === "apple"
           ? t("wt.cleanup.staysApple")
           : t("wt.cleanup.staysLocal");
-    else if (wt.cleanup_consented.includes(provider))
+    else if (
+      wt.cleanup_consented.includes(consentKey(provider, wt.cleanup_base_url))
+    )
       sentLine =
         wt.cleanup_mode === "when-needed"
           ? t("wt.cleanup.sentWhenNeeded", { provider: where })
