@@ -14,6 +14,8 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: true,
+  // Real sockets and real timing: one retry on CI absorbs a slow runner.
+  retries: process.env.CI ? 1 : 0,
   workers: Number(process.env.E2E_WORKERS || 3),
   reporter: [["list"]],
   use: {
@@ -26,7 +28,8 @@ export default defineConfig({
       use: {
         ...devices["Pixel 7"],
         browserName: "chromium",
-        channel: "chrome",
+        // Playwright's own Chromium (what CI installs); E2E_CHROME=1 uses the installed Chrome.
+        channel: process.env.E2E_CHROME ? "chrome" : undefined,
         permissions: ["microphone", "camera"],
         launchOptions: {
           args: [
