@@ -634,6 +634,120 @@ async wtUpdateSettings(settings: WtSettings) : Promise<Result<WtSettingsView, st
 }
 },
 /**
+ * "Importér modelfil" (DESK-32): installs a model file the user already
+ * has, if its SHA-256 matches a known model. Returns the model id.
+ */
+async wtImportModelFile(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_import_model_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Indstillinger › Telefon › "Par en telefon": a new pairing code as a QR.
+ */
+async wtPairingStart() : Promise<Result<PairingView, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_pairing_start") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The pairing window was closed: cancel the code (spec 5.3 step 1).
+ */
+async wtPairingCancel() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_pairing_cancel") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Connection state and the paired phones.
+ */
+async wtRelayStatus() : Promise<RelayView> {
+    return await TAURI_INVOKE("wt_relay_status");
+},
+/**
+ * "Fjern" next to a phone (SEC-04).
+ */
+async wtPhoneRemove(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_phone_remove", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Stores the user's own API key for a cleanup provider in the keychain
+ * (DESK-81). An empty key removes it.
+ */
+async wtSetCleanupKey(provider: string, key: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_set_cleanup_key", { provider, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Whether a key is stored for a provider (the key itself never goes to the UI).
+ */
+async wtHasCleanupKey(provider: string) : Promise<boolean> {
+    return await TAURI_INVOKE("wt_has_cleanup_key", { provider });
+},
+/**
+ * History, newest first, optionally searched (DESK-93).
+ */
+async wtHistoryList(query: string | null) : Promise<Result<HistoryItem[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_list", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Deletes one history item, or everything with `id` = None ("Slet al historik").
+ */
+async wtHistoryDelete(id: number | null) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_delete", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Copies a history item, privately like every clipboard write (DESK-54).
+ */
+async wtHistoryCopy(id: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_history_copy", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Pause or resume (DESK-96), for the settings window.
+ */
+async wtSetPaused(paused: boolean) : Promise<void> {
+    await TAURI_INVOKE("wt_set_paused", { paused });
+},
+/**
+ * Checks for an update now ("Søg efter opdateringer").
+ */
+async wtCheckUpdates() : Promise<void> {
+    await TAURI_INVOKE("wt_check_updates");
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -1093,10 +1207,38 @@ export type CleanupMode =
  * Kun når jeg holder Shift med.
  */
 "shift"
+/**
+ * What a cloud cleanup call sent, for "Vis hvad der blev sendt" (DESK-85).
+ */
+export type CleanupRecord = { provider: string; 
+/**
+ * The exact text sent.
+ */
+sent_text: string; duration_ms: number }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
+/**
+ * One history item as the history screen shows it.
+ */
+export type HistoryItem = { id: number; 
+/**
+ * Unix seconds.
+ */
+timestamp: number; 
+/**
+ * "tast" or the phone's name.
+ */
+source: string; text: string; 
+/**
+ * Whether AI cleanup changed this text.
+ */
+cleaned: boolean; cleanup: CleanupRecord | null; 
+/**
+ * Debugging audio exists for this item.
+ */
+has_audio: boolean }
 /**
  * History retention (DESK-91; managed `HistoryRetentionDays`).
  */
@@ -1190,8 +1332,24 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
+/**
+ * The pairing window's data (spec 5.3, DESK-16).
+ */
+export type PairingView = { 
+/**
+ * The QR code as SVG; the URL itself stays in the backend.
+ */
+qr_svg: string; 
+/**
+ * Unix milliseconds when the code expires (10 minutes, SEC-02).
+ */
+expires_at_ms: number }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
+/**
+ * A paired phone as Indstillinger › Telefon lists it.
+ */
+export type PhoneView = { id: string; name: string; platform: string | null; online: boolean }
 /**
  * Request format a post-processing endpoint speaks. Built-in providers have a
  * fixed format; only the custom provider lets the user change it.
@@ -1223,6 +1381,7 @@ export type PunctuationMode =
  */
 "never"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+export type RelayView = { enabled: boolean; connected: boolean; phones: PhoneView[]; pairing_active: boolean }
 /**
  * "Når jeg siger X, skriv Y".
  */
