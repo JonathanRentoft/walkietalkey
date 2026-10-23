@@ -57,6 +57,8 @@ export const RESULT_TIMEOUT_MS = 10 * 60 * 1000;
 export const NO_CONNECTION_GRACE_MS = 3000;
 /** PHONE-40: how long to wait for presence answers. */
 export const PRESENCE_WAIT_MS = 1000;
+/** PHONE-40: how long the target choice waits for each link's fresh state (auth, failure or pong). */
+export const LINKS_SETTLE_MS = 3000;
 
 export interface ComputerView {
   roomId: string;
@@ -142,6 +144,7 @@ export class PhoneController {
   private snapshot: Snapshot;
   private readonly listeners = new Set<() => void>();
   private choosing = false;
+  private chooseAgain = false;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -573,39 +576,55 @@ export class PhoneController {
   }
 
   private async chooseOnForeground(): Promise<void> {
-    if (this.rooms.size < 2 || this.choosing) return;
+    if (this.rooms.size < 2) return;
+    // A foreground during a choice (the one at start, say) gets a choice of its own afterwards.
+    if (this.choosing) {
+      this.chooseAgain = true;
+      return;
+    }
     this.choosing = true;
     try {
-      await Promise.all(
-        [...this.rooms.values()].map((r) => r.link.whenSettled(3000)),
-      );
-      const entries = [...this.rooms.values()];
-      const candidates: Candidate[] = entries.map((r) => ({
-        roomId: r.record.roomId,
-        online: r.link.connected && r.link.peerOnline,
-        lastUsedAt: r.record.lastUsedAt,
-      }));
-      const answers = new Map<string, PresenceAnswer | null>();
-      if (needsPresence(candidates)) {
-        await Promise.all(
-          entries
-            .filter((r) => r.link.connected && r.link.peerOnline)
-            .map(async (r) =>
-              answers.set(r.record.roomId, await this.askPresence(r)),
-            ),
-        );
-      }
-      const choice = chooseTarget(candidates, answers);
-      const phase = this.machine.phase;
-      const busy =
-        phase === "rec" ||
-        phase === "cancel" ||
-        phase === "send" ||
-        phase === "offline";
-      if (choice && choice !== this.target && !busy) this.setTarget(choice);
+      do {
+        this.chooseAgain = false;
+        await this.chooseOnce();
+      } while (this.chooseAgain && this.rooms.size >= 2);
     } finally {
       this.choosing = false;
     }
+  }
+
+  private async chooseOnce(): Promise<void> {
+    // The sockets may have died in the background: wait for every link's fresh state first.
+    await Promise.all(
+      [...this.rooms.values()].map((r) => r.link.whenSettled(LINKS_SETTLE_MS)),
+    );
+    const entries = [...this.rooms.values()];
+    // A link with no outcome yet (no authentication, no pong) does not count as online.
+    const live = (r: RoomEntry) =>
+      r.link.settled && r.link.connected && r.link.peerOnline;
+    const candidates: Candidate[] = entries.map((r) => ({
+      roomId: r.record.roomId,
+      online: live(r),
+      lastUsedAt: r.record.lastUsedAt,
+    }));
+    const answers = new Map<string, PresenceAnswer | null>();
+    if (needsPresence(candidates)) {
+      await Promise.all(
+        entries
+          .filter(live)
+          .map(async (r) =>
+            answers.set(r.record.roomId, await this.askPresence(r)),
+          ),
+      );
+    }
+    const choice = chooseTarget(candidates, answers);
+    const phase = this.machine.phase;
+    const busy =
+      phase === "rec" ||
+      phase === "cancel" ||
+      phase === "send" ||
+      phase === "offline";
+    if (choice && choice !== this.target && !busy) this.setTarget(choice);
   }
 
   private async askPresence(r: RoomEntry): Promise<PresenceAnswer | null> {
