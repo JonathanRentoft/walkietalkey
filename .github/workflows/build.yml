@@ -477,22 +477,40 @@ jobs:
           PY
           echo "args=--config src-tauri/tauri.ci.conf.json" >> "$GITHUB_OUTPUT"
 
+      # WalkieTalkey: Tauri treats a signing variable that is set but empty as
+      # a value (an empty APPLE_CERTIFICATE fails the build at "security
+      # import"), so only the ones that have a value are exported.
+      - name: Signing environment (only what exists)
+        shell: bash
+        env:
+          S_APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
+          S_APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
+          S_APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
+          S_APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
+          S_APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
+          S_APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          S_APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
+          S_AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
+          S_AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
+          S_AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+        run: |
+          for name in APPLE_ID APPLE_ID_PASSWORD APPLE_PASSWORD APPLE_TEAM_ID APPLE_CERTIFICATE \
+            APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY AZURE_CLIENT_ID AZURE_CLIENT_SECRET \
+            AZURE_TENANT_ID TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            value="$(printenv "S_$name" || true)"
+            if [ -n "$value" ]; then
+              delimiter="WT_${RANDOM}${RANDOM}${RANDOM}"
+              { echo "$name<<$delimiter"; echo "$value"; echo "$delimiter"; } >> "$GITHUB_ENV"
+              echo "$name is set"
+            fi
+          done
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
-          APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
-          APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
-          APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
-          AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
-          AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
-          AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           # The Vulkan loader and Wayland client library must come from the host
           # graphics stack. Bundling Ubuntu's copies ahead of the system libraries can
           # prevent a newer distro's Vulkan ICD or Mesa stack from loading.
@@ -816,7 +834,8 @@ jobs:
           # Administrative install extracts the MSI payload without elevation.
           $msiPackages = Get-ChildItem (Join-Path $bundleBase "msi") -Filter "*.msi" -ErrorAction SilentlyContinue
           if (-not $msiPackages) {
-            throw "No MSI packages found under $bundleBase for runtime DLL audit"
+            # WalkieTalkey builds the NSIS installer only (audited above).
+            Write-Host "No MSI packages under $bundleBase; the NSIS audit above covers this build."
           }
 
           foreach ($pkg in $msiPackages) {

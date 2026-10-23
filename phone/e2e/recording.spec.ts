@@ -15,6 +15,14 @@ import {
 } from "./helpers";
 import { TcpProxy } from "./proxy";
 
+/** How closely the received audio must match the test signal. Chromium plays the WAV file
+ *  itself into its fake microphone; WebKit gets a synthetic stream from an init script, and on
+ *  Linux its audio graph resamples it (0.6-0.85 there, above 0.9 on macOS). Unrelated audio
+ *  scores near 0. */
+function minCorrelation(browserName: string): number {
+  return browserName === "webkit" ? 0.5 : 0.9;
+}
+
 test.describe("recording and streaming (PHONE-20..23, PHONE-30..32)", () => {
   test("streams 200 ms blocks while talking; the computer gets the audio; Klar på and ⌘V", async ({
     page,
@@ -64,7 +72,9 @@ test.describe("recording and streaming (PHONE-20..23, PHONE-30..32)", () => {
     // The fake microphone's signal arrives intact (same waveform, 16 kHz, mono).
     const samples = bytesToInt16(pcm);
     expect(rms(samples)).toBeGreaterThan(0.05);
-    expect(bestCorrelation(samples)).toBeGreaterThan(0.9);
+    expect(bestCorrelation(samples)).toBeGreaterThan(
+      minCorrelation(browserName),
+    );
 
     // PHONE-23: the result.
     await expect(label(page)).toHaveText("Klar på MacBook");
@@ -182,7 +192,7 @@ test.describe("a computer that goes to sleep (PHONE-32, RELAY-10)", () => {
     expect(s.end!.chunks).toBeGreaterThanOrEqual(7);
     expect(
       bestCorrelation(bytesToInt16(ScriptedComputer.pcm(s))),
-    ).toBeGreaterThan(0.9);
+    ).toBeGreaterThan(minCorrelation(browserName));
     await expect(label(page)).toHaveText("Klar på Testcomputer");
     await expect(sub(page)).toHaveText("Tryk ⌘V for at indsætte");
     await expect(page.getByRole("button", { name: "Prøv igen" })).toHaveCount(
@@ -222,7 +232,7 @@ test.describe("resend after reconnect (PHONE-32)", () => {
       expect(s.end!.chunks).toBeGreaterThanOrEqual(12);
       expect(
         bestCorrelation(bytesToInt16(ScriptedComputer.pcm(s))),
-      ).toBeGreaterThan(0.9);
+      ).toBeGreaterThan(minCorrelation(browserName));
       await expect(label(page)).toHaveText("Klar på Testcomputer");
     } finally {
       await proxy.close();

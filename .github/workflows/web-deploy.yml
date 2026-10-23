@@ -39,6 +39,10 @@ jobs:
           fi
       - uses: actions/checkout@v5
         if: steps.token.outputs.skip != 'true'
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.skip != 'true'
+        with:
+          node-version: 24
       - uses: oven-sh/setup-bun@v2
         if: steps.token.outputs.skip != 'true'
         with:
