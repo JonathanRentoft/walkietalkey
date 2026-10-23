@@ -1,0 +1,17 @@
+[project]
+name = "wt-eval"
+version = "0.1.0"
+description = "WalkieTalkey Danish accuracy harness (spec 15.1): WER, punctuation and DESK-41 trigger rate"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8,<9"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
