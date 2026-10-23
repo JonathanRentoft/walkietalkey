@@ -49,9 +49,37 @@ describe("picking the computer you are sitting at (PHONE-40)", () => {
     expect(chooseTarget([c("a", true, 10), c("b", true, 20)], answers)).toBe(
       "b",
     );
+  });
+
+  it("takes the one computer that is online, even when another was used last", () => {
     expect(chooseTarget([c("a", true, 10), c("b", false, 20)], new Map())).toBe(
-      "b",
+      "a",
     );
+    expect(
+      chooseTarget(
+        [c("a", false, 30), c("b", true, 10), c("c", false, 20)],
+        new Map(),
+      ),
+    ).toBe("b");
+  });
+
+  it("without usable answers, prefers the online computer used last over an offline one", () => {
+    const answers = new Map<string, PresenceAnswer | null>([
+      ["a", null],
+      ["b", null],
+    ]);
+    expect(
+      chooseTarget(
+        [c("a", true, 10), c("b", true, 20), c("c", false, 30)],
+        answers,
+      ),
+    ).toBe("b");
+  });
+
+  it("falls back to the computer used last when none is online", () => {
+    expect(
+      chooseTarget([c("a", false, 10), c("b", false, 20)], new Map()),
+    ).toBe("b");
   });
 
   it("falls back to the computer used last when every answer is locked", () => {

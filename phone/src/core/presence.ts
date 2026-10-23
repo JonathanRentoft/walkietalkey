@@ -17,7 +17,11 @@ export function needsPresence(candidates: readonly Candidate[]): boolean {
   return candidates.filter((c) => c.online).length > 1;
 }
 
-/** The unlocked computer with the most recent input; if none answers, the computer used last. */
+/**
+ * The unlocked computer with the most recent input. Without a usable answer: the one computer
+ * that is online, or the online computer used last; only when none is online, the computer used
+ * last (a dictation for an offline computer waits in the relay and may expire).
+ */
 export function chooseTarget(
   candidates: readonly Candidate[],
   answers: ReadonlyMap<string, PresenceAnswer | null>,
@@ -31,7 +35,9 @@ export function chooseTarget(
       best = { roomId: c.roomId, seconds: a.secondsSinceInput };
   }
   if (best) return best.roomId;
-  let last = candidates[0]!;
-  for (const c of candidates) if (c.lastUsedAt > last.lastUsedAt) last = c;
+  const online = candidates.filter((c) => c.online);
+  const pool = online.length > 0 ? online : candidates;
+  let last = pool[0]!;
+  for (const c of pool) if (c.lastUsedAt > last.lastUsedAt) last = c;
   return last.roomId;
 }
