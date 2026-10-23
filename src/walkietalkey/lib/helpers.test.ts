@@ -275,3 +275,20 @@ describe("lastSeen", () => {
     assert.equal(lastSeen(0, today), null);
   });
 });
+
+describe("isCloudProvider with tricky custom endpoints", () => {
+  test("only this computer is on the device", () => {
+    assert.equal(isCloudProvider("custom", "http://localhost:11434/v1"), false);
+    assert.equal(isCloudProvider("custom", "http://127.0.0.1:8080/v1"), false);
+    assert.equal(isCloudProvider("custom", "http://[::1]:11434/v1"), false);
+    assert.equal(
+      isCloudProvider("custom", "http://localhost@api.example.com/v1"),
+      true,
+    );
+    assert.equal(
+      isCloudProvider("custom", "http://localhost.example.com/v1"),
+      true,
+    );
+    assert.equal(isCloudProvider("custom", "http://127.0.0.1.nip.io/v1"), true);
+  });
+});

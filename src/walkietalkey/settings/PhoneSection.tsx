@@ -112,7 +112,8 @@ export function PhoneSection() {
             </Button>
           </div>
         </div>
-        {relay ? (
+        {/* The relay connects only while a phone is paired or a code is open. */}
+        {relay && (phones.length > 0 || relay.pairing_active) ? (
           <div className="wt-row">
             <Status tone={relay.connected ? "muted" : "warn"}>
               {relay.connected

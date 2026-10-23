@@ -171,14 +171,30 @@ impl HttpProvider {
     }
 }
 
+/// Whether an endpoint is on this computer: its host is exactly `localhost`
+/// or a loopback address. A prefix check would let `http://localhost@host`
+/// or `http://localhost.example.com` through (DESK-102, PRIV-04).
+pub fn is_local_url(url: &str) -> bool {
+    let Ok(parsed) = tauri::Url::parse(url.trim()) else {
+        return false;
+    };
+    parsed.host_str().is_some_and(|host| {
+        host.eq_ignore_ascii_case("localhost")
+            || host
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|ip| ip.is_loopback())
+    })
+}
+
 impl Provider for HttpProvider {
     fn label(&self) -> String {
         self.label.clone()
     }
 
     fn is_cloud(&self) -> bool {
-        let base = self.base_url.to_ascii_lowercase();
-        !(base.starts_with("http://localhost") || base.starts_with("http://127.0.0.1"))
+        !is_local_url(&self.base_url)
     }
 
     fn complete<'a>(
@@ -447,5 +463,22 @@ mod tests {
         p.base_url = "http://localhost:11434/v1".into();
         assert!(!p.is_cloud());
         assert!(openai("gpt-4o").is_cloud());
+    }
+}
+
+#[cfg(test)]
+mod local_url_tests {
+    use super::is_local_url;
+
+    #[test]
+    fn only_this_computer_counts_as_local() {
+        assert!(is_local_url("http://localhost:11434/v1"));
+        assert!(is_local_url("http://127.0.0.1:8080/v1"));
+        assert!(is_local_url("http://[::1]:11434/v1"));
+        assert!(!is_local_url("http://localhost@api.example.com/v1"));
+        assert!(!is_local_url("http://localhost.example.com/v1"));
+        assert!(!is_local_url("http://127.0.0.1.nip.io/v1"));
+        assert!(!is_local_url("https://api.openai.com/v1"));
+        assert!(!is_local_url("not a url"));
     }
 }

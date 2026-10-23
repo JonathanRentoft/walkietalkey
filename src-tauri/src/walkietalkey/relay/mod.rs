@@ -9,6 +9,7 @@ pub mod keystore;
 pub mod session;
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -19,13 +20,20 @@ use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc::UnboundedReceiver;
 use wt_relay_client::wt_protocol::{ComputerOs, DeviceId, ResultOutcome, ResultReason, SessionId};
-use wt_relay_client::{ClientConfig, KeyStore, RelayClient, RelayEvent};
+use wt_relay_client::{ClientConfig, ClientError, KeyStore, RelayClient, RelayEvent};
 
 use self::session::{SessionAudio, RESEND_WAIT};
 use super::output::Source;
 use crate::managers::transcription::{SideStream, TranscriptionManager};
 
 static CLIENT: Lazy<Mutex<Option<RelayClient>>> = Lazy::new(|| Mutex::new(None));
+
+/// Bumped whenever a client starts or stops, so a client's helpers (the wake
+/// watcher) know when they belong to one that is gone.
+static CLIENT_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// How long "Par en telefon" waits for a fresh connection to the relay.
+const CONNECT_WAIT: Duration = Duration::from_secs(15);
 
 /// Phone names by device id, for history labels and notifications.
 static NAMES: Lazy<Mutex<HashMap<DeviceId, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -84,50 +92,103 @@ fn open_store(app: &AppHandle) -> anyhow::Result<Arc<dyn KeyStore>> {
     Ok(Arc::new(store))
 }
 
-/// Starts the relay connection, unless the phone feature is turned off
-/// (managed `AllowPhonePairing`).
+/// Starts the relay connection when a phone is paired. Without one, nothing
+/// connects (spec 5.3, PRIV-04): "Par en telefon" connects and creates the
+/// room. Nothing connects when the phone feature is turned off (managed
+/// `AllowPhonePairing`).
 pub fn start(app: &AppHandle) {
     let settings = super::store::get(app);
     if !settings.allow_phone_pairing {
         info!("Phone pairing is turned off; no relay connection");
         return;
     }
-    let store = match open_store(app) {
-        Ok(store) => store,
+    let paired = match open_store(app) {
+        Ok(store) => store.load_phones().map(|p| !p.is_empty()).unwrap_or(false),
         Err(e) => {
             error!("Relay key store unavailable: {e}");
             return;
         }
     };
+    if !paired {
+        info!("No phone is paired; the relay connects when one is");
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = ensure_client(&app).await {
+            error!("Relay client did not start: {e}");
+        }
+    });
+}
+
+/// The running relay client, started now if there is none.
+async fn ensure_client(app: &AppHandle) -> Result<RelayClient, String> {
+    if let Some(client) = client() {
+        return Ok(client);
+    }
+    let settings = super::store::get(app);
+    let store = open_store(app).map_err(|e| e.to_string())?;
     let config = ClientConfig::new(
         settings.relay_url.clone(),
         settings.phone_app_url.clone(),
         computer_name(),
         computer_os(),
     );
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        let (client, events) = match RelayClient::start(config, store) {
-            Ok(started) => started,
-            Err(e) => {
-                error!("Relay client did not start: {e}");
-                return;
+    let (client, events) = RelayClient::start(config, store).map_err(|e| e.to_string())?;
+    let existing = {
+        let mut slot = CLIENT.lock().unwrap();
+        match slot.as_ref() {
+            Some(existing) => Some(existing.clone()),
+            None => {
+                *slot = Some(client.clone());
+                None
             }
-        };
-        *CLIENT.lock().unwrap() = Some(client.clone());
-        watch_for_wake(client.clone());
-        event_loop(app, client, events).await;
-    });
+        }
+    };
+    if let Some(existing) = existing {
+        // Another caller started one meanwhile: keep that one.
+        client.shutdown().await;
+        return Ok(existing);
+    }
+    let generation = CLIENT_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    watch_for_wake(client.clone(), generation);
+    let (app, looped) = (app.clone(), client.clone());
+    tauri::async_runtime::spawn(async move { event_loop(app, looped, events).await });
+    Ok(client)
+}
+
+fn forget_client() {
+    *CLIENT.lock().unwrap() = None;
+    CLIENT_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+/// Disconnects when nothing needs the relay: no phone paired and no pairing
+/// code open (spec 5.3, PRIV-04).
+async fn disconnect_if_unneeded() {
+    let Some(client) = client() else {
+        return;
+    };
+    match client.status().await {
+        Ok(status) if status.phones.is_empty() && !status.pairing_active => {
+            info!("No phone is paired any more; closing the relay connection");
+            forget_client();
+            client.shutdown().await;
+        }
+        _ => {}
+    }
 }
 
 /// DESK-60: reconnect right after sleep. A wall-clock jump between ticks of
 /// a steady timer means the machine was asleep.
-fn watch_for_wake(client: RelayClient) {
+fn watch_for_wake(client: RelayClient, generation: u64) {
     std::thread::spawn(move || {
         let tick = Duration::from_secs(5);
         let mut last = SystemTime::now();
         loop {
             std::thread::sleep(tick);
+            if CLIENT_GENERATION.load(Ordering::SeqCst) != generation {
+                return;
+            }
             let now = SystemTime::now();
             if now.duration_since(last).unwrap_or_default() > tick * 3 {
                 info!("Woke from sleep; reconnecting to the relay");
@@ -189,10 +250,12 @@ async fn event_loop(
             }
             RelayEvent::PairingExpired { .. } => {
                 let _ = app.emit("wt-pairing-expired", ());
+                tauri::async_runtime::spawn(disconnect_if_unneeded());
             }
             RelayEvent::PhoneLeft { phone } | RelayEvent::PhoneRemoved { phone } => {
                 NAMES.lock().unwrap().remove(&phone);
                 emit_phones_changed(&app);
+                tauri::async_runtime::spawn(disconnect_if_unneeded());
             }
             RelayEvent::PeerStatus { .. } => emit_phones_changed(&app),
             RelayEvent::AudioStart { phone, session, .. } => {
@@ -282,10 +345,24 @@ fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session
             paused,
         })),
     );
-    // DESK-58: the menu bar icon shows that a phone recording is coming in.
+    // DESK-58: the menu bar icon shows that a phone recording is coming in,
+    // and the pill too when that is chosen.
     crate::tray::set_tray_state(app, crate::tray::TrayIconState::Recording);
+    if phone_pill(app) {
+        crate::overlay::show_recording_overlay(app);
+    }
     let sessions = Arc::clone(sessions);
     super::tray::pulse_while(app.clone(), move || !sessions.lock().unwrap().is_empty());
+}
+
+/// DESK-58: the pill for phone dictations, when that setting is on and the
+/// pill is not hidden. A key dictation owns the pill while it records.
+fn phone_pill(app: &AppHandle) -> bool {
+    let wt = super::store::get(app);
+    let key_recording = app
+        .try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
+        .is_some_and(|rm| rm.is_recording());
+    wt.pill_for_phone && !wt.pill_hidden && !key_recording
 }
 
 fn listening_ended(app: &AppHandle, sessions: &Sessions) {
@@ -303,6 +380,10 @@ async fn finish_phone_dictation(
     ticket: super::sequence::Ticket,
 ) {
     crate::tray::set_tray_state(&app, crate::tray::TrayIconState::Transcribing);
+    let pill = phone_pill(&app);
+    if pill {
+        crate::overlay::show_transcribing_overlay(&app);
+    }
     // DESK-61: wait up to 5 s for the phone's resend of missing blocks.
     let deadline = Instant::now() + RESEND_WAIT;
     while !dictation.lock().unwrap().audio.is_complete() && Instant::now() < deadline {
@@ -332,6 +413,20 @@ async fn finish_phone_dictation(
         transcribe_and_deliver(&app, phone, side, audio, ticket).await
     };
     crate::tray::set_tray_state(&app, crate::tray::TrayIconState::Idle);
+    if pill && phone_pill(&app) {
+        let end = match outcome {
+            ResultOutcome::Ok => Some(super::output::PillEnd::Clipboard),
+            ResultOutcome::Failed(ResultReason::NoSpeech) => Some(super::output::PillEnd::NoSpeech),
+            _ => None,
+        };
+        match end {
+            Some(end) => {
+                let handle = app.clone();
+                super::pill::finish(&app, end, move || phone_pill(&handle));
+            }
+            None => crate::utils::hide_recording_overlay(&app),
+        }
+    }
     if let Err(e) = client.send_result(phone, session, outcome).await {
         warn!("Could not send the result to the phone: {e}");
     }
@@ -428,8 +523,22 @@ pub async fn start_pairing(app: &AppHandle) -> Result<PairingView, String> {
     if !super::store::get(app).allow_phone_pairing {
         return Err("Telefonparring er slået fra af din organisation.".into()); // TODO(copy)
     }
-    let client = client().ok_or("Ingen forbindelse til relæet endnu.")?; // TODO(copy)
-    let ticket = client.start_pairing().await.map_err(|e| e.to_string())?;
+    let client = ensure_client(app).await?;
+    // A connection that is still being made gets a moment (the first
+    // pairing also creates the room).
+    let deadline = Instant::now() + CONNECT_WAIT;
+    let ticket = loop {
+        match client.start_pairing().await {
+            Ok(ticket) => break ticket,
+            Err(ClientError::NotConnected) if Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            Err(ClientError::NotConnected) => {
+                return Err("Ingen forbindelse til relæet. Prøv igen.".into()); // TODO(copy)
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    };
     let expires_at_ms = ticket
         .expires_at
         .duration_since(UNIX_EPOCH)
@@ -504,6 +613,17 @@ pub async fn status(app: &AppHandle) -> RelayView {
 }
 
 /// "Fjern" (SEC-04): revoke at the relay and delete the pair keys here.
+/// The pairing window closed: the code is cancelled, and the connection
+/// closes again if no phone is paired.
+pub async fn cancel_pairing() -> Result<(), String> {
+    let Some(client) = client() else {
+        return Ok(());
+    };
+    client.cancel_pairing().await.map_err(|e| e.to_string())?;
+    disconnect_if_unneeded().await;
+    Ok(())
+}
+
 pub async fn remove_phone(id: &str) -> Result<(), String> {
     let client = client().ok_or("Ingen forbindelse til relæet endnu.")?; // TODO(copy)
     let phone = DeviceId::from_b64u(id).map_err(|e| e.to_string())?;

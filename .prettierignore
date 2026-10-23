@@ -25,3 +25,8 @@ _kit
 .claude
 docs/SPEC.md
 **/target
+
+# Generated: the phone build bundled into the iOS shell, the phone e2e build
+ios/Web
+phone/dist-e2e
+phone/e2e/.tmp

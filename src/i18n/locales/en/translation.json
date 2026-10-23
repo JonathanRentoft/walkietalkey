@@ -1015,7 +1015,7 @@
       "pairTitle": "New phone",
       "pairDesc": "Shows a code that you scan in the phone app.",
       "connected": "Connected to the relay",
-      "disconnected": "No connection to the relay. Trying again.",
+      "disconnected": "No connection to the phone. Trying again.",
       "joinedHelp": "If it was not you, choose Remove. The phone can then no longer send to this computer."
     },
     "modelSettings": {

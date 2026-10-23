@@ -181,10 +181,16 @@ test.describe("onboarding", () => {
     ).toBeVisible();
     expect((await mockState(page)).wt.onboarding_resume_step).toBe("key");
 
-    // The live check follows the key.
+    // The live check follows the key. After the restart its listener may
+    // attach a moment after the screen shows, so the key goes down until the
+    // check has seen it.
     await expect(page.getByText("Prøv at holde tasten")).toBeVisible();
-    await emit(page, "wt-key-state", true);
-    await expect(page.getByText("Det virker")).toBeVisible();
+    await expect
+      .poll(async () => {
+        await emit(page, "wt-key-state", true);
+        return page.getByText("Det virker").isVisible();
+      })
+      .toBe(true);
     await emit(page, "wt-key-state", false);
     await expect(page.getByText("Det virker")).toBeVisible();
   });

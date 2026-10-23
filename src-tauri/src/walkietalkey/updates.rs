@@ -80,8 +80,20 @@ pub fn start(app: &AppHandle) {
     });
 }
 
-/// "Søg efter opdateringer": a check now, whatever the schedule.
+/// Updates turned off by the organisation (managed `AutoUpdate=false`):
+/// nothing contacts GitHub then, not even "Søg efter opdateringer" (PRIV-03).
+fn managed_off(app: &AppHandle) -> bool {
+    let (wt, applied) = super::store::effective(app);
+    !wt.auto_update && applied.locked.iter().any(|f| f == "auto_update")
+}
+
+/// "Søg efter opdateringer": a check now, whatever the schedule, unless the
+/// organisation turned updates off.
 pub fn check_now(app: &AppHandle) {
+    if managed_off(app) {
+        info!("Updates are turned off by the organisation; not checking");
+        return;
+    }
     let app = app.clone();
     tauri::async_runtime::spawn(async move { check(&app).await });
 }
@@ -169,6 +181,17 @@ async fn check(app: &AppHandle) {
     super::tray::set_update_ready(app);
     emit(app, UpdateStatus::Ready { version });
     super::notify::update_ready(app);
+}
+
+/// Quitting installs a downloaded update on Windows, so it is in place at
+/// the next start as on macOS (DESK-111). The installer closes the app.
+pub fn install_pending_on_exit() {
+    if let Some((update, bytes)) = PENDING.lock().unwrap().take() {
+        info!("Installing update {} on exit", update.version);
+        if let Err(e) = update.install(&bytes) {
+            warn!("Update install failed: {e}");
+        }
+    }
 }
 
 /// "Genstart nu": installs a pending update (Windows) and restarts.

@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { commands, type UpdateChannel } from "@/bindings";
 import { useTauriEvent } from "../lib/hooks";
-import { restartApp } from "../lib/system";
 import type { UpdateStatus } from "../lib/types";
-import { useWtSettings, useWtStore } from "../lib/wtStore";
+import { useLocked, useWtSettings, useWtStore } from "../lib/wtStore";
 import {
   Button,
   ChoiceGroup,
@@ -22,6 +21,9 @@ export function UpdatesSection() {
   const update = useWtStore((s) => s.update);
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [handyLocked, setHandyLocked] = useState(false);
+  const autoLocked = useLocked("auto_update");
+  // The organisation turned updates off: nothing may contact GitHub (PRIV-03).
+  const checksOff = handyLocked || (autoLocked && wt?.auto_update === false);
 
   useEffect(() => {
     void commands
@@ -104,12 +106,15 @@ export function UpdatesSection() {
           <div className="wt-inline">
             <Button
               onClick={() => void check()}
-              disabled={status?.state === "checking"}
+              disabled={checksOff || status?.state === "checking"}
             >
               {t("wt.updates.check")}
             </Button>
             {status?.state === "ready" ? (
-              <Button variant="primary" onClick={() => void restartApp()}>
+              <Button
+                variant="primary"
+                onClick={() => void commands.wtRestartNow().catch(() => {})}
+              >
                 {t("wt.notify.restartNow")}
               </Button>
             ) : null}

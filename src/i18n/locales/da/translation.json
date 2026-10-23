@@ -1015,7 +1015,7 @@
       "pairTitle": "Ny telefon",
       "pairDesc": "Viser en kode, som du scanner i telefonens app.",
       "connected": "Forbundet til relæet",
-      "disconnected": "Ingen forbindelse til relæet. Prøver igen.",
+      "disconnected": "Ingen forbindelse til telefonen. Prøver igen.",
       "joinedHelp": "Hvis det ikke var dig, så tryk Fjern. Telefonen kan så ikke sende mere til denne computer."
     },
     "modelSettings": {

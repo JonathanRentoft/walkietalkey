@@ -168,7 +168,11 @@ pub fn apply(values: &ManagedValues, wt: &mut WtSettings, handy: &mut AppSetting
                 })
                 .ok_or_else(|| "must be a boolean".into()),
             "CleanupBaseUrl" => match value.as_text() {
-                Some(url) if url_ok(&url, "https://") || url_ok(&url, "http://localhost") => {
+                Some(url)
+                    if url_ok(&url, "https://")
+                        || (url_ok(&url, "http://")
+                            && super::cleanup::provider::is_local_url(&url)) =>
+                {
                     wt.cleanup_base_url = Some(url);
                     Ok(&["cleanup_base_url"])
                 }
@@ -255,9 +259,10 @@ pub fn apply(values: &ManagedValues, wt: &mut WtSettings, handy: &mut AppSetting
     if !wt.allow_cloud_cleanup {
         let on_device = match wt.cleanup_provider.as_deref() {
             Some("apple") => true,
-            Some("custom") => wt.cleanup_base_url.as_deref().is_some_and(|url| {
-                url_ok(url, "http://localhost") || url_ok(url, "http://127.0.0.1")
-            }),
+            Some("custom") => wt
+                .cleanup_base_url
+                .as_deref()
+                .is_some_and(super::cleanup::provider::is_local_url),
             _ => false,
         };
         if !on_device {

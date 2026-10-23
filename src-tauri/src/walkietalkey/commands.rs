@@ -69,10 +69,7 @@ pub async fn wt_pairing_start(app: AppHandle) -> Result<super::relay::PairingVie
 #[tauri::command]
 #[specta::specta]
 pub async fn wt_pairing_cancel() -> Result<(), String> {
-    match super::relay::client() {
-        Some(client) => client.cancel_pairing().await.map_err(|e| e.to_string()),
-        None => Ok(()),
-    }
+    super::relay::cancel_pairing().await
 }
 
 /// Connection state and the paired phones.
@@ -153,6 +150,14 @@ pub fn wt_history_copy(app: AppHandle, id: i64) -> Result<(), String> {
 #[specta::specta]
 pub fn wt_set_paused(app: AppHandle, paused: bool) {
     super::tray::set_paused(&app, paused);
+}
+
+/// "Genstart nu" in the settings: installs a downloaded update and restarts
+/// (DESK-111), as the menu's "Genstart nu" does.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_restart_now(app: AppHandle) {
+    super::updates::restart_now(&app);
 }
 
 /// Whether dictation is paused, for a window that opens while it is.

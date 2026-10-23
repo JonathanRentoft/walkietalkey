@@ -177,12 +177,19 @@ export const CLEANUP_PROVIDERS: readonly CleanupProvider[] = [
   { id: "custom", name: null, needsKey: true },
 ];
 
+/** The host must be this computer itself, not merely start with
+ *  "localhost" (http://localhost@host, http://localhost.example.com). */
 function isLocalUrl(url: string): boolean {
-  const u = url.trim().toLowerCase();
+  let host: string;
+  try {
+    host = new URL(url.trim()).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
   return (
-    u.startsWith("http://localhost") ||
-    u.startsWith("http://127.0.0.1") ||
-    u.startsWith("http://[::1]")
+    host === "localhost" ||
+    host === "[::1]" ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
   );
 }
 

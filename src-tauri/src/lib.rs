@@ -800,6 +800,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_history_copy,
             walkietalkey::commands::wt_set_paused,
             walkietalkey::commands::wt_is_paused,
+            walkietalkey::commands::wt_restart_now,
             walkietalkey::commands::wt_announce,
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
@@ -1204,6 +1205,7 @@ pub fn run(cli_args: CliArgs) {
         // worker process, which exits by itself as soon as this process's end
         // of its stdin closes, even if it is hung. Waiting on an unload here
         // could block quitting behind a hung model load.
+        tauri::RunEvent::Exit => walkietalkey::updates::install_pending_on_exit(),
         _ => {}
     });
 }

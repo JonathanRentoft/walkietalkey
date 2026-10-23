@@ -748,6 +748,13 @@ async wtIsPaused() : Promise<boolean> {
     return await TAURI_INVOKE("wt_is_paused");
 },
 /**
+ * "Genstart nu" in the settings: installs a downloaded update and restarts
+ * (DESK-111), as the menu's "Genstart nu" does.
+ */
+async wtRestartNow() : Promise<void> {
+    await TAURI_INVOKE("wt_restart_now");
+},
+/**
  * Announces the pill's text to VoiceOver (spec 6.17); the overlay calls it
  * when its text changes.
  */
