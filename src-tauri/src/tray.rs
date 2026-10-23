@@ -733,6 +733,10 @@ mod tests {
             downloaded_models: vec![("small".to_string(), "Small".to_string())],
             locale: "en".to_string(),
             update_checks_enabled: true,
+            recent: Vec::new(),
+            paused: false,
+            update_ready: false,
+            phone_pairing: true,
         }
     }
 
