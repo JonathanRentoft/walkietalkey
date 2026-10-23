@@ -93,7 +93,9 @@ export class SessionStreamer {
   async start(s: AudioSession): Promise<void> {
     if (!this.link.connected) return;
     const conn = this.link.connId;
-    if (await this.link.send(this.startPayload(s))) s.conn = conn;
+    // Live at once: the link sends in call order, so blocks queued now follow audio_start.
+    s.conn = conn;
+    if (!(await this.link.send(this.startPayload(s))) && s.conn === conn) s.conn = -1;
   }
 
   /** Keeps the block and sends it at once if the session is live on this connection. */
@@ -119,10 +121,11 @@ export class SessionStreamer {
   /** Slid off and released (PHONE-26): tell the computer, forget the audio. */
   async cancel(s: AudioSession): Promise<void> {
     if (s.cancelled) return;
-    const wasOnWire = s.conn !== -1 || s.endSent;
     s.cancelled = true;
     s.blocks = [];
-    if (wasOnWire && this.link.connected) await this.link.send({ type: "audio_cancel", sessionId: s.id });
+    // Sent whenever possible: the computer may hold part of the audio from an earlier socket or
+    // from the relay's buffer, and it ignores a cancel for a session it never saw.
+    if (this.link.connected) await this.link.send({ type: "audio_cancel", sessionId: s.id });
   }
 
   /** After (re)authentication: every open session again, one after another, paced. */

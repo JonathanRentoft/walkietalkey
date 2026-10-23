@@ -15,7 +15,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "bun", "vite/client"]
   },
   "include": ["src", "test", "e2e", "scripts", "*.ts"]
 }
