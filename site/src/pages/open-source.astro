@@ -1,0 +1,57 @@
+---
+/* SITE-02 Open source: Apache-2.0, based on Handy (MIT), the credits of spec 11, and the repository. */
+import { ShinyButton } from "@walkietalkey/ui";
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { CONTRIBUTING_URL, LICENSE_URL, PAGES, REPO_URL } from "../lib/site";
+
+// TODO(copy): what each project does for WalkieTalkey
+const credits: [string, string, string, string][] = [
+  ["Handy", "MIT, Copyright (c) CJ Pais", "Appen bygger på Handy: optagelse med en tast, lokale talemodeller, indsættelse og historik.", "https://github.com/cjpais/Handy"],
+  ["transcribe.cpp og ggml", "MIT", "Motoren, der kører talemodellen på din computer.", "https://github.com/handy-computer/transcribe.cpp"],
+  ["Edda v0.2", "Apache-2.0, Alexandra Instituttet", "Den danske talemodel, bygget på Whisper large-v3-turbo (MIT, OpenAI) og trænet på omkring 2.600 timers dansk tale.", "https://huggingface.co/danish-foundation-models/edda-v0.2"],
+  ["Ekko PnC", "CC BY 4.0, RyeAI", "Sætter punktummer, kommaer og store bogstaver.", "https://huggingface.co/RyeAI/ekko-pnc"],
+  ["ONNX Runtime", "MIT, Microsoft", "Kører tegnsætningsmodellen.", "https://github.com/microsoft/onnxruntime"],
+  ["Silero VAD", "MIT", "Finder, hvor der er tale i lyden.", "https://github.com/snakers4/silero-vad"],
+  ["Albert Sans", "SIL Open Font License 1.1, Andreas Rasmussen", "Skrifttypen i appen og på siden.", "https://github.com/usted/Albert-Sans"],
+];
+---
+<Base page="oss">
+  <!-- TODO(copy): the whole page -->
+  <PageHero current="oss" eyebrow="Open source" title="Åben kode, som du selv kan tjekke" lead="Hele koden ligger åbent under Apache-2.0. Du kan se, hvad der sker med din stemme, bygge appen selv eller hjælpe med at gøre den bedre.">
+    <div class="ctas-row"><ShinyButton href={REPO_URL} size="lg">Se koden på GitHub</ShinyButton></div>
+  </PageHero>
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <h2>Licensen</h2>
+      <p>WalkieTalkey er open source under <a href={LICENSE_URL}>Apache-2.0</a>. Du må bruge, ændre og dele koden, også i en virksomhed og også kommercielt, så længe du beholder licensen og meddelelserne om ophavsret.</p>
+      <p>WalkieTalkey bygger på Handy, som er under MIT-licensen. Handys licenstekst ligger uændret i projektet, og de filer, vi har overtaget fra Handy, er stadig også tilgængelige under MIT.</p>
+      <p>Navnet WalkieTalkey og logoet er ikke omfattet af licensen. Se <a href={PAGES.trademark.path}>Varemærke</a>.</p>
+
+      <h2>Det bygger vi på</h2>
+    </div>
+    <div class="table">
+      <table class="credits">
+        <thead><tr><th scope="col">Projekt</th><th scope="col">Licens</th><th scope="col">Hvad det gør</th></tr></thead>
+        <tbody>
+          {credits.map(([name, licence, what, url]) => <tr><td><a href={url}>{name}</a></td><td data-label="Licens">{licence}</td><td data-label="Hvad det gør">{what}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>Edda og Ekko er trænet på data med vilkår fra CoRal-projektet: ingen talesyntese og ingen biometrisk identifikation. Diktering er i orden.</p>
+
+      <h2>Vær med</h2>
+      <p>Du behøver ingen tilladelse til at hente koden, bygge appen eller lave din egen udgave. Bidrag modtages under Apache-2.0, uden en særlig aftale at skrive under på. Sådan bygger og tester du hver del, står i <a href={CONTRIBUTING_URL}>CONTRIBUTING.md</a>.</p>
+      <ul>
+        <li>Fejl og ønsker: opret et issue på <a href={REPO_URL + "/issues"}>GitHub</a>.</li>
+        <li>Spørgsmål: brug <a href={REPO_URL + "/discussions"}>Discussions</a>.</li>
+        <li>Sikkerhedsfejl: meld dem privat, se <a href={PAGES.security.path}>Sikkerhed</a>.</li>
+      </ul>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .ctas-row { margin-top: var(--space-8); display: flex; gap: var(--space-3); }
+</style>
