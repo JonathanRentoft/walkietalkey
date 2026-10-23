@@ -16,7 +16,16 @@ pub fn wt_get_settings(app: AppHandle) -> WtSettingsView {
 #[tauri::command]
 #[specta::specta]
 pub fn wt_update_settings(app: AppHandle, settings: WtSettings) -> Result<WtSettingsView, String> {
-    store::update(&app, settings)
+    let before = store::get(&app);
+    let view = store::update(&app, settings)?;
+    let after = store::get(&app);
+    // A shorter retention or audio switched off applies at once (DESK-91, DESK-92).
+    if before.history_retention != after.history_retention
+        || before.keep_audio_for_debugging != after.keep_audio_for_debugging
+    {
+        super::dictation::run_retention(&app);
+    }
+    Ok(view)
 }
 
 /// "Importér modelfil" (DESK-32): installs a model file the user already

@@ -589,9 +589,14 @@ impl ShortcutAction for TranscribeAction {
             // pressed with it (fn+Delete, fn+arrows) cancels silently.
             if crate::walkietalkey::keys::is_modifier_only(shortcut_str) {
                 let rm_watch = Arc::clone(&rm);
-                crate::walkietalkey::keys::cancel_on_other_key(app.clone(), move || {
-                    RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_watch.is_recording()
-                });
+                crate::walkietalkey::keys::cancel_on_other_key(
+                    app.clone(),
+                    shortcut_str,
+                    move || {
+                        RECORDING_SESSION.load(Ordering::SeqCst) == session
+                            && rm_watch.is_recording()
+                    },
+                );
             }
         } else {
             // Starting failed (for example due to blocked microphone permissions).

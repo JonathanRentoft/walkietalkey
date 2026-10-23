@@ -40,6 +40,21 @@ struct PhoneDictation {
 
 type Sessions = Arc<Mutex<HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>>>;
 
+/// Dictations whose `audio_end` came, while they wait up to 5 s for the
+/// phone's resend of missing blocks (DESK-61): resent blocks still land here.
+static ENDING: Lazy<Mutex<HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// The dictation a block belongs to: one still recording, or one waiting
+/// after its `audio_end` for resent blocks (DESK-61).
+fn dictation_for_audio(
+    sessions: &Sessions,
+    key: &(DeviceId, SessionId),
+) -> Option<Arc<Mutex<PhoneDictation>>> {
+    let recording = sessions.lock().unwrap().get(key).cloned();
+    recording.or_else(|| ENDING.lock().unwrap().get(key).cloned())
+}
+
 /// A phone dictation longer than this is answered `too_long` (PHONE-29: the
 /// phone itself stops at 5:00).
 const TOO_LONG: Duration = Duration::from_secs(5 * 60 + 15);
@@ -189,8 +204,7 @@ async fn event_loop(
                 index,
                 pcm,
             } => {
-                let dictation = sessions.lock().unwrap().get(&(phone, session)).cloned();
-                if let Some(dictation) = dictation {
+                if let Some(dictation) = dictation_for_audio(&sessions, &(phone, session)) {
                     let mut d = dictation.lock().unwrap();
                     let ready = d.audio.add(index, &pcm);
                     if !ready.is_empty() {
@@ -209,6 +223,10 @@ async fn event_loop(
                 let dictation = sessions.lock().unwrap().remove(&(phone, session));
                 if let Some(dictation) = dictation {
                     dictation.lock().unwrap().audio.end(chunks);
+                    ENDING
+                        .lock()
+                        .unwrap()
+                        .insert((phone, session), Arc::clone(&dictation));
                     // DESK-27: the place in the output order is taken now.
                     let ticket = super::sequence::take_ticket();
                     let (app, client) = (app.clone(), client.clone());
@@ -290,6 +308,7 @@ async fn finish_phone_dictation(
     while !dictation.lock().unwrap().audio.is_complete() && Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+    ENDING.lock().unwrap().remove(&(phone, session));
     let (side, audio, paused, too_long) = {
         let mut d = dictation.lock().unwrap();
         let rest = d.audio.give_up_on_gaps();
@@ -371,12 +390,12 @@ async fn transcribe_and_deliver(
         error!("Could not put the phone dictation on the clipboard: {e}");
         return ResultOutcome::Failed(ResultReason::Error);
     }
-    super::dictation::save_history(app, &finished, &source, None);
+    let history_id = super::dictation::save_history(app, &finished, &source, None);
     let settings = super::store::get(app);
     super::notify::text_ready(
         app,
         super::output::notification_body(&finished.final_text, settings.show_text_in_notifications),
-        None,
+        history_id,
     );
     drop(ticket);
     ResultOutcome::Ok
@@ -502,5 +521,33 @@ mod tests {
         assert!(svg.contains("#1b1a19"));
         // The secret part of the URL is never in the SVG as text.
         assert!(!svg.contains("eyJ2IjoxfQ"));
+    }
+
+    fn dictation() -> Arc<Mutex<PhoneDictation>> {
+        Arc::new(Mutex::new(PhoneDictation {
+            audio: SessionAudio::new(),
+            side: None,
+            started: Instant::now(),
+            paused: false,
+        }))
+    }
+
+    #[test]
+    fn blocks_resent_after_audio_end_still_reach_the_dictation() {
+        let sessions: Sessions = Arc::new(Mutex::new(HashMap::new()));
+        let key = (DeviceId([7; 16]), SessionId([9; 16]));
+        let d = dictation();
+        sessions.lock().unwrap().insert(key, Arc::clone(&d));
+        assert!(dictation_for_audio(&sessions, &key).is_some(), "recording");
+        // audio_end: out of the recording map, into the waiting one (DESK-61).
+        let ended = sessions.lock().unwrap().remove(&key).unwrap();
+        ENDING.lock().unwrap().insert(key, ended);
+        let found = dictation_for_audio(&sessions, &key).expect("a resend is still accepted");
+        assert!(Arc::ptr_eq(&found, &d));
+        ENDING.lock().unwrap().remove(&key);
+        assert!(
+            dictation_for_audio(&sessions, &key).is_none(),
+            "after the wait"
+        );
     }
 }

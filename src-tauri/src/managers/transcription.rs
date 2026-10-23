@@ -21,7 +21,7 @@ use policy::{batch_decode, live_decode, BatchDecode, LiveDecode, ModelTraits};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
@@ -114,6 +114,17 @@ type StreamFinalizeReply = Result<Option<RunOutcome>, EngineError>;
 /// ([`TranscriptionManager::start_side_stream`]).
 pub struct SideStream {
     tx: mpsc::Sender<StreamCmd>,
+    _active: SideStreamGuard,
+}
+
+/// Counts a phone dictation as in progress until its `SideStream` is gone
+/// (finished, cancelled or dropped), so a key cancel can leave it alone.
+struct SideStreamGuard(Arc<AtomicUsize>);
+
+impl Drop for SideStreamGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 
 impl SideStream {
@@ -280,6 +291,8 @@ pub struct TranscriptionManager {
     /// yet. This prevents a second worker from starting after finalize/cancel
     /// closes the router but before the first worker has fully exited.
     active_stream_worker: Arc<AtomicU64>,
+    /// WalkieTalkey (DESK-61): phone dictations decoding right now.
+    side_streams: Arc<AtomicUsize>,
 }
 
 impl TranscriptionManager {
@@ -299,6 +312,7 @@ impl TranscriptionManager {
             stream_active: Arc::new(AtomicBool::new(false)),
             next_stream_worker_id: Arc::new(AtomicU64::new(1)),
             active_stream_worker: Arc::new(AtomicU64::new(0)),
+            side_streams: Arc::new(AtomicUsize::new(0)),
         };
 
         // Start the idle watcher
@@ -855,8 +869,19 @@ impl TranscriptionManager {
     pub fn start_side_stream(&self) -> SideStream {
         let (tx, rx) = mpsc::channel();
         let manager = self.clone();
+        self.side_streams.fetch_add(1, Ordering::AcqRel);
+        let active = SideStreamGuard(Arc::clone(&self.side_streams));
         thread::spawn(move || manager.run_side_stream(rx));
-        SideStream { tx }
+        SideStream {
+            tx,
+            _active: active,
+        }
+    }
+
+    /// Whether a phone dictation is being decoded (from its first audio
+    /// until its text is done).
+    pub fn phone_dictation_active(&self) -> bool {
+        self.side_streams.load(Ordering::Acquire) > 0
     }
 
     fn run_side_stream(&self, rx: mpsc::Receiver<StreamCmd>) {

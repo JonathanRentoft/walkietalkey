@@ -49,12 +49,18 @@ where
 }
 
 /// Watches the keyboard while a dictation started with a modifier-only key
-/// is recording, and cancels it silently when any other key goes down
-/// (DESK-26). Stops watching as soon as the recording is no longer current.
-pub fn cancel_on_other_key<C>(app: AppHandle, is_current: C)
+/// is recording, and cancels it silently when another key goes down while
+/// the dictation key is still held (DESK-26). Once the dictation key goes up
+/// (tap mode records on), other keys are ordinary typing and the watch ends;
+/// it also ends as soon as the recording is no longer current.
+pub fn cancel_on_other_key<C>(app: AppHandle, binding: &str, is_current: C)
 where
     C: Fn() -> bool + Send + 'static,
 {
+    let held = binding
+        .parse::<handy_keys::Hotkey>()
+        .map(|h| h.modifiers)
+        .unwrap_or_else(|_| handy_keys::Modifiers::empty());
     thread::spawn(move || {
         let listener = match handy_keys::KeyboardListener::new() {
             Ok(listener) => listener,
@@ -67,6 +73,10 @@ where
             let Ok(event) = listener.recv_timeout(Duration::from_millis(50)) else {
                 continue;
             };
+            if released(&event, held) {
+                debug!("The dictation key went up; other keys no longer cancel");
+                return;
+            }
             if is_shortcut_key(&event) {
                 if is_current() {
                     info!("Another key went down with the dictation key; cancelling silently");
@@ -82,6 +92,13 @@ where
 /// A key (not a modifier) going down.
 fn is_shortcut_key(event: &handy_keys::KeyEvent) -> bool {
     event.is_key_down && event.key.is_some()
+}
+
+/// The dictation key itself going up.
+fn released(event: &handy_keys::KeyEvent, held: handy_keys::Modifiers) -> bool {
+    !event.is_key_down
+        && event.key.is_none()
+        && event.changed_modifier.is_some_and(|m| held.intersects(m))
 }
 
 #[cfg(test)]
@@ -130,6 +147,37 @@ mod tests {
             !is_shortcut_key(&event(None, true)),
             "fn itself is a modifier"
         );
+    }
+
+    #[test]
+    fn releasing_the_dictation_key_ends_the_watch() {
+        use handy_keys::{KeyEvent, Modifiers};
+        let fn_up = KeyEvent {
+            modifiers: Modifiers::empty(),
+            key: None,
+            is_key_down: false,
+            changed_modifier: Some(Modifiers::FN),
+        };
+        assert!(released(&fn_up, Modifiers::FN));
+        let fn_down = KeyEvent {
+            is_key_down: true,
+            ..fn_up.clone()
+        };
+        assert!(!released(&fn_down, Modifiers::FN));
+        let shift_up = KeyEvent {
+            changed_modifier: Some(Modifiers::SHIFT_LEFT),
+            ..fn_up.clone()
+        };
+        assert!(!released(&shift_up, Modifiers::FN), "another modifier");
+        let held = "ctrl_right"
+            .parse::<handy_keys::Hotkey>()
+            .unwrap()
+            .modifiers;
+        let ctrl_up = KeyEvent {
+            changed_modifier: Some(held),
+            ..fn_up
+        };
+        assert!(released(&ctrl_up, held));
     }
 
     #[test]

@@ -10,12 +10,14 @@
 //! | [`managed`] | DESK-100..102, Appendix B | forced `CFPreferences` values of `com.walkietalkey.app` | `HKLM\SOFTWARE\Policies\WalkieTalkey` |
 //! | [`presence`] | DESK-63 | seconds since input, screen lock | the same |
 //! | [`elevation`] | DESK-50 | always `false` | is the foreground window elevated above us? |
+//! | [`keyboard`] | DESK-80 | (the app asks CoreGraphics itself) | is Shift held? |
 //!
 //! Every function is safe to call on platforms it does not cover: it returns a neutral value
 //! or an `Unsupported` error, so the app needs no `cfg` at the call sites.
 
 pub mod clipboard_windows;
 pub mod elevation;
+pub mod keyboard;
 pub mod managed;
 pub mod notification_permission;
 pub mod notifications;

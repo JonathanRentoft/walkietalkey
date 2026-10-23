@@ -62,6 +62,7 @@ fn record(provider: &dyn Provider, sent: Vec<String>, duration_ms: u64) -> Optio
 /// Cleans a whole dictation's local text in one call.
 pub async fn clean_once(provider: &dyn Provider, text: &str) -> Cleaned {
     let user = user_message(text);
+    let started = Instant::now();
     match call(provider, &user, text).await {
         Ok((cleaned, ms)) => Cleaned {
             text: cleaned,
@@ -73,7 +74,7 @@ pub async fn clean_once(provider: &dyn Provider, text: &str) -> Cleaned {
             log::info!("Cleanup not used: {violation:?}");
             Cleaned {
                 text: text.to_string(),
-                record: record(provider, vec![user], 0),
+                record: record(provider, vec![user], started.elapsed().as_millis() as u64),
                 fell_back: true,
                 called: true,
             }
@@ -141,6 +142,7 @@ impl ChunkCleaner {
             };
             st.called = true;
             st.sent.push(user.clone());
+            let started = Instant::now();
             match call(provider.as_ref(), &user, &window).await {
                 Ok((cleaned, ms)) => {
                     st.duration_ms += ms;
@@ -151,6 +153,7 @@ impl ChunkCleaner {
                 }
                 Err(violation) => {
                     log::info!("Chunk cleanup not used: {violation:?}");
+                    st.duration_ms += started.elapsed().as_millis() as u64;
                     st.fell_back = true;
                     st.pieces.push(chunk);
                 }

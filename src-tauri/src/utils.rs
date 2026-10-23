@@ -98,7 +98,15 @@ pub fn cancel_current_operation(app: &AppHandle) {
     // already in progress
     let tm = app.state::<Arc<TranscriptionManager>>();
     tm.cancel_stream();
-    tm.cancel_transcription();
+    // WalkieTalkey (DESK-61): a phone dictation decodes on the same engine,
+    // and stopping the engine would fail it too. The key's own work is then
+    // left to finish; the cancel generation keeps its text from being used.
+    if !tm.phone_dictation_active() {
+        tm.cancel_transcription();
+    }
+    // WalkieTalkey (DESK-47): a cancelled dictation's cleaned chunks must
+    // never reach a later one.
+    crate::walkietalkey::cleanup::forget_key_cleaner();
 
     // Update tray icon and hide overlay
     set_tray_state(app, crate::tray::TrayIconState::Idle);

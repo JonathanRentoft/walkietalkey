@@ -62,10 +62,11 @@ pub async fn process(
             cleanup: record,
             cleanup_fell_back: false,
         },
-        CleanupOutcome::FellBack => Finished {
+        // What was sent is shown even when its answer was not used (DESK-85).
+        CleanupOutcome::FellBack { record } => Finished {
             final_text: local_text.clone(),
             local_text,
-            cleanup: None,
+            cleanup: record,
             cleanup_fell_back: true,
         },
     }
@@ -73,19 +74,19 @@ pub async fn process(
 
 /// Saves the dictation to history (DESK-90) unless retention is "Gem ikke",
 /// then applies retention. `audio_file` is set only when "Gem lyd til
-/// fejlfinding" kept the recording (DESK-92).
+/// fejlfinding" kept the recording (DESK-92). Returns the item's id, for a
+/// notification that opens it (DESK-57).
 pub fn save_history(
     app: &AppHandle,
     finished: &Finished,
     source: &Source,
     audio_file: Option<&str>,
-) {
+) -> Option<i64> {
     let settings = store::get(app);
-    let Some(hm) = app.try_state::<Arc<HistoryManager>>() else {
-        return;
-    };
+    let hm = app.try_state::<Arc<HistoryManager>>()?;
     if settings.history_retention.days() == Some(0) || finished.final_text.trim().is_empty() {
-        return;
+        run_retention(app);
+        return None;
     }
     let cleaned = finished.cleaned();
     let entry = match hm.save_entry(
@@ -98,13 +99,13 @@ pub fn save_history(
         Ok(entry) => entry,
         Err(e) => {
             error!("Failed to save history entry: {e}");
-            return;
+            return None;
         }
     };
     let Ok(dir) = crate::portable::app_data_dir(app) else {
-        return;
+        return Some(entry.id);
     };
-    let (db_path, recordings) = history::paths(&dir);
+    let (db_path, _) = history::paths(&dir);
     match history::open(&db_path) {
         Ok(conn) => {
             if let Err(e) =
@@ -112,16 +113,48 @@ pub fn save_history(
             {
                 warn!("Failed to save history details: {e}");
             }
+        }
+        Err(e) => warn!("Failed to open history database: {e}"),
+    }
+    run_retention(app);
+    let _ = tauri::Emitter::emit(app, "wt-history-changed", ());
+    Some(entry.id)
+}
+
+/// Applies retention and deletes expired or orphaned audio (DESK-91,
+/// DESK-92): at start, every hour, after each save and when the retention
+/// or audio setting changes. "Gem ikke" clears the history this way too.
+pub fn run_retention(app: &AppHandle) {
+    let Ok(dir) = crate::portable::app_data_dir(app) else {
+        return;
+    };
+    let (db_path, recordings) = history::paths(&dir);
+    if !db_path.exists() {
+        return;
+    }
+    let retention = store::get(app).history_retention;
+    match history::open(&db_path) {
+        Ok(conn) => {
             let now = chrono::Utc::now().timestamp();
-            if let Err(e) =
-                history::apply_retention(&conn, &recordings, settings.history_retention, now)
-            {
-                warn!("History retention failed: {e}");
+            match history::apply_retention(&conn, &recordings, retention, now) {
+                Ok(deleted) if deleted > 0 => {
+                    let _ = tauri::Emitter::emit(app, "wt-history-changed", ());
+                }
+                Ok(_) => {}
+                Err(e) => warn!("History retention failed: {e}"),
             }
         }
         Err(e) => warn!("Failed to open history database: {e}"),
     }
-    let _ = tauri::Emitter::emit(app, "wt-history-changed", ());
+}
+
+/// Runs retention at start and then every hour.
+pub fn start_retention(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        run_retention(&app);
+        std::thread::sleep(std::time::Duration::from_secs(60 * 60));
+    });
 }
 
 /// Whether a key dictation may paste: macOS needs Accessibility (DESK-14);

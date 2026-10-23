@@ -35,8 +35,8 @@ pub enum CleanupOutcome {
         record: Option<CleanupRecord>,
     },
     /// A guardrail fired (DESK-84): the local text is used and the pill says
-    /// "Brugte teksten uden oprydning".
-    FellBack,
+    /// "Brugte teksten uden oprydning". `record` is what was still sent.
+    FellBack { record: Option<CleanupRecord> },
 }
 
 struct Plan {
@@ -120,6 +120,8 @@ static KEY_CLEANER: Lazy<Mutex<Option<Arc<ChunkCleaner>>>> = Lazy::new(|| Mutex:
 /// talks, when a mode other than Shift is active (Shift is only known at
 /// release).
 pub(crate) fn key_chunk_observer(app: &AppHandle) -> Option<ChunkObserver> {
+    // A new recording never inherits an earlier one's cleaned chunks.
+    forget_key_cleaner();
     let plan = plan(app, None)?;
     let cleaner = Arc::new(ChunkCleaner::new(plan.provider, plan.only_when_needed));
     *KEY_CLEANER.lock().unwrap() = Some(Arc::clone(&cleaner));
@@ -127,6 +129,11 @@ pub(crate) fn key_chunk_observer(app: &AppHandle) -> Option<ChunkObserver> {
     Some(Arc::new(move |raw: &str| {
         cleaner.push(local_chunk_text(&app, raw))
     }))
+}
+
+/// Drops the key recording's chunk cleaner (a cancel, or a new recording).
+pub fn forget_key_cleaner() {
+    KEY_CLEANER.lock().unwrap().take();
 }
 
 /// A chunk's text after the local steps (filler words, replacements), as
@@ -157,7 +164,9 @@ fn outcome(cleaned: Cleaned) -> CleanupOutcome {
     if !cleaned.called {
         CleanupOutcome::NotUsed
     } else if cleaned.fell_back {
-        CleanupOutcome::FellBack
+        CleanupOutcome::FellBack {
+            record: cleaned.record,
+        }
     } else {
         CleanupOutcome::Cleaned {
             text: cleaned.text,
@@ -208,7 +217,7 @@ pub fn shift_held() -> bool {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        false
+        wt_native::keyboard::shift_down()
     }
 }
 

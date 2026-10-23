@@ -224,10 +224,56 @@ pub fn apply_retention(
             params![id],
         )?;
     }
+    sweep_audio(conn, recordings_dir, now)?;
     if deleted > 0 {
         info!("History retention removed {deleted} item(s)");
     }
     Ok(deleted)
+}
+
+/// A recording no history item points to is kept this long at most: long
+/// enough for the dictation that wrote it to save its item.
+const UNREFERENCED_AUDIO_GRACE: Duration = Duration::from_secs(10 * 60);
+
+/// Deletes audio files that no item refers to (a dictation that heard
+/// nothing, was cancelled, or ran under "Gem ikke") once they are past the
+/// grace period, and any file older than 7 days (DESK-92).
+fn sweep_audio(conn: &Connection, recordings_dir: &Path, now: i64) -> Result<()> {
+    let Ok(dir) = std::fs::read_dir(recordings_dir) else {
+        return Ok(());
+    };
+    let referenced: std::collections::HashSet<String> = {
+        let mut stmt =
+            conn.prepare("SELECT file_name FROM transcription_history WHERE file_name != ''")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for entry in dir.flatten() {
+        let path = entry.path();
+        let (Some(name), Ok(meta)) = (
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .map(str::to_string),
+            entry.metadata(),
+        ) else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        let age = meta
+            .modified()
+            .ok()
+            .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|m| now.saturating_sub(m.as_secs() as i64).max(0) as u64)
+            .unwrap_or(0);
+        let expired = age > AUDIO_MAX_AGE.as_secs();
+        let orphaned = !referenced.contains(&name) && age > UNREFERENCED_AUDIO_GRACE.as_secs();
+        if expired || orphaned {
+            remove_audio(recordings_dir, &name);
+        }
+    }
+    Ok(())
 }
 
 /// The history database and recordings folder in the app data folder.
