@@ -56,10 +56,17 @@ export interface GLHandle {
 /** Mounts a full-surface fragment shader on a canvas inside `wrap`.
     Handles size, pixel ratio, pointer (with lag), pausing off screen, tab visibility, reduced motion and theme changes.
     setup(gl, loc, wrap) runs once per (re)colour; frame(gl, loc, t) runs every frame. Returns null without WebGL. */
+/* Port change: the design system loses the context at once on cleanup. When an effect runs again on the same canvas
+   (hydration, where reduced motion switches from the server's guess to the browser's value, or the user switching it),
+   the new mount then gets a lost context and falls back. So the loss waits a tick, and a new mount cancels it. */
+const pendingLoss = new WeakMap<HTMLCanvasElement, ReturnType<typeof setTimeout>>();
+
 export function mountGL(wrap: HTMLElement, canvas: HTMLCanvasElement, frag: string, opts: GLOptions): GLHandle | null {
+  const pending = pendingLoss.get(canvas);
+  if (pending) { clearTimeout(pending); pendingLoss.delete(canvas); }
   let gl: WebGLRenderingContext | null = null;
   try { gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" }) as WebGLRenderingContext | null; } catch { gl = null; }
-  if (!gl) return null;
+  if (!gl || gl.isContextLost()) return null;
   const g = gl;
   function compile(type: number, src: string): WebGLShader | null {
     const s = g.createShader(type)!; g.shaderSource(s, src); g.compileShader(s);
@@ -124,7 +131,11 @@ export function mountGL(wrap: HTMLElement, canvas: HTMLCanvasElement, frag: stri
       pause(); ro.disconnect(); io.disconnect(); mo.disconnect();
       document.removeEventListener("visibilitychange", onVis);
       wrap.removeEventListener("pointermove", onMove); wrap.removeEventListener("pointerleave", onLeave);
-      const ext = g.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
+      g.deleteProgram(prog); g.deleteShader(vs); g.deleteShader(fs); g.deleteBuffer(buf);
+      pendingLoss.set(canvas, setTimeout(() => {
+        pendingLoss.delete(canvas);
+        const ext = g.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
+      }, 0));
     },
   };
 }
