@@ -72,12 +72,17 @@ body {
   border: 0;
 }
 
-/* Every focusable control shows the design system's focus ring. */
+/* Every focusable control shows the design system's focus ring. Headings
+   that receive focus when a screen changes (tabindex -1) do not. */
 .wt-app :focus-visible,
 .wt-onb :focus-visible,
 .wt-dialog :focus-visible {
   outline: 2px solid transparent;
   box-shadow: var(--focus-ring);
+}
+.wt-app [tabindex="-1"]:focus-visible,
+.wt-onb [tabindex="-1"]:focus-visible {
+  box-shadow: none;
 }
 
 /* ------------------------------------------------------------- Layout */
@@ -926,9 +931,6 @@ textarea.wt-input {
   }
   .wt-main {
     padding: var(--space-4) var(--space-4) var(--space-12);
-  }
-  .wt-row {
-    flex-wrap: wrap;
   }
   .wt-onb-card {
     padding: var(--space-6);

@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import SecureInputWarning from "@/components/SecureInputWarning";
-import WalkieTalkeyLockup from "./brand/WalkieTalkeyLockup";
+import { Logo } from "@walkietalkey/ui";
 import type { WtPlatform } from "./lib/helpers";
 import { SECTIONS, useUi, type SectionId } from "./lib/uiStore";
 import { Button } from "./ui/controls";
@@ -84,7 +84,7 @@ export function MainWindow(props: { platform: WtPlatform }) {
     <div className="wt-app">
       <nav className="wt-nav" aria-label={t("wt.nav.label")}>
         <div className="wt-nav-brand">
-          <WalkieTalkeyLockup height={16} />
+          <Logo variant="lockup" size={18} />
         </div>
         <ul>
           {SECTIONS.map((id) => (
