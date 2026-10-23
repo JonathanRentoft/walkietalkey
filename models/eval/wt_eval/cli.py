@@ -19,7 +19,7 @@ from .datasets import Clip, load_clips_dir, load_fleurs
 from .engine import TranscribeCli
 from .normalize import normalize
 from .punctuation import count_marks, needs_pnc, word_count
-from .wer import Counts, corpus_wer, word_errors
+from .wer import Counts, bootstrap_ci, corpus_wer, word_errors
 
 
 @dataclass(frozen=True)
@@ -67,6 +67,7 @@ def summarize(rows: list[dict]) -> dict:
     return {
         "clips": n,
         "wer": corpus_wer(counts),
+        "wer_ci95": list(bootstrap_ci(counts)),
         "substitutions": sum(c.sub for c in counts),
         "deletions": sum(c.dele for c in counts),
         "insertions": sum(c.ins for c in counts),
@@ -94,12 +95,13 @@ def write_summary(out: Path) -> dict:
         f"Dataset: {meta['dataset']['name']} ({meta['dataset']['clips']} clips). "
         f"Engine: {meta['engine']['cli']} backend={meta['engine']['backend']}, language={meta['engine']['language']}.",
         "",
-        "| model | timestamps | clips | WER % | S | D | I | marks per 25 words | clips < 1 mark/25 words (DESK-41) |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| model | timestamps | clips | WER % | 95 % CI | S | D | I | marks per 25 words | clips < 1 mark/25 words (DESK-41) |",
+        "|---|---|---:|---:|---|---:|---:|---:|---:|---:|",
     ]
     for name, s in models.items():
+        lo, hi = s["wer_ci95"]
         lines.append(
-            f"| {name} | {s['timestamps']} | {s['clips']} | {s['wer'] * 100:.2f} | {s['substitutions']} | "
+            f"| {name} | {s['timestamps']} | {s['clips']} | {s['wer'] * 100:.2f} | {lo * 100:.2f} to {hi * 100:.2f} | {s['substitutions']} | "
             f"{s['deletions']} | {s['insertions']} | {s['marks_per_25_words']:.2f} | "
             f"{s['pnc_trigger_clips']} ({s['pnc_trigger_rate'] * 100:.1f} %) |"
         )

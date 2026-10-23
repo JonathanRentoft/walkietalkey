@@ -52,6 +52,7 @@ def test_run_writes_per_clip_rows_and_summary(tmp_path):
     good = summary["models"]["good"]
     assert good["clips"] == 2
     assert good["wer"] == 0.0
+    assert good["wer_ci95"] == [0.0, 0.0]
     # "God dag." has 1 mark in 2 words; "hej med dig" has none -> 1 of 2 clips trigger PnC
     assert good["pnc_trigger_clips"] == 1
     assert good["pnc_trigger_rate"] == 0.5

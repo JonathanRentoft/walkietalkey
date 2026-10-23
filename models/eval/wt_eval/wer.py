@@ -47,3 +47,28 @@ def corpus_wer(counts: Iterable[Counts]) -> float:
         errors += c.errors
         ref += c.ref
     return errors / ref if ref else 0.0
+
+
+def bootstrap_ci(counts: Sequence[Counts], resamples: int = 1000, seed: int = 0) -> tuple[float, float]:
+    """95 % percentile bootstrap interval of the corpus WER, resampling clips
+    with replacement (fixed seed, so a rerun gives the same interval)."""
+    import random
+
+    if not counts:
+        return (0.0, 0.0)
+    rng = random.Random(seed)
+    n = len(counts)
+    errors = [c.errors for c in counts]
+    refs = [c.ref for c in counts]
+    stats = []
+    for _ in range(resamples):
+        e = r = 0
+        for _ in range(n):
+            i = rng.randrange(n)
+            e += errors[i]
+            r += refs[i]
+        stats.append(e / r if r else 0.0)
+    stats.sort()
+    lo = stats[int(0.025 * (resamples - 1))]
+    hi = stats[int(0.975 * (resamples - 1))]
+    return (round(lo, 6), round(hi, 6))

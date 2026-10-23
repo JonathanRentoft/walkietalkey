@@ -1,4 +1,17 @@
-from wt_eval.wer import Counts, corpus_wer, word_errors
+from wt_eval.wer import Counts, bootstrap_ci, corpus_wer, word_errors
+
+
+def test_bootstrap_ci_brackets_the_corpus_wer_and_is_deterministic():
+    counts = [Counts(sub=i % 3, dele=i % 2, ins=0, ref=10) for i in range(200)]
+    lo, hi = bootstrap_ci(counts, resamples=300, seed=7)
+    assert lo <= corpus_wer(counts) <= hi
+    assert lo < hi
+    assert bootstrap_ci(counts, resamples=300, seed=7) == (lo, hi)
+
+
+def test_bootstrap_ci_of_identical_clips_is_a_point():
+    counts = [Counts(sub=1, dele=0, ins=0, ref=10)] * 50
+    assert bootstrap_ci(counts, resamples=100, seed=1) == (0.1, 0.1)
 
 
 def test_identical():
