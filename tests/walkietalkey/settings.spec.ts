@@ -394,6 +394,21 @@ test.describe("settings", () => {
       .toBe("hour1");
   });
 
+  test("Model shows the punctuation model and retries its download", async ({
+    page,
+  }) => {
+    await openApp(page, {
+      punctuation: { state: "failed", message: "offline" },
+    });
+    await section(page, "Model");
+    await expect(page.getByText("Tegnsætning (Ekko PnC)")).toBeVisible();
+    await expect(
+      page.getByText("Kunne ikke hente tegnsætningsmodellen."),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Prøv igen" }).click();
+    await expect(page.getByText("Henter tegnsætningsmodellen")).toBeVisible();
+  });
+
   test("Ordliste adds words newest first and stores replacements", async ({
     page,
   }) => {

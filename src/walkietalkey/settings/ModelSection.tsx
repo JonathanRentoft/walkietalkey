@@ -1,8 +1,13 @@
 // Indstillinger › Model (spec 6.5, 6.14, DESK-34, DESK-45).
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LogoLoader } from "@walkietalkey/ui";
-import { commands, type ModelInfo, type ModelUnloadTimeout } from "@/bindings";
+import {
+  commands,
+  type ModelInfo,
+  type ModelUnloadTimeout,
+  type PncStatus,
+} from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
@@ -12,6 +17,7 @@ import {
   UNLOAD_OPTIONS,
   type UnloadChoice,
 } from "../lib/helpers";
+import { useTauriEvent } from "../lib/hooks";
 import { useLocked } from "../lib/wtStore";
 import {
   Button,
@@ -22,6 +28,52 @@ import {
   SettingRow,
   Status,
 } from "../ui/controls";
+
+/** Ekko PnC, the punctuation model (DESK-41): fetched at start when missing. */
+function PunctuationRow() {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<PncStatus | null>(null);
+  useEffect(() => {
+    commands
+      .wtPunctuationStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, []);
+  useTauriEvent<PncStatus>("wt-punctuation-status", setStatus);
+  if (!status) return null;
+  const text = {
+    ready: t("wt.modelSettings.punctuation.ready"),
+    missing: t("wt.modelSettings.punctuation.missing"),
+    downloading: t("wt.modelSettings.punctuation.downloading"),
+    failed: t("wt.modelSettings.punctuation.failed"),
+    unsupported: t("wt.modelSettings.punctuation.unsupported"),
+  }[status.state];
+  const tone =
+    status.state === "ready"
+      ? "ok"
+      : status.state === "failed"
+        ? "warn"
+        : "muted";
+  return (
+    <SettingRow
+      title={t("wt.modelSettings.punctuation.title")}
+      description={t("wt.modelSettings.punctuation.desc")}
+    >
+      <>
+        <Status tone={tone}>{text}</Status>
+        {status.state === "failed" || status.state === "missing" ? (
+          <Button
+            onClick={() =>
+              void commands.wtPunctuationDownload().catch(() => {})
+            }
+          >
+            {t("wt.modelSettings.punctuation.retry")}
+          </Button>
+        ) : null}
+      </>
+    </SettingRow>
+  );
+}
 
 function DownloadState(props: { model: ModelInfo }) {
   const { t } = useTranslation();
@@ -147,6 +199,7 @@ export function ModelSection() {
             <Status tone="warn">{t("wt.model.downloadFailed")}</Status>
           </div>
         ) : null}
+        <PunctuationRow />
         <SettingRow
           title={t("wt.modelSettings.space")}
           description={t("wt.modelSettings.spaceDesc")}

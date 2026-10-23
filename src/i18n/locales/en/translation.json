@@ -1037,7 +1037,17 @@
       "deleteNamed": "Delete {{name}}",
       "download": "Download",
       "downloadNamed": "Download {{name}}",
-      "downloadingNamed": "Downloading {{name}}"
+      "downloadingNamed": "Downloading {{name}}",
+      "punctuation": {
+        "title": "Punctuation (Ekko PnC)",
+        "desc": "Adds full stops and commas when the speech model does not. Runs on this computer.",
+        "ready": "Ready",
+        "missing": "Downloads when there is a connection",
+        "downloading": "Downloading the punctuation model",
+        "failed": "Could not download the punctuation model.",
+        "unsupported": "Not available on an Intel Mac",
+        "retry": "Try again"
+      }
     },
     "updates": {
       "auto": "Automatic updates",

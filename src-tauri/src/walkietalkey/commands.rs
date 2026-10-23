@@ -46,6 +46,11 @@ pub async fn wt_import_model_file(app: AppHandle, path: String) -> Result<String
     .await
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())?;
+    if model_id == super::models::PUNCTUATION_ID {
+        // Ekko PnC: whatever did not come with the file is fetched.
+        super::punctuation::ensure(&app);
+        return Ok(model_id);
+    }
     if let Some(mm) = app.try_state::<Arc<crate::managers::model::ModelManager>>() {
         mm.rescan_local_models().map_err(|e| e.to_string())?;
     }
@@ -158,6 +163,20 @@ pub fn wt_set_paused(app: AppHandle, paused: bool) {
 #[specta::specta]
 pub fn wt_restart_now(app: AppHandle) {
     super::updates::restart_now(&app);
+}
+
+/// Ekko PnC's state for Indstillinger › Model (DESK-41).
+#[tauri::command]
+#[specta::specta]
+pub fn wt_punctuation_status(app: AppHandle) -> super::punctuation::PncStatus {
+    super::punctuation::status(&app)
+}
+
+/// "Prøv igen" for the punctuation model's download.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_punctuation_download(app: AppHandle) {
+    super::punctuation::download(&app);
 }
 
 /// Whether dictation is paused, for a window that opens while it is.

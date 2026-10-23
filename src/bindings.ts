@@ -748,6 +748,18 @@ async wtIsPaused() : Promise<boolean> {
     return await TAURI_INVOKE("wt_is_paused");
 },
 /**
+ * Ekko PnC's state for Indstillinger › Model (DESK-41).
+ */
+async wtPunctuationStatus() : Promise<PncStatus> {
+    return await TAURI_INVOKE("wt_punctuation_status");
+},
+/**
+ * "Prøv igen" for the punctuation model's download.
+ */
+async wtPunctuationDownload() : Promise<void> {
+    await TAURI_INVOKE("wt_punctuation_download");
+},
+/**
  * "Genstart nu" in the settings: installs a downloaded update and restarts
  * (DESK-111), as the menu's "Genstart nu" does.
  */
@@ -1399,6 +1411,14 @@ export type PhoneView = { id: string; name: string; platform: string | null; onl
  * Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
  */
 last_seen_day: number | null }
+/**
+ * The punctuation model's state, for Indstillinger › Model.
+ */
+export type PncStatus = { state: "ready" } | { state: "missing" } | { state: "downloading" } | { state: "failed"; message: string } | 
+/**
+ * An Intel Mac: punctuation is not available (deviation, docs/MODELS.md).
+ */
+{ state: "unsupported" }
 /**
  * Request format a post-processing endpoint speaks. Built-in providers have a
  * fixed format; only the custom provider lets the user change it.

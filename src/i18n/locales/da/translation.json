@@ -1037,7 +1037,17 @@
       "deleteNamed": "Slet {{name}}",
       "download": "Hent",
       "downloadNamed": "Hent {{name}}",
-      "downloadingNamed": "Henter {{name}}"
+      "downloadingNamed": "Henter {{name}}",
+      "punctuation": {
+        "title": "Tegnsætning (Ekko PnC)",
+        "desc": "Sætter punktummer og kommaer, når talemodellen ikke selv gør det. Kører på computeren.",
+        "ready": "Klar",
+        "missing": "Hentes, når der er forbindelse",
+        "downloading": "Henter tegnsætningsmodellen",
+        "failed": "Kunne ikke hente tegnsætningsmodellen.",
+        "unsupported": "Ikke tilgængelig på en Mac med Intel-processor",
+        "retry": "Prøv igen"
+      }
     },
     "updates": {
       "auto": "Automatiske opdateringer",

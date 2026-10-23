@@ -800,6 +800,8 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_history_copy,
             walkietalkey::commands::wt_set_paused,
             walkietalkey::commands::wt_is_paused,
+            walkietalkey::commands::wt_punctuation_status,
+            walkietalkey::commands::wt_punctuation_download,
             walkietalkey::commands::wt_restart_now,
             walkietalkey::commands::wt_announce,
             walkietalkey::commands::wt_check_updates,

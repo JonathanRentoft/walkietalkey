@@ -43,6 +43,8 @@ export interface MockOptions {
   appleIntelligence?: boolean;
   /** Dictation is paused when the window opens. */
   paused?: boolean;
+  /** Ekko PnC's state (wt_punctuation_status). */
+  punctuation?: { state: string; message?: string };
   /** The webview label (main or recording_overlay). */
   window?: string;
 }
@@ -392,6 +394,14 @@ function mockBackend(options: MockOptions) {
     },
     wt_history_copy: () => null,
     wt_is_paused: () => options.paused ?? false,
+    wt_punctuation_status: () => options.punctuation ?? { state: "ready" },
+    wt_punctuation_download: () => {
+      setTimeout(
+        () => emit("wt-punctuation-status", { state: "downloading" }),
+        0,
+      );
+      return null;
+    },
     wt_set_paused: (a) => {
       setTimeout(() => emit("wt-paused", a.paused), 0);
       return null;

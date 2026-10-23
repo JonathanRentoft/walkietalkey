@@ -42,6 +42,42 @@ pub fn sha256_of(path: &Path) -> Result<String> {
 }
 
 /// The catalog file a hash belongs to: `(registry id, file name)`.
+/// The id "Importér modelfil" returns for Ekko PnC's files.
+pub const PUNCTUATION_ID: &str = "ekko-pnc";
+
+/// Ekko PnC's files (DESK-41): any one of them, with the others found next to
+/// it, goes into the punctuation folder. Returns `None` for other files.
+fn import_punctuation(source: &Path, hash: &str, models_dir: &Path) -> Result<Option<String>> {
+    use super::punctuation::{PNC_DIR, RUNTIME_FILES};
+    if !RUNTIME_FILES
+        .iter()
+        .any(|f| f.sha256.eq_ignore_ascii_case(hash))
+    {
+        return Ok(None);
+    }
+    let target_dir = models_dir.join(PNC_DIR);
+    fs::create_dir_all(&target_dir)?;
+    let from_dir = source.parent().unwrap_or(Path::new("."));
+    for file in &RUNTIME_FILES {
+        let candidate = from_dir.join(file.name);
+        let path = if candidate.is_file() {
+            candidate
+        } else {
+            continue;
+        };
+        if sha256_of(&path)? != file.sha256 {
+            continue;
+        }
+        let target = target_dir.join(file.name);
+        if target != path {
+            let partial = target_dir.join(format!("{}.import", file.name));
+            fs::copy(&path, &partial)?;
+            fs::rename(&partial, &target)?;
+        }
+    }
+    Ok(Some(PUNCTUATION_ID.to_string()))
+}
+
 pub fn catalog_file_for(sha256: &str) -> Option<(String, String)> {
     crate::catalog::file_hashes()
         .into_iter()
@@ -53,6 +89,9 @@ pub fn catalog_file_for(sha256: &str) -> Option<(String, String)> {
 /// it into `models_dir` under its catalog name. Returns the model id.
 pub fn import_model_file(source: &Path, models_dir: &Path) -> Result<String> {
     let hash = sha256_of(source)?;
+    if let Some(id) = import_punctuation(source, &hash, models_dir)? {
+        return Ok(id);
+    }
     // TODO(copy): the error the UI shows for an unknown file.
     let (model_id, filename) = catalog_file_for(&hash)
         .ok_or_else(|| anyhow!("Filen passer ikke til en kendt talemodel."))?;
@@ -83,6 +122,19 @@ mod tests {
         assert!(mirror.size_bytes > 800_000_000);
         assert!(company_mirror(None, DEFAULT_MODEL_ID).is_none());
         assert!(company_mirror(Some("https://x"), "not/a-model.gguf").is_none());
+    }
+
+    #[test]
+    fn punctuation_files_are_recognised_and_unknown_ones_are_not() {
+        let dir = tempfile::tempdir().unwrap();
+        let other = dir.path().join("config.json");
+        fs::write(&other, b"{}").unwrap();
+        let hash = sha256_of(&other).unwrap();
+        assert!(
+            import_punctuation(&other, &hash, &dir.path().join("models"))
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

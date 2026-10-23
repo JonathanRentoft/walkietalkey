@@ -72,6 +72,7 @@ pub fn startup(app: &AppHandle) {
     relay::start(app);
     vocabulary::start(app);
     dictation::start_retention(app);
+    punctuation::ensure(app);
     let settings = get_settings(app);
     if !settings.selected_model.is_empty() {
         if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
