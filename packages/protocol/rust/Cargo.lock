@@ -909,7 +909,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "base64",
- "getrandom 0.2.17",
+ "getrandom 0.4.3",
  "hex",
  "hkdf",
  "hmac",
