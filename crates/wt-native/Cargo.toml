@@ -59,6 +59,9 @@ objc2-user-notifications = { version = "0.3", default-features = false, features
 # SecItem* generic passwords in the login keychain (SEC-09).
 security-framework = "3.7"
 
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray"] }
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61.3", features = [
   "Data_Xml_Dom",
