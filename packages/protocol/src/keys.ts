@@ -29,7 +29,7 @@ export function assertSpki(spki: Uint8Array): void {
 }
 
 export async function exportSpki(publicKey: CryptoKey): Promise<Uint8Array> {
-  const spki = new Uint8Array(await crypto.subtle.exportKey("spki", publicKey));
+  const spki = new Uint8Array((await crypto.subtle.exportKey("spki", publicKey)) as ArrayBuffer);
   assertSpki(spki);
   return spki;
 }

@@ -21,7 +21,9 @@ export async function computeRoomId(ownerSigningSpki: Uint8Array, salt: Uint8Arr
 /** ECDH P-256 shared secret: the 32-byte x coordinate. */
 export async function ecdhSharedSecret(agreementPrivateKey: CryptoKey, peerAgreementSpki: Uint8Array): Promise<Uint8Array> {
   const peer = await importAgreementPublicKey(peerAgreementSpki);
-  return new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: peer }, agreementPrivateKey, 256));
+  // `public` is the WebCrypto name; the cast keeps DOM and Workers typings both happy.
+  const params = { name: "ECDH", public: peer } as unknown as Parameters<SubtleCrypto["deriveBits"]>[0];
+  return new Uint8Array(await crypto.subtle.deriveBits(params, agreementPrivateKey, 256));
 }
 
 /** HKDF-SHA-256 to raw bytes. A zero-length salt is the RFC 5869 default (HashLen zero bytes). */
