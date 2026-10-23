@@ -197,8 +197,12 @@ impl Provider for HttpProvider {
         };
         let headers = self.headers().unwrap_or_default();
         tauri::async_runtime::spawn(async move {
-            // The answer does not matter; the pooled connection does.
-            let _ = client.get(url).headers(headers).send().await;
+            // The answer does not matter; the pooled connection does. Reading
+            // the body to the end returns the connection to the pool instead
+            // of closing it.
+            if let Ok(response) = client.get(url).headers(headers).send().await {
+                let _ = response.bytes().await;
+            }
         });
     }
 }
@@ -365,7 +369,14 @@ mod tests {
             format: Format::OpenAi,
         };
         provider.warm();
-        tokio::time::sleep(Duration::from_millis(300)).await;
+        // The warm-up has opened its connection once the server saw it.
+        for _ in 0..250 {
+            if !requests.lock().unwrap().is_empty() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
         let first = provider.complete("sys", "<dictation>\nvi ses\n</dictation>").await.unwrap();
         let second = provider.complete("sys", "<dictation>\nhej\n</dictation>").await.unwrap();
         assert_eq!(first, "VI SES");

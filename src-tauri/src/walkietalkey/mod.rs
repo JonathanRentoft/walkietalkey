@@ -37,6 +37,14 @@ pub mod speed;
 pub mod store;
 pub mod tray;
 pub mod updates;
+pub mod vocabulary;
+
+static APP: once_cell::sync::OnceCell<AppHandle> = once_cell::sync::OnceCell::new();
+
+/// The app handle, for the few places Handy's code reaches us without one.
+pub fn app() -> Option<&'static AppHandle> {
+    APP.get()
+}
 
 /// Before Tauri starts: the organisation's managed settings, so every read
 /// of the settings sees them (DESK-100).
@@ -56,10 +64,12 @@ pub fn early_init() {
 }
 
 pub fn startup(app: &AppHandle) {
+    let _ = APP.set(app.clone());
     notify::init(app);
     select_default_model(app);
     updates::start(app);
     relay::start(app);
+    vocabulary::start(app);
     let settings = get_settings(app);
     if !settings.selected_model.is_empty() {
         if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {

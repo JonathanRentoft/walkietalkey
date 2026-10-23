@@ -1274,7 +1274,12 @@ fn run_setup(info: &LoadedInfo, settings: &AppSettings, validated_language: &str
         task: run_plan.task,
         language: run_plan.language,
         target_language: run_plan.target_language,
-        vocabulary: vocabulary_for_model(info.supports_vocabulary, &settings.custom_words),
+        // WalkieTalkey (DESK-66..68): Ord, the company list and Udviklerord
+        // within the token budget the chunk context needs.
+        vocabulary: crate::walkietalkey::vocabulary::for_run(
+            info.supports_vocabulary,
+            &settings.custom_words,
+        ),
         ..Default::default()
     };
 
