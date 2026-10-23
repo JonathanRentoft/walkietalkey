@@ -61,4 +61,11 @@ pub struct CliArgs {
     /// Emit --transcribe-file results as JSON.
     #[arg(long)]
     pub json: bool,
+
+    /// WalkieTalkey bench (DESK-43, DESK-46): feed --transcribe-file through
+    /// the live recording path in 200 ms pieces at real-time speed, as the
+    /// microphone does, and report the wait from the end of the audio to the
+    /// final text.
+    #[arg(long)]
+    pub live: bool,
 }

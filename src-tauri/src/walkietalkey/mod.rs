@@ -13,6 +13,7 @@ use crate::settings::get_settings;
 
 /// Runs once the managers exist. Loads the speech model right away, so the
 /// first dictation after starting is as fast as the rest (DESK-45).
+pub mod bench;
 pub mod keys;
 
 pub fn startup(app: &AppHandle) {

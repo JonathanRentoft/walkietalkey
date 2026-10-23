@@ -59,10 +59,16 @@ impl<'a> LiveSession<'a> {
                 info!("Live long-form chunking started (model '{}')", model_id);
                 // WalkieTalkey (DESK-46): 10-20 s chunks, each with the end of
                 // the previous chunk's text as its context prompt.
+                // Chunks are at most 25 s, one Whisper window, so they are
+                // decoded as text only: Hugging Face fine-tunes such as Edda
+                // are trained without timestamp tokens, and decoding them with
+                // timestamps drops the first words of a window.
+                let mut run_options = setup.run_options.clone();
+                run_options.timestamps = transcribe_cpp::TimestampKind::None;
                 LiveDecoder::Chunked(Box::new(ChunkedDecode::new(
                     tm,
                     tm.engine.cancel_mark(),
-                    setup.run_options.clone(),
+                    run_options,
                     model_id,
                     settings.vad_backend,
                     crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,

@@ -565,6 +565,8 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
 
     let runs = args.repeat.unwrap_or(1).max(1);
     let mut times_ms: Vec<u64> = Vec::new();
+    // WalkieTalkey --live: the wait after the end of the audio, per run.
+    let mut waits_ms: Vec<u64> = Vec::new();
     let mut text = String::new();
     for i in 0..runs {
         // If the model's unload-timeout is "Immediately", transcribe() unloads
@@ -577,7 +579,15 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             }
         }
         let t = Instant::now();
-        match tm.transcribe(samples.clone()) {
+        let result = if args.live {
+            crate::walkietalkey::bench::transcribe_live(&tm, &samples).map(|(out, wait)| {
+                waits_ms.push(wait.as_millis() as u64);
+                out
+            })
+        } else {
+            tm.transcribe(samples.clone())
+        };
+        match result {
             Ok(out) => text = out,
             Err(e) => {
                 eprintln!("error: transcribe failed: {}", e);
@@ -605,6 +615,8 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
                 "transcribe_ms": times_ms,
                 "best_ms": best_ms,
                 "rtf": rtf,
+                "live": args.live,
+                "wait_after_end_ms": waits_ms,
                 "text": text,
             })
         );
@@ -619,6 +631,9 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             best_ms,
             rtf,
         );
+        if args.live {
+            println!("wait after end of audio: {:?} ms", waits_ms);
+        }
         println!("text: {}", text);
     }
     0

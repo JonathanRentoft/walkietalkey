@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use log::info;
+use log::{debug, info};
 use transcribe_cpp::{RunOptions, Transcript};
 
 use super::TranscriptionManager;
@@ -109,7 +109,14 @@ impl<'a> ChunkedDecode<'a> {
     /// that failed or was cancelled.
     pub(super) fn finish(mut self) -> Result<Vec<Transcript>, EngineError> {
         if self.failure.is_none() {
+            let planned = Instant::now();
             let chunks = self.chunker.finish();
+            debug!(
+                "Recording stopped: {} chunk(s) left ({:.1}s), planned in {:.0} ms",
+                chunks.len(),
+                chunks.iter().map(Vec::len).sum::<usize>() as f64 / 16_000.0,
+                planned.elapsed().as_secs_f64() * 1000.0
+            );
             self.decode(chunks);
         }
         if let Some(failure) = self.failure {

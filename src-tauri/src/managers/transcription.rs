@@ -894,6 +894,10 @@ impl TranscriptionManager {
     pub fn transcribe_recording(&self, samples: Vec<f32>) -> Result<String> {
         let started = Instant::now();
         let live = self.finalize_live(samples.len())?;
+        debug!(
+            "Live decode finalized {:.0} ms after release",
+            started.elapsed().as_secs_f64() * 1000.0
+        );
         self.complete(started, samples, live)
     }
 

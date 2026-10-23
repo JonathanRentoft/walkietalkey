@@ -1103,7 +1103,11 @@ sha256: string | null } } |
  * in a shared cache. Nothing to download.
  */
 "Local"
-export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
+export type ModelUnloadTimeout = 
+/**
+ * WalkieTalkey keeps the speech model loaded by default (DESK-45).
+ */
+"never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
 export type OverlayPosition = "top" | "bottom"
 /**
  * Which recording overlay to display. `Minimal` and `Live` share one base
