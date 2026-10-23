@@ -330,10 +330,12 @@ written as one `buffered` row when the next frame would take it past 262,144 byt
 batch disconnects, and 2 s after the batch's last frame. Row format: frames concatenated, each
 prefixed with its length as uint32 big-endian. A row expires 10 minutes after its first frame.
 When the recipient authenticates it gets the unexpired rows in order, then the unflushed batch,
-and the delivered rows are deleted. Above 25 MB in a room, the oldest buffered dictation is
-dropped (the oldest rows up to and including the first row that ends a dictation, repeated
-until the new row fits) and the senders of the new batch get `error buffer_full`. Buffering
-works in both directions (a `result` for an offline phone waits too).
+and the delivered rows are deleted. Above 25 MB in a room, the oldest buffered dictations are
+dropped whole: the oldest rows up to and including the first row that ends a dictation, and
+only then is the fit checked again (repeated until the new row fits), so no dictation is left
+without its beginning. The senders of the dropped rows (sender id, bytes 2..18 of each frame)
+get `error buffer_full`. Buffering works in both directions (a `result` for an offline phone
+waits too).
 
 ### 11.5 Limits (RELAY-11)
 
@@ -428,8 +430,9 @@ corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `re
    message, so a socket that just connected or is busy streaming is not treated as asleep.
 9. **Buffer details** the spec leaves open: row format (length-prefixed frames), expiry 10
    minutes after a row's first frame, "oldest dictation" = oldest rows up to the first row that
-   contains an `audio_end`/`audio_cancel`, `buffer_full` goes to the senders of the batch that
-   overflowed, and buffering applies in both directions.
+   contains an `audio_end`/`audio_cancel` (the fit is checked only after such a row),
+   `buffer_full` goes to the senders of the dropped rows, and buffering applies in both
+   directions.
 10. **Several sockets per device** are allowed; frames go to every live one.
 11. **Admissions:** `exp` is clamped to now + 10 minutes; an `exp` in the past gets
     `error admission_expired`; at most 16 open admissions per room. A join by a device that is

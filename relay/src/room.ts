@@ -28,7 +28,7 @@ import {
   type MemberInfo,
   type Role,
 } from "@walkietalkey/protocol";
-import { batchEndsDictation, decodeBatch, encodeBatch } from "./batch.ts";
+import { decodeBatch, encodeBatch, frameListEndsDictation } from "./batch.ts";
 import {
   BUFFER_ROW_BYTES,
   BUFFER_TTL_MS,
@@ -920,23 +920,30 @@ export class Room extends DurableObject<Env> {
     )!.n;
     let dropped = 0;
     if (total + blob.length > this.bufferLimitBytes) {
-      // Drop the oldest buffered dictation(s): rows up to and including one that ends a dictation.
+      // Drop the oldest buffered dictations whole: rows up to and including one that ends a
+      // dictation, and only then check the fit again, so no dictation is left without its start.
       const rows = this.store.exec<{ id: number; frames: ArrayBuffer }>(
         "SELECT id, frames FROM buffered ORDER BY id",
       );
-      const drop: number[] = [];
+      let lastDropped: number | null = null;
+      const senders = new Set<string>();
       for (const r of rows) {
-        if (total + blob.length <= this.bufferLimitBytes) break;
-        drop.push(r.id);
+        lastDropped = r.id;
+        dropped++;
         total -= r.frames.byteLength;
-        if (batchEndsDictation(r.frames)) {
-          if (total + blob.length <= this.bufferLimitBytes) break;
-        }
+        const frames = decodeBatch(r.frames);
+        for (const f of frames) senders.add(b64uEncode(f.subarray(2, 18)));
+        if (
+          frameListEndsDictation(frames) &&
+          total + blob.length <= this.bufferLimitBytes
+        )
+          break;
       }
-      for (const id of drop)
-        this.store.exec("DELETE FROM buffered WHERE id = ?", id);
-      dropped = drop.length;
-      for (const s of b.senders) {
+      // The dropped rows are the oldest ones, so one statement deletes them all.
+      if (lastDropped !== null)
+        this.store.exec("DELETE FROM buffered WHERE id <= ?", lastDropped);
+      // Tell the phones (or the computer) whose frames were thrown away.
+      for (const s of senders) {
         for (const ws of this.socketsOf(s))
           this.send(ws, {
             t: "error",

@@ -201,6 +201,58 @@ describe("buffering for an offline recipient (RELAY-08)", () => {
     expect(await back.client.quiet(200)).toBe(true);
   });
 
+  it("drops a dictation that spans several rows as a whole and tells the phone whose dictation it was", async () => {
+    const { owner, client: ownerClient } = await createRoom();
+    const a = await joinPhone(owner, ownerClient);
+    await ownerClient.control("member_joined");
+    const b = await joinPhone(owner, ownerClient);
+    await ownerClient.control("member_joined");
+    ownerClient.close();
+    await peerStatus(a.client, owner.id, false);
+    await peerStatus(b.client, owner.id, false);
+    await unthrottle(owner.roomB64);
+    await inRoom(owner.roomB64, (r) => {
+      r.bufferLimitBytes = 380 * 1024;
+    });
+    // Phone A: 50 blocks, about 340 kB, so two rows (a full one and the rest with audio_end).
+    const first = await dictationFrames(
+      a.phone.deviceId,
+      owner.keys.deviceId,
+      50,
+    );
+    for (const f of first) a.client.sendBinary(f);
+    await until(
+      owner.roomB64,
+      (r, st) =>
+        r.pendingBatchCount() === 0 &&
+        [...st.storage.sql.exec("SELECT id FROM buffered")].length === 2,
+    );
+    // Phone B: 10 blocks; with A's rows it would pass the limit.
+    const second = await dictationFrames(
+      b.phone.deviceId,
+      owner.keys.deviceId,
+      10,
+    );
+    for (const f of second) b.client.sendBinary(f);
+    const err = await a.client.control("error");
+    expect(err.code).toBe("buffer_full");
+    await until(
+      owner.roomB64,
+      (r, st) =>
+        r.pendingBatchCount() === 0 &&
+        [...st.storage.sql.exec("SELECT id FROM buffered")].length === 1,
+    );
+    // B's dictation was not dropped, so B hears nothing.
+    expect(
+      b.client.queue.some((m) => m.kind === "text" && m.msg?.t === "error"),
+    ).toBe(false);
+    const back = await authAs(owner.roomB64, owner.roomId, owner.keys);
+    // Nothing of A's dictation is left, not even its tail; B's arrives complete and in order.
+    for (const f of second)
+      expect(bytesEqual(await back.client.binary(), f)).toBe(true);
+    expect(await back.client.quiet(200)).toBe(true);
+  });
+
   it("keeps the 25 MB default limit", async () => {
     const { owner } = await createRoom();
     expect(await inRoom(owner.roomB64, (r) => r.bufferLimitBytes)).toBe(
