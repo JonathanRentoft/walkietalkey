@@ -79,3 +79,69 @@ pub async fn wt_relay_status(app: AppHandle) -> super::relay::RelayView {
 pub async fn wt_phone_remove(id: String) -> Result<(), String> {
     super::relay::remove_phone(&id).await
 }
+
+/// Stores the user's own API key for a cleanup provider in the keychain
+/// (DESK-81). An empty key removes it.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_set_cleanup_key(provider: String, key: String) -> Result<(), String> {
+    super::cleanup::keys::set(&provider, &key)
+}
+
+/// Whether a key is stored for a provider (the key itself never goes to the UI).
+#[tauri::command]
+#[specta::specta]
+pub fn wt_has_cleanup_key(provider: String) -> bool {
+    super::cleanup::keys::has(&provider)
+}
+
+fn history_db(app: &AppHandle) -> Result<(rusqlite::Connection, std::path::PathBuf), String> {
+    let dir = crate::portable::app_data_dir(app).map_err(|e| e.to_string())?;
+    let (db, recordings) = super::history::paths(&dir);
+    Ok((super::history::open(&db).map_err(|e| e.to_string())?, recordings))
+}
+
+/// History, newest first, optionally searched (DESK-93).
+#[tauri::command]
+#[specta::specta]
+pub fn wt_history_list(app: AppHandle, query: Option<String>) -> Result<Vec<super::history::HistoryItem>, String> {
+    let (conn, _) = history_db(&app)?;
+    super::history::list(&conn, query.as_deref(), 500).map_err(|e| e.to_string())
+}
+
+/// Deletes one history item, or everything with `id` = None ("Slet al historik").
+#[tauri::command]
+#[specta::specta]
+pub fn wt_history_delete(app: AppHandle, id: Option<i64>) -> Result<usize, String> {
+    let (conn, recordings) = history_db(&app)?;
+    let ids = id.map(|id| vec![id]);
+    let deleted = super::history::delete(&conn, &recordings, ids.as_deref()).map_err(|e| e.to_string())?;
+    let _ = tauri::Emitter::emit(&app, "wt-history-changed", ());
+    crate::tray::update_tray_menu(&app);
+    Ok(deleted)
+}
+
+/// Copies a history item, privately like every clipboard write (DESK-54).
+#[tauri::command]
+#[specta::specta]
+pub fn wt_history_copy(app: AppHandle, id: i64) -> Result<(), String> {
+    let (conn, _) = history_db(&app)?;
+    let text = super::history::text_of(&conn, id)
+        .map_err(|e| e.to_string())?
+        .ok_or("Teksten findes ikke længere.")?; // TODO(copy)
+    crate::clipboard::write_text(&app, &text)
+}
+
+/// Pause or resume (DESK-96), for the settings window.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_set_paused(app: AppHandle, paused: bool) {
+    super::tray::set_paused(&app, paused);
+}
+
+/// Checks for an update now ("Søg efter opdateringer").
+#[tauri::command]
+#[specta::specta]
+pub fn wt_check_updates(app: AppHandle) {
+    super::updates::check_now(&app);
+}
