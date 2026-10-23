@@ -176,6 +176,87 @@ Unit tests: `cd models/eval && uv run --group dev pytest` (88 tests).
 
 <!-- WER -->
 
+## Raw speed (DESK-31, DESK-43)
+
+`models/speed/run.sh`: a small bench on the `transcribe-cpp` 0.4.0 crate (with
+`transcribe-cpp-sys` 0.4.0, as Handy's lock), the app's run options (language
+`da`, timestamps off), model loaded once, 1 warm-up and 5 timed runs per clip,
+wall time around `Session::run`. Clips: Danish FLEURS speech of exactly 10, 11,
+30 (three utterances) and 35 s (four utterances; two Whisper windows),
+`models/clips/make_clips.sh`. M1 Pro (8 performance + 2 efficiency cores,
+16-core GPU), measured 02:50 to 03:04 on 23 October 2026 with no other job of
+ours running; the lead's occasional short Metal benches may overlap. Mean
+(min to max) of 5 runs:
+
+| Model | Backend | 10 s | 11 s | 30 s | 35 s |
+|---|---|---:|---:|---:|---:|
+| Edda v0.2 Q8_0 | Metal | 0.93 s (0.93-0.94) | 0.96 s (0.96-0.96) | 0.93 s\* (0.92-0.93) | 1.81 s\* (1.77-1.88) |
+| Edda v0.2 Q8_0 | CPU | 5.12 s (4.17-7.13) | 4.06 s (3.92-4.22) | 5.03 s\* (4.25-6.60) | 9.55 s\* (7.49-10.43) |
+| Edda v0.2 Q8_0 | CPU + Accelerate | 5.79 s (5.39-6.24) | 4.80 s (4.64-4.92) | 5.46 s\* (4.73-6.13) | 11.81 s\* (8.39-20.56) |
+| Whisper turbo Q8_0 | Metal | 0.94 s (0.93-0.96) | 0.96 s (0.95-0.97) | 1.22 s (1.16-1.28) | 2.04 s (2.01-2.09) |
+| Whisper turbo Q8_0 | CPU | 4.45 s (3.42-5.40) | 5.33 s (4.60-5.97) | 6.33 s (5.58-7.01) | 11.34 s (8.86-14.16) |
+| Whisper turbo Q8_0 | CPU + Accelerate | 5.64 s (5.07-6.37) | 4.99 s (4.49-5.96) | 5.10 s (4.78-5.31) | 8.74 s (7.37-10.12) |
+| Ekko v1 Tiny Q8_0 | Metal | 0.07 s | 0.09 s | 0.22 s | 0.25 s |
+| Ekko v1 Tiny Q8_0 | CPU | 0.09 s | 0.10 s | 0.29 s | 0.35 s |
+| Ekko v1 Tiny Q8_0 | CPU + Accelerate | 0.08 s | 0.11 s | 0.29 s | 0.34 s |
+
+\* Edda stopped after the first sentence of each window on these
+multi-sentence clips (17 of about 60 words on 30 s), so these times are short
+by the decoding of the missing words; see "Edda and pauses" below. Whisper
+models encode a full 30 s window whatever the length, so 10 s costs about as
+much as 30 s; 35 s needs two windows.
+
+- **DESK-31 check** (the bundled 10 s clip): Edda needs **0.93 s on Metal**,
+  inside the 1.5 s threshold, so Edda is the default on this Mac. On CPU alone it
+  needs 4 to 6 s, so a CPU-only machine of this class would be offered Ekko v1
+  Tiny (0.09 s, about 110 times real time).
+- **Against transcribe.cpp's published numbers** (its own `transcribe-bench`,
+  library defaults, `jfk` 11.0 s and `dots` 35.3 s, stock Whisper turbo Q8_0;
+  `upstream-bench.jsonl`): this M1 Pro takes 0.93 s and 2.04 s on Metal and
+  3.37 s and 7.68 s on CPU, against 0.30 s and 0.69 s (Metal) and 2.85 s and
+  5.80 s (CPU) on transcribe.cpp's M4 Max, so this GPU is about 3 times slower.
+  Edda on these English samples with library defaults (language detection,
+  timestamps on) produces nonsense and is not comparable.
+- **DESK-43** measures the wait after release, which with DESK-46's live
+  chunking is the decode of the last chunk only: on this Mac about 0.95 s for
+  any last chunk up to one window with Edda on Metal.
+
+## Edda and pauses: decode one utterance per window
+
+Greedy decoding is all transcribe.cpp 0.4 offers for Whisper (no beam search).
+Given a window with several sentences and the pauses between them, greedy Edda
+often ends the transcript at the first sentence boundary. The original
+Transformers model does the same: on the 30 s speed clip (three sentences) it
+stops after 17 of 60 words with greedy decoding, with or without timestamps,
+and gets all 60 with 5-beam search, its card's default. FLEURS utterances are
+single sentences, so the main WER table cannot show this; `make_multi_clips.py`
+joins 2 or 3 consecutive FLEURS test utterances into one window (under 29.5 s)
+for this test. WER, timestamps off, Metal:
+
+| Clips | Edda v0.2 Q8_0, whole window | Edda, VAD-split | Whisper turbo Q8_0, whole window | Turbo, VAD-split | Ekko v1 Tiny |
+|---|---:|---:|---:|---:|---:|
+| 100 x 2 utterances, recorded pauses | 15.49 % (D 424) | 10.25 % | 13.31 % | 19.48 % | 10.28 % |
+| 60 x 3 utterances, recorded pauses | 22.09 % (D 565) | 9.64 % | 13.26 % | 16.73 % | 13.14 % |
+| 100 x 2 utterances, speech trimmed, 0.3 s pause | 16.00 % (D 448) | 10.75 % | 13.57 % | 19.53 % | n/a |
+
+Edda drops at least a quarter of the words on 17 of 100 two-sentence windows,
+19 of 60 three-sentence windows and 18 of 100 windows with 0.3 s pauses,
+against 1 of 930 single utterances; Whisper turbo on none. A short, ordinary
+pause is enough. "VAD-split" (`--split-vad`) cuts each window at the pauses
+Silero VAD finds (the VAD the app bundles; about 5 segments per two-sentence
+clip, some inside sentences) and decodes every segment as its own window
+without context: that brings Edda close to its single-utterance accuracy and
+below turbo, while it makes turbo worse.
+
+**For the app (lead's decision):** with timestamps off and live chunks of up
+to 25 s, feed Edda one VAD speech segment per decode (cut at every pause the
+VAD reports, merging only fragments shorter than about a second) rather than a
+multi-sentence chunk, and pass the previous segment's text as the context
+prompt (Edda v0.2 was trained with that slot; its effect on the split was not
+measured here). Each segment costs one encoder pass (about 0.9 s on Metal on
+this Mac), but segments are decoded while the user is still talking
+(DESK-46), so only the last one adds to the wait.
+
 <!-- SPEED -->
 
 ## Licence terms
