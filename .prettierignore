@@ -19,3 +19,9 @@ src-tauri/src/catalog/catalog.json
 # Misc
 .DS_Store
 *.log
+
+# WalkieTalkey
+_kit
+.claude
+docs/SPEC.md
+**/target
