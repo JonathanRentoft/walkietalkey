@@ -168,7 +168,7 @@ export function NameScreen(props: {
       <main className="wt-screen">
         <Brand />
         <section className="wt-screen-body">
-          <h1 role="alert">{pairingError(p)}</h1>
+          <h1 aria-live="polite">{pairingError(p)}</h1>
         </section>
         <footer className="wt-screen-actions">
           {expired ? (
@@ -216,7 +216,7 @@ export function InstallScreen(props: { fromLink: boolean }) {
     <main className="wt-screen">
       <Brand />
       <section className="wt-screen-body">
-        {props.fromLink ? <h1 role="alert">{T.openFromHome}</h1> : <h1>{T.installTitle}</h1>}
+        {props.fromLink ? <h1 aria-live="polite">{T.openFromHome}</h1> : <h1>{T.installTitle}</h1>}
         {props.fromLink ? <p>{T.installTitle}</p> : null}
         <ol className="wt-steps">
           {T.installSteps.map((s) => (
@@ -235,7 +235,7 @@ export function Unsupported(props: { detail: string }) {
     <main className="wt-screen">
       <Brand />
       <section className="wt-screen-body">
-        <h1 role="alert">{T.somethingWrong}</h1>
+        <h1 aria-live="polite">{T.somethingWrong}</h1>
         <p>{props.detail}</p>
       </section>
     </main>
