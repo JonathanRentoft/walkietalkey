@@ -16,7 +16,8 @@ MacBook Pro (Apple M1 Pro, 32 GB, macOS 26.6).
 Every file the app downloads or bundles is listed with size and SHA-256 in
 [`models/manifest.json`](../models/manifest.json) (DESK-32), with a path below
 `https://huggingface.co/walkietalkey/`. A company's `ModelBaseUrl` (Appendix B)
-replaces that base and must serve the same paths.
+replaces Hugging Face: the app fetches each file from `<ModelBaseUrl>/<file name>`
+(one flat folder, the same file names and bytes), and checks its SHA-256.
 
 ## Decode Edda with timestamps off
 
@@ -370,11 +371,14 @@ model card.
   ("bygge videre på ... eller skabe bearbejdede værker"). Whether a model
   trained on the audio is such a work is the same open question as for Edda.
 
-**Decision: allowed, converted, not yet shipped.** No clause forbids free or
+**Decision: allowed; offered as the fast model.** No clause forbids free or
 commercial use of Ekko v1 Tiny inside a free, Apache-2.0 dictation app, so it
-was converted, validated and measured, and a catalog entry is ready
-(`models/ekko-v1-tiny/catalog-entry.json`). Shipping it waits only on the same
-FT Speech decision as Edda (18.7). The CoRal enforceable-provision duty
+was converted, validated and measured, and the app's catalog offers it as the
+fast model for slower computers (DESK-35; entry in
+`src-tauri/src/walkietalkey/catalog.json`, generated from
+`models/ekko-v1-tiny/catalog-entry.json`). Publishing the converted file waits
+only on the same FT Speech decision as Edda (18.7); until then it is imported
+with "Importér modelfil". The CoRal enforceable-provision duty
 (3(a)) needs a sentence in the app's terms and the model card (drafted in
 `models/ekko-v1-tiny/README.md`).
 

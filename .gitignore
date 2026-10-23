@@ -62,3 +62,6 @@ walkietalkey-kit*.zip
 .astro/
 .vitest-cache/
 src-tauri/tauri.ci.conf.json
+
+# The owner's local instructions for coding agents (not part of the repository)
+CLAUDE.local.md

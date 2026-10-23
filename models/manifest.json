@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "baseUrl": "https://huggingface.co/walkietalkey/",
-  "_baseUrl": "A file's URL is baseUrl + path. A company's ModelBaseUrl (spec Appendix B, DESK-102) replaces baseUrl and must serve the same paths with the same bytes; every file is checked against its sha256 (DESK-32). The walkietalkey Hugging Face organisation does not exist yet; the paths use 'resolve/main' until the first upload pins a commit (models/upload.sh prints it).",
+  "_baseUrl": "A file's URL is baseUrl + path. A company's ModelBaseUrl (spec Appendix B, DESK-102) replaces Hugging Face with one flat folder: <ModelBaseUrl>/<file name>, the same names and bytes; every file is checked against its sha256 (DESK-32). The walkietalkey Hugging Face organisation does not exist yet; the paths use 'resolve/main' until the first upload pins a commit (models/upload.sh prints it).",
   "models": [
     {
       "id": "edda-v0.2",

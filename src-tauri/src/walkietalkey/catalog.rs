@@ -45,6 +45,28 @@ mod segment_tests {
     use super::*;
 
     #[test]
+    fn the_catalog_overlay_ships_the_manifests_hashes() {
+        // Spec: the SHA-256 from models/manifest.json ships inside the app.
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../models/manifest.json")).unwrap();
+        let overlay: serde_json::Value = serde_json::from_str(CATALOG_JSON).unwrap();
+        for model in overlay["models"].as_array().unwrap() {
+            for file in model["files"].as_object().unwrap().values() {
+                let name = file["filename"].as_str().unwrap();
+                let listed = manifest["models"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .flat_map(|m| m["files"].as_array().unwrap())
+                    .find(|f| f["name"] == name)
+                    .unwrap_or_else(|| panic!("{name} is in models/manifest.json"));
+                assert_eq!(listed["sha256"], file["sha256"], "{name}");
+                assert_eq!(listed["size"], file["size"], "{name}");
+            }
+        }
+    }
+
+    #[test]
     fn non_commercial_models_are_not_offered() {
         assert!(non_commercial("cc-by-nc-4.0"));
         assert!(non_commercial("cc-by-nc-sa-4.0"));
