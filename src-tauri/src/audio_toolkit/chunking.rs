@@ -50,15 +50,17 @@ impl ChunkPlan {
 
     /// WalkieTalkey's live plan (DESK-46): 10 to 20 s chunks cut only in
     /// pauses, keeping the 5 s minimum, so at release only a short rest is
-    /// left whatever the total length. The rest (at most 20 s plus the
-    /// lookahead) is one piece: it fits one Whisper window, so it costs one
-    /// encoder pass.
+    /// left whatever the total length. The rest (at most the maximum plus the
+    /// lookahead, 20 s) is one piece: it fits one Whisper window, so it costs
+    /// one encoder pass, and it is never much longer than a short dictation.
+    /// The short lookahead is enough live: a short last piece only decodes
+    /// faster.
     pub const LIVE_DA: Self = Self {
-        target_seconds: 15.0,
-        max_chunk_samples: 20 * RATE,
+        target_seconds: 14.0,
+        max_chunk_samples: 18 * RATE,
         min_chunk_samples: 5 * RATE,
-        lookahead_samples: 5 * RATE,
-        whole_rest_samples: 25 * RATE,
+        lookahead_samples: 2 * RATE,
+        whole_rest_samples: 20 * RATE,
     };
 }
 
@@ -701,7 +703,7 @@ mod tests {
         assert!(live.len() >= 5, "most of 2 min is decoded while talking, got {}", live.len());
         for chunk in &live {
             let secs = chunk.len() as f64 / RATE as f64;
-            assert!((10.0..=20.0).contains(&secs), "chunk of {secs:.1}s");
+            assert!((10.0..=18.0).contains(&secs), "chunk of {secs:.1}s");
         }
         let rest = chunker.finish();
         assert_eq!(rest.len(), 1, "one piece is left at release");
@@ -721,7 +723,7 @@ mod tests {
                 assert_eq!(rest.len(), 1, "{seconds}s with pauses every {every}s");
                 let rest_secs = rest[0].len() as f64 / RATE as f64;
                 assert!(
-                    rest_secs <= 25.0,
+                    rest_secs <= 20.0,
                     "{seconds}s with pauses every {every}s left {rest_secs:.1}s"
                 );
             }
