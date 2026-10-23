@@ -37,7 +37,7 @@ jobs:
             echo "No CLOUDFLARE_API_TOKEN secret: nothing is deployed."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.token.outputs.skip != 'true'
       - uses: actions/setup-node@v5
         if: steps.token.outputs.skip != 'true'
