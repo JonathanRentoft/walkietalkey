@@ -24,18 +24,19 @@ class NeverSocket {
 
 class FakeRecorder implements RecorderLike {
   calls: string[] = [];
-  onBlock: ((b: Uint8Array) => void) | null = null;
+  onBlock: ((b: Uint8Array, level: number) => void) | null = null;
   prime(): void {
     this.calls.push("prime");
   }
-  async start(onBlock: (b: Uint8Array) => void): Promise<void> {
+  async start(onBlock: (b: Uint8Array, level: number) => void): Promise<void> {
     this.calls.push("start");
     this.onBlock = onBlock;
-    onBlock(new Uint8Array(6400));
+    // -36 dBFS: half way up the meter.
+    onBlock(new Uint8Array(6400), 10 ** (-36 / 20));
   }
   async stop(): Promise<void> {
     this.calls.push("stop");
-    this.onBlock?.(new Uint8Array(1000));
+    this.onBlock?.(new Uint8Array(1000), 0);
   }
   abort(): void {
     this.calls.push("abort");
@@ -150,5 +151,24 @@ describe("Start diktering from the iOS shell (controller)", () => {
     const { c, haptics } = await setup({ paired: true, haptics: false });
     c.shellStart();
     expect(haptics).toEqual([]);
+  });
+});
+
+describe("the level meter follows the microphone (PHONE-21)", () => {
+  it("keeps the level of the latest 200 ms block while recording, 0 otherwise", async () => {
+    const { c, recorder } = await setup({ paired: true });
+    expect(c.getSnapshot().level).toBe(0);
+    c.down();
+    await tick();
+    expect(c.getSnapshot().level).toBeCloseTo(0.5, 6);
+    // The microphone goes silent (a muted headset): the meter drops flat.
+    recorder.onBlock!(new Uint8Array(6400), 0);
+    expect(c.getSnapshot().level).toBe(0);
+    recorder.onBlock!(new Uint8Array(6400), 10 ** (-12 / 20));
+    expect(c.getSnapshot().level).toBeCloseTo(1, 6);
+    c.up();
+    await tick();
+    expect(c.getSnapshot().machine.phase).not.toBe("rec");
+    expect(c.getSnapshot().level).toBe(0);
   });
 });

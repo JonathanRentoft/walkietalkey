@@ -76,6 +76,7 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
           device={target?.name}
           os={target?.os}
           seconds={seconds}
+          level={view.recording ? snap.level : undefined}
           onRetry={() => controller.retry()}
           onDetails={onDetails}
           onDeviceClick={onPicker}

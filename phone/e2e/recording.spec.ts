@@ -35,6 +35,16 @@ test.describe("recording and streaming (PHONE-20..23, PHONE-30..32)", () => {
       10_000,
     );
     expect(live.end).toBeNull();
+    // PHONE-21: the level meter follows the microphone (the test signal is loud).
+    const meter = page.locator(".wt-app-meter.wt-app-meter--level");
+    await expect(meter).toHaveCount(1);
+    await expect
+      .poll(() =>
+        meter.evaluate((el) =>
+          Number((el as HTMLElement).style.getPropertyValue("--wt-level")),
+        ),
+      )
+      .toBeGreaterThan(0.3);
     await page.waitForTimeout(1500);
     await p.release();
 

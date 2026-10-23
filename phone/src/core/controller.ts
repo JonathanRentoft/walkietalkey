@@ -12,6 +12,7 @@ import {
   type DevicePayload,
   type PairingPayload,
 } from "@walkietalkey/protocol";
+import { meterLevel } from "../audio/pcm";
 import type { RecorderLike } from "../audio/recorder";
 import { MicDeniedError, MicError } from "../audio/recorder";
 import type { Platform } from "../lib/platform";
@@ -95,6 +96,11 @@ export interface Snapshot {
   pairing: PairingState;
   /** The target's socket has been down for a while (or the phone is offline). */
   noConnection: boolean;
+  /**
+   * PHONE-21: the microphone level while recording, 0 (silence) to 1 (loud), from the RMS of the
+   * latest 200 ms block; 0 when not recording.
+   */
+  level: number;
 }
 
 export interface ControllerDeps {
@@ -137,6 +143,7 @@ export class PhoneController {
   private noticeId = 0;
   private pairing: PairingState = { state: "idle" };
   private noConnection = false;
+  private level = 0;
   private noConnTimer: ReturnType<typeof setTimeout> | null = null;
   private maxTimer: ReturnType<typeof setTimeout> | null = null;
   private recChain: Promise<unknown> = Promise.resolve();
@@ -180,6 +187,10 @@ export class PhoneController {
       notices: this.notices,
       pairing: this.pairing,
       noConnection: this.noConnection,
+      level:
+        this.machine.phase === "rec" || this.machine.phase === "cancel"
+          ? this.level
+          : 0,
     };
   }
 
@@ -388,6 +399,7 @@ export class PhoneController {
     const entry = this.rooms.get(s.roomId);
     if (!entry) return;
     this.sessions.set(sid, s);
+    this.level = 0;
     this.trimFailed();
     void entry.streamer.start(s);
     const now = this.now();
@@ -402,9 +414,10 @@ export class PhoneController {
     this.recChain = this.recChain.then(async () => {
       if (s.cancelled || s.ended) return;
       try {
-        await this.deps.recorder.start(
-          (block) => void entry.streamer.addBlock(s, block),
-        );
+        await this.deps.recorder.start((block, rms) => {
+          void entry.streamer.addBlock(s, block);
+          this.showLevel(sid, rms);
+        });
       } catch (e) {
         if (this.machine.sessionId !== sid) return;
         if (e instanceof MicDeniedError) this.dispatch({ type: "mic_denied" });
@@ -415,6 +428,20 @@ export class PhoneController {
           });
       }
     });
+  }
+
+  /** PHONE-21: the level meter follows the microphone, one update per 200 ms block. */
+  private showLevel(sid: string, rms: number): void {
+    const phase = this.machine.phase;
+    if (
+      this.machine.sessionId !== sid ||
+      (phase !== "rec" && phase !== "cancel")
+    )
+      return;
+    const level = meterLevel(rms);
+    if (level === this.level) return;
+    this.level = level;
+    this.changed();
   }
 
   private finishCapture(sid: string): void {

@@ -8,14 +8,15 @@ import { FakeComputer, FakeRelay } from "./fake-relay";
 
 /** Delivers three 200 ms blocks at start and a short last block at stop. */
 class ThreeBlocks implements RecorderLike {
-  private onBlock: ((b: Uint8Array) => void) | null = null;
+  private onBlock: ((b: Uint8Array, level: number) => void) | null = null;
   prime(): void {}
-  async start(onBlock: (b: Uint8Array) => void): Promise<void> {
+  async start(onBlock: (b: Uint8Array, level: number) => void): Promise<void> {
     this.onBlock = onBlock;
-    for (let i = 0; i < 3; i++) onBlock(new Uint8Array(BLOCK_BYTES).fill(i));
+    for (let i = 0; i < 3; i++)
+      onBlock(new Uint8Array(BLOCK_BYTES).fill(i), 0.1);
   }
   async stop(): Promise<void> {
-    this.onBlock?.(new Uint8Array(1000));
+    this.onBlock?.(new Uint8Array(1000), 0);
     this.onBlock = null;
   }
   abort(): void {
