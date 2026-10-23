@@ -48,7 +48,7 @@ jobs:
         if: steps.changed.outputs.run == 'true'
       - name: Cache the engine, converted models and FLEURS
         if: steps.changed.outputs.run == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.WT_WORK_DIR }}/src
