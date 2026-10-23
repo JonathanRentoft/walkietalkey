@@ -49,6 +49,20 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* A long computer name ("Jonathans MacBook Pro") ends in an ellipsis instead of leaving the screen. */
+.wt-stage .wt-app-dev {
+  display: block;
+  max-width: 10.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-stage .wt-app-dev i {
+  display: inline-block;
+  vertical-align: 0.1em;
+  margin-right: 0.5em;
+}
+
 /* The computer is not online: the chip's dot goes quiet. */
 .wt-stage--away .wt-app-dev i {
   background: var(--perle-dyb);
