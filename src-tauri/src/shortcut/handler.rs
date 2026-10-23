@@ -34,6 +34,11 @@ pub fn handle_shortcut_event(
 ) {
     let settings = get_settings(app);
 
+    // WalkieTalkey (DESK-96): while paused the key does nothing.
+    if is_transcribe_binding(binding_id) && crate::walkietalkey::tray::is_paused() {
+        return;
+    }
+
     // Transcribe bindings are handled by the coordinator.
     if is_transcribe_binding(binding_id) {
         if let Some(coordinator) = app.try_state::<TranscriptionCoordinator>() {

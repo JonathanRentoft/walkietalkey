@@ -27,6 +27,7 @@ pub mod output;
 pub mod pill;
 pub mod settings;
 pub mod store;
+pub mod tray;
 
 pub fn startup(app: &AppHandle) {
     select_default_model(app);

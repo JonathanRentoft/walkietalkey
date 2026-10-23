@@ -1,13 +1,19 @@
 {
   "tray": {
-    "settings": "Indstillinger...",
-    "checkUpdates": "Tjek for opdateringer...",
+    "settings": "Indstillinger",
+    "checkUpdates": "Søg efter opdateringer",
     "copyLastTranscript": "Kopiér seneste transskription",
     "unloadModel": "Frigør model",
     "model": "Model",
     "quit": "Afslut",
     "cancel": "Annuller",
-    "secureInputWarning": "⚠ Genveje blokeret af Secure Input"
+    "secureInputWarning": "⚠ Genveje blokeret af Secure Input",
+    "recent": "Seneste",
+    "pairPhone": "Par en telefon",
+    "pause": "Sæt på pause",
+    "resume": "Genoptag",
+    "restartNow": "Genstart nu",
+    "noRecent": "Ingen dikteringer endnu"
   },
   "sidebar": {
     "general": "Generelt",

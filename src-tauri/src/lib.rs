@@ -302,6 +302,22 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             "copy_last_transcript" => {
                 tray::copy_last_transcript(app);
             }
+            // WalkieTalkey tray items (DESK-96, DESK-111).
+            "pair_phone" => {
+                show_main_window(app);
+                let _ = app.emit("wt-open-pairing", ());
+            }
+            "pause_toggle" => {
+                walkietalkey::tray::set_paused(app, !walkietalkey::tray::is_paused());
+            }
+            "restart_update" => {
+                app.restart();
+            }
+            id if id.starts_with("recent:") => {
+                if let Ok(entry) = id.trim_start_matches("recent:").parse::<i64>() {
+                    walkietalkey::tray::copy_recent(app, entry);
+                }
+            }
             "unload_model" => {
                 let transcription_manager = app.state::<Arc<TranscriptionManager>>();
                 if !transcription_manager.is_model_loaded() {
