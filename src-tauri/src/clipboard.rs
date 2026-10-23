@@ -53,6 +53,12 @@ fn with_enigo<T: Send + 'static>(
         .map_err(|_| "Main thread dropped the input request".to_string())?
 }
 
+/// WalkieTalkey: copy-only delivery (DESK-51, DESK-52) through the same
+/// private write as a paste.
+pub fn write_text(app_handle: &AppHandle, text: &str) -> Result<(), String> {
+    write_text_to_clipboard(app_handle, text)
+}
+
 fn write_text_to_clipboard(app_handle: &AppHandle, text: &str) -> Result<(), String> {
     // WalkieTalkey (DESK-54): this computer only, unless sharing is on.
     if let Some(result) = crate::walkietalkey::clipboard::write_private(app_handle, text) {
