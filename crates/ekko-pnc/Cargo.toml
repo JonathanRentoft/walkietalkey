@@ -1,0 +1,38 @@
+[package]
+name = "ekko-pnc"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "Apache-2.0"
+description = "Danish punctuation and capitalisation with RyeAI's Ekko PnC (int8 ONNX), a faithful port of the ekko-stt reference runtime"
+publish = false
+
+[features]
+default = ["download-binaries"]
+# Link pyke's prebuilt static ONNX Runtime 1.28.0, fetched at build time.
+# Prebuilt for aarch64-apple-darwin and x86_64-pc-windows-msvc (no pyke binary
+# exists for x86_64-apple-darwin). Setting ORT_LIB_LOCATION (and
+# ORT_PREFER_DYNAMIC_LINK=1) links a local ONNX Runtime instead; that is how
+# Handy's release linked Intel macOS and Windows (a baseline build: pyke's
+# Windows binary has an AVX2 static initialiser that crashes pre-Haswell CPUs).
+download-binaries = ["ort/download-binaries", "ort/tls-native", "ort/copy-dylibs"]
+# Resolve onnxruntime at run time (ORT_DYLIB_PATH, or the library next to the app).
+load-dynamic = ["ort/load-dynamic"]
+
+[dependencies]
+# rc.13 links ONNX Runtime 1.28.0, which reproduces the reference runtime
+# (onnxruntime 1.29.0, pinned by ekko-stt 0.1.2) on the whole golden set;
+# rc.12 (ORT 1.24.2) flips 6 near-tie words in 3 long inputs and rc.14
+# (ORT 1.31.0) 3 words in 2. C API 17 is the floor, so dynamic linking against
+# any ONNX Runtime >= 1.17 works.
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "api-17"] }
+# Same Rust core as the Python `tokenizers==0.22.2` that ekko-stt pins; the
+# pure-Rust regex backend keeps the build free of C/C++ (onig, esaxx).
+tokenizers = { version = "=0.22.2", default-features = false, features = ["fancy-regex"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
