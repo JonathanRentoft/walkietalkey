@@ -2,9 +2,11 @@
 //! per-chunk window, warm connection) is built here; until it is wired in,
 //! cleanup is off and the local text goes out unchanged.
 
+pub mod engine;
 pub mod guardrails;
 pub mod markers;
 pub mod prompt;
+pub mod provider;
 
 use tauri::AppHandle;
 
