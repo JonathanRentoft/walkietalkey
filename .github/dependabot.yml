@@ -16,7 +16,8 @@ updates:
   - package-ecosystem: cargo
     directory: /packages/protocol/rust
     schedule: { interval: weekly }
-  - package-ecosystem: npm
+  # bun.lock is the lockfile; npm updates would leave it behind.
+  - package-ecosystem: bun
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5

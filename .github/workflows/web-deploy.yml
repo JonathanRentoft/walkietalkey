@@ -46,12 +46,13 @@ jobs:
       - name: Install
         if: steps.token.outputs.skip != 'true'
         run: bun install --frozen-lockfile
-      - name: Keep the newest beta manifest (DESK-112)
+      - name: Keep the newest release's manifest for beta (DESK-112)
         if: steps.token.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=$(gh release list --limit 20 --json tagName,isPrerelease --jq '[.[] | select(.isPrerelease)][0].tagName' || true)
+          # The newest published release, stable or pre-release: beta users get both.
+          TAG=$(gh release list --limit 20 --json tagName,isDraft --jq '[.[] | select(.isDraft | not)][0].tagName' || true)
           if [ -n "$TAG" ] && [ "$TAG" != "null" ]; then
             gh release download "$TAG" --pattern latest.json --output site/public/updates/beta.json --clobber || true
           fi
