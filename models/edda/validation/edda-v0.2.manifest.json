@@ -144,13 +144,8 @@
     ],
     "language_detection": true,
     "translation": true,
-    "translation_target_languages": [
-      "en"
-    ],
-    "timestamps": [
-      "segment",
-      "word"
-    ],
+    "translation_target_languages": ["en"],
+    "timestamps": ["segment", "word"],
     "streaming": false,
     "speaker_diarization": false
   },

@@ -5,13 +5,13 @@ licence terms behind it. Milestone M0 (spec section 16): DESK-29 to DESK-35,
 DESK-41, DESK-43, OSS-24. Measured on 23 October 2026 on the owner's 16-inch
 MacBook Pro (Apple M1 Pro, 32 GB, macOS 26.6).
 
-| Model | Role | Engine | File we ship | Licence | Status |
-|---|---|---|---|---|---|
-| Edda v0.2 (Alexandra Institute) | Danish speech recognition, default (DESK-30) | transcribe.cpp 0.4 | `edda-v0.2-Q8_0.gguf`, 886 MB | Apache-2.0 + CoRal restrictions | Converted and validated; 7.17 % WER on FLEURS da. Decode with timestamps off and one utterance per window. Publishing waits on decision 18.7 |
-| Ekko v1 Tiny (RyeAI) | Fast model for slow PCs (DESK-35) | transcribe.cpp 0.4 | `ekko-v1-tiny-Q8_0.gguf`, 134 MB | NVIDIA Open Model License + CC BY 4.0 + CoRal restrictions | Licence allows it; converted and validated; same FT Speech question as Edda |
-| Ekko PnC v2 (RyeAI) | Punctuation and capitalisation (DESK-41) | ONNX Runtime via `crates/ekko-pnc` | `pnc.int8.onnx` + `tokenizer.json` + `config.json`, 25 MB | CC BY 4.0 + CoRal restrictions | Rust port reproduces the reference exactly |
-| Silero VAD v6.2 | Voice activity detection | transcribe.cpp 0.4 | bundled in the app | MIT | Unchanged from Handy |
-| Whisper large-v3-turbo (OpenAI, Handy's GGUF) | Baseline for comparison, "Andre modeller" (DESK-34) | transcribe.cpp 0.4 | Handy's catalog file | MIT | Unchanged from Handy |
+| Model                                         | Role                                                | Engine                             | File we ship                                              | Licence                                                    | Status                                                                                                                                       |
+| --------------------------------------------- | --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edda v0.2 (Alexandra Institute)               | Danish speech recognition, default (DESK-30)        | transcribe.cpp 0.4                 | `edda-v0.2-Q8_0.gguf`, 886 MB                             | Apache-2.0 + CoRal restrictions                            | Converted and validated; 7.17 % WER on FLEURS da. Decode with timestamps off and one utterance per window. Publishing waits on decision 18.7 |
+| Ekko v1 Tiny (RyeAI)                          | Fast model for slow PCs (DESK-35)                   | transcribe.cpp 0.4                 | `ekko-v1-tiny-Q8_0.gguf`, 134 MB                          | NVIDIA Open Model License + CC BY 4.0 + CoRal restrictions | Licence allows it; converted and validated; same FT Speech question as Edda                                                                  |
+| Ekko PnC v2 (RyeAI)                           | Punctuation and capitalisation (DESK-41)            | ONNX Runtime via `crates/ekko-pnc` | `pnc.int8.onnx` + `tokenizer.json` + `config.json`, 25 MB | CC BY 4.0 + CoRal restrictions                             | Rust port reproduces the reference exactly                                                                                                   |
+| Silero VAD v6.2                               | Voice activity detection                            | transcribe.cpp 0.4                 | bundled in the app                                        | MIT                                                        | Unchanged from Handy                                                                                                                         |
+| Whisper large-v3-turbo (OpenAI, Handy's GGUF) | Baseline for comparison, "Andre modeller" (DESK-34) | transcribe.cpp 0.4                 | Handy's catalog file                                      | MIT                                                        | Unchanged from Handy                                                                                                                         |
 
 Every file the app downloads or bundles is listed with size and SHA-256 in
 [`models/manifest.json`](../models/manifest.json) (DESK-32), with a path below
@@ -53,16 +53,17 @@ splitting a multi-byte character), which the harness now tolerates.
   so the same pipeline was run on stock `openai/whisper-large-v3-turbo` with
   Handy's F16 GGUF as a control:
 
-  | Case | Tensors within budget: Edda | Turbo (control) | Worst max_abs: Edda | Turbo |
-  |---|---:|---:|---:|---:|
-  | FLEURS 6263195548503774343 (da) | 13/22 | 12/22 | 7.51 (`enc.block.31.out`) | 11.5 |
-  | FLEURS 17924706686437869147 (da) | 12/22 | 11/22 | 12.7 (`enc.block.31.out`) | 14.2 |
-  | jfk (en) | 15/22 | 14/22 | 2.4 (`enc.block.31.out`) | 7.17 |
+  | Case                             | Tensors within budget: Edda | Turbo (control) |       Worst max_abs: Edda | Turbo |
+  | -------------------------------- | --------------------------: | --------------: | ------------------------: | ----: |
+  | FLEURS 6263195548503774343 (da)  |                       13/22 |           12/22 | 7.51 (`enc.block.31.out`) |  11.5 |
+  | FLEURS 17924706686437869147 (da) |                       12/22 |           11/22 | 12.7 (`enc.block.31.out`) |  14.2 |
+  | jfk (en)                         |                       15/22 |           14/22 |  2.4 (`enc.block.31.out`) |  7.17 |
 
   Edda drifts no more than the stock model it is built on, on the same build
   and machine: the deviations are F16 noise, not conversion errors. On the
   English `jfk.wav` Edda's C++ transcript differs from its reference by one word
   ("country" against "county"); stock turbo matches on all three.
+
 - **Same text as the original** on 10 real Danish FLEURS clips (every 93rd
   test file): `edda-v0.2-Q8_0.gguf` on Metal, the same on CPU, and
   `edda-v0.2-F16.gguf` on CPU each give **exactly** the original model's text
@@ -185,35 +186,34 @@ Run on 23 October 2026, 02:12 to 04:58 with pauses (GPU job log in
 `_kit/work/runs/gpu-jobs.log`; parts ran next to other jobs of ours, which only
 affects timing).
 
-| Model | Timestamps | WER | 95 % CI | Subst. | Del. | Ins. | Marks per 25 words | Clips under 1 mark per 25 words (DESK-41 trigger) |
-|---|---|---:|---|---:|---:|---:|---:|---:|
-| **Edda v0.2 Q8_0** | off | **7.17 %** | 6.64 to 7.74 | 1,046 | 293 | 130 | 1.98 | 377 (40.5 %) |
-| Edda v0.2 Q8_0 | on (stock Handy) | 14.54 % | 12.72 to 16.94 | 1,243 | 880 | 858 | 1.79 | 445 (47.8 %) |
-| Whisper large-v3-turbo Q8_0 (Handy) | off | 13.06 % | 12.28 to 13.71 | 2,069 | 285 | 322 | 3.22 | 6 (0.6 %) |
-| Whisper large-v3-turbo Q8_0 (Handy) | on (stock Handy) | 13.29 % | 12.53 to 13.94 | 2,083 | 297 | 344 | 3.17 | 7 (0.8 %) |
-| Ekko v1 Tiny Q8_0 | n/a (RNN-T) | 10.11 % | 9.47 to 10.76 | 1,442 | 412 | 219 | 0.00 | 929 (99.9 %) |
+| Model                               | Timestamps       |        WER | 95 % CI        | Subst. | Del. | Ins. | Marks per 25 words | Clips under 1 mark per 25 words (DESK-41 trigger) |
+| ----------------------------------- | ---------------- | ---------: | -------------- | -----: | ---: | ---: | -----------------: | ------------------------------------------------: |
+| **Edda v0.2 Q8_0**                  | off              | **7.17 %** | 6.64 to 7.74   |  1,046 |  293 |  130 |               1.98 |                                      377 (40.5 %) |
+| Edda v0.2 Q8_0                      | on (stock Handy) |    14.54 % | 12.72 to 16.94 |  1,243 |  880 |  858 |               1.79 |                                      445 (47.8 %) |
+| Whisper large-v3-turbo Q8_0 (Handy) | off              |    13.06 % | 12.28 to 13.71 |  2,069 |  285 |  322 |               3.22 |                                         6 (0.6 %) |
+| Whisper large-v3-turbo Q8_0 (Handy) | on (stock Handy) |    13.29 % | 12.53 to 13.94 |  2,083 |  297 |  344 |               3.17 |                                         7 (0.8 %) |
+| Ekko v1 Tiny Q8_0                   | n/a (RNN-T)      |    10.11 % | 9.47 to 10.76  |  1,442 |  412 |  219 |               0.00 |                                      929 (99.9 %) |
 
 The references have 3.16 marks per 25 words. For comparison, the originals'
 own numbers on this split: Edda 7.34 % (5-beam search, leaderboard
 normalisation), Ekko v1 Tiny 9.36 % (RyeAI's normalisation), Whisper turbo
 13.60 % (transcribe.cpp's normalisation). Edda was trained on FLEURS da_dk
-*train*: the test split is held out but in its domain, which favours it here;
+_train_: the test split is held out but in its domain, which favours it here;
 the owner's own dictations (`--clips-dir`) are the real test.
 
 **Punctuation after DESK-41** (`wt_eval.pnc_after`, Ekko PnC through
 `crates/ekko-pnc` on every clip under the threshold):
 
-| Model | Clips that got PnC | Marks per 25 words before, after | Clips still under the threshold | Clips ending in . ? ! |
-|---|---:|---|---:|---:|
-| Edda v0.2 Q8_0 | 377 | 1.98, 3.18 | 3 | 918 of 930 |
-| Whisper turbo Q8_0 | 6 | 3.22, 3.23 | 3 | 929 of 930 |
-| Ekko v1 Tiny Q8_0 | 929 | 0.00, 3.14 | 5 | 910 of 930 |
+| Model              | Clips that got PnC | Marks per 25 words before, after | Clips still under the threshold | Clips ending in . ? ! |
+| ------------------ | -----------------: | -------------------------------- | ------------------------------: | --------------------: |
+| Edda v0.2 Q8_0     |                377 | 1.98, 3.18                       |                               3 |            918 of 930 |
+| Whisper turbo Q8_0 |                  6 | 3.22, 3.23                       |                               3 |            929 of 930 |
+| Ekko v1 Tiny Q8_0  |                929 | 0.00, 3.14                       |                               5 |            910 of 930 |
 
 So Edda leaves 4 in 10 clips without punctuation of its own (its FT Speech
 training transcripts are unpunctuated), and DESK-41 closes the gap: after PnC
 all three models punctuate about as densely as the references. Ekko v1 Tiny
 always needs PnC, as the spec expects.
-
 
 ## Raw speed (DESK-31, DESK-43)
 
@@ -227,17 +227,17 @@ wall time around `Session::run`. Clips: Danish FLEURS speech of exactly 10, 11,
 ours running; the lead's occasional short Metal benches may overlap. Mean
 (min to max) of 5 runs:
 
-| Model | Backend | 10 s | 11 s | 30 s | 35 s |
-|---|---|---:|---:|---:|---:|
-| Edda v0.2 Q8_0 | Metal | 0.93 s (0.93-0.94) | 0.96 s (0.96-0.96) | 0.93 s\* (0.92-0.93) | 1.81 s\* (1.77-1.88) |
-| Edda v0.2 Q8_0 | CPU | 5.12 s (4.17-7.13) | 4.06 s (3.92-4.22) | 5.03 s\* (4.25-6.60) | 9.55 s\* (7.49-10.43) |
-| Edda v0.2 Q8_0 | CPU + Accelerate | 5.79 s (5.39-6.24) | 4.80 s (4.64-4.92) | 5.46 s\* (4.73-6.13) | 11.81 s\* (8.39-20.56) |
-| Whisper turbo Q8_0 | Metal | 0.94 s (0.93-0.96) | 0.96 s (0.95-0.97) | 1.22 s (1.16-1.28) | 2.04 s (2.01-2.09) |
-| Whisper turbo Q8_0 | CPU | 4.45 s (3.42-5.40) | 5.33 s (4.60-5.97) | 6.33 s (5.58-7.01) | 11.34 s (8.86-14.16) |
-| Whisper turbo Q8_0 | CPU + Accelerate | 5.64 s (5.07-6.37) | 4.99 s (4.49-5.96) | 5.10 s (4.78-5.31) | 8.74 s (7.37-10.12) |
-| Ekko v1 Tiny Q8_0 | Metal | 0.07 s | 0.09 s | 0.22 s | 0.25 s |
-| Ekko v1 Tiny Q8_0 | CPU | 0.09 s | 0.10 s | 0.29 s | 0.35 s |
-| Ekko v1 Tiny Q8_0 | CPU + Accelerate | 0.08 s | 0.11 s | 0.29 s | 0.34 s |
+| Model              | Backend          |               10 s |               11 s |                 30 s |                   35 s |
+| ------------------ | ---------------- | -----------------: | -----------------: | -------------------: | ---------------------: |
+| Edda v0.2 Q8_0     | Metal            | 0.93 s (0.93-0.94) | 0.96 s (0.96-0.96) | 0.93 s\* (0.92-0.93) |   1.81 s\* (1.77-1.88) |
+| Edda v0.2 Q8_0     | CPU              | 5.12 s (4.17-7.13) | 4.06 s (3.92-4.22) | 5.03 s\* (4.25-6.60) |  9.55 s\* (7.49-10.43) |
+| Edda v0.2 Q8_0     | CPU + Accelerate | 5.79 s (5.39-6.24) | 4.80 s (4.64-4.92) | 5.46 s\* (4.73-6.13) | 11.81 s\* (8.39-20.56) |
+| Whisper turbo Q8_0 | Metal            | 0.94 s (0.93-0.96) | 0.96 s (0.95-0.97) |   1.22 s (1.16-1.28) |     2.04 s (2.01-2.09) |
+| Whisper turbo Q8_0 | CPU              | 4.45 s (3.42-5.40) | 5.33 s (4.60-5.97) |   6.33 s (5.58-7.01) |   11.34 s (8.86-14.16) |
+| Whisper turbo Q8_0 | CPU + Accelerate | 5.64 s (5.07-6.37) | 4.99 s (4.49-5.96) |   5.10 s (4.78-5.31) |    8.74 s (7.37-10.12) |
+| Ekko v1 Tiny Q8_0  | Metal            |             0.07 s |             0.09 s |               0.22 s |                 0.25 s |
+| Ekko v1 Tiny Q8_0  | CPU              |             0.09 s |             0.10 s |               0.29 s |                 0.35 s |
+| Ekko v1 Tiny Q8_0  | CPU + Accelerate |             0.08 s |             0.11 s |               0.29 s |                 0.34 s |
 
 \* Edda stopped after the first sentence of each window on these
 multi-sentence clips (17 of about 60 words on 30 s), so these times are short
@@ -272,11 +272,11 @@ single sentences, so the main WER table cannot show this; `make_multi_clips.py`
 joins 2 or 3 consecutive FLEURS test utterances into one window (under 29.5 s)
 for this test. WER, timestamps off, Metal:
 
-| Clips | Edda v0.2 Q8_0, whole window | Edda, VAD-split | Whisper turbo Q8_0, whole window | Turbo, VAD-split | Ekko v1 Tiny |
-|---|---:|---:|---:|---:|---:|
-| 100 x 2 utterances, recorded pauses | 15.49 % (D 424) | 10.25 % | 13.31 % | 19.48 % | 10.28 % |
-| 60 x 3 utterances, recorded pauses | 22.09 % (D 565) | 9.64 % | 13.26 % | 16.73 % | 13.14 % |
-| 100 x 2 utterances, speech trimmed, 0.3 s pause | 16.00 % (D 448) | 10.75 % | 13.57 % | 19.53 % | n/a |
+| Clips                                           | Edda v0.2 Q8_0, whole window | Edda, VAD-split | Whisper turbo Q8_0, whole window | Turbo, VAD-split | Ekko v1 Tiny |
+| ----------------------------------------------- | ---------------------------: | --------------: | -------------------------------: | ---------------: | -----------: |
+| 100 x 2 utterances, recorded pauses             |              15.49 % (D 424) |         10.25 % |                          13.31 % |          19.48 % |      10.28 % |
+| 60 x 3 utterances, recorded pauses              |              22.09 % (D 565) |          9.64 % |                          13.26 % |          16.73 % |      13.14 % |
+| 100 x 2 utterances, speech trimmed, 0.3 s pause |              16.00 % (D 448) |         10.75 % |                          13.57 % |          19.53 % |          n/a |
 
 Edda drops at least a quarter of the words on 17 of 100 two-sentence windows,
 19 of 60 three-sentence windows and 18 of 100 windows with 0.3 s pauses,
@@ -295,7 +295,6 @@ prompt (Edda v0.2 was trained with that slot; its effect on the split was not
 measured here). Each segment costs one encoder pass (about 0.9 s on Metal on
 this Mac), but segments are decoded while the user is still talking
 (DESK-46), so only the last one adds to the wait.
-
 
 ## Licence terms
 
@@ -322,6 +321,7 @@ or without changes and as a hosted service. **Free use including commercial
 use is allowed**, subject to the conditions below.
 
 **Attribution duties.**
+
 - NVIDIA 3.1: give every recipient a copy of the NVIDIA agreement and include
   "Licensed by NVIDIA Corporation under the NVIDIA Open Model License" in a
   "Notice" text file shipped with the copies (RyeAI's `NOTICE` has it).
@@ -341,6 +341,7 @@ bundle next to the converted file, and `models/upload.sh` uploads it with the
 model card.
 
 **Restrictions.**
+
 - CoRal use restrictions (Attachment A plus additions 4(a) and 4(b)): no
   impersonation, including synthetic speech that emulates or resembles a
   specific person; no detecting or inferring a person's identity or

@@ -14,9 +14,7 @@
     "license": "other",
     "family": "parakeet",
     "parameters": "110M",
-    "languages": [
-      "da"
-    ],
+    "languages": ["da"],
     "capabilities": {
       "streaming": false,
       "translate": false,

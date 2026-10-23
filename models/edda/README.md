@@ -1,17 +1,17 @@
 ---
 license: apache-2.0
 language:
-- da
+  - da
 base_model: danish-foundation-models/edda-v0.2
 base_model_relation: quantized
 pipeline_tag: automatic-speech-recognition
 tags:
-- gguf
-- whisper
-- danish
-- speech-recognition
-- transcribe.cpp
-- walkietalkey
+  - gguf
+  - whisper
+  - danish
+  - speech-recognition
+  - transcribe.cpp
+  - walkietalkey
 ---
 
 # Edda v0.2, GGUF for transcribe.cpp
@@ -27,13 +27,13 @@ or newer (for example Handy, from its custom models folder).
 
 ## Original
 
-| | |
-|---|---|
-| Model | [`danish-foundation-models/edda-v0.2`](https://huggingface.co/danish-foundation-models/edda-v0.2) at revision `698f8d04b5970f963d31c4079c05a76fa7f4f5bb` (`model.safetensors` SHA-256 `84f31719f0a26ea774a9d4470f0a54fecf807afef6ac6fb04291cd2dabe40e4c`) |
-| Author | Alexandra Institute, CoRal project; released by Danish Foundation Models |
-| Architecture | Whisper large-v3-turbo (809M parameters, 32 encoder and 4 decoder layers), fully fine-tuned on about 2,600 hours of Danish |
-| Base model | [`openai/whisper-large-v3-turbo`](https://huggingface.co/openai/whisper-large-v3-turbo), MIT licence, Copyright (c) 2022 OpenAI (`LICENSES/Whisper-MIT.txt`) |
-| Licence of the weights | Apache License 2.0 (`LICENSE`) |
+|                        |                                                                                                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model                  | [`danish-foundation-models/edda-v0.2`](https://huggingface.co/danish-foundation-models/edda-v0.2) at revision `698f8d04b5970f963d31c4079c05a76fa7f4f5bb` (`model.safetensors` SHA-256 `84f31719f0a26ea774a9d4470f0a54fecf807afef6ac6fb04291cd2dabe40e4c`) |
+| Author                 | Alexandra Institute, CoRal project; released by Danish Foundation Models                                                                                                                                                                                  |
+| Architecture           | Whisper large-v3-turbo (809M parameters, 32 encoder and 4 decoder layers), fully fine-tuned on about 2,600 hours of Danish                                                                                                                                |
+| Base model             | [`openai/whisper-large-v3-turbo`](https://huggingface.co/openai/whisper-large-v3-turbo), MIT licence, Copyright (c) 2022 OpenAI (`LICENSES/Whisper-MIT.txt`)                                                                                              |
+| Licence of the weights | Apache License 2.0 (`LICENSE`)                                                                                                                                                                                                                            |
 
 ## What we changed
 
@@ -52,8 +52,8 @@ the [WalkieTalkey repository](https://github.com/JonathanRentoft/walkietalkey).
 
 ## Files
 
-| File | Size | SHA-256 |
-|---|---:|---|
+| File                  |              Size | SHA-256                                                            |
+| --------------------- | ----------------: | ------------------------------------------------------------------ |
 | `edda-v0.2-Q8_0.gguf` | 886,381,920 bytes | `63ac884ad3d436642e8599ed3bda6c2b3456a0bb939a497c796589dee3f3b18d` |
 
 The F16 reference file (1,625,935,680 bytes, SHA-256
@@ -104,11 +104,11 @@ Checked on this conversion before anything else (`models/edda/validate.sh`):
 FLEURS da_dk test (930 clips), language forced to Danish, greedy decoding, our
 normaliser (lower case, punctuation stripped, numbers as spoken Danish):
 
-| Model | WER (95 % CI) |
-|---|---:|
-| Edda v0.2 Q8_0, timestamps off | 7.17 % (6.64 to 7.74) |
-| Edda v0.2 Q8_0, timestamps on | 14.54 % |
-| Whisper large-v3-turbo Q8_0, for comparison | 13.06 % |
+| Model                                       |         WER (95 % CI) |
+| ------------------------------------------- | --------------------: |
+| Edda v0.2 Q8_0, timestamps off              | 7.17 % (6.64 to 7.74) |
+| Edda v0.2 Q8_0, timestamps on               |               14.54 % |
+| Whisper large-v3-turbo Q8_0, for comparison |               13.06 % |
 
 **One utterance per window.** Decoded greedily (transcribe.cpp has no beam
 search), Edda tends to end its transcript at the first sentence boundary in a
@@ -117,7 +117,7 @@ almost all deletions, and the original Transformers model does the same.
 Cutting the audio at pauses (Silero VAD) and decoding each speech segment on its
 own brings it back to about 10 %. Feed it one utterance per window.
 
-Edda was trained on FLEURS da_dk *train*; the test split is held out but is in
+Edda was trained on FLEURS da_dk _train_; the test split is held out but is in
 its domain. The original's own result on this test set is 7.34 % WER (beam
 search with 5 beams, leaderboard normalisation).
 

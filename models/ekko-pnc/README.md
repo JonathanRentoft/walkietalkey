@@ -1,15 +1,15 @@
 ---
 license: cc-by-4.0
 language:
-- da
+  - da
 base_model: RyeAI/ekko-pnc
 pipeline_tag: token-classification
 tags:
-- onnx
-- punctuation-restoration
-- truecasing
-- danish
-- walkietalkey
+  - onnx
+  - punctuation-restoration
+  - truecasing
+  - danish
+  - walkietalkey
 ---
 
 # Ekko PnC v2 (mirror)
@@ -24,17 +24,17 @@ own server (`ModelBaseUrl`).
 
 ## Original and changes
 
-| | |
-|---|---|
-| Model | [`RyeAI/ekko-pnc`](https://huggingface.co/RyeAI/ekko-pnc) at revision `d3129544e4e0155093e192cac58a9e69a4dea1ff` (the revision the reference runtime `ekko-stt` 0.1.2 pins) |
-| Author | RyeAI; base model `jonfd/electra-small-nordic` (CC BY 4.0) |
-| Changes | **None.** `pnc.int8.onnx`, `tokenizer.json` and `config.json` are byte-identical to RyeAI's files, with RyeAI's licence bundle |
+|         |                                                                                                                                                                             |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model   | [`RyeAI/ekko-pnc`](https://huggingface.co/RyeAI/ekko-pnc) at revision `d3129544e4e0155093e192cac58a9e69a4dea1ff` (the revision the reference runtime `ekko-stt` 0.1.2 pins) |
+| Author  | RyeAI; base model `jonfd/electra-small-nordic` (CC BY 4.0)                                                                                                                  |
+| Changes | **None.** `pnc.int8.onnx`, `tokenizer.json` and `config.json` are byte-identical to RyeAI's files, with RyeAI's licence bundle                                              |
 
-| File | Size | SHA-256 |
-|---|---:|---|
-| `pnc.int8.onnx` | 22,424,741 bytes | `46bb979d409731872f10b6cb71298594595f16368d2aec2fcaf94d87b4266527` |
-| `tokenizer.json` | 2,301,084 bytes | `a1e0d43ee307ad7a1ccc23e6e5398d877a68ca7f576067ac507625a0d50e9502` |
-| `config.json` | 1,062 bytes | `dc655c46f69eeb15dd43786ad58fb5862cc794b36cc9d2c426ab5bc4b01f23ca` |
+| File             |             Size | SHA-256                                                            |
+| ---------------- | ---------------: | ------------------------------------------------------------------ |
+| `pnc.int8.onnx`  | 22,424,741 bytes | `46bb979d409731872f10b6cb71298594595f16368d2aec2fcaf94d87b4266527` |
+| `tokenizer.json` |  2,301,084 bytes | `a1e0d43ee307ad7a1ccc23e6e5398d877a68ca7f576067ac507625a0d50e9502` |
+| `config.json`    |      1,062 bytes | `dc655c46f69eeb15dd43786ad58fb5862cc794b36cc9d2c426ab5bc4b01f23ca` |
 
 ## Licence
 

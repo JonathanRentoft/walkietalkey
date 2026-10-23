@@ -23,7 +23,7 @@
     "window": "hann_periodic",
     "normalization": "per_feature",
     "preemphasis": 0.97,
-    "dither": 1e-05
+    "dither": 1e-5
   },
   "tokenizer_summary": {
     "type": "bpe",
@@ -33,15 +33,10 @@
     }
   },
   "capabilities": {
-    "languages": [
-      "da"
-    ],
+    "languages": ["da"],
     "language_detection": false,
     "translation": false,
-    "timestamps": [
-      "token",
-      "word"
-    ],
+    "timestamps": ["token", "word"],
     "streaming": false,
     "speaker_diarization": false
   },

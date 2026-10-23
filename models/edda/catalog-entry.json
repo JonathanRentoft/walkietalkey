@@ -14,9 +14,7 @@
     "license": "apache-2.0",
     "family": "whisper",
     "parameters": "809M",
-    "languages": [
-      "da"
-    ],
+    "languages": ["da"],
     "capabilities": {
       "streaming": false,
       "translate": false,

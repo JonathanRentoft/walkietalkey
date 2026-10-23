@@ -15,7 +15,12 @@
       "runOptions": { "language": "da", "timestamps": "none" },
       "_runOptions": "Edda was fine-tuned on <|notimestamps|> sequences only. With segment timestamps (transcribe-cpp TimestampKind::Auto, the default) it drops or cuts leading words; decode with TimestampKind::None.",
       "license": "apache-2.0",
-      "licenseFiles": ["LICENSE", "LICENSES/Whisper-MIT.txt", "LICENSES/CORAL-LICENSE", "LICENSES/FTSPEECH-LICENSE.md"],
+      "licenseFiles": [
+        "LICENSE",
+        "LICENSES/Whisper-MIT.txt",
+        "LICENSES/CORAL-LICENSE",
+        "LICENSES/FTSPEECH-LICENSE.md"
+      ],
       "repository": "edda-v0.2-gguf",
       "source": {
         "repository": "danish-foundation-models/edda-v0.2",
@@ -48,7 +53,14 @@
       "_shipping": "DESK-35 fast model. The licence terms allow free and commercial use (docs/MODELS.md); like Edda it was trained on FT Speech, so it waits on the same owner decision (spec 18.7). Output has no punctuation or casing, so Ekko PnC always runs after it.",
       "license": "other",
       "licenseName": "NVIDIA Open Model License (base model) + CC BY 4.0 (RyeAI modifications) + CoRal use restrictions",
-      "licenseFiles": ["MODEL_LICENSE.md", "NOTICE", "LICENSES/NVIDIA-OPEN-MODEL-LICENSE.pdf", "LICENSES/CC-BY-4.0.txt", "LICENSES/CORAL-LICENSE", "LICENSES/FTSPEECH-LICENSE.md"],
+      "licenseFiles": [
+        "MODEL_LICENSE.md",
+        "NOTICE",
+        "LICENSES/NVIDIA-OPEN-MODEL-LICENSE.pdf",
+        "LICENSES/CC-BY-4.0.txt",
+        "LICENSES/CORAL-LICENSE",
+        "LICENSES/FTSPEECH-LICENSE.md"
+      ],
       "repository": "ekko-v1-tiny-gguf",
       "source": {
         "repository": "RyeAI/ekko-v1-tiny",
@@ -76,7 +88,14 @@
       "default": true,
       "languages": ["da"],
       "license": "cc-by-4.0",
-      "licenseFiles": ["MODEL_LICENSE.md", "NOTICE", "LICENSES/CC-BY-4.0.txt", "LICENSES/CC0-1.0.txt", "LICENSES/CORAL-LICENSE", "LICENSES/FTSPEECH-LICENSE.md"],
+      "licenseFiles": [
+        "MODEL_LICENSE.md",
+        "NOTICE",
+        "LICENSES/CC-BY-4.0.txt",
+        "LICENSES/CC0-1.0.txt",
+        "LICENSES/CORAL-LICENSE",
+        "LICENSES/FTSPEECH-LICENSE.md"
+      ],
       "repository": "ekko-pnc",
       "source": {
         "repository": "RyeAI/ekko-pnc",

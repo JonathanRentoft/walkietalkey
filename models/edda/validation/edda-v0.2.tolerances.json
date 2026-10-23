@@ -51,8 +51,8 @@
     "in build/validate/whisper/<variant>/<case>/{cpp,ref}/."
   ],
   "enc.mel.in": {
-    "max_abs": 4e-05,
-    "mean_abs": 7e-08
+    "max_abs": 4e-5,
+    "mean_abs": 7e-8
   },
   "enc.pos_emb": {
     "max_abs": 0.0,
@@ -60,15 +60,15 @@
   },
   "enc.conv1.out": {
     "max_abs": 0.002,
-    "mean_abs": 7e-05
+    "mean_abs": 7e-5
   },
   "enc.conv2.out": {
     "max_abs": 0.005,
-    "mean_abs": 8e-05
+    "mean_abs": 8e-5
   },
   "enc.embed.out": {
     "max_abs": 0.005,
-    "mean_abs": 8e-05
+    "mean_abs": 8e-5
   },
   "enc.block.0.out": {
     "max_abs": 0.03,

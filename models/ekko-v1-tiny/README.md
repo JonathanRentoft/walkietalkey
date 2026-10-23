@@ -3,18 +3,18 @@ license: other
 license_name: nvidia-open-model-license
 license_link: LICENSES/NVIDIA-OPEN-MODEL-LICENSE.pdf
 language:
-- da
+  - da
 base_model: RyeAI/ekko-v1-tiny
 base_model_relation: quantized
 pipeline_tag: automatic-speech-recognition
 tags:
-- gguf
-- parakeet
-- rnnt
-- danish
-- speech-recognition
-- transcribe.cpp
-- walkietalkey
+  - gguf
+  - parakeet
+  - rnnt
+  - danish
+  - speech-recognition
+  - transcribe.cpp
+  - walkietalkey
 ---
 
 # Ekko v1 Tiny, GGUF for transcribe.cpp
@@ -30,12 +30,12 @@ WalkieTalkey always runs Ekko PnC after it.
 
 ## Original
 
-| | |
-|---|---|
-| Model | [`RyeAI/ekko-v1-tiny`](https://huggingface.co/RyeAI/ekko-v1-tiny) at revision `3658535e7b2fa98d5d9aad8114573c0fab1e6203` (`ekko-v1-tiny.nemo` SHA-256 `c48614a2118bb634dc97a1497e3702940153e6db4d16b72f175a3ab94a06cece`) |
-| Author | RyeAI |
-| Base model | `nvidia/parakeet-rnnt-110m-da-dk`, NVIDIA Open Model License |
-| Architecture | FastConformer encoder (17 layers, 512-d) with an RNN-T decoder, 44-token vocabulary |
+|              |                                                                                                                                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model        | [`RyeAI/ekko-v1-tiny`](https://huggingface.co/RyeAI/ekko-v1-tiny) at revision `3658535e7b2fa98d5d9aad8114573c0fab1e6203` (`ekko-v1-tiny.nemo` SHA-256 `c48614a2118bb634dc97a1497e3702940153e6db4d16b72f175a3ab94a06cece`) |
+| Author       | RyeAI                                                                                                                                                                                                                     |
+| Base model   | `nvidia/parakeet-rnnt-110m-da-dk`, NVIDIA Open Model License                                                                                                                                                              |
+| Architecture | FastConformer encoder (17 layers, 512-d) with an RNN-T decoder, 44-token vocabulary                                                                                                                                       |
 
 ## Licence
 
@@ -68,8 +68,8 @@ Reproducible with `models/ekko-v1-tiny/convert.sh` in the
 
 ## Files
 
-| File | Size | SHA-256 |
-|---|---:|---|
+| File                     |              Size | SHA-256                                                            |
+| ------------------------ | ----------------: | ------------------------------------------------------------------ |
 | `ekko-v1-tiny-Q8_0.gguf` | 133,940,896 bytes | `ccb40917c85575a6045b63e97896b882d778de1632bd99296dd94a6dc4039a1d` |
 
 The F32 reference file (451,397,472 bytes, SHA-256
