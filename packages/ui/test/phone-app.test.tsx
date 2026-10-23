@@ -1,6 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { PhoneApp, type PhoneAppState } from "../src";
+import { setReducedMotion } from "./setup";
 
 function label(el: HTMLElement): string {
   return el.querySelector(".wt-app-label > span:last-child")!.textContent!;
@@ -61,6 +64,63 @@ describe("PhoneApp", () => {
     );
     expect(container.querySelector(".wt-app-time")).toHaveTextContent("1:15");
     expect(container.querySelector(".wt-app-meter .wt-bars--off")).toBeNull();
+  });
+
+  it("PHONE-21 the meter follows the microphone level while recording", () => {
+    const meterOf = (el: HTMLElement) =>
+      el.querySelector(".wt-app-meter") as HTMLElement;
+    const levelOf = (el: HTMLElement) =>
+      meterOf(el).style.getPropertyValue("--wt-level");
+    const { container, rerender } = render(
+      <PhoneApp state="rec" level={0.5} />,
+    );
+    expect(meterOf(container)).toHaveClass("wt-app-meter--level");
+    expect(levelOf(container)).toBe("0.50");
+    // Silence: the bars lie flat, they do not keep moving.
+    rerender(<PhoneApp state="rec" level={0} />);
+    expect(levelOf(container)).toBe("0.00");
+    rerender(<PhoneApp state="rec" level={4} />);
+    expect(levelOf(container)).toBe("1.00");
+    rerender(<PhoneApp state="rec" level={Number.NaN} />);
+    expect(levelOf(container)).toBe("0.00");
+    // The bars keep the design system's meter.
+    expect(
+      container.querySelectorAll(".wt-app-meter .wt-bars--meter .wt-bar"),
+    ).toHaveLength(17);
+    // Without a level the bars move on their own, as in the design system.
+    rerender(<PhoneApp state="rec" />);
+    expect(meterOf(container)).not.toHaveClass("wt-app-meter--level");
+    expect(levelOf(container)).toBe("");
+  });
+
+  it("PHONE-21 with reduced motion the level moves in a few calm steps", () => {
+    const { container, rerender } = render(
+      <PhoneApp state="rec" level={0.4} />,
+    );
+    const levelOf = () =>
+      (
+        container.querySelector(".wt-app-meter") as HTMLElement
+      ).style.getPropertyValue("--wt-level");
+    expect(levelOf()).toBe("0.40");
+    act(() => setReducedMotion(true));
+    expect(levelOf()).toBe("0.33");
+    rerender(<PhoneApp state="rec" level={0.45} />);
+    expect(levelOf()).toBe("0.33");
+    rerender(<PhoneApp state="rec" level={0.9} />);
+    expect(levelOf()).toBe("1.00");
+    rerender(<PhoneApp state="rec" level={0.05} />);
+    expect(levelOf()).toBe("0.00");
+    // The stylesheet: level-driven bars ease between levels, and stand still with reduced motion.
+    const css = readFileSync(
+      resolve(__dirname, "../src/styles/extensions.css"),
+      "utf8",
+    );
+    expect(css).toMatch(
+      /\.wt-app-meter--level[^{]*\.wt-bar\s*\{[^}]*var\(--wt-level/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.wt-app-meter--level[^{]*\{[^}]*transition:\s*none/,
+    );
   });
 
   it("is a still picture by default, and a real hold button when given buttonProps", () => {
