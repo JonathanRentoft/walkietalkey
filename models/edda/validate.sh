@@ -20,8 +20,10 @@
 #   models/eval/fetch_fleurs.sh for the FLEURS clips. For the control step:
 #   <work-dir>/dl/whisper-large-v3-turbo-hf (openai/whisper-large-v3-turbo @ 41f01f3)
 #   and <work-dir>/dl/whisper-large-v3-turbo-gguf/whisper-large-v3-turbo-F16.gguf.
-#   Every step logs to <work-dir>/runs/edda-validation/ and records its exit
-#   status in status.txt; the script carries on after a failed step.
+#   Every step logs to <work-dir>/runs/edda-validation/ and appends its exit
+#   status to status.txt; the script carries on after a failed step.
+#   STEPS="quant same-text" models/edda/validate.sh ... reruns selected steps
+#   (tensors, control, quant, same-text).
 set -uo pipefail
 
 WORK="${1:?usage: $0 <work-dir> <fleurs-da_dk-dir>}"
@@ -34,7 +36,7 @@ TURBO_HF="$WORK/dl/whisper-large-v3-turbo-hf"
 TURBO_F16="$WORK/dl/whisper-large-v3-turbo-gguf/whisper-large-v3-turbo-F16.gguf"
 OUT="$WORK/runs/edda-validation"
 mkdir -p "$OUT"
-: > "$OUT/status.txt"
+touch "$OUT/status.txt"
 
 step() {  # step <name> <command...>
   local name="$1"; shift
@@ -57,25 +59,40 @@ for id in 6263195548503774343 17924706686437869147; do
   cp "$FLEURS/test/$id.wav" "$TCPP/samples/fleurs-da-$id.wav"
 done
 
+STEPS="${STEPS:-tensors control quant same-text}"
+want() { [[ " $STEPS " == *" $1 "* ]]; }
+
 cd "$TCPP"
-step tensors uv run scripts/validate.py all --family whisper --variant edda-v0.2 \
+want tensors && step tensors uv run scripts/validate.py all --family whisper --variant edda-v0.2 \
   --model "$SNAPSHOT" --gguf "$MODELS/edda-v0.2-F16.gguf" --report
 
-if [[ -d "$TURBO_HF" && -f "$TURBO_F16" ]]; then
+if want control && [[ -d "$TURBO_HF" && -f "$TURBO_F16" ]]; then
   step control uv run scripts/validate.py all --family whisper --variant whisper-large-v3-turbo-da \
     --model "$TURBO_HF" --gguf "$TURBO_F16" --report
 fi
 
-step quant uv run scripts/quant_accuracy.py --baseline "$MODELS/edda-v0.2-F16.gguf" \
-  --audio "$TCPP/samples/fleurs-da-6263195548503774343.wav" \
-  --dump-root "$OUT/quant-dumps" "$MODELS/edda-v0.2-Q8_0.gguf"
+if want quant; then
+  # quant_accuracy.py runs transcribe-cli with its defaults (timestamps auto,
+  # language detection); Edda drops words in that mode, which would make the
+  # F16 and Q8_0 decodes diverge for reasons unrelated to quantisation. A tiny
+  # wrapper pins the app's settings: timestamps off, Danish.
+  WRAP="$OUT/transcribe-cli-da-notimestamps"
+  printf '#!/bin/sh\nexec "%s" --timestamps none -l da "$@"\n' "$TCPP/build/bin/transcribe-cli" > "$WRAP"
+  chmod +x "$WRAP"
+  step quant uv run scripts/quant_accuracy.py --cli "$WRAP" --baseline "$MODELS/edda-v0.2-F16.gguf" \
+    --audio "$TCPP/samples/fleurs-da-6263195548503774343.wav" \
+    --dump-root "$OUT/quant-dumps" "$MODELS/edda-v0.2-Q8_0.gguf"
+fi
 
-step same-text-metal uv run --project "$TCPP/scripts/envs/whisper" python "$HERE/same_text.py" \
-  --tcpp "$TCPP" --model "$SNAPSHOT" --backend metal \
-  --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --out "$OUT/same_text.metal.json" "${CLIPS[@]}"
-step same-text-cpu uv run --project "$TCPP/scripts/envs/whisper" python "$HERE/same_text.py" \
-  --tcpp "$TCPP" --model "$SNAPSHOT" --backend cpu \
-  --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --gguf "$MODELS/edda-v0.2-F16.gguf" \
-  --out "$OUT/same_text.cpu.json" "${CLIPS[@]}"
+if want same-text; then
+  step same-text-metal uv run --project "$TCPP/scripts/envs/whisper" python "$HERE/same_text.py" \
+    --tcpp "$TCPP" --model "$SNAPSHOT" --backend metal \
+    --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --out "$OUT/same_text.metal.json" "${CLIPS[@]}"
+  step same-text-cpu uv run --project "$TCPP/scripts/envs/whisper" python "$HERE/same_text.py" \
+    --tcpp "$TCPP" --model "$SNAPSHOT" --backend cpu \
+    --gguf "$MODELS/edda-v0.2-Q8_0.gguf" --gguf "$MODELS/edda-v0.2-F16.gguf" \
+    --out "$OUT/same_text.cpu.json" "${CLIPS[@]}"
+fi
 
+python3 "$HERE/compare_control.py" "$OUT" > "$OUT/control-summary.md" 2>/dev/null || true
 echo "logs and reports in $OUT"
