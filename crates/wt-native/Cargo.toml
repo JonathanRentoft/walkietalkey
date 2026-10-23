@@ -79,7 +79,6 @@ windows = { version = "0.61.3", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
-windows-core = "0.61"
 winreg = "0.55"
 # Credential Manager through the keyring store, with its `persistence=local` modifier
 # (CRED_PERSIST_LOCAL_MACHINE, SEC-10). `search` is off: it would only pull in regex.

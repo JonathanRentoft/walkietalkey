@@ -468,7 +468,6 @@ dependencies = [
  "security-framework",
  "thiserror",
  "windows",
- "windows-core",
  "windows-native-keyring-store",
  "winreg",
  "zeroize",

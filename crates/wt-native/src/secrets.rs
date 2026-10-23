@@ -96,7 +96,9 @@ mod imp {
     }
 
     fn map(err: Error) -> SecretError {
-        let text = err.message().unwrap_or_else(|| format!("OSStatus {}", err.code()));
+        let text = err
+            .message()
+            .unwrap_or_else(|| format!("OSStatus {}", err.code()));
         match err.code() {
             ERR_SEC_AUTH_FAILED | ERR_SEC_INTERACTION_NOT_ALLOWED | ERR_SEC_USER_CANCELED => {
                 SecretError::Denied(text)
@@ -231,7 +233,10 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let service = format!("com.walkietalkey.wt-native-test.{}.{nanos}", std::process::id());
+        let service = format!(
+            "com.walkietalkey.wt-native-test.{}.{nanos}",
+            std::process::id()
+        );
         let account = "device-keys";
 
         struct Cleanup<'a>(&'a str, &'a str);
@@ -242,7 +247,10 @@ mod tests {
         }
         let _cleanup = Cleanup(&service, account);
 
-        assert!(get(&service, account).unwrap().is_none(), "nothing there yet");
+        assert!(
+            get(&service, account).unwrap().is_none(),
+            "nothing there yet"
+        );
         delete(&service, account).expect("deleting a missing item succeeds");
 
         let first: Vec<u8> = (0u8..64).collect();

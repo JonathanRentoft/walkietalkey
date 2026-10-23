@@ -81,20 +81,20 @@ fn unicode_text(text: &str) -> Vec<u8> {
 mod imp {
     use std::time::Duration;
 
+    use windows::core::{HSTRING, PCWSTR};
     use windows::Win32::Foundation::{GlobalFree, HANDLE};
     use windows::Win32::System::DataExchange::{
         CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
     };
     use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
     use windows::Win32::System::Ole::CF_UNICODETEXT;
-    use windows_core::{HSTRING, PCWSTR};
 
     use super::{ClipboardError, Format};
 
     const OPEN_ATTEMPTS: u32 = 20;
     const OPEN_RETRY: Duration = Duration::from_millis(5);
 
-    fn platform(err: windows_core::Error) -> ClipboardError {
+    fn platform(err: windows::core::Error) -> ClipboardError {
         ClipboardError::Platform(err.message())
     }
 
@@ -135,7 +135,7 @@ mod imp {
                     // SAFETY: `name` is a NUL-terminated wide string that outlives the call.
                     let id = unsafe { RegisterClipboardFormatW(PCWSTR(name.as_ptr())) };
                     if id == 0 {
-                        return Err(platform(windows_core::Error::from_win32()));
+                        return Err(platform(windows::core::Error::from_win32()));
                     }
                     id
                 }
@@ -153,7 +153,7 @@ mod imp {
         // SAFETY: `memory` is a live movable block.
         let target = unsafe { GlobalLock(memory) };
         if target.is_null() {
-            let err = windows_core::Error::from_win32();
+            let err = windows::core::Error::from_win32();
             // SAFETY: allocated above and not handed to the clipboard.
             let _ = unsafe { GlobalFree(Some(memory)) };
             return Err(platform(err));
@@ -223,6 +223,9 @@ mod tests {
     #[test]
     fn unsupported_off_windows() {
         assert!(matches!(write_text("x"), Err(ClipboardError::Unsupported)));
-        assert!(matches!(write_text_shared("x"), Err(ClipboardError::Unsupported)));
+        assert!(matches!(
+            write_text_shared("x"),
+            Err(ClipboardError::Unsupported)
+        ));
     }
 }

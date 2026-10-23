@@ -21,7 +21,9 @@ fn above_us(target_elevated: Option<bool>, we_are_elevated: bool) -> bool {
 #[cfg(windows)]
 mod imp {
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
-    use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use windows::Win32::Security::{
+        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+    };
     use windows::Win32::System::Threading::{
         GetCurrentProcess, GetCurrentProcessId, OpenProcess, OpenProcessToken,
         PROCESS_QUERY_LIMITED_INFORMATION,

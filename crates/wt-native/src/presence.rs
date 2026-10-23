@@ -85,7 +85,8 @@ mod imp {
             return true;
         };
         // SAFETY: the session dictionary has CFString keys; CFType accepts any value.
-        let session = unsafe { CFRetained::cast_unchecked::<CFDictionary<CFString, CFType>>(session) };
+        let session =
+            unsafe { CFRetained::cast_unchecked::<CFDictionary<CFString, CFType>>(session) };
         locked_from_session(&session)
     }
 
@@ -104,6 +105,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
+    use windows::core::PWSTR;
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::System::RemoteDesktop::{
         WTSFreeMemory, WTSQuerySessionInformationW, WTSSessionInfoEx, WTSINFOEXW,
@@ -115,7 +117,6 @@ mod imp {
     };
     use windows::Win32::System::SystemInformation::GetTickCount64;
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
-    use windows_core::PWSTR;
 
     pub fn seconds_since_input() -> u32 {
         let mut info = LASTINPUTINFO {
@@ -172,13 +173,13 @@ mod imp {
 
     fn input_desktop_is_winlogon() -> bool {
         // SAFETY: plain call; the handle is closed below.
-        let desktop = match unsafe {
-            OpenInputDesktop(DESKTOP_CONTROL_FLAGS(0), false, DESKTOP_READOBJECTS)
-        } {
-            Ok(desktop) => desktop,
-            // A normal user cannot open Winlogon's secure desktop.
-            Err(_) => return true,
-        };
+        let desktop =
+            match unsafe { OpenInputDesktop(DESKTOP_CONTROL_FLAGS(0), false, DESKTOP_READOBJECTS) }
+            {
+                Ok(desktop) => desktop,
+                // A normal user cannot open Winlogon's secure desktop.
+                Err(_) => return true,
+            };
         let mut name = [0u16; 64];
         let mut needed = 0u32;
         // SAFETY: `name` is writable for its full byte length.
@@ -196,7 +197,10 @@ mod imp {
         if named.is_err() {
             return false;
         }
-        let len = name.iter().position(|&unit| unit == 0).unwrap_or(name.len());
+        let len = name
+            .iter()
+            .position(|&unit| unit == 0)
+            .unwrap_or(name.len());
         super::desktop_name_means_locked(&String::from_utf16_lossy(&name[..len]))
     }
 }
@@ -263,20 +267,31 @@ mod tests {
     fn macos_session_dictionary() {
         use objc2_core_foundation::{CFBoolean, CFDictionary, CFString, CFType};
 
-        fn session(pairs: &[(&str, bool)]) -> objc2_core_foundation::CFRetained<CFDictionary<CFString, CFType>> {
+        fn session(
+            pairs: &[(&str, bool)],
+        ) -> objc2_core_foundation::CFRetained<CFDictionary<CFString, CFType>> {
             let keys: Vec<_> = pairs.iter().map(|(k, _)| CFString::from_str(k)).collect();
             let key_refs: Vec<&CFString> = keys.iter().map(|k| &**k).collect();
-            let values: Vec<&CFType> = pairs.iter().map(|(_, v)| CFBoolean::new(*v).as_ref()).collect();
+            let values: Vec<&CFType> = pairs
+                .iter()
+                .map(|(_, v)| CFBoolean::new(*v).as_ref())
+                .collect();
             CFDictionary::from_slices(&key_refs, &values)
         }
 
         use super::imp::locked_from_session;
-        assert!(!locked_from_session(&session(&[("kCGSSessionOnConsoleKey", true)])));
+        assert!(!locked_from_session(&session(&[(
+            "kCGSSessionOnConsoleKey",
+            true
+        )])));
         assert!(locked_from_session(&session(&[
             ("kCGSSessionOnConsoleKey", true),
             ("CGSSessionScreenIsLocked", true)
         ])));
-        assert!(locked_from_session(&session(&[("kCGSSessionOnConsoleKey", false)])));
+        assert!(locked_from_session(&session(&[(
+            "kCGSSessionOnConsoleKey",
+            false
+        )])));
         assert!(!locked_from_session(&session(&[])));
     }
 }

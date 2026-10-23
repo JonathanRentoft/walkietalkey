@@ -92,13 +92,11 @@ pub(crate) fn from_registry(
 
 /// A registry string: UTF-16LE, usually with a terminating NUL (or several).
 fn utf16_string(bytes: &[u8]) -> Option<String> {
-    if bytes.len() % 2 != 0 {
+    let (pairs, odd) = bytes.as_chunks::<2>();
+    if !odd.is_empty() {
         return None;
     }
-    let mut units: Vec<u16> = bytes
-        .chunks_exact(2)
-        .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
-        .collect();
+    let mut units: Vec<u16> = pairs.iter().map(|&pair| u16::from_le_bytes(pair)).collect();
     while units.last() == Some(&0) {
         units.pop();
     }
@@ -282,8 +280,14 @@ mod tests {
     fn registry_expand_strings_expand_known_variables() {
         let env = |name: &str| (name == "ProgramData").then(|| r"C:\ProgramData".to_string());
         assert_eq!(
-            from_registry(RegKind::ExpandSz, &utf16(r"%ProgramData%\WalkieTalkey\ord.txt"), env),
-            Some(ManagedValue::Text(r"C:\ProgramData\WalkieTalkey\ord.txt".into()))
+            from_registry(
+                RegKind::ExpandSz,
+                &utf16(r"%ProgramData%\WalkieTalkey\ord.txt"),
+                env
+            ),
+            Some(ManagedValue::Text(
+                r"C:\ProgramData\WalkieTalkey\ord.txt".into()
+            ))
         );
         assert_eq!(expand_env("100% sure", env), "100% sure");
         assert_eq!(expand_env("%Unknown%\\x", env), "%Unknown%\\x");
@@ -349,11 +353,20 @@ mod tests {
                 from_cf(&CFString::from_str("wss://relay.firma.dk")),
                 Some(ManagedValue::Text("wss://relay.firma.dk".into()))
             );
-            assert_eq!(from_cf(CFBoolean::new(true)), Some(ManagedValue::Bool(true)));
-            assert_eq!(from_cf(CFBoolean::new(false)), Some(ManagedValue::Bool(false)));
+            assert_eq!(
+                from_cf(CFBoolean::new(true)),
+                Some(ManagedValue::Bool(true))
+            );
+            assert_eq!(
+                from_cf(CFBoolean::new(false)),
+                Some(ManagedValue::Bool(false))
+            );
             assert_eq!(from_cf(&CFNumber::new_i32(14)), Some(ManagedValue::Int(14)));
             assert_eq!(from_cf(&CFNumber::new_i64(-1)), Some(ManagedValue::Int(-1)));
-            assert_eq!(from_cf(&CFNumber::new_f64(14.0)), Some(ManagedValue::Int(14)));
+            assert_eq!(
+                from_cf(&CFNumber::new_f64(14.0)),
+                Some(ManagedValue::Int(14))
+            );
             assert_eq!(from_cf(&CFNumber::new_f64(1.5)), None);
             let array = CFArray::<CFString>::from_retained_objects(&[CFString::from_str("x")]);
             assert_eq!(from_cf(&array), None);
