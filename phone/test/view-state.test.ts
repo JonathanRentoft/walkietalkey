@@ -41,6 +41,15 @@ describe("main screen states (spec 7.3)", () => {
     expect(viewState(m("rec"), true).state).toBe("rec");
   });
 
+  it("a recording that ends with a tap says so and offers the cancel control", () => {
+    const latched = { ...m("rec"), latched: true };
+    expect(viewState(latched, false).labels.rec).toBe("Tryk for at sende");
+    expect(viewState(latched, false).latched).toBe(true);
+    // During the stopping tap the release sends, as the label says.
+    expect(viewState({ ...latched, armed: true }, false).labels.rec).toBeUndefined();
+    expect(viewState(m("rec"), false).latched).toBe(false);
+  });
+
   it("sends with the ekko loader", () => {
     expect(viewState(m("send"), false).sending).toBe(true);
     expect(viewState(m("offline"), false).sending).toBe(false);

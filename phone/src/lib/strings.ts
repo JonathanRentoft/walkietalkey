@@ -81,6 +81,8 @@ export const T = {
   credits: "Bygget med React (MIT), jsQR (Apache-2.0) og skrifttypen Albert Sans (SIL Open Font License 1.1).",
   version: "Version {version}",
   sourceCode: "Kildekode",
+  // TODO(copy): label while a tap-mode or Start diktering recording runs (it ends with a tap)
+  tapToSend: "Tryk for at sende",
   // TODO(copy): the 5 minute limit (PHONE-29)
   countdown: "Optagelsen stopper om {seconds} sekunder",
   // TODO(copy): "Detaljer" texts (PHONE-25)

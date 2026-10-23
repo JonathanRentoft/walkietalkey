@@ -1,7 +1,7 @@
 /**
  * Build-time PWA pieces (PHONE-01): the web app manifest, a service worker that caches the app
  * shell (never audio: the app never fetches audio, and the worker caches only the files listed
- * here), `p.html` for the pairing path `/p`, and Cloudflare Pages headers.
+ * here), `p.html` for the pairing path `/p`, and the e2e variant of public/_headers.
  */
 import { createHash } from "node:crypto";
 import { copyFileSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -30,46 +30,16 @@ export const MANIFEST = {
   ],
 };
 
-function headers(e2e: boolean): string {
-  // connect-src: any wss:// relay (RelayUrl is a managed setting, RELAY-14); ws:// to localhost
-  // only in the e2e build (SEC-06).
-  const connect = e2e ? "'self' wss: ws://127.0.0.1:* ws://localhost:*" : "'self' wss:";
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "media-src 'self' blob: mediastream:",
-    `connect-src ${connect}`,
-    "worker-src 'self'",
-    "manifest-src 'self'",
-    "font-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'none'",
-  ].join("; ");
-  return `/*
-  Content-Security-Policy: ${csp}
-  Permissions-Policy: microphone=(self), camera=(self), screen-wake-lock=(self), geolocation=(), payment=(), usb=()
-  Referrer-Policy: no-referrer
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  Cross-Origin-Opener-Policy: same-origin
-/sw.js
-  Cache-Control: no-cache
-/manifest.webmanifest
-  Content-Type: application/manifest+json
-  Cache-Control: no-cache
-/index.html
-  Cache-Control: no-cache
-/p
-  Cache-Control: no-cache
-/
-  Cache-Control: no-cache
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-`;
+/**
+ * public/_headers is the production policy: connect-src allows any wss:// relay (RelayUrl is a
+ * managed setting, RELAY-14). The e2e build also allows ws:// to localhost (SEC-06).
+ */
+function e2eHeaders(text: string): string {
+  return text.replace("connect-src 'self' wss:", "connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:*");
 }
+
+/** Never cached by the service worker. */
+const NOT_SHELL = ["sw.js", "_headers", "_redirects", "p.html", "index.html"];
 
 function swSource(version: string, shell: string[]): string {
   return `/* WalkieTalkey service worker (PHONE-01): caches the app shell so the app opens without a
@@ -133,15 +103,15 @@ export function pwa(): Plugin {
     },
     generateBundle() {
       this.emitFile({ type: "asset", fileName: "manifest.webmanifest", source: JSON.stringify(MANIFEST, null, 2) });
-      this.emitFile({ type: "asset", fileName: "_headers", source: headers(config.mode === "e2e") });
     },
     closeBundle() {
       const out = config.build.outDir.startsWith("/") ? config.build.outDir : join(config.root, config.build.outDir);
       // `/p#<payload>` (spec 5.3) is the same app: Cloudflare Pages serves p.html at /p.
       copyFileSync(join(out, "index.html"), join(out, "p.html"));
+      if (config.mode === "e2e") writeFileSync(join(out, "_headers"), e2eHeaders(readFileSync(join(out, "_headers"), "utf8")));
       const files = walk(out)
         .map((f) => relative(out, f).split(sep).join("/"))
-        .filter((f) => !["sw.js", "_headers", "_redirects", "p.html", "index.html"].includes(f) && !f.endsWith(".map"))
+        .filter((f) => !NOT_SHELL.includes(f) && !f.startsWith(".well-known/") && !f.endsWith(".map"))
         .sort();
       const shell = ["./", ...files.map((f) => `./${f}`)];
       const hash = createHash("sha256");

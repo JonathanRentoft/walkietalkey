@@ -31,6 +31,14 @@ export interface MachineState {
   connected: boolean;
   /** What "Detaljer" explains (a result reason, a relay error code or mic:<name>). */
   detail: string | null;
+  /**
+   * The recording goes on without a finger on the button: started by a tap (tap mode) or by the
+   * iOS shell's "Start diktering". The next tap on the button sends it; sliding off during that
+   * tap, or the cancel control, cancels it.
+   */
+  latched: boolean;
+  /** A latched recording's stopping tap is under way (its finger is down). */
+  armed: boolean;
 }
 
 export type MachineEvent =
@@ -49,7 +57,11 @@ export type MachineEvent =
   | { type: "relay_error"; code: string }
   | { type: "mode"; mode: Mode }
   | { type: "retarget"; peerOnline: boolean; connected: boolean }
-  | { type: "foreground" };
+  | { type: "foreground" }
+  /** The iOS shell's "Start diktering" (App Intent, Action button, Control Center). */
+  | { type: "shell_start"; sessionId: string; at: number }
+  /** The cancel control shown during a latched recording. */
+  | { type: "cancel" };
 
 export type Effect =
   | { type: "start_capture"; sessionId: string }
@@ -67,7 +79,17 @@ export interface Transition {
 }
 
 export function initialMachine(opts: { mode: Mode; peerOnline: boolean; connected: boolean }): MachineState {
-  return { phase: "idle", mode: opts.mode, sessionId: null, recStartedAt: null, peerOnline: opts.peerOnline, connected: opts.connected, detail: null };
+  return {
+    phase: "idle",
+    mode: opts.mode,
+    sessionId: null,
+    recStartedAt: null,
+    peerOnline: opts.peerOnline,
+    connected: opts.connected,
+    detail: null,
+    latched: false,
+    armed: false,
+  };
 }
 
 const RECORDING = new Set<Phase>(["rec", "cancel"]);
@@ -79,9 +101,9 @@ function waiting(s: MachineState): Phase {
   return s.connected && !s.peerOnline ? "offline" : "send";
 }
 
-function start(s: MachineState, e: { sessionId: string; at: number }): Transition {
+function start(s: MachineState, e: { sessionId: string; at: number }, latched: boolean): Transition {
   return {
-    state: { ...s, phase: "rec", sessionId: e.sessionId, recStartedAt: e.at, detail: null },
+    state: { ...s, phase: "rec", sessionId: e.sessionId, recStartedAt: e.at, detail: null, latched, armed: false },
     effects: [
       { type: "start_capture", sessionId: e.sessionId },
       { type: "haptic", kind: "start" },
@@ -93,7 +115,7 @@ function start(s: MachineState, e: { sessionId: string; at: number }): Transitio
 function finish(s: MachineState): Transition {
   const sessionId = s.sessionId!;
   return {
-    state: { ...s, phase: waiting(s), recStartedAt: null },
+    state: { ...s, phase: waiting(s), recStartedAt: null, latched: false, armed: false },
     effects: [
       { type: "finish_capture", sessionId },
       { type: "haptic", kind: "stop" },
@@ -105,7 +127,7 @@ function finish(s: MachineState): Transition {
 function cancel(s: MachineState): Transition {
   const sessionId = s.sessionId!;
   return {
-    state: { ...s, phase: "idle", sessionId: null, recStartedAt: null },
+    state: { ...s, phase: "idle", sessionId: null, recStartedAt: null, latched: false, armed: false },
     effects: [
       { type: "cancel_capture", sessionId },
       { type: "haptic", kind: "stop" },
@@ -119,19 +141,25 @@ const same = (s: MachineState): Transition => ({ state: s, effects: [] });
 export function transition(s: MachineState, e: MachineEvent): Transition {
   switch (e.type) {
     case "down":
-      if (s.mode === "toggle" && s.phase === "rec") return finish(s);
+      // A latched recording's next tap arms the stop; it happens on release (or cancels, slid off).
+      if (RECORDING.has(s.phase)) return s.latched && !s.armed ? same({ ...s, armed: true }) : same(s);
+      return start(s, e, s.mode === "toggle");
+    case "shell_start":
       if (RECORDING.has(s.phase)) return same(s);
-      return start(s, e);
+      return start(s, e, true);
     case "up":
-      if (s.mode !== "hold") return same(s);
+      // The release of the tap that started a latched recording changes nothing.
+      if (s.latched && !s.armed) return same(s);
       if (s.phase === "rec") return finish(s);
       if (s.phase === "cancel") return cancel(s);
       return same(s);
     case "slide":
-      if (s.mode !== "hold") return same(s);
+      if (s.latched && !s.armed) return same(s);
       if (s.phase === "rec" && !e.inside) return same({ ...s, phase: "cancel" });
       if (s.phase === "cancel" && e.inside) return same({ ...s, phase: "rec" });
       return same(s);
+    case "cancel":
+      return RECORDING.has(s.phase) ? cancel(s) : same(s);
     case "max_duration":
       return RECORDING.has(s.phase) ? finish(s) : same(s);
     case "empty":
@@ -143,7 +171,7 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       const sessionId = s.sessionId!;
       const phase: Phase = e.type === "mic_denied" ? "mic_denied" : "error";
       return {
-        state: { ...s, phase, recStartedAt: null, detail: e.type === "mic_error" ? `mic:${e.detail}` : null },
+        state: { ...s, phase, recStartedAt: null, latched: false, armed: false, detail: e.type === "mic_error" ? `mic:${e.detail}` : null },
         effects: [
           { type: "cancel_capture", sessionId },
           { type: "wake_lock", on: false },

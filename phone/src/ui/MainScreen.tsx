@@ -98,6 +98,13 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
             <LogoLoader variant="ekko" tone="paper" size={64} />
           </div>
         ) : null}
+        {view.latched ? (
+          <div className="wt-stage-cancel">
+            <button type="button" className="wt-app-action wt-stage-cancel-btn" onClick={() => controller.cancel()}>
+              {T.cancel}
+            </button>
+          </div>
+        ) : null}
         {left !== null ? (
           <div className="wt-stage-countdown" role="timer">
             <span>{fill(T.countdown, { seconds: String(left) })}</span>

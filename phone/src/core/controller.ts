@@ -326,7 +326,7 @@ export class PhoneController {
     void entry.streamer.start(s);
     const now = this.now();
     entry.record = { ...entry.record, lastUsedAt: now };
-    void this.deps.storage.touchRoom(s.roomId, now);
+    void this.deps.storage.touchRoom(s.roomId, now).catch(() => undefined);
     if (this.maxTimer) clearTimeout(this.maxTimer);
     this.maxTimer = setTimeout(() => {
       this.maxTimer = null;
@@ -431,6 +431,36 @@ export class PhoneController {
     this.dispatch({ type: "up" });
   }
 
+  /**
+   * The iOS shell's "Start diktering" (`wt-shell-start`, or `?start=1` on a cold start): starts a
+   * recording as in tap mode. Ignored when not paired or already recording.
+   */
+  shellStart(): boolean {
+    if (!this.target || !this.rooms.has(this.target)) return false;
+    this.prime();
+    const s = newSession(this.target, this.now());
+    this.pendingSession = s;
+    this.dispatch({ type: "shell_start", sessionId: s.sid, at: this.now() });
+    this.pendingSession = null;
+    return this.machine.sessionId === s.sid && this.machine.phase === "rec";
+  }
+
+  /** The cancel control of a latched recording (tap mode, Start diktering). */
+  cancel(): void {
+    this.dispatch({ type: "cancel" });
+  }
+
+  /** Stops every socket and timer (tests, and a page that goes away for good). */
+  dispose(): void {
+    for (const r of this.rooms.values()) r.link.stop();
+    for (const t of this.resultTimers.values()) clearTimeout(t);
+    this.resultTimers.clear();
+    if (this.maxTimer) clearTimeout(this.maxTimer);
+    if (this.noConnTimer) clearTimeout(this.noConnTimer);
+    this.maxTimer = null;
+    this.noConnTimer = null;
+  }
+
   slide(inside: boolean): void {
     if (this.machine.phase !== "rec" && this.machine.phase !== "cancel") return;
     this.dispatch({ type: "slide", inside });
@@ -451,7 +481,7 @@ export class PhoneController {
   private setTarget(roomId: string | null): void {
     this.target = roomId;
     this.settings = { ...this.settings, target: roomId ?? undefined };
-    void this.deps.storage.putSettings(this.settings);
+    void this.deps.storage.putSettings(this.settings).catch(() => undefined);
     const link = roomId ? this.rooms.get(roomId)?.link : undefined;
     this.noConnection = false;
     this.dispatch({ type: "retarget", peerOnline: !!link?.peerOnline, connected: !!link?.connected });
@@ -626,13 +656,13 @@ export class PhoneController {
 
   setMode(mode: Mode): void {
     this.settings = { ...this.settings, mode };
-    void this.deps.storage.putSettings(this.settings);
+    void this.deps.storage.putSettings(this.settings).catch(() => undefined);
     this.dispatch({ type: "mode", mode });
   }
 
   setHaptics(on: boolean): void {
     this.settings = { ...this.settings, haptics: on };
-    void this.deps.storage.putSettings(this.settings);
+    void this.deps.storage.putSettings(this.settings).catch(() => undefined);
     this.changed();
   }
 

@@ -12,7 +12,7 @@ import { parseScanned, takePairingFragment } from "./lib/pairingLink";
 import { detectPlatform, isIosSafariTab, readEnv } from "./lib/platform";
 import { PhoneStorage } from "./lib/storage";
 import { T } from "./lib/strings";
-import { App } from "./ui/App";
+import { App, SHELL_START_EVENT } from "./ui/App";
 import { InstallScreen, Unsupported } from "./ui/screens";
 
 declare global {
@@ -34,14 +34,23 @@ function applyTheme(): void {
 
 function registerServiceWorker(): void {
   if (import.meta.env.DEV || !("serviceWorker" in navigator)) return;
+  // Never in the iOS shell (walkietalkey://localhost/): only http(s), and plain http only locally.
+  if (location.protocol !== "https:" && location.protocol !== "http:") return;
   const local = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  if (location.protocol !== "https:" && !local) return;
+  if (location.protocol === "http:" && !local) return;
   void navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => undefined);
 }
 
 async function main(): Promise<void> {
   applyTheme();
   const platform = detectPlatform(readEnv());
+  // The iOS shell's cold start from "Start diktering" loads the page with ?start=1.
+  const startOnLoad = new URLSearchParams(location.search).get("start") === "1";
+  if (startOnLoad) {
+    const u = new URL(location.href);
+    u.searchParams.delete("start");
+    history.replaceState(null, "", u.href);
+  }
   // PHONE-15: read the pairing fragment and remove it from the address bar and history at once.
   const first = takePairingFragment(location, history, policy);
   const root: Root = createRoot(document.getElementById("root")!);
@@ -106,6 +115,7 @@ async function main(): Promise<void> {
 
   render();
   await controller.init();
+  if (startOnLoad && first.kind === "none") window.dispatchEvent(new CustomEvent(SHELL_START_EVENT));
   registerServiceWorker();
 }
 

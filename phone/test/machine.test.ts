@@ -90,20 +90,88 @@ describe("hold to talk (PHONE-20, PHONE-21, PHONE-22, PHONE-26)", () => {
 describe("tap to start and stop (PHONE-26 setting)", () => {
   const toggle = () => initialMachine({ mode: "toggle", peerOnline: true, connected: true });
 
-  it("first tap records, release does nothing, second tap sends", () => {
+  it("first tap records, its release and slides do nothing, the second tap sends on release", () => {
     let r = run(toggle(), down("t1"));
     expect(r.state.phase).toBe("rec");
+    expect(r.state.latched).toBe(true);
     r = run(r.state, up, { type: "slide", inside: false });
     expect(r.state.phase).toBe("rec");
     r = run(r.state, down("t2"));
+    expect(r.state.phase).toBe("rec");
+    expect(r.state.armed).toBe(true);
+    r = run(r.state, up);
     expect(r.state.phase).toBe("send");
     expect(r.state.sessionId).toBe("t1");
+    expect(r.state.latched).toBe(false);
     expect(r.effects).toContainEqual({ type: "finish_capture", sessionId: "t1" });
+  });
+
+  it("sliding off during the second tap cancels", () => {
+    const r = run(toggle(), down("t1"), up, down("t2"), { type: "slide", inside: false });
+    expect(r.state.phase).toBe("cancel");
+    const after = run(r.state, up);
+    expect(after.state.phase).toBe("idle");
+    expect(after.effects).toContainEqual({ type: "cancel_capture", sessionId: "t1" });
+  });
+
+  it("the cancel control cancels", () => {
+    const r = run(toggle(), down("t1"), up, { type: "cancel" });
+    expect(r.state.phase).toBe("idle");
+    expect(r.effects).toContainEqual({ type: "cancel_capture", sessionId: "t1" });
+    expect(run(online(), { type: "cancel" }).effects).toEqual([]);
   });
 
   it("the mode can be switched in settings", () => {
     const r = run(online(), { type: "mode", mode: "toggle" });
     expect(r.state.mode).toBe("toggle");
+  });
+});
+
+describe("Start diktering from the iOS shell", () => {
+  const shell = (sessionId = "x1"): MachineEvent => ({ type: "shell_start", sessionId, at: 5 });
+
+  it("starts a recording like a tap, with the start haptic, in hold mode too", () => {
+    const { state, effects } = run(online(), shell());
+    expect(state.phase).toBe("rec");
+    expect(state.latched).toBe(true);
+    expect(state.sessionId).toBe("x1");
+    expect(effects).toEqual([
+      { type: "start_capture", sessionId: "x1" },
+      { type: "haptic", kind: "start" },
+      { type: "wake_lock", on: true },
+    ]);
+  });
+
+  it("a tap on the button sends it", () => {
+    const r = run(online(), shell(), down("ignored"), up);
+    expect(r.state.phase).toBe("send");
+    expect(r.effects).toContainEqual({ type: "finish_capture", sessionId: "x1" });
+    expect(r.effects).toContainEqual({ type: "haptic", kind: "stop" });
+  });
+
+  it("sliding off during that tap, or the cancel control, cancels it", () => {
+    expect(run(online(), shell(), down("ignored"), { type: "slide", inside: false }, up).state.phase).toBe("idle");
+    const r = run(online(), shell(), { type: "cancel" });
+    expect(r.state.phase).toBe("idle");
+    expect(r.effects).toContainEqual({ type: "cancel_capture", sessionId: "x1" });
+  });
+
+  it("does nothing while already recording", () => {
+    const r = run(online(), down("s1"), shell("x2"));
+    expect(r.state.sessionId).toBe("s1");
+    expect(r.state.latched).toBe(false);
+    expect(r.effects.filter((e) => e.type === "start_capture").length).toBe(1);
+  });
+
+  it("starts from a finished or waiting state too", () => {
+    const ready = run(online(), down(), up, { type: "result", sessionId: "s1", ok: true }).state;
+    expect(run(ready, shell()).state.phase).toBe("rec");
+    const waitingState = run(online(), down(), up).state;
+    expect(run(waitingState, shell()).state.sessionId).toBe("x1");
+  });
+
+  it("stops at the 5 minute limit", () => {
+    expect(run(online(), shell(), { type: "max_duration" }).state.phase).toBe("send");
   });
 });
 

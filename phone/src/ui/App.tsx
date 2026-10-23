@@ -1,5 +1,5 @@
 /** Navigation between the phone app's screens. The controller holds everything else. */
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PairingPayload } from "@walkietalkey/protocol";
 import type { PhoneController } from "../core/controller";
 import type { Platform } from "../lib/platform";
@@ -7,6 +7,9 @@ import { T } from "../lib/strings";
 import { MainScreen } from "./MainScreen";
 import { Loading, NameScreen, PairScreen, ScanScreen } from "./screens";
 import { DetailsSheet, NoticeDialog, PickerSheet, SettingsScreen } from "./settings";
+
+/** Dispatched on window by the iOS shell (App Intent "Start diktering"). */
+export const SHELL_START_EVENT = "wt-shell-start";
 
 type View =
   | { name: "home" }
@@ -38,6 +41,23 @@ export function App({ controller, platform, allowInsecureLocalhost, link }: AppP
       setView({ name: "pair" });
     }
   }, [link, controller]);
+
+  // The iOS shell's "Start diktering": back to the main screen and record as in tap mode. Ignored
+  // while pairing (scanner, name) and when not paired (the controller checks that).
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  useEffect(() => {
+    const onStart = () => {
+      const v = viewRef.current.name;
+      if (v === "scan" || v === "name") return;
+      if (!controller.shellStart()) return;
+      setSheet(null);
+      setMessage(null);
+      setView({ name: "home" });
+    };
+    window.addEventListener(SHELL_START_EVENT, onStart);
+    return () => window.removeEventListener(SHELL_START_EVENT, onStart);
+  }, [controller]);
 
   const onScanned = useCallback(
     (payload: PairingPayload) => {
