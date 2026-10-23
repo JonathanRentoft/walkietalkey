@@ -23,14 +23,17 @@ pub mod history;
 pub mod keys;
 pub mod limits;
 pub mod managed;
+pub mod notify;
 pub mod output;
 pub mod pill;
 pub mod settings;
 pub mod store;
 pub mod tray;
+pub mod updates;
 
 pub fn startup(app: &AppHandle) {
     select_default_model(app);
+    updates::start(app);
     let settings = get_settings(app);
     if !settings.selected_model.is_empty() {
         if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {

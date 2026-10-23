@@ -293,10 +293,11 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 show_main_window(app);
             }
             "check_updates" => {
+                // WalkieTalkey: updates are checked and fetched in Rust
+                // (channel, background download, DESK-111).
                 let settings = settings::get_settings(app);
                 if settings::update_checks_effectively_enabled(&settings) {
-                    show_main_window(app);
-                    let _ = app.emit("check-for-updates", ());
+                    walkietalkey::updates::check_now(app);
                 }
             }
             "copy_last_transcript" => {
@@ -311,7 +312,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 walkietalkey::tray::set_paused(app, !walkietalkey::tray::is_paused());
             }
             "restart_update" => {
-                app.restart();
+                walkietalkey::updates::restart_now(app);
             }
             id if id.starts_with("recent:") => {
                 if let Ok(entry) = id.trim_start_matches("recent:").parse::<i64>() {
