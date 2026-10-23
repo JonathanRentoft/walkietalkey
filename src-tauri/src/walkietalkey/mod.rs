@@ -27,6 +27,7 @@ pub mod models;
 pub mod notify;
 pub mod output;
 pub mod pill;
+pub mod relay;
 pub mod settings;
 pub mod speed;
 pub mod store;
