@@ -72,9 +72,13 @@ impl<'a> LiveSession<'a> {
                     run_options,
                     model_id,
                     settings.vad_backend,
-                    // Edda's cut-short chunks are decoded again piece by
-                    // piece (docs/MODELS.md, "Edda and pauses").
-                    crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA,
+                    // Edda: one piece per sentence-like stretch, decoded while
+                    // the user talks (docs/MODELS.md, "Edda and pauses").
+                    if crate::walkietalkey::catalog::decodes_by_segment(model_id) {
+                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_SEGMENTS
+                    } else {
+                        crate::audio_toolkit::chunking::ChunkPlan::LIVE_DA
+                    },
                     info.supports_initial_prompt,
                     on_chunk,
                 )))

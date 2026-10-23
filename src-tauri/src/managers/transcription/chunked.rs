@@ -231,8 +231,9 @@ impl<'a> ChunkedDecode<'a> {
     }
 
     /// WalkieTalkey: decodes a chunk again one speech segment at a time (cut at
-    /// its pauses, [`ChunkPlan::LIVE_SEGMENTS`]), each with the text before it
-    /// as context, and keeps that only if it says clearly more than `whole`.
+    /// its pauses, [`ChunkPlan::LIVE_SEGMENTS_FINE`]), each with the text
+    /// before it as context, and keeps that only if it says clearly more than
+    /// `whole`.
     fn decode_in_pieces(
         &self,
         audio: Vec<f32>,
@@ -242,7 +243,7 @@ impl<'a> ChunkedDecode<'a> {
         let backend = self.backend;
         let mut chunker = Chunker::with_plan(
             Box::new(move || create_detector(backend, &app_handle)),
-            ChunkPlan::LIVE_SEGMENTS,
+            ChunkPlan::LIVE_SEGMENTS_FINE,
         );
         let mut pieces = chunker.push(audio);
         pieces.extend(chunker.finish());

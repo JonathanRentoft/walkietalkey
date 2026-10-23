@@ -290,24 +290,30 @@ below turbo, while it makes turbo worse.
 
 **What the app does (measured through the app).** Splitting at every pause
 fixes multi-sentence windows but hurts single sentences: pieces of one or two
-seconds decoded on their own repeat phrases or drift into other scripts. So
-the app decodes Edda adaptively, text only, with the previous text as the
-context prompt: each 10-18 s live chunk (DESK-46) is decoded whole, and only a
-chunk whose text looks cut short (under 1.6 words per second of audio) is
-decoded again one VAD speech segment at a time; the pieces replace the whole
-only if they have at least 25 % more words. The app's batch path (the CLI, a
-history re-transcription) does the same. WER through the app
-(`walkietalkey -f <clip> --json`, the harness's normalisation), Metal:
+seconds decoded on their own repeat phrases or drift into other scripts. Decoding
+each 10-18 s chunk whole and only a cut-short one again by segment is the most
+accurate, but a cut-short last chunk then costs several encoder passes after
+release (DESK-43, DESK-46). The app therefore decodes Edda one piece at a time
+while the user talks, text only, with the previous text as the context prompt: a
+pause of half a second or more (the usual break between sentences) ends a piece
+once it is a second long, so a sentence with its shorter pauses stays whole, and
+a piece whose text still comes out cut short (under 1.6 words per second of
+audio) is split again at its shorter pauses and kept only with 25 % more words.
+The batch path (the CLI, a history re-transcription) does the same. WER through
+the app (`walkietalkey -f <clip> --json`, the harness's normalisation), and the
+wait after release (`walkietalkey -f <clip> --live`, release build, M1 Pro):
 
-| Clips                       |                     Whole window | Every pause | Adaptive (shipped) |
-| --------------------------- | -------------------------------: | ----------: | -----------------: |
-| 100 single FLEURS sentences | (7.17 % on all 930, engine only) |     11.01 % |             6.89 % |
-| 100 x 2 utterances          |                          15.49 % |     10.68 % |             8.13 % |
-| 60 x 3 utterances           |                          22.09 % |      9.46 % |             7.09 % |
+| Decoding                                                               |           Single sentences (100) | 2 utterances (100) | 3 utterances (60) | Wait, 16 s | Wait, 2 min |
+| ---------------------------------------------------------------------- | -------------------------------: | -----------------: | ----------------: | ---------: | ----------: |
+| Whole windows                                                          | (7.17 % on all 930, engine only) |            15.49 % |           22.09 % |            |             |
+| At every pause                                                         |                          11.01 % |            10.68 % |            9.46 % |            |             |
+| Whole, cut-short chunks again by segment                               |                           6.89 % |             8.13 % |            7.09 % |     1.03 s |      4.74 s |
+| At pauses of 0.2 s or more                                             |                           9.15 % |             8.60 % |            9.61 % |     0.93 s |      0.99 s |
+| **At pauses of 0.5 s or more, cut-short pieces split finer (shipped)** |                       **8.65 %** |         **7.45 %** |        **7.70 %** | **0.92 s** |  **0.99 s** |
 
-Windows losing at least a quarter of their words: 0, 1 and 1 with the adaptive
-decode. A re-decoded chunk costs one encoder pass per piece (about 0.9 s on
-Metal), during talking; only a cut-short last chunk adds them to the wait.
+With the shipped decoding, 1 of 260 windows still loses a quarter of its words
+(against 17 of 100 two-utterance windows decoded whole), and the wait after a
+two-minute dictation is within 0.1 s of the wait after 16 s.
 
 ## Licence terms
 
