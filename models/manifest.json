@@ -11,9 +11,7 @@
       "minEngine": "0.4.0",
       "family": "whisper",
       "default": true,
-      "languages": [
-        "da"
-      ],
+      "languages": ["da"],
       "runOptions": {
         "language": "da",
         "timestamps": "none"
@@ -79,9 +77,7 @@
       "family": "parakeet",
       "default": false,
       "fastModel": true,
-      "languages": [
-        "da"
-      ],
+      "languages": ["da"],
       "runOptions": {
         "language": "da",
         "timestamps": "auto"
@@ -151,9 +147,7 @@
       "engine": "onnxruntime",
       "_engine": "crates/ekko-pnc (ort 2.0.0-rc.13, ONNX Runtime 1.28.0); 128-token windows, 12 words of overlap (DESK-41).",
       "default": true,
-      "languages": [
-        "da"
-      ],
+      "languages": ["da"],
       "license": "cc-by-4.0",
       "licenseFiles": [
         "MODEL_LICENSE.md",
