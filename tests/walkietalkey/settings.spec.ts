@@ -384,7 +384,7 @@ test.describe("settings", () => {
       .toBe(false);
   });
 
-  test("Hold talemodellen indlæst maps to Handy's unload timeout", async ({
+  test("Hold talemodellen indlæst maps to the unload timeout", async ({
     page,
   }) => {
     await openApp(page);

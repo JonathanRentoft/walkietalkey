@@ -1,7 +1,7 @@
 //! Derivations of spec 9.3.
 
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
@@ -101,7 +101,7 @@ fn join_mac_hmac(
     phone_agreement: &Spki,
 ) -> HmacSha256 {
     let key = join_mac_key(secret);
-    let mut mac = <HmacSha256 as Mac>::new_from_slice(key.as_ref()).expect("any key length");
+    let mut mac = <HmacSha256 as KeyInit>::new_from_slice(key.as_ref()).expect("any key length");
     mac.update(room_id.as_bytes());
     mac.update(phone_signing.as_bytes());
     mac.update(phone_agreement.as_bytes());

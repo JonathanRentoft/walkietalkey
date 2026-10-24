@@ -14,9 +14,7 @@ export const LABELS = {
 } as const;
 
 export type ChallengeLabel =
-  | typeof LABELS.auth
-  | typeof LABELS.create
-  | typeof LABELS.join;
+  typeof LABELS.auth | typeof LABELS.create | typeof LABELS.join;
 
 export const ROOM_ID_LEN = 16;
 export const DEVICE_ID_LEN = 16;

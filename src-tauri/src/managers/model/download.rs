@@ -96,7 +96,12 @@ impl ModelManager {
             }
             hasher.update(&buffer[..n]);
         }
-        Ok(format!("{:x}", hasher.finalize()))
+        // WalkieTalkey: sha2 0.11 digests no longer format with {:x}.
+        Ok(hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect())
     }
 
     /// Emit verification events around a blocking sha256 check of `path`.

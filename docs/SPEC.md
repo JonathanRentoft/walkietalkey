@@ -33,7 +33,7 @@ WalkieTalkey is free, open-source Danish dictation. Hold `fn` on a Mac (or a cho
 
 | Part | What |
 |---|---|
-| Desktop app | macOS (Apple Silicon first-class, Intel best effort) and Windows 10/11 x64. A fork of Handy (Tauri v2, Rust, React). |
+| Desktop app | macOS (Apple Silicon first-class, Intel best effort) and Windows 10/11 x64. Tauri v2, Rust, React. |
 | Phone app | Web app (PWA) for iPhone and Android, plus a thin native iOS shell (section 7.1). |
 | Relay | Cloudflare Worker with one Durable Object per pairing room. Self-hostable. |
 | Website | walkietalkey.com, static, built from the design system. |
@@ -44,7 +44,7 @@ WalkieTalkey is free, open-source Danish dictation. Hold `fn` on a Mac (or a cho
 
 - Accounts, user database, web dashboard, admin console.
 - Cloud transcription of any kind.
-- Linux as a supported platform (it builds, because Handy does, but we do not test or promise it).
+- Linux as a supported platform (it builds, but we do not test or promise it).
 - Native Android app (the PWA works well on Android).
 - English UI (strings are prepared for it; translation comes later).
 - On-premise relay outside Cloudflare (planned for v1.x, see RELAY-15).
@@ -75,12 +75,12 @@ WalkieTalkey is free, open-source Danish dictation. Hold `fn` on a Mac (or a cho
 
 ### 4.1 Repository layout (monorepo)
 
-Handy's folders stay where they are, so upstream merges stay easy. Everything new lives in new folders.
+WalkieTalkey's own features live in their own folders and modules (DESK-05).
 
 ```
 walkietalkey/
-  src-tauri/            desktop app, Rust (from Handy)
-  src/                  desktop UI, React + TypeScript (from Handy)
+  src-tauri/            desktop app, Rust
+  src/                  desktop UI, React + TypeScript
   phone/                phone web app, Vite + React + TypeScript, PWA
   ios/                  native iOS shell (SwiftUI + WKWebView), milestone M3
   relay/                Cloudflare Worker + Durable Object, TypeScript
@@ -89,12 +89,12 @@ walkietalkey/
   packages/protocol/    message types, envelope crypto, test vectors (shared by TS and Rust tests)
   models/               model manifest, conversion scripts, licence texts
   docs/                 SPEC.md (this), PROTOCOL.md, PRIVACY.md, MANAGED_SETTINGS.md, ARCHITECTURE.md
-  licenses/             third-party licence texts, including Handy's MIT licence
+  licenses/             third-party licence texts
   .github/              workflows, issue and PR templates
   LICENSE  NOTICE  TRADEMARKS.md  README.md  CONTRIBUTING.md  CODE_OF_CONDUCT.md  SECURITY.md  CHANGELOG.md
 ```
 
-Package manager: bun workspaces (Handy already uses bun).
+Package manager: bun workspaces.
 
 ## 5. Identity without accounts
 
@@ -147,17 +147,17 @@ Each computer has its own room. The phone joins all of them. Section 7.5 describ
 
 ## 6. Desktop app (DESK)
 
-### 6.1 Base: fork of Handy
+### 6.1 Base
 
-Handy (MIT licence, Tauri v2) already does push-to-talk, local speech models (Whisper, Parakeet, Canary and more) through its own engine `transcribe-cpp` with GGUF model files, transcription of long recordings in chunks while the user is still speaking, Silero VAD, a recording overlay, paste into the active app, history, a tray icon, translations, CLI flags, alpha post-processing with LLM providers, and signed updates.
+The desktop app is built with Tauri v2. Its core does push-to-talk, local speech models (Whisper, Parakeet, Canary and more) through the engine `transcribe-cpp` with GGUF model files, transcription of long recordings in chunks while the user is still speaking, Silero VAD, a recording overlay, paste into the active app, history, a tray icon, translations, CLI flags, post-processing with LLM providers, and signed updates.
 
 | ID | Requirement |
 |---|---|
-| DESK-01 | The repo starts from Handy's full git history, with Handy as an `upstream` remote. All Handy branding (name, logo, icons, sponsor images) is removed, as Handy's licence notes require. Handy's MIT licence text is kept in `licenses/Handy-MIT.txt` and credited in NOTICE and in the About screen. |
+| DESK-01 | WalkieTalkey is its own product (run 3): its history starts at one root commit (OSS-02), and it carries no other project's name, logo, icons or sponsor images. Third-party licence notices (section 14.2) stay in `licenses/`, NOTICE and the About screen's licence list. |
 | DESK-02 | App name WalkieTalkey, bundle id `com.walkietalkey.app`, app data folder named WalkieTalkey, icons from the design system (`assets/App-ikoner`). |
 | DESK-03 | Danish is the default UI language. English strings stay in the codebase for later. |
-| DESK-04 | Features from Handy that we keep but hide behind "Avanceret": manual model install, debug mode, paste delays, CLI flags. |
-| DESK-05 | Changes are kept in our own modules where possible (for example `src-tauri/src/relay/`, `src-tauri/src/pipeline/da/`), so upstream merges stay small. |
+| DESK-04 | Features that stay but are hidden behind "Avanceret": manual model install, debug mode, paste delays, CLI flags. |
+| DESK-05 | WalkieTalkey's features live in their own modules (for example `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`), apart from the desktop core (audio, models, shortcuts, paste), so each part stays easy to read and test (run 3). |
 | DESK-06 | Local Mac builds are signed with one self-signed code-signing identity, "WalkieTalkey Local" (`scripts/walkietalkey/build-local-mac.sh`, BUILD.md), until an Apple Development certificate exists. macOS ties permission grants (Accessibility, Microphone) to the app's signature, and ad-hoc signed builds lose them on every rebuild; a signature from one certificate keeps the designated requirement the same. CI release builds stay ad-hoc until the Apple Developer ID (decision 18.1 done, enrolment open); after such an update the app detects the dropped Accessibility grant and offers to repair it (DESK-13). |
 
 ### 6.2 First run (onboarding)
@@ -195,7 +195,7 @@ Acceptance: a new user on a clean Mac goes from first launch to a working dictat
 
 Runs entirely on the computer, in this order:
 
-1. **Capture** 16 kHz mono (Handy: `cpal` + `rubato`).
+1. **Capture** 16 kHz mono (`cpal` + `rubato`).
 2. **VAD** (Silero) trims leading and trailing silence. Clips with no speech end with no output and the pill says "Hørte ikke noget".
 3. **Speech recognition** with Edda (section 6.5) through transcribe.cpp, language forced to Danish (DESK-70 covers other languages), chunk by chunk while the user is still talking (DESK-46). The context prompt is the end of the previous chunk, or for the first chunk a short, well-punctuated Danish sentence; the user's vocabulary goes in transcribe.cpp's vocabulary field (6.9). Both share Whisper's 223-token prompt budget. The prompt pulls Whisper-family models towards punctuated, cased output.
 4. **Punctuation** (DESK-41) when the text lacks it.
@@ -214,21 +214,21 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-41 | Punctuation: if the recognised text has fewer than 1 punctuation mark per 25 words, run Ekko PnC (int8 ONNX, about 22 MB, local via ONNX Runtime). Setting "Tegnsætning": Automatisk (default), Altid, Aldrig. The Rust port must reproduce the reference tool's windowing (128-token windows with 12 words of overlap) and match the Python reference (`ekko-stt`) on a golden set of sentences. |
 | DESK-42 | Numbers, times and dates follow Danish conventions: "klokken ti" stays as spoken unless cleanup is on; cleanup may write "kl. 10". |
 | DESK-43 | Speed is measured as the wait after the key (or the phone button) is released, without AI cleanup. Provisional target: about 1 s on the owner's 16-inch M1 MacBook Pro for any length up to 5 minutes, which DESK-46 makes possible; the ThinkPad target is set from M0. For reference, transcribe.cpp measures the model Edda is built on (Whisper large-v3-turbo, Q8_0) at 0.30 s for 11 s and 0.69 s for 35 s of speech on an M4 Max (Metal), and at 4.4 s and 9.6 s on a 2020 Ryzen 4750U laptop's integrated GPU (Vulkan). Whisper-family models always encode a full 30-second window, so short clips are not proportionally faster. Measured with `scripts/bench` before each release (CI runners have no usable GPU) and reported in the release notes. |
-| DESK-44 | Filler words are removed locally: Handy's language-gated filler removal gets a Danish list ("øh", "øhm", "æh", "æhm"; Handy's universal list already covers "hmm" and similar). Instant and free, and offered upstream to Handy as a pull request. |
-| DESK-45 | The speech model is loaded when the app starts and stays loaded. Handy unloads it after 5 idle minutes by default; WalkieTalkey keeps it, so the first dictation after a break is as fast as the rest. Setting "Hold talemodellen indlæst": Altid (default), i 15 minutter, i 1 time, for machines short on memory. |
-| DESK-46 | **Transcribe while talking.** Every recording, from the key or streamed in from the phone, goes through Handy's live chunker as the audio arrives: it cuts at pauses and decodes each chunk as soon as its cut is certain, so when the recording stops only the last chunk is left. Handy aims for 30-second chunks and never cuts audio of 40 s or less; WalkieTalkey aims for 10 to 20 seconds (cuts only in pauses, keeping Handy's 5-second minimum), so the last chunk stays short whatever the total length, and a 5-minute dictation finishes about as fast as a 20-second one. Each chunk gets the end of the previous chunk's text as its context prompt. Acceptance: on the owner's Mac, the wait after release for a 2-minute dictation is within 0.3 s of the wait for a 15-second one. |
+| DESK-44 | Filler words are removed locally: the language-gated filler removal has a Danish list ("øh", "øhm", "æh", "æhm"; the universal list already covers "hmm" and similar). Instant and free. |
+| DESK-45 | The speech model is loaded when the app starts and stays loaded. It is not unloaded after a few idle minutes, so the first dictation after a break is as fast as the rest. Setting "Hold talemodellen indlæst": Altid (default), i 15 minutter, i 1 time, for machines short on memory. |
+| DESK-46 | **Transcribe while talking.** Every recording, from the key or streamed in from the phone, goes through the live chunker as the audio arrives: it cuts at pauses and decodes each chunk as soon as its cut is certain, so when the recording stops only the last chunk is left. It aims for chunks of 10 to 20 seconds rather than 30 (cuts only in pauses, never shorter than 5 seconds), so the last chunk stays short whatever the total length, and a 5-minute dictation finishes about as fast as a 20-second one. Each chunk gets the end of the previous chunk's text as its context prompt. Acceptance: on the owner's Mac, the wait after release for a 2-minute dictation is within 0.3 s of the wait for a 15-second one. |
 | DESK-47 | **Clean up while talking.** With AI cleanup on, each chunk is cleaned in the background as soon as it is transcribed. The call gets the previous chunk (already cleaned, and still allowed to change) plus the new chunk, so "nej vent, torsdag" can fix something said before a cut. Nothing is pasted until the end, so earlier text can still change. When the key is released only the last chunk's call is left, so a long dictation waits no longer than a short one. With "Når der er noget at rette" (DESK-80), only the chunks that need it are sent. |
 
 ### 6.5 Models
 
 | ID | Requirement |
 |---|---|
-| DESK-29 | M0 converts Edda to GGUF with transcribe.cpp's `scripts/convert-whisper.py`, quantises it to Q8_0 with `transcribe-quantize`, and checks it against the Transformers reference the way transcribe.cpp validates its own Whisper models (`dump_reference_whisper_transformers.py`), plus the same text as the original on 10 real clips, before anything is published. Stock Handy loads the result from its custom models folder, so M0 needs no app code. |
+| DESK-29 | M0 converts Edda to GGUF with transcribe.cpp's `scripts/convert-whisper.py`, quantises it to Q8_0 with `transcribe-quantize`, and checks it against the Transformers reference the way transcribe.cpp validates its own Whisper models (`dump_reference_whisper_transformers.py`), plus the same text as the original on 10 real clips, before anything is published. The desktop app loads the result from its custom models folder, so M0 needed no new app code. |
 | DESK-30 | Default model: **Edda v0.2** (Whisper large-v3-turbo fine-tuned on about 2,600 hours of Danish, 809M parameters, Apache-2.0, Alexandra Institute). We publish it as GGUF for transcribe.cpp, `Q8_0` (about 890 MB) by default. Smaller quantisations save download size but not time: in transcribe.cpp's own measurements Q4_K_M is as fast as Q8_0. About 1,690 of the training hours are FTSpeech (parliament) with lower-case, unpunctuated transcripts, so some output arrives without punctuation and DESK-41 will run often. Whether the FTSpeech terms limit use of the weights is an open question for M0 (section 11). |
 | DESK-31 | Model choice by measured speed: after the download, the app transcribes a bundled 10-second Danish clip. If Edda needs 1.5 s or less (Apple Silicon and most recent GPUs), Edda is the default. If it needs more (older or CPU-only Windows machines), the app offers the fast model (DESK-35) and says why in one sentence. The user can always switch. |
 | DESK-32 | Models download from the assets of our GitHub release `models-v1` (run 2; was our Hugging Face organisation), or from the company's own server if `ModelBaseUrl` is set. Every file is checked against a SHA-256 from `models/manifest.json` shipped inside the app. Downloads resume after interruption. A failed check deletes the file and retries once, then shows an error. |
 | DESK-33 | Model cards, published with the models in the GitHub release (`<model>-README.md`), state the original, the licence (Apache-2.0), what we changed (conversion, quantisation) and the dataset terms (the CoRal terms forbid speech synthesis and biometric identification; dictation is fine). |
-| DESK-34 | Handy's other models (Whisper, Parakeet) remain under "Andre modeller". |
+| DESK-34 | The other models (Whisper, Parakeet) remain under "Andre modeller". |
 | DESK-35 | **Fast model** for slower PCs: Ekko v1 tiny (RyeAI; 110M parameters; FastConformer RNN-T fine-tuned from NVIDIA's `parakeet-rnnt-110m-da-dk`). Mean WER 12.1 on the Danish ASR leaderboard against Edda's 8.6, at 60 to 75 times real time on CPU alone. Evaluated in M0 on the ThinkPad. Before it ships: read its layered licence (NVIDIA Open Model License for the base model, CC BY 4.0 for RyeAI's changes, the CoRal terms, and its FTSpeech note), and convert the `.nemo` checkpoint with transcribe.cpp's `convert-parakeet.py` (transcribe.cpp already runs Parakeet RNN-T models). Its output has no punctuation, so DESK-41 always runs. |
 
 ### 6.6 Output
@@ -238,7 +238,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-50 | **Key dictations** paste at the cursor ("Indsæt automatisk", default) when Accessibility is granted on Mac. On Windows this works except into apps running as administrator (Windows blocks that); then the text goes to the clipboard as in DESK-51. The pill shows "Indsat" briefly. |
 | DESK-51 | Without Accessibility (or if the user chooses "Kun udklipsholder"), the text goes to the clipboard and the pill shows "Tekst klar til at indsætte ⌘V" (Windows: Ctrl+V). |
 | DESK-52 | **Phone dictations** always go to the clipboard with a notification (6.7), never auto-paste, because the cursor might be anywhere. |
-| DESK-53 | Auto-paste saves the previous clipboard, pastes, and restores the previous clipboard afterwards (Handy's "Reliable Paste"). |
+| DESK-53 | Auto-paste saves the previous clipboard, pastes, and restores the previous clipboard afterwards ("Reliable Paste"). |
 | DESK-54 | Clipboard privacy: on macOS the text is written for this Mac only (`NSPasteboard` current-host-only option), so Universal Clipboard does not send it to other Apple devices. On Windows the clipboard entry carries the formats that keep it out of Clipboard History and Cloud Clipboard (`CanIncludeInClipboardHistory`=0, `CanUploadToCloudClipboard`=0, `ExcludeClipboardContentFromMonitorProcessing`). Setting "Del med mine andre enheder" turns this off. Implementation note: Tauri's clipboard plugin cannot set these options, so this is a small native module (Objective-C via `objc2` on macOS, Win32 on Windows). |
 
 ### 6.7 Notifications and the pill
@@ -270,14 +270,14 @@ Everything except speech recognition and the optional cleanup call takes a fract
 
 ### 6.10 AI cleanup (optional)
 
-Built on Handy's post-processing module, changed from "separate shortcut" to a mode.
+Built on the post-processing module, as a mode rather than a separate shortcut.
 
 | ID | Requirement |
 |---|---|
 | DESK-80 | "Ryd op med AI": Fra (default), Når der er noget at rette, Altid, or Kun når jeg holder Shift med. "Når der er noget at rette" (recommended once a provider is set up) calls the provider only if the text, after the local steps, contains a self-correction marker ("nej", "nej vent", "jeg mener", "eller rettere", "undskyld", "I mean", "no wait", "sorry") or a repeated phrase. Every other dictation goes out at once with no network call. The marker list is tuned in M5 against the test set. |
-| DESK-81 | Providers, as Handy's presets: Apple Intelligence (Mac with Apple Silicon and macOS 26 or newer, on-device, no key; Apple added Danish in the 26.1 releases, to be confirmed on macOS in M5), OpenAI, Anthropic, Groq, Cerebras, OpenRouter, and Custom (any OpenAI-compatible endpoint: Azure OpenAI, LM Studio, Ollama). Keys are the user's own, stored in the OS keychain, never in settings files, and sent only to that provider. |
+| DESK-81 | Providers, as presets: Apple Intelligence (Mac with Apple Silicon and macOS 26 or newer, on-device, no key; Apple added Danish in the 26.1 releases, to be confirmed on macOS in M5), OpenAI, Anthropic, Groq, Cerebras, OpenRouter, and Custom (any OpenAI-compatible endpoint: Azure OpenAI, LM Studio, Ollama). Keys are the user's own, stored in the OS keychain, never in settings files, and sent only to that provider. |
 | DESK-82 | Turning on a cloud provider shows exactly: "Teksten (ikke lyden) sendes til <udbyder>, hver gang du dikterer." with "Slå til" and "Annullér". |
-| DESK-83 | The prompt makes the model an editor, not an assistant: remove filler words, apply self-corrections ("onsdag, nej, torsdag" → "torsdag"), fix punctuation, keep the mix of Danish and English, never add content, never answer questions in the text. Temperature 0 where the model accepts it (OpenAI's reasoning models reject it), and reasoning turned off (Handy's `llm_client` already sends the right field per provider). The text is wrapped in tags so it is never read as instructions. |
+| DESK-83 | The prompt makes the model an editor, not an assistant: remove filler words, apply self-corrections ("onsdag, nej, torsdag" → "torsdag"), fix punctuation, keep the mix of Danish and English, never add content, never answer questions in the text. Temperature 0 where the model accepts it (OpenAI's reasoning models reject it), and reasoning turned off (`llm_client` sends the right field per provider). The text is wrapped in tags so it is never read as instructions. |
 | DESK-84 | Guardrails: the raw text is used instead, and the pill says "Brugte teksten uden oprydning", if the result is more than 30% longer than the input, if more than 20% of its words do not occur in the input (ignoring case and punctuation, and allowing digits, "kl." and other number and date forms that cleanup may write), or if no answer has arrived within 3 s plus 1 s per 100 words. |
 | DESK-85 | "Vis hvad der blev sendt": each history item that went through a cloud provider shows the exact text sent, the provider and how long the call took. |
 | DESK-86 | Known limit, stated in the UI: small local models (under about 3B parameters) often ignore instructions; the setting recommends Apple Intelligence on Mac or a larger model. |
@@ -288,7 +288,7 @@ Built on Handy's post-processing module, changed from "separate shortcut" to a m
 | ID | Requirement |
 |---|---|
 | DESK-70 | v1.0: Danish, with English words inside Danish sentences handled by Edda plus vocabulary plus cleanup. |
-| DESK-71 | v1.1: "Sprog: Automatisk". Detect the language per dictation; English dictations go to an English-capable model (Whisper turbo or Parakeet V3, both already in Handy). Ship only if it beats Danish-only on our mixed test set (section 15). |
+| DESK-71 | v1.1: "Sprog: Automatisk". Detect the language per dictation; English dictations go to an English-capable model (Whisper turbo or Parakeet V3, both already in the app). Ship only if it beats Danish-only on our mixed test set (section 15). |
 
 ### 6.12 History
 
@@ -456,7 +456,7 @@ Nothing is written until a `create` or `join` succeeds, so connecting to a rando
 | RELAY-08 | Buffering: if the recipient is offline (no socket, or a socket that has gone quiet, RELAY-10), frames are stored for up to 10 minutes and delivered in order when it connects, then deleted. Frames are batched in memory and written as one row at 256 kB, on `audio_end`, when the sender disconnects, and 2 s after the last frame (the relay's only `setTimeout`; it never hibernates with an unflushed batch). At most 25 MB per room; above that the oldest buffered dictation is dropped and the sender gets `error` with code `buffer_full`. |
 | RELAY-09 | Deploys: a new deploy restarts every Durable Object and drops all sockets, so the relay deploys only on release tags (OSS-22). Clients reconnect with backoff (DESK-60) and resend open sessions (PHONE-32). |
 | RELAY-10 | Liveness and connection status: every client sends `{"t":"ping"}` every 30 s, and the relay answers `{"t":"pong"}` through `setWebSocketAutoResponse`, which does not wake the object. When routing to a socket whose last automatic answer (`getWebSocketAutoResponseTimestamp`) is more than 75 s old, the relay treats it as offline: it closes it, buffers the frame and tells the others. A sleeping laptop's socket can look open for minutes, which is why this matters. The relay tells each device in plain `peer` messages whether the other members are online, so the phone can show "offline" before you start talking. |
-| RELAY-11 | Limits: device frames up to 64 kB; 50 frames per second per socket; 8 devices per room. Per IP: 10 new rooms and 10 joins per minute, generous enough for an office rolling out behind one public IP, enforced in the Worker with the Workers Rate Limiting binding before any Durable Object is touched. That binding is approximate and counts per Cloudflare location, which is fine for abuse protection. |
+| RELAY-11 | Limits: device frames up to 64 kB; 50 frames per second per socket; 8 devices per room. Per IP: 10 new rooms and 10 joins per minute, generous enough for an office rolling out behind one public IP, enforced in the Worker with the Workers Rate Limiting binding before any Durable Object is touched. That binding is approximate and counts per Cloudflare location, which is fine for abuse protection. It counts in fixed windows of 60 s, so a burst that straddles a window boundary can get up to twice the limit through; the tests keep each burst inside one window (run 3). |
 | RELAY-12 | Housekeeping with one alarm per room, set to the earliest pending expiry (each `setAlarm()` counts as a write). Phones not seen for 90 days are removed. If the owner has not been seen for 90 days, the whole room is deleted and its phones get 4404 (PHONE-14). Expired admissions and buffers are deleted. |
 | RELAY-13 | No payload logging. Logs contain only hashed room ids, close codes and counts. |
 | RELAY-14 | Self-hosting: `relay/` deploys to any Cloudflare account with one `wrangler deploy`, and a company's or a family's traffic fits the free tier. The apps accept a custom relay URL (a managed setting for companies). |
@@ -566,7 +566,7 @@ offset  size  field
 | Component | Licence | What we must do |
 |---|---|---|
 | Handy | MIT | Keep the licence text and copyright; credit in NOTICE and About; no Handy branding |
-| transcribe.cpp and ggml (Handy's speech engine) | MIT | Licence text in `licenses/` |
+| transcribe.cpp and ggml (the speech engine) | MIT | Licence text in `licenses/` |
 | Ekko v1 tiny (RyeAI), only if shipped (DESK-35) | NVIDIA Open Model License (base model), CC BY 4.0 (RyeAI's changes), CoRal terms, FTSpeech note | Read all of it before shipping; the CoRal terms must travel with the model; credit in About and NOTICE |
 | Edda v0.2 (Alexandra Institute), base Whisper large-v3-turbo (MIT) | Apache-2.0 | Include licence, credit, state our changes on the model card. **Open question:** about 1,690 of Edda's 2,605 training hours are FTSpeech, whose paper says the corpus is "freely available for research purposes only". Before M0 picks the default model, the owner reads the FTSpeech terms (and NST's), asks the Alexandra Institute whether they limit use of the weights, and records the answer in `docs/MODELS.md`. If they do, the default falls back to Handy's Whisper turbo or Parakeet V3 until a Danish model is cleared |
 | CoRal dataset terms (behind Edda and Ekko) | Custom | No speech synthesis, no biometric identification. Dictation is fine. Mention in docs |
@@ -627,8 +627,8 @@ This section explains how running the project works in practice, step by step.
 | ID | Requirement |
 |---|---|
 | OSS-01 | A GitHub organisation `walkietalkey` (recommended; keeps the project independent of a personal account, and the repo can still be pinned on the personal profile) owns the repo `walkietalkey/walkietalkey`, public from day one. |
-| OSS-02 | The repo is created as a normal repo, not with GitHub's "Fork" button: clone Handy, push its full history to our repo, add Handy as the `upstream` remote. A GitHub fork would make pull requests default to Handy and limits some settings. |
-| OSS-03 | First commit on top of Handy: rebrand, licences (14.2), project files (14.3). |
+| OSS-02 | The repo is a normal GitHub repo with its own history (run 3): it starts at one root commit, "WalkieTalkey 0.1", authored by the owner, which the tags `v0.1.0` and `models-v1` point at. |
+| OSS-03 | The root commit holds the product, its licences (14.2) and the project files (14.3). |
 
 ### 14.2 Licence files
 
@@ -639,7 +639,7 @@ This section explains how running the project works in practice, step by step.
 | `licenses/Handy-MIT.txt` | Handy's MIT licence, unchanged |
 | `TRADEMARKS.md` | The name WalkieTalkey and the logo are not covered by the code licence. Forks must use another name and logo. Saying "based on WalkieTalkey" is fine |
 
-New files we write are Apache-2.0. Files inherited from Handy remain available under MIT as well; that is allowed, because MIT lets us include them in an Apache-2.0 project as long as Handy's notice stays.
+WalkieTalkey is Apache-2.0. Third-party code under MIT keeps its copyright and permission notice (`licenses/`, NOTICE), which is all MIT asks for inside an Apache-2.0 project.
 
 ### 14.3 Project files
 
@@ -652,7 +652,7 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | `CHANGELOG.md` | Keep a Changelog format, one section per release |
 | `.github/ISSUE_TEMPLATE/` | Fejl (bug, with version, OS, model, steps), Ønske (feature) |
 | `.github/pull_request_template.md` | What and why, tests added, screenshots for UI, checklist |
-| `CLAUDE.md` / `AGENTS.md` | Handy already has these; we update them with this spec's structure so coding agents follow it |
+| `CLAUDE.md` / `AGENTS.md` | Guides for coding agents, with this spec's structure, so they follow it |
 
 ### 14.4 GitHub settings
 
@@ -679,10 +679,10 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | OSS-25 | Later: Homebrew cask and winget manifests. |
 | OSS-26 | `deploy/` holds the managed-settings templates (DESK-102): ADMX/ADML for Windows Group Policy and Intune, and a sample `.mobileconfig` for macOS. |
 
-### 14.7 Keeping up with Handy
+### 14.7 Keeping dependencies current
 
-- Once a month: `git fetch upstream`, merge into a branch, resolve conflicts, run all tests, open a PR "Sync med Handy".
-- Fixes we make that are useful to Handy (not branding or Danish-specific) are offered upstream as PRs. That is good open-source manners and good for the portfolio.
+- Dependabot opens one grouped pull request per ecosystem each week, and security updates in a group of their own, so they never wait behind routine bumps.
+- An update is taken when everything passes. One that breaks something is fixed in our code when it is worth it, or held back with an `ignore` rule in `.github/dependabot.yml` whose comment says why (run 3).
 
 ### 14.8 Trademark
 
@@ -696,25 +696,26 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | Part | Tests |
 |---|---|
 | Pipeline (Rust) | Unit tests per stage; punctuation trigger; vocabulary replacements; cleanup guardrails with a fake provider |
-| Danish accuracy | A test set of 30 to 50 clips: the owner's own dictations (with consent, stored outside the public repo or recorded for the purpose), plus mixed Danish and English sentences. Reports WER, punctuation, the latency of DESK-43 and the AI cleanup time per provider. Runs nightly and before each release, not on every PR (model size) |
+| Danish accuracy | A test set of 30 to 50 clips: the owner's own dictations (with consent, stored outside the public repo or recorded for the purpose), plus mixed Danish and English sentences. Reports WER, punctuation, the latency of DESK-43 and the AI cleanup time per provider. Runs nightly and before each release, not on every PR (model size). In a release it reports in the run summary and never blocks publishing (run 3) |
 | Protocol | Shared test vectors (SEC-05) in TypeScript and Rust; property tests for frame parsing |
 | Relay | Vitest with the Cloudflare Workers pool (Miniflare): auth, create (room id binding), join, leave, revoke, routing, liveness timeout, buffering, limits, housekeeping. Tests count storage writes per dictation, so a change that writes per frame fails |
 | Phone app | Unit tests (Vitest); Playwright in Chromium and WebKit with a fake microphone stream: pairing, recording, cancel, offline, resend after reconnect, errors |
-| Desktop UI | Playwright (Handy has a config) for settings and onboarding |
+| Desktop UI | Playwright for settings and onboarding |
 | Licences and advisories | `cargo deny`, `cargo audit`, npm licence and audit checks |
 
 ### 15.2 CI
 
 - On every PR: lint, type check, unit tests, relay tests, phone tests, desktop build check (macOS and Windows), licence checks.
-- On tag: the release workflow (OSS-21).
+- On tag: the release workflow (OSS-21). A pull request that changes the release machinery runs the release as a dry run (both builds, updater signatures with a throwaway key, latest.json, the accuracy harness), which publishes nothing (run 3).
+- macOS jobs use one released Xcode and its own SDK (`scripts/walkietalkey/ci/select-xcode.sh`), never the image's Command Line Tools SDK, which can be a beta.
 - Work style: tests first, then code, all green locally before one push; if CI fails, fix everything in one go before merging.
 
 ## 16. Milestones
 
 | Milestone | Content | Done when |
 |---|---|---|
-| **M0: Prove the model** (no app code) | Convert Edda to GGUF (DESK-29), load it in stock Handy as a custom model, record 20 to 30 real dictations, compare Edda with Ekko v1 tiny (DESK-35) and Handy's Whisper turbo on errors and punctuation. On both of the owner's machines (16-inch M1 MacBook Pro and the ThinkPad), measure the wait after release for a 15-second and a 2-minute dictation, and AI cleanup time with the owner's OpenAI key and with Groq or Cerebras. Read Ekko's licence. Ask the Alexandra Institute about the FTSpeech terms (section 11). Decide 18.1 first, then set up the GitHub organisation, Apple Developer Program (an ApS enrolls as an organisation and needs a D-U-N-S number), Cloudflare account and Hugging Face organisation | The owner has used Edda for a few days and the numbers decide the default model per machine, the DESK-43 targets and whether Ekko PnC is needed |
-| **M1: Mac alpha** | Fork and rebrand (DESK-01 to 06), onboarding, `fn`, pipeline with Edda and punctuation, paste and clipboard modes, pill, history, model download, Danish UI | The owner dictates on the Mac every day for a week without going back to anything else |
+| **M0: Prove the model** (no app code) | Convert Edda to GGUF (DESK-29), load it in the desktop app as a custom model, record 20 to 30 real dictations, compare Edda with Ekko v1 tiny (DESK-35) and Whisper turbo on errors and punctuation. On both of the owner's machines (16-inch M1 MacBook Pro and the ThinkPad), measure the wait after release for a 15-second and a 2-minute dictation, and AI cleanup time with the owner's OpenAI key and with Groq or Cerebras. Read Ekko's licence. Ask the Alexandra Institute about the FTSpeech terms (section 11). Decide 18.1 first, then set up the GitHub organisation, Apple Developer Program (an ApS enrolls as an organisation and needs a D-U-N-S number), Cloudflare account and Hugging Face organisation | The owner has used Edda for a few days and the numbers decide the default model per machine, the DESK-43 targets and whether Ekko PnC is needed |
+| **M1: Mac alpha** | Rebrand (DESK-01 to 06), onboarding, `fn`, pipeline with Edda and punctuation, paste and clipboard modes, pill, history, model download, Danish UI | The owner dictates on the Mac every day for a week without going back to anything else |
 | **M2a: Phone to an online Mac** | Relay (auth, create, join, routing, liveness), protocol, pairing, phone PWA, notifications | Phone dictations land on the Mac over 4G and over office Wi-Fi, typically within 2.5 s of letting go |
 | **M2b: When things go wrong** | Buffering for an offline Mac, resend after reconnect, several phones, removing a phone from either side, the PHONE-24 copy | A dictation made while the Mac sleeps arrives when it wakes within 10 minutes, and a removed phone is shut out at once |
 | **M3: iPhone app** | Spike first (bundled web app with microphone in WKWebView), then the iOS app (PHONE-03), Universal Links, Privatliv page live, TestFlight | No microphone prompt after the first time |
@@ -858,7 +859,6 @@ Every control message is a JSON object with its type in `t`. Permission comes fr
 
 ## Sources checked for this spec (October 2026)
 
-- Handy README and post-processing docs: github.com/cjpais/Handy, handy.computer/docs/post-processing
 - Edda v0.2 model card: huggingface.co/danish-foundation-models/edda-v0.2
 - Ekko PnC model card: huggingface.co/RyeAI/ekko-pnc; Ekko v1 tiny: huggingface.co/RyeAI/ekko-v1-tiny
 - Cloudflare Durable Objects pricing: developers.cloudflare.com/durable-objects/platform/pricing
@@ -874,10 +874,10 @@ Every control message is a JSON object with its type in `t`. Permission comes fr
 - FT Speech paper ("freely available for research purposes only"): arxiv.org/abs/2005.12368
 - Apple Intelligence languages in the 26.1 releases: 9to5mac.com (11 November 2025) and developer.apple.com/forums/thread/805378
 - Provider latency medians: openrouter.ai model pages (gpt-oss-120b, gpt-6-luna)
-- Handy source, October 2026: model unload default (`settings.rs`), cleanup presets and reasoning switch-off (`llm_client.rs`), filler-word lists (`audio_toolkit/text.rs`)
+- Desktop source, October 2026: model unload default (`settings.rs`), cleanup presets and reasoning switch-off (`llm_client.rs`), filler-word lists (`audio_toolkit/text.rs`)
 - Windows keyring store default persistence: github.com/open-source-cooperative/windows-native-keyring-store
-- transcribe.cpp (Handy's engine, MIT): github.com/handy-computer/transcribe.cpp; Whisper large-v3-turbo speed per machine in docs/models/whisper-large-v3-turbo.md; converters in scripts/
-- Handy's live chunking: src-tauri/src/audio_toolkit/chunking.rs and managers/transcription/chunked.rs
+- transcribe.cpp (MIT): github.com/handy-computer/transcribe.cpp; Whisper large-v3-turbo speed per machine in docs/models/whisper-large-v3-turbo.md; converters in scripts/
+- Live chunking: src-tauri/src/audio_toolkit/chunking.rs and managers/transcription/chunked.rs
 - Danish ASR leaderboard (same evaluation for every model): huggingface.co/datasets/RyeAI/danish-asr-leaderboard
 - Ekko v1 tiny model card and licence notice: huggingface.co/RyeAI/ekko-v1-tiny
 - Edda v0.2 evaluation: huggingface.co/danish-foundation-models/edda-v0.2

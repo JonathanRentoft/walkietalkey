@@ -33,6 +33,38 @@ export function freshIp(): string {
   return `2001:db8::${(ipCounter >> 16).toString(16)}:${(ipCounter & 0xffff).toString(16)}`;
 }
 
+/** The per-IP limiters' period (RELAY-11, `period: 60` in wrangler.jsonc). */
+const RATE_LIMIT_PERIOD_MS = 60_000;
+/** A per-IP burst starts at least this long before its rate-limit window ends. */
+const RATE_LIMIT_BURST_BUDGET_MS = 5_000;
+
+/**
+ * Runs `burst` inside one rate-limit window and returns its result (RELAY-11).
+ *
+ * The Workers Rate Limiting binding counts in fixed windows aligned to the wall clock, not over
+ * a sliding minute: miniflare files each call under `Math.floor(Date.now() / 60 s)`. Ten creates
+ * at hh:mm:59.95 and an eleventh at hh:mm+1:00.01 land in two windows, so the eleventh is let
+ * through, reaches the room and gets a challenge instead of 4429. A test that expects "the 11th
+ * in a minute" to be refused therefore runs its requests through this helper: when the current
+ * window ends within the budget it first waits for the next window, and it fails clearly if
+ * the burst still crossed into another window.
+ */
+export async function inOneRateLimitWindow<T>(
+  burst: () => Promise<T>,
+): Promise<T> {
+  const window = () => Math.floor(Date.now() / RATE_LIMIT_PERIOD_MS);
+  const left = () => RATE_LIMIT_PERIOD_MS - (Date.now() % RATE_LIMIT_PERIOD_MS);
+  while (left() < RATE_LIMIT_BURST_BUDGET_MS) await sleep(left());
+  const start = window();
+  const result = await burst();
+  if (window() !== start) {
+    throw new Error(
+      `the burst took over ${RATE_LIMIT_BURST_BUDGET_MS} ms and crossed a rate-limit window`,
+    );
+  }
+  return result;
+}
+
 export class Client {
   readonly queue: Message[] = [];
   private waiters: Array<() => void> = [];
@@ -398,6 +430,19 @@ export async function writesIn(roomB64: string): Promise<number> {
 export async function unthrottle(roomB64: string): Promise<void> {
   await inRoom(roomB64, (room) => {
     room.maxFramesPerSecond = 100_000;
+  });
+}
+
+/**
+ * Stops the clock the room's per-socket token bucket refills by (RELAY-11). The bucket refills
+ * while the room works through a burst, so a room on a loaded machine that takes a second or
+ * more per 50 frames never sees more than 50 per second and never refuses. With the clock
+ * stopped, a burst counts as one instant: the 51st frame is refused however slow the room is.
+ */
+export async function stopTokenClock(roomB64: string): Promise<void> {
+  await inRoom(roomB64, (room) => {
+    const stoppedAt = Date.now();
+    room.tokenClock = () => stoppedAt;
   });
 }
 

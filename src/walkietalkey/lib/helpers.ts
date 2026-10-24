@@ -448,9 +448,7 @@ export function dayNumber(nowMs: number): number {
 }
 
 export type LastSeen =
-  | { kind: "today" }
-  | { kind: "yesterday" }
-  | { kind: "date"; date: Date };
+  { kind: "today" } | { kind: "yesterday" } | { kind: "date"; date: Date };
 
 /** "Sidst set" for a phone that is not online, or null when never seen. */
 export function lastSeen(

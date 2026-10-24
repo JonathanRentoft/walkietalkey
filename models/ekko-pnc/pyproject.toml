@@ -13,3 +13,9 @@ dependencies = [
 
 [tool.uv]
 package = false
+# ekko-stt 0.1.2 caps filelock below 4, but every filelock from 3.20.4 to 4.2.0 is affected by
+# GHSA-v4x8-3wr5-3wq8, GHSA-9vhv-jxww-xfm5 and GHSA-567q-5qvw-pf92, and the only fix is 4.2.1.
+# ekko-stt uses nothing but `FileLock(path)` as a context manager (ekko/artifacts.py), which 4.x
+# keeps; generate_golden.py reproduces golden.json byte for byte with it. Drop this override once
+# ekko-stt allows filelock 4.
+override-dependencies = ["filelock>=4.2.1"]

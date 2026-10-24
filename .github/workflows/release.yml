@@ -3,87 +3,126 @@ name: Release
 # A tag vX.Y.Z on main (OSS-20, OSS-21): builds macOS (one universal app for
 # Apple Silicon and Intel) and Windows x64, signs the updater artifacts with our key (DESK-110),
 # signs and notarizes the Mac app and signs the Windows installer only when
-# those secrets exist, publishes the GitHub release with latest.json and the
-# release notes from CHANGELOG.md. Every release also becomes the website's
-# updates/beta.json, so beta users get stable releases too; stable users read
-# GitHub's latest release, which skips pre-releases (DESK-112, SITE-08).
-# A stable release is marked latest and gets copies under stable names,
-# WalkieTalkey-mac.dmg and WalkieTalkey-windows.exe, so the website's
-# releases/latest/download/ links always fetch the newest app (run 2).
+# those secrets exist, and publishes the GitHub release with the release notes
+# from CHANGELOG.md. scripts/walkietalkey/ci/release-assets.ts names the assets,
+# checks every updater signature against the key the app ships, writes
+# latest.json with tag download URLs and makes the copies under stable names,
+# WalkieTalkey-mac.dmg and WalkieTalkey-windows.exe (stable releases only), so
+# the website's releases/latest/download/ links always fetch the newest app
+# (run 2). Every release also becomes the website's updates/beta.json, so beta
+# users get stable releases too; stable users read GitHub's latest release,
+# which skips pre-releases (DESK-112, SITE-08).
+#
+# tauri-action (v1) only builds here: it would publish latest.json with
+# api.github.com asset URLs, so this workflow uploads the assets itself.
+#
+# Dry run: a pull request that changes this machinery runs the same jobs, with
+# two differences: the builds sign the updater artifacts with a throwaway key
+# (never ours) and skip code signing, and the publish job does not run. No
+# release, tag or asset is created or changed and nothing is deployed; what
+# would be published is kept as the run's artifact release-assets for 7 days.
 
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/workflows/build.yml
+      - .github/workflows/accuracy.yml
+      - scripts/walkietalkey/ci/**
+      - models/tools/setup-transcribe-cpp.sh
+      - models/eval/run.sh
+      - models/eval/fetch_fleurs.sh
+      - models/edda/convert.sh
+      - models/edda/convert_edda.py
+      - models/ekko-v1-tiny/convert.sh
+      - models/ekko-v1-tiny/convert_ekko.py
 
+# Read-only; only the publish job, which runs for a v* tag alone, may write.
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  create-release:
+  prepare:
+    name: Version, release notes and mode
     runs-on: ubuntu-24.04
     outputs:
-      release-id: ${{ steps.release.outputs.result }}
+      publish: ${{ steps.mode.outputs.publish }}
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Publish (a v* tag) or dry run (a pull request)
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$EVENT" = "push" ] && [[ "$REF" == refs/tags/v* ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "**Dry run**: the release is built, signed with a throwaway updater key and checked; nothing is published." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: The tag is on main (OSS-20)
+        if: steps.mode.outputs.publish == 'true'
         run: |
           git fetch origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "Tag ${GITHUB_REF_NAME} is not on main; releases come from main only." >&2
             exit 1
           fi
-      - name: Version from the tag and tauri.conf.json
+      - name: Version from tauri.conf.json, matching the tag
         id: version
-        shell: bash
+        env:
+          PUBLISH: ${{ steps.mode.outputs.publish }}
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          CONF=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | head -1 | cut -d'"' -f4)
-          if [ "$TAG" != "$CONF" ]; then
-            echo "Tag v$TAG does not match tauri.conf.json version $CONF" >&2
+          VERSION=$(python3 -c 'import json; print(json.load(open("src-tauri/tauri.conf.json"))["version"])')
+          if [ "$PUBLISH" = "true" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $VERSION" >&2
             exit 1
           fi
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-          if [[ "$TAG" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Release notes from CHANGELOG.md
-        shell: bash
-        run: |
-          python3 - "${{ steps.version.outputs.version }}" <<'PY'
-          import re, sys
-          version = sys.argv[1]
-          text = open("CHANGELOG.md", encoding="utf-8").read()
-          match = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.M | re.S)
-          if not match:
-              sys.exit(f"CHANGELOG.md has no section for {version}")
-          open("release-notes.md", "w", encoding="utf-8").write(match.group(1).strip() + "\n")
-          PY
-      - name: Create the draft release
-        id: release
-        uses: actions/github-script@v9
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: oven-sh/setup-bun@v2
         with:
-          script: |
-            const fs = require("fs");
-            const { data } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: context.ref.replace("refs/tags/", ""),
-              name: `WalkieTalkey ${context.ref.replace("refs/tags/v", "")}`,
-              body: fs.readFileSync("release-notes.md", "utf8"),
-              draft: true,
-              prerelease: ${{ steps.version.outputs.prerelease }},
-            });
-            return data.id;
+          bun-version: 1.4.4
+      - name: Release scripts
+        run: bun test scripts/walkietalkey/ci
+      - name: Release notes from CHANGELOG.md (OSS-21)
+        run: |
+          bun scripts/walkietalkey/ci/release-assets.ts --notes-out release-notes.md
+          cat release-notes.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 7
 
-  # Which signing secrets exist; signing steps run only for those.
-  # Spec 15.1: the accuracy harness runs before each release. It reports in
-  # this run's summary and does not hold the release back.
+  # Spec 15.1: the accuracy harness runs before each release. A release
+  # reports it in this run's summary and goes ahead whatever it says; the dry
+  # run fails on it, so a pull request that changes the machinery proves the
+  # measurement still runs.
   accuracy:
+    needs: prepare
     uses: ./.github/workflows/accuracy.yml
+    with:
+      report-only: ${{ needs.prepare.outputs.publish == 'true' }}
 
+  # Which signing secrets exist; signing steps run only for those, and only in
+  # a real release.
   signing:
+    needs: prepare
     runs-on: ubuntu-24.04
     outputs:
       apple: ${{ steps.check.outputs.apple }}
@@ -92,20 +131,21 @@ jobs:
       - id: check
         shell: bash
         env:
+          PUBLISH: ${{ needs.prepare.outputs.publish }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           WINDOWS_SIGN_COMMAND: ${{ secrets.WINDOWS_SIGN_COMMAND }}
         run: |
-          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_ID" ]; then echo "apple=true" >> "$GITHUB_OUTPUT"; else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
-          if [ -n "$WINDOWS_SIGN_COMMAND" ]; then echo "windows=true" >> "$GITHUB_OUTPUT"; else echo "windows=false" >> "$GITHUB_OUTPUT"; fi
+          if [ "$PUBLISH" = "true" ] && [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_ID" ]; then echo "apple=true" >> "$GITHUB_OUTPUT"; else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
+          if [ "$PUBLISH" = "true" ] && [ -n "$WINDOWS_SIGN_COMMAND" ]; then echo "windows=true" >> "$GITHUB_OUTPUT"; else echo "windows=false" >> "$GITHUB_OUTPUT"; fi
 
+  # Each build hands its files over as the artifact release-mac or
+  # release-windows; nothing is uploaded to GitHub from here, so the two run
+  # side by side.
   build:
-    needs: [create-release, signing]
+    needs: [prepare, signing]
     strategy:
       fail-fast: false
-      # One at a time: each build adds its platform to latest.json in the draft release, and two
-      # finishing together could overwrite each other's entry.
-      max-parallel: 1
       matrix:
         include:
           - platform: macos-26
@@ -123,74 +163,158 @@ jobs:
       build-args: ${{ matrix.args }}
       sign-binaries: ${{ (matrix.os == 'mac' && needs.signing.outputs.apple == 'true') || (matrix.os == 'windows' && needs.signing.outputs.windows == 'true') }}
       sign-updater: true
+      throwaway-updater-key: ${{ needs.prepare.outputs.publish != 'true' }}
+      release-artifacts: true
       asset-prefix: walkietalkey
-      release-id: ${{ needs.create-release.outputs.release-id }}
       no-cache: true
     secrets: inherit
 
-  publish:
-    needs: [create-release, build]
+  assemble:
+    name: Release assets and latest.json (DESK-110)
+    needs: [prepare, build]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - name: latest.json has every platform, signed (DESK-110)
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-mac
+          path: artifacts/release-mac
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-windows
+          path: artifacts/release-windows
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Name, check and list the assets
         env:
-          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ needs.prepare.outputs.publish }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
-          ASSET=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets" \
-            --jq '.[] | select(.name == "latest.json") | .id')
-          if [ -z "$ASSET" ]; then echo "The release has no latest.json" >&2; exit 1; fi
-          gh api -H "Accept: application/octet-stream" "repos/${GITHUB_REPOSITORY}/releases/assets/$ASSET" > latest.json
-          python3 - <<'PY'
-          import json, sys
-          platforms = json.load(open("latest.json")).get("platforms", {})
-          missing = [p for p in ("darwin-aarch64", "darwin-x86_64", "windows-x86_64")
-                     if not platforms.get(p, {}).get("signature")]
-          if missing:
-              sys.exit(f"latest.json lacks a signed entry for {', '.join(missing)}")
-          print("latest.json:", ", ".join(sorted(platforms)))
-          PY
-      # Stable names for the website's direct downloads (releases/latest/download/...).
-      - name: Copies under stable names
-        if: needs.create-release.outputs.prerelease != 'true'
+          args=(--repo "$GITHUB_REPOSITORY" --tag "$TAG" --mac artifacts/release-mac --windows artifacts/release-windows --out release-assets)
+          if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
+          # The dry run's builds signed with throwaway keys; a release must match the app's key.
+          if [ "$PUBLISH" = "true" ]; then args+=(--published); else args+=(--throwaway-keys); fi
+          bun scripts/walkietalkey/ci/release-assets.ts "${args[@]}"
+      # The beta channel gets every release, stable ones too (DESK-112, SITE-08).
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: The website builds with the beta manifest
+        run: |
+          cp release-assets/latest.json site/public/updates/beta.json
+          bun install --frozen-lockfile
+          (cd site && bun run build)
+          cmp site/dist/updates/beta.json release-assets/latest.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: release-assets
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish the release
+    needs: [prepare, assemble]
+    # A v* tag only; a pull request's dry run never gets here.
+    if: needs.prepare.outputs.publish == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: release-assets
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: release-notes
+      # Reuses this tag's draft if a re-run left one, so re-running the job is safe.
+      - name: Draft release with the notes from CHANGELOG.md (OSS-21)
+        id: release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require("fs");
+            const tag = process.env.TAG;
+            const fields = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: `WalkieTalkey ${tag.replace(/^v/, "")}`,
+              body: fs.readFileSync("release-notes/release-notes.md", "utf8"),
+              prerelease: process.env.PRERELEASE === "true",
+            };
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const existing = releases.find((r) => r.tag_name === tag);
+            if (existing && !existing.draft) {
+              throw new Error(`The release ${tag} is already published`);
+            }
+            if (existing) {
+              await github.rest.repos.updateRelease({ ...fields, release_id: existing.id });
+              return existing.id;
+            }
+            const { data } = await github.rest.repos.createRelease({ ...fields, tag_name: tag, draft: true });
+            return data.id;
+      # A draft cannot be found by tag (`gh release upload`), so upload by id.
+      - name: Upload the assets
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.result }}
         run: |
           set -euo pipefail
-          mkdir -p stable
-          ASSETS=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets" --paginate --jq '.[] | "\(.id) \(.name)"')
-          fetch() {
-            local id
-            id=$(echo "$ASSETS" | awk -v re="$1" '$2 ~ re {print $1; exit}')
-            if [ -z "$id" ]; then echo "No asset matches $1" >&2; exit 1; fi
-            gh api -H "Accept: application/octet-stream" "repos/${GITHUB_REPOSITORY}/releases/assets/$id" > "stable/$2"
-          }
-          fetch '_universal\.dmg$' WalkieTalkey-mac.dmg
-          fetch '-setup\.exe$' WalkieTalkey-windows.exe
-          # The release is still a draft here, which `gh release upload <tag>` cannot find: upload by id.
-          for f in WalkieTalkey-mac.dmg WalkieTalkey-windows.exe; do
-            gh api --method POST -H "Content-Type: application/octet-stream" \
-              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets?name=$f" \
-              --input "stable/$f" --jq '.name + " " + (.size|tostring)'
+          api="repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"
+          for f in release-assets/*; do
+            name="$(basename "$f")"
+            for attempt in 1 2 3; do
+              # A re-run or a failed attempt may have left this asset behind.
+              old="$(gh api "$api/assets" --paginate --jq ".[] | select(.name == \"$name\") | .id")"
+              if [ -n "$old" ]; then gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/$old"; fi
+              if gh api --method POST -H "Content-Type: application/octet-stream" \
+                "https://uploads.github.com/$api/assets?name=$name" \
+                --input "$f" --jq '.name + " " + (.size|tostring)'; then
+                break
+              fi
+              if [ "$attempt" = 3 ]; then echo "Uploading $name failed" >&2; exit 1; fi
+              sleep $((attempt * 10))
+            done
           done
+      - name: The release has exactly these assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.result }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" --paginate \
+            --jq '.[] | select(.state == "uploaded") | "\(.name) \(.size)"' | sort > remote.txt
+          for f in release-assets/*; do echo "$(basename "$f") $(wc -c < "$f" | tr -d ' ')"; done | sort > local.txt
+          diff -u local.txt remote.txt
       - name: Publish the release
         uses: actions/github-script@v9
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.result }}
         with:
           script: |
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              release_id: ${{ needs.create-release.outputs.release-id }},
+              release_id: Number(process.env.RELEASE_ID),
               draft: false,
-              make_latest: "${{ needs.create-release.outputs.prerelease == 'true' && 'false' || 'true' }}",
+              make_latest: process.env.PRERELEASE === "true" ? "false" : "true",
             });
       # The beta channel gets every release, stable ones too (DESK-112).
       - name: Beta manifest for the website
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "${GITHUB_REF_NAME}" --pattern latest.json --output site/public/updates/beta.json --clobber
-      - uses: actions/setup-node@v5
+        run: cp release-assets/latest.json site/public/updates/beta.json
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2

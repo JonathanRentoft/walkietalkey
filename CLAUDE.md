@@ -1,6 +1,6 @@
 # WalkieTalkey
 
-Free, open-source Danish dictation for Mac, Windows and the phone (Apache-2.0), a fork of [Handy](https://github.com/cjpais/Handy) (MIT). The system spec is `docs/SPEC.md`; read the parts you touch before changing anything. `AGENTS.md` has the commands, the code map and the rules.
+Free, open-source Danish dictation for Mac, Windows and the phone (Apache-2.0). The system spec is `docs/SPEC.md`; read the parts you touch before changing anything. `AGENTS.md` has the commands, the code map and the rules.
 
 ## How we work
 
@@ -11,11 +11,11 @@ Free, open-source Danish dictation for Mac, Windows and the phone (Apache-2.0), 
 
 ## Repository layout (spec section 4.1)
 
-Handy's folders stay where they are, so monthly upstream merges stay easy. Our code lives in our own folders and modules (DESK-05).
+WalkieTalkey's features live in their own folders and modules, apart from the desktop core (DESK-05).
 
 ```
-src-tauri/            desktop app, Rust (from Handy); our modules in src-tauri/src/walkietalkey/, relay/, pipeline/da/
-src/                  desktop UI, React + TypeScript (from Handy); our screens in src/walkietalkey/
+src-tauri/            desktop app, Rust; feature modules in src-tauri/src/walkietalkey/, relay/, pipeline/da/
+src/                  desktop UI, React + TypeScript; WalkieTalkey screens in src/walkietalkey/
 crates/               our standalone Rust crates (Ekko PnC, relay client), no Tauri dependency
 phone/                phone web app, Vite + React + TypeScript, PWA
 ios/                  native iOS shell (SwiftUI + WKWebView)
@@ -26,11 +26,11 @@ packages/protocol/    message types, envelope crypto, test vectors; Rust crate i
 models/               model manifest, conversion scripts, model cards, licence texts
 docs/                 SPEC.md, PROTOCOL.md, PRIVACY.md, MANAGED_SETTINGS.md, ARCHITECTURE.md, MODELS.md
 deploy/               managed-settings templates (ADMX/ADML, .mobileconfig)
-licenses/             third-party licence texts, including Handy's MIT licence
+licenses/             third-party licence texts
 ```
 
 `docs/SPEC.md` is the committed copy of the system spec. Requirement IDs (DESK-, PHONE-, RELAY-, SEC-, SITE-, PRIV-, OSS-) are referenced from tests and pull requests. Package manager: bun workspaces.
 
-Handy's own development guide, adapted, follows.
+The development guide follows.
 
 Read @AGENTS.md

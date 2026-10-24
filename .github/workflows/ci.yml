@@ -23,9 +23,9 @@ jobs:
     name: Lint, types and TypeScript tests
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Astro (the website) needs a newer Node.js than the runner's default.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
@@ -43,10 +43,16 @@ jobs:
         run: bun run check:translations
       - name: Desktop UI unit tests and the owner's copy list
         run: bun run test:wt && bun run check:copy
-      - name: Handy's keyboard and model-language checks
+      - name: Keyboard and model-language checks
         run: bun run test:keyboard && bun run check:model-languages
       - name: Model catalog in sync with its package
         run: bun run check:catalog
+      - name: CI and release scripts (Xcode pin, release assets and latest.json)
+        run: bun test scripts/walkietalkey/ci
+      # The release reads its notes from CHANGELOG.md; check them on every pull request, since a
+      # CHANGELOG change alone does not start the release dry run.
+      - name: Release notes for the app's version in CHANGELOG.md (OSS-21)
+        run: bun scripts/walkietalkey/ci/release-assets.ts --notes-out "$RUNNER_TEMP/release-notes.md"
       - name: Protocol (TypeScript, shared test vectors)
         working-directory: packages/protocol
         run: bun run typecheck && bun run test
@@ -69,9 +75,9 @@ jobs:
     name: Browser tests (Playwright)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Astro (the website) needs a newer Node.js than the runner's default.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
@@ -106,7 +112,11 @@ jobs:
     env:
       CMAKE_POLICY_VERSION_MINIMUM: "3.5"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+      # One released Xcode and its own SDK, as in build.yml: the image's Command Line Tools SDK is
+      # the MacOSX27.0 beta.
+      - name: Released Xcode and its own SDK
+        run: scripts/walkietalkey/ci/select-xcode.sh
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -156,7 +166,7 @@ jobs:
     name: Licences and advisories
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -192,7 +202,7 @@ jobs:
             (cd "$dir" && cargo audit \
               --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195 \
               --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369 \
-              --ignore RUSTSEC-2026-0235 --ignore RUSTSEC-2024-0422 --ignore RUSTSEC-2026-0387)
+              --ignore RUSTSEC-2026-0235 --ignore RUSTSEC-2024-0422)
           done
 
   # The same universal app (Apple Silicon and Intel) the release publishes as WalkieTalkey-mac.dmg.
@@ -220,7 +230,7 @@ jobs:
     name: iOS app (simulator build)
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4

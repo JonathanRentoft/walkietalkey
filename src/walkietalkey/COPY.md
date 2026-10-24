@@ -28,10 +28,12 @@ Also for the owner:
 - TODO(copy): strings written by the backend and shown as they come: the
   DESK-31 speed reason (src-tauri/src/walkietalkey/speed.rs), "en telefon
   uden navn", and the notification titles (notify.rs).
-- Handy's own components under Avanceret (microphone, log level, keyboard
-  diagnostic, paste delays) keep Handy's Danish strings in `settings.*`.
+- The desktop core's components under Avanceret (microphone, log level,
+  keyboard diagnostic, paste delays) keep their Danish strings in `settings.*`.
 - TODO(copy): `common.reset` ("Nulstil"), the screen reader name added to
-  Handy's icon-only reset button.
+  the icon-only reset button.
+- TODO(copy): the Secure Input answer on walkietalkey.com/spoergsmaal, which
+  the app's warning links to ("Sådan løser du det", run 3).
 
 | Key                                            | Danish                                                                                                                                                               | Status     |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
@@ -287,7 +289,7 @@ Also for the owner:
 | `wt.modelSettings.space`                       | Plads brugt                                                                                                                                                          | TODO(copy) |
 | `wt.modelSettings.spaceDesc`                   | De talemodeller, der ligger på computeren.                                                                                                                           | TODO(copy) |
 | `wt.modelSettings.others`                      | Andre modeller                                                                                                                                                       | TODO(copy) |
-| `wt.modelSettings.othersDesc`                  | Edda er lavet til dansk. Ekko v1 Tiny er hurtigere på langsomme computere. De andre er Handys modeller.                                                              | TODO(copy) |
+| `wt.modelSettings.othersDesc`                  | Edda er lavet til dansk. Ekko v1 Tiny er hurtigere på langsomme computere. De andre er generelle modeller fra transcribe.cpp.                                        | TODO(copy) |
 | `wt.modelSettings.noOthers`                    | Ingen andre modeller.                                                                                                                                                | TODO(copy) |
 | `wt.modelSettings.onDisk`                      | hentet                                                                                                                                                               | TODO(copy) |
 | `wt.modelSettings.use`                         | Brug                                                                                                                                                                 | TODO(copy) |
@@ -357,7 +359,7 @@ Also for the owner:
 | `wt.about.version`                             | Version                                                                                                                                                              | TODO(copy) |
 | `wt.about.credits`                             | Licenser og kreditering                                                                                                                                              | TODO(copy) |
 | `wt.about.credit.walkietalkey`                 | Apache-2.0. Gratis for alle, også virksomheder.                                                                                                                      | TODO(copy) |
-| `wt.about.credit.handy`                        | WalkieTalkey bygger på Handy af CJ Pais. MIT.                                                                                                                        | TODO(copy) |
+| `wt.about.credit.handy`                        | Dele af skrivebordsappens kode. CJ Pais, MIT.                                                                                                                        | TODO(copy) |
 | `wt.about.credit.transcribe`                   | Kører talemodellerne på computeren, sammen med ggml. MIT.                                                                                                            | TODO(copy) |
 | `wt.about.credit.edda`                         | Dansk talemodel fra Alexandra Instituttet, bygget på OpenAI Whisper large-v3-turbo. Apache-2.0.                                                                      | TODO(copy) |
 | `wt.about.credit.ekkoPnc`                      | Tegnsætning fra RyeAI. CC BY 4.0.                                                                                                                                    | TODO(copy) |

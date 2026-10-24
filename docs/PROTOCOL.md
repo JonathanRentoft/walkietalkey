@@ -477,7 +477,9 @@ corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `re
     Rust integration tests; it is never deployed.
 22. **Dependencies:** the Rust protocol crate uses `base64`, `thiserror`, `zeroize` and `subtle`
     besides the RustCrypto crates (no home-made crypto), and the RustCrypto generation that
-    matches `sha2 0.10` already used by `src-tauri` (p256 0.13, hkdf/hmac 0.12, aes-gcm 0.10).
+    matches `sha2 0.11` (p256 0.14, hkdf/hmac 0.13, aes-gcm 0.11, getrandom 0.4; run 3, for
+    RUSTSEC-2026-0387). The move from p256 0.13 changed no byte: the committed test vectors
+    regenerate identically.
 23. **Frames for non-members:** spec 9.4 mentions 4403 for a recipient that is not a member,
     while RELAY-07 says such frames are dropped. The relay drops the owner's frames for
     non-members silently and closes with 4403 when a phone addresses anyone but the owner or a

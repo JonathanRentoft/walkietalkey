@@ -22,17 +22,18 @@ load-dynamic = ["ort/load-dynamic"]
 [dependencies]
 # rc.13 links ONNX Runtime 1.28.0, which reproduces the reference runtime
 # (onnxruntime 1.29.0, pinned by ekko-stt 0.1.2) on the whole golden set;
-# rc.12 (ORT 1.24.2) flips 6 near-tie words in 3 long inputs and rc.14
-# (ORT 1.31.0) 3 words in 2. C API 17 is the floor, so dynamic linking against
-# any ONNX Runtime >= 1.17 works.
+# rc.12 (ORT 1.24.2) flips 6 near-tie words in 3 long inputs, and rc.14 and
+# rc.15 (both ORT 1.31.0) 3 words in 2. C API 17 is the floor, so dynamic
+# linking against any ONNX Runtime >= 1.17 works.
 ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "api-17"] }
-# Same Rust core as the Python `tokenizers==0.22.2` that ekko-stt pins; the
-# pure-Rust regex backend keeps the build free of C/C++ (onig, esaxx).
-tokenizers = { version = "=0.22.2", default-features = false, features = ["fancy-regex"] }
+# 0.23 tokenizes the whole golden set exactly like the Python `tokenizers==0.22.2`
+# that ekko-stt pins; the pure-Rust regex backend keeps the build free of C/C++
+# (onig, esaxx).
+tokenizers = { version = "=0.23.2", default-features = false, features = ["fancy-regex"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"

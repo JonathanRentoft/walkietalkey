@@ -23,8 +23,7 @@ function Arrow() {
   );
 }
 
-export interface ShinyButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ShinyButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** 'ink' (default) is the primary action; 'glass' sits on gradients; 'paper' is a light button for dark sections on a light page. */
   variant?: "ink" | "glass" | "paper";
   size?: "md" | "lg";

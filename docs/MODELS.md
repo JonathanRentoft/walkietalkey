@@ -5,13 +5,13 @@ licence terms behind it. Milestone M0 (spec section 16): DESK-29 to DESK-35,
 DESK-41, DESK-43, OSS-24. Measured on 23 October 2026 on the owner's 16-inch
 MacBook Pro (Apple M1 Pro, 32 GB, macOS 26.6).
 
-| Model                                         | Role                                                | Engine                             | File we ship                                              | Licence                                                    | Status                                                                                                                                       |
-| --------------------------------------------- | --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edda v0.2 (Alexandra Institute)               | Danish speech recognition, default (DESK-30)        | transcribe.cpp 0.4                 | `edda-v0.2-Q8_0.gguf`, 886 MB                             | Apache-2.0 + CoRal restrictions                            | Converted and validated; 7.17 % WER on FLEURS da. Decode with timestamps off and one utterance per window. Publishing waits on decision 18.7 |
-| Ekko v1 Tiny (RyeAI)                          | Fast model for slow PCs (DESK-35)                   | transcribe.cpp 0.4                 | `ekko-v1-tiny-Q8_0.gguf`, 134 MB                          | NVIDIA Open Model License + CC BY 4.0 + CoRal restrictions | Licence allows it; converted and validated; same FT Speech question as Edda                                                                  |
-| Ekko PnC v2 (RyeAI)                           | Punctuation and capitalisation (DESK-41)            | ONNX Runtime via `crates/ekko-pnc` | `pnc.int8.onnx` + `tokenizer.json` + `config.json`, 25 MB | CC BY 4.0 + CoRal restrictions                             | Rust port reproduces the reference exactly                                                                                                   |
-| Silero VAD v6.2                               | Voice activity detection                            | transcribe.cpp 0.4                 | bundled in the app                                        | MIT                                                        | Unchanged from Handy                                                                                                                         |
-| Whisper large-v3-turbo (OpenAI, Handy's GGUF) | Baseline for comparison, "Andre modeller" (DESK-34) | transcribe.cpp 0.4                 | Handy's catalog file                                      | MIT                                                        | Unchanged from Handy                                                                                                                         |
+| Model                                               | Role                                                | Engine                             | File we ship                                              | Licence                                                    | Status                                                                                                                                       |
+| --------------------------------------------------- | --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edda v0.2 (Alexandra Institute)                     | Danish speech recognition, default (DESK-30)        | transcribe.cpp 0.4                 | `edda-v0.2-Q8_0.gguf`, 886 MB                             | Apache-2.0 + CoRal restrictions                            | Converted and validated; 7.17 % WER on FLEURS da. Decode with timestamps off and one utterance per window. Publishing waits on decision 18.7 |
+| Ekko v1 Tiny (RyeAI)                                | Fast model for slow PCs (DESK-35)                   | transcribe.cpp 0.4                 | `ekko-v1-tiny-Q8_0.gguf`, 134 MB                          | NVIDIA Open Model License + CC BY 4.0 + CoRal restrictions | Licence allows it; converted and validated; same FT Speech question as Edda                                                                  |
+| Ekko PnC v2 (RyeAI)                                 | Punctuation and capitalisation (DESK-41)            | ONNX Runtime via `crates/ekko-pnc` | `pnc.int8.onnx` + `tokenizer.json` + `config.json`, 25 MB | CC BY 4.0 + CoRal restrictions                             | Rust port reproduces the reference exactly                                                                                                   |
+| Silero VAD v6.2                                     | Voice activity detection                            | transcribe.cpp 0.4                 | bundled in the app                                        | MIT                                                        | Unchanged from Handy                                                                                                                         |
+| Whisper large-v3-turbo (OpenAI, the catalog's GGUF) | Baseline for comparison, "Andre modeller" (DESK-34) | transcribe.cpp 0.4                 | the model catalog (`catalog.json`)                        | MIT                                                        | Unchanged from Handy                                                                                                                         |
 
 Every file the app downloads or bundles is listed with size and SHA-256 in
 [`models/manifest.json`](../models/manifest.json) (DESK-32). They are the assets
@@ -27,7 +27,7 @@ Speech question (decision 18.7) only concerns companies' use and stays open.
 ## Decode Edda with timestamps off
 
 Edda was fine-tuned on `<|da|><|transcribe|><|notimestamps|>` sequences only.
-transcribe.cpp's default `TimestampKind::Auto` (which stock Handy uses) always
+transcribe.cpp's default `TimestampKind::Auto` always
 runs Whisper models with segment timestamps, and then Edda drops or cuts the
 first words of a window ("Dette er en vigtig måde ..." becomes "er en vigtig
 måde ..."). This is the model, not the engine: the original Transformers model
@@ -44,12 +44,12 @@ splitting a multi-byte character), which the harness now tolerates.
 
 ## Edda v0.2: conversion and validation (DESK-29)
 
-- **Conversion.** transcribe.cpp 0.4.0 (the release Handy links;
+- **Conversion.** transcribe.cpp 0.4.0 (the release the app links;
   `scripts/convert-whisper.py`, then `transcribe-quantize --quant Q8_0`). A
   wrapper only registers the name ("Edda v0.2", variant `edda-v0.2`); the
   weights, vocabulary and configuration go through the upstream converter
   unchanged. The GGUF header has the same keys and the same 589 tensors as
-  Handy's own Whisper turbo file, so stock Handy lists it from its custom
+  the catalog's Whisper turbo file, so the app lists it from its custom
   models folder as "Edda v0.2".
 - **transcribe.cpp's Whisper gate** (`validate.py all --family whisper`, F16 GGUF on
   CPU against Transformers 5.6.1 fp32, cases: two Danish FLEURS clips and
@@ -57,7 +57,7 @@ splitting a multi-byte character), which the harness now tolerates.
   Edda nor stock turbo stays inside transcribe.cpp's published tolerance budget
   on this machine (the budget was calibrated on jfk only, on another machine),
   so the same pipeline was run on stock `openai/whisper-large-v3-turbo` with
-  Handy's F16 GGUF as a control:
+  the catalog's F16 GGUF as a control:
 
   | Case                             | Tensors within budget: Edda | Turbo (control) |       Worst max_abs: Edda | Turbo |
   | -------------------------------- | --------------------------: | --------------: | ------------------------: | ----: |
@@ -93,7 +93,7 @@ tensors inside the Parakeet tolerances. The tensor outside on both clips is
 values equal `enc.final`, which passes); `enc.block.8.out` exceeds max_abs on
 one clip with its mean inside. F32 and Q8_0 give the same text on both clips.
 transcribe.cpp recommends Q8_0 as the default quant for every model it
-publishes (Handy's catalog ships Q8_0 for its 110M Parakeet too); RyeAI's own
+publishes (the model catalog ships Q8_0 for its 110M Parakeet too); RyeAI's own
 quant table shows Q8_0 within 0.01 WER points of F16.
 
 ## Ekko PnC in Rust (DESK-41)
@@ -109,7 +109,7 @@ let words: Vec<String> = pnc.punctuate_words(&["hej", "med", "dig"])?;
 ```
 
 - Words are Python's `str.split()`; tokenisation is the same `tokenizer.json`
-  through the same Rust core (`tokenizers` 0.22.2) with pre-tokenised input;
+  through the same Rust core (`tokenizers` 0.23.2, which reproduces the golden set) with pre-tokenised input;
   windows of at most 128 tokens re-read 12 words of left context and hold back
   12 words for the next window, exactly as the reference plans and merges them;
   each word's label comes from its first sub-token (NumPy `argmax` semantics);
@@ -126,22 +126,21 @@ let words: Vec<String> = pnc.punctuate_words(&["hej", "med", "dig"])?;
   notice without it; `models/ekko-pnc/download.sh <dir>` fetches the pinned
   files with checksum checks (for CI).
 - **ONNX Runtime version matters.** With `ort` 2.0.0-rc.12 (ONNX Runtime
-  1.24.2, what Handy last shipped) 6 near-tie words in 3 long inputs came out
+  1.24.2, the version the app shipped before) 6 near-tie words in 3 long inputs came out
   differently, and the Python reference itself gives exactly the same 6
   differences on onnxruntime 1.24.2; on 1.28.0 it matches the reference's 1.29.0
-  on every input, and on 1.31.0 it differs again (3 words). The crate therefore
+  on every input, and on 1.31.0 (`ort` rc.14 and rc.15) it differs again (3 words). The crate therefore
   pins **`ort` =2.0.0-rc.13 (ONNX Runtime 1.28.0)**. Any API-17+ runtime works;
   only the exact golden match needs 1.28/1.29.
 - **Targets.** `cargo check` passes for `aarch64-apple-darwin` (pyke's prebuilt
   static ONNX Runtime, default feature), `x86_64-pc-windows-msvc` (prebuilt) and
   `x86_64-apple-darwin` with `--features load-dynamic`. pyke ships no
   `x86_64-apple-darwin` binary and Microsoft stopped publishing Intel macOS
-  builds after 1.23, so Intel Macs need an ONNX Runtime built for them (Handy
-  hosted its own 1.24.2) linked with `ORT_LIB_LOCATION` +
+  builds after 1.23, so Intel Macs need an ONNX Runtime built for them, linked with `ORT_LIB_LOCATION` +
   `ORT_PREFER_DYNAMIC_LINK=1`, or loaded at run time (`load-dynamic`). On
-  Windows, Handy linked Microsoft's baseline `onnxruntime.dll` dynamically
-  because pyke's static Windows build has an AVX2 initialiser that crashes on
-  pre-Haswell CPUs; the same applies here (use the 1.28.0 release).
+  Windows, link Microsoft's baseline `onnxruntime.dll` dynamically, because
+  pyke's static Windows build has an AVX2 initialiser that crashes on
+  pre-Haswell CPUs (use the 1.28.0 release).
 - **Speed** (release build, M1 Pro CPU): model load 130 ms; a 15-word sentence
   3 ms; 1,324 words (11 windows) 190 ms.
 
@@ -156,7 +155,7 @@ models/eval/run.sh --clips-dir ~/diktater   # the owner's own <name>.wav + <name
 ```
 
 It fetches and builds what is missing (transcribe.cpp 0.4.0, FLEURS, Edda Q8_0
-from the original, Handy's Whisper turbo Q8_0 checked against the catalog's
+from the original, the catalog's Whisper turbo Q8_0 checked against its
 SHA-256, Ekko v1 tiny Q8_0), transcribes every clip with each model through
 `transcribe-cli` in batch mode (model loaded once, greedy, language forced to
 Danish) and writes `summary.md`, `summary.json` and one `<model>.jsonl` with
@@ -192,13 +191,13 @@ Run on 23 October 2026, 02:12 to 04:58 with pauses (GPU job log in
 `_kit/work/runs/gpu-jobs.log`; parts ran next to other jobs of ours, which only
 affects timing).
 
-| Model                               | Timestamps       |        WER | 95 % CI        | Subst. | Del. | Ins. | Marks per 25 words | Clips under 1 mark per 25 words (DESK-41 trigger) |
-| ----------------------------------- | ---------------- | ---------: | -------------- | -----: | ---: | ---: | -----------------: | ------------------------------------------------: |
-| **Edda v0.2 Q8_0**                  | off              | **7.17 %** | 6.64 to 7.74   |  1,046 |  293 |  130 |               1.98 |                                      377 (40.5 %) |
-| Edda v0.2 Q8_0                      | on (stock Handy) |    14.54 % | 12.72 to 16.94 |  1,243 |  880 |  858 |               1.79 |                                      445 (47.8 %) |
-| Whisper large-v3-turbo Q8_0 (Handy) | off              |    13.06 % | 12.28 to 13.71 |  2,069 |  285 |  322 |               3.22 |                                         6 (0.6 %) |
-| Whisper large-v3-turbo Q8_0 (Handy) | on (stock Handy) |    13.29 % | 12.53 to 13.94 |  2,083 |  297 |  344 |               3.17 |                                         7 (0.8 %) |
-| Ekko v1 Tiny Q8_0                   | n/a (RNN-T)      |    10.11 % | 9.47 to 10.76  |  1,442 |  412 |  219 |               0.00 |                                      929 (99.9 %) |
+| Model                                 | Timestamps          |        WER | 95 % CI        | Subst. | Del. | Ins. | Marks per 25 words | Clips under 1 mark per 25 words (DESK-41 trigger) |
+| ------------------------------------- | ------------------- | ---------: | -------------- | -----: | ---: | ---: | -----------------: | ------------------------------------------------: |
+| **Edda v0.2 Q8_0**                    | off                 | **7.17 %** | 6.64 to 7.74   |  1,046 |  293 |  130 |               1.98 |                                      377 (40.5 %) |
+| Edda v0.2 Q8_0                        | on (engine default) |    14.54 % | 12.72 to 16.94 |  1,243 |  880 |  858 |               1.79 |                                      445 (47.8 %) |
+| Whisper large-v3-turbo Q8_0 (catalog) | off                 |    13.06 % | 12.28 to 13.71 |  2,069 |  285 |  322 |               3.22 |                                         6 (0.6 %) |
+| Whisper large-v3-turbo Q8_0 (catalog) | on (engine default) |    13.29 % | 12.53 to 13.94 |  2,083 |  297 |  344 |               3.17 |                                         7 (0.8 %) |
+| Ekko v1 Tiny Q8_0                     | n/a (RNN-T)         |    10.11 % | 9.47 to 10.76  |  1,442 |  412 |  219 |               0.00 |                                      929 (99.9 %) |
 
 The references have 3.16 marks per 25 words. For comparison, the originals'
 own numbers on this split: Edda 7.34 % (5-beam search, leaderboard
@@ -224,7 +223,7 @@ always needs PnC, as the spec expects.
 ## Raw speed (DESK-31, DESK-43)
 
 `models/speed/run.sh`: a small bench on the `transcribe-cpp` 0.4.0 crate (with
-`transcribe-cpp-sys` 0.4.0, as Handy's lock), the app's run options (language
+`transcribe-cpp-sys` 0.4.0, as in the app's lock file), the app's run options (language
 `da`, timestamps off), model loaded once, 1 warm-up and 5 timed runs per clip,
 wall time around `Session::run`. Clips: Danish FLEURS speech of exactly 10, 11,
 30 (three utterances) and 35 s (four utterances; two Whisper windows),
@@ -437,7 +436,7 @@ Credit in About and NOTICE (spec section 11). We mirror the files unchanged.
   terms (and NST's) and asking the Alexandra Institute, and to record here. It
   affects Edda, Ekko v1 Tiny and, through its training text, Ekko PnC. Until
   then nothing is uploaded; if the answer is no, the default falls back to
-  Handy's Whisper turbo or Parakeet V3 (spec section 11).
+  the catalog's Whisper turbo or Parakeet V3 (spec section 11).
 - **CoRal Attachment A 3(a), machine-generated content.** The CoRal licence
   forbids using models trained on CoRal "to generate or disseminate
   machine-generated information or content in any medium without expressly and

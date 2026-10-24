@@ -1,8 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { listen } from "@tauri-apps/api/event";
-// WalkieTalkey draws the DictationPill instead of Handy's overlay (DESK-55);
-// Handy's RecordingOverlay.tsx stays in the tree for upstream merges.
+// WalkieTalkey draws the DictationPill (DESK-55); the older
+// RecordingOverlay.tsx is no longer used.
 import { PillOverlay } from "@/walkietalkey/pill/PillOverlay";
 import {
   applyTheme,

@@ -4,9 +4,11 @@ import {
   Client,
   createRoom,
   frameFrom,
+  inOneRateLimitWindow,
   joinPhone,
   newOwner,
   rawFrame,
+  stopTokenClock,
 } from "./helpers.ts";
 
 describe("limits (RELAY-11)", () => {
@@ -40,6 +42,8 @@ describe("limits (RELAY-11)", () => {
   it("more than 50 frames per second on one socket close with 4429", async () => {
     const { owner, client: ownerClient } = await createRoom();
     const p = await joinPhone(owner, ownerClient);
+    // The 200 frames count as one instant, however fast the room works through them.
+    await stopTokenClock(owner.roomB64);
     const f = await frameFrom(
       p.phone.deviceId,
       owner.keys.deviceId,
@@ -71,14 +75,17 @@ describe("limits (RELAY-11)", () => {
 
   it("per IP: the 11th create in a minute is refused in the Worker with 4429", async () => {
     const ip = "203.0.113.77";
-    for (let i = 0; i < 10; i++) {
-      const c = await Client.open(b64uEncode(randomBytes(16)), "create", ip);
-      await c.control("challenge");
-      c.close();
-    }
     const owner = await newOwner();
-    const c = await Client.open(owner.roomB64, "create", ip);
-    expect((await c.closed()).code).toBe(4429);
+    // All eleven creates are counted in one limiter window (see inOneRateLimitWindow).
+    const eleventh = await inOneRateLimitWindow(async () => {
+      for (let i = 0; i < 10; i++) {
+        const ok = await Client.open(b64uEncode(randomBytes(16)), "create", ip);
+        await ok.control("challenge");
+        ok.close();
+      }
+      return Client.open(owner.roomB64, "create", ip);
+    });
+    expect((await eleventh.closed()).code).toBe(4429);
     // Another IP is not affected.
     const other = await Client.open(owner.roomB64, "create", "203.0.113.78");
     await other.control("challenge");
@@ -87,13 +94,16 @@ describe("limits (RELAY-11)", () => {
   it("per IP: the 11th join in a minute is refused, auth is not limited", async () => {
     const ip = "203.0.113.90";
     const { owner } = await createRoom();
-    for (let i = 0; i < 10; i++) {
-      const c = await Client.open(owner.roomB64, "join", ip);
-      await c.control("challenge");
-      c.close();
-    }
-    const c = await Client.open(owner.roomB64, "join", ip);
-    expect((await c.closed()).code).toBe(4429);
+    // All eleven joins are counted in one limiter window (see inOneRateLimitWindow).
+    const eleventh = await inOneRateLimitWindow(async () => {
+      for (let i = 0; i < 10; i++) {
+        const ok = await Client.open(owner.roomB64, "join", ip);
+        await ok.control("challenge");
+        ok.close();
+      }
+      return Client.open(owner.roomB64, "join", ip);
+    });
+    expect((await eleventh.closed()).code).toBe(4429);
     for (let i = 0; i < 12; i++) {
       const a = await Client.open(owner.roomB64, "auth", ip);
       await a.control("challenge");

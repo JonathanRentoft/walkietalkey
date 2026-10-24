@@ -86,7 +86,7 @@ export const PAGES = {
     title: "Open source · WalkieTalkey",
     // TODO(copy)
     description:
-      "WalkieTalkey er open source under Apache-2.0 og bygget på Handy. Her er licensen, koden og de projekter, vi bygger på.",
+      "WalkieTalkey er open source under Apache-2.0. Her er licensen, koden og licenserne for kode og modeller fra andre.",
   },
   business: {
     path: "/virksomheder",

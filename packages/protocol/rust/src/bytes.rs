@@ -33,7 +33,7 @@ pub fn ct_eq(a: &[u8], b: &[u8]) -> bool {
 /// Fills a buffer from the platform CSPRNG.
 pub fn random_bytes<const N: usize>() -> Result<[u8; N]> {
     let mut out = [0u8; N];
-    getrandom::getrandom(&mut out).map_err(|_| ProtocolError::Random)?;
+    getrandom::fill(&mut out).map_err(|_| ProtocolError::Random)?;
     Ok(out)
 }
 

@@ -100,6 +100,8 @@ export class Room extends DurableObject<Env> {
   bufferLimitBytes = ROOM_BUFFER_BYTES;
   /** RELAY-11 per-socket limit; a field so buffering tests can send a dictation in one burst. */
   maxFramesPerSecond = MAX_FRAMES_PER_SECOND;
+  /** Test hook: the clock the RELAY-11 token bucket refills by. Always Date.now in production. */
+  tokenClock: () => number = () => Date.now();
 
   private exists: boolean | null = null;
   private membersCache: Map<string, Member> | null = null;
@@ -185,7 +187,7 @@ export class Room extends DurableObject<Env> {
     if (!l) {
       l = {
         tokens: this.maxFramesPerSecond,
-        refillAtReal: Date.now(),
+        refillAtReal: this.tokenClock(),
         lastMsgAt: 0,
       };
       this.live.set(ws, l);
@@ -196,7 +198,7 @@ export class Room extends DurableObject<Env> {
   /** Token bucket: 50 messages per second per socket (RELAY-11). In memory only. */
   private takeToken(ws: WebSocket): boolean {
     const l = this.liveOf(ws);
-    const t = Date.now();
+    const t = this.tokenClock();
     const rate = this.maxFramesPerSecond;
     l.tokens = Math.min(rate, l.tokens + ((t - l.refillAtReal) / 1000) * rate);
     l.refillAtReal = t;

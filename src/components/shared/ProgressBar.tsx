@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ProgressData {
   id: string;
@@ -22,6 +23,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   showSpeed = false,
   showLabel = false,
 }) => {
+  // WalkieTalkey: eslint-plugin-i18next 6.1.5 (ESLint 10) caught the two
+  // English literals below; they reuse the model selector's strings.
+  const { t } = useTranslation();
   const sizeClasses = {
     small: "w-16 h-1",
     medium: "w-20 h-1.5",
@@ -55,7 +59,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
               // eslint-disable-next-line i18next/no-literal-string
               <span>{item.speed.toFixed(1)}MB/s</span>
             ) : showSpeed ? (
-              <span>Downloading...</span>
+              <span>
+                {t("modelSelector.downloading", {
+                  percentage: Math.round(percentage),
+                })}
+              </span>
             ) : null}
           </div>
         )}
@@ -81,7 +89,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         })}
       </div>
       <div className="text-xs text-text/60 min-w-fit">
-        {progress.length} downloading...
+        {t("modelSelector.downloadingMultiple", { count: progress.length })}
       </div>
     </div>
   );

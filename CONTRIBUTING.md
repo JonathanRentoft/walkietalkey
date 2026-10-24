@@ -1,10 +1,10 @@
 # Contributing to WalkieTalkey
 
-Thank you for helping. WalkieTalkey is free, open-source Danish dictation, built on [Handy](https://github.com/cjpais/Handy). The system specification is [docs/SPEC.md](docs/SPEC.md); every requirement has an ID (DESK-, PHONE-, RELAY-, SEC-, SITE-, PRIV-, OSS-) that tests and pull requests refer to.
+Thank you for helping. WalkieTalkey is free, open-source Danish dictation for Mac, Windows and the phone. The system specification is [docs/SPEC.md](docs/SPEC.md); every requirement has an ID (DESK-, PHONE-, RELAY-, SEC-, SITE-, PRIV-, OSS-) that tests and pull requests refer to.
 
 ## Licence
 
-Contributions are accepted under the Apache License 2.0 (section 5 of the licence). There is no CLA. Files inherited from Handy remain available under MIT as well.
+Contributions are accepted under the Apache License 2.0 (section 5 of the licence). There is no CLA. Third-party code keeps its own licence; the texts are in [licenses/](licenses/) and [NOTICE](NOTICE).
 
 ## The parts and how to build them
 
@@ -14,7 +14,7 @@ The repository is a bun workspace. Install everything once:
 bun install
 ```
 
-Rust comes from rustup (stable). On macOS with only the Command Line Tools, set `SDKROOT=$(xcrun --sdk macosx --show-sdk-path)` if a newer SDK breaks linking, and `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the speech engine's CMake build.
+Rust comes from rustup (stable). On macOS with only the Command Line Tools, set `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk` if a newer SDK breaks linking (without Xcode, `xcrun` returns the newest SDK, which can be a beta), and `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the speech engine's CMake build.
 
 | Part                                   | Folder                                                      | Build and run                   | Tests                                                                                       |
 | -------------------------------------- | ----------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ pairs a scripted phone with the desktop through the relay and checks the transcr
 
 - Tests first, then code. Run the tests of every part you touch before you push.
 - English for code, comments, commit messages and docs. Every word a user sees is Danish, from Appendix A of the spec; new strings are drafted in Danish and marked `TODO(copy)` until the maintainer approves them. No em dashes, no exclamation marks, no emoji in UI text.
-- WalkieTalkey's code lives in its own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`, `crates/`, and the new top-level folders), so merges from Handy stay small (DESK-05). Changes to Handy's files are small hooks marked `WalkieTalkey`.
+- WalkieTalkey's features live in their own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`, `crates/`, and the top-level folders), apart from the desktop core (DESK-05). A feature that needs the core adds a small, named hook there instead of spreading through it.
 - Commit style: short imperative subject (`feat(relay): ...`, `fix(pipeline): ...`), a body that says why, requirement IDs where they apply.
 - Never commit secrets, API keys or model weights.
 
@@ -51,15 +51,9 @@ pairs a scripted phone with the desktop through the relay and checks the transcr
 
 The template asks for it; in short: what and why with requirement IDs, tests added, screenshots for UI, Danish copy from Appendix A, docs and CHANGELOG updated, no secrets. CI must be green. The maintainer squash-merges.
 
-## Keeping up with Handy (monthly)
+## Dependencies
 
-```bash
-git fetch upstream
-git switch -c sync/handy-$(date +%Y-%m) main
-git merge upstream/main
-```
-
-Resolve conflicts (keep WalkieTalkey's hooks, branding, workflows and data folder; Handy's own workflows stay deleted), run every test, and open a pull request "Sync med Handy". Merge it with a merge commit, not a squash, so the next sync starts from Handy's history. Fixes that would help Handy too (not branding or Danish-specific) are offered upstream as pull requests.
+Dependabot opens one grouped pull request per ecosystem each week, and security updates separately. An update that breaks something is either fixed in our code or held back with an `ignore` rule in [.github/dependabot.yml](.github/dependabot.yml) whose comment says why (spec 14.7).
 
 ## Questions
 

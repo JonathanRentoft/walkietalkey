@@ -621,6 +621,40 @@ describe("content of the other pages", () => {
       expect(text).toContain(s);
     expect(doc("oss").querySelector(`a[href="${REPO_URL}"]`)).not.toBeNull();
   });
+  /* Run 3 (DESK-01, OSS-02): WalkieTalkey is its own product. No page calls it a fork or says
+     it is built on Handy; Handy is named only as a licence credit in the open-source table. */
+  it.each(KEYS)("%s does not present WalkieTalkey as built on Handy", (key) => {
+    const d = doc(key);
+    const text = visibleText(d);
+    expect(text).not.toMatch(
+      /bygge[rt]? (oven )?på Handy|baseret på Handy|fork af Handy|Handy-fork/i,
+    );
+    const meta = d
+      .querySelector('meta[name="description"]')!
+      .getAttribute("content")!;
+    expect(meta).not.toMatch(/Handy/);
+    if (key !== "oss") expect(text).not.toMatch(/\bHandy/);
+  });
+  /* The desktop app's Secure Input warning links here ("Sådan løser du det", run 3). */
+  it("Questions explains Secure Input at the anchor the app links to, opened by the link", () => {
+    const d = doc("faq");
+    const item = d.querySelector("details#secure-input")!;
+    expect(item).not.toBeNull();
+    expect(textOf(item)).toMatch(/Secure Input/);
+    expect(textOf(item)).toMatch(/adgangskode/);
+    const scripts = d
+      .querySelectorAll("script")
+      .map((s) => s.textContent)
+      .join("\n");
+    expect(scripts).toMatch(/location\.hash/);
+  });
+  it("Open source names Handy only in the licence table", () => {
+    const d = parse(html("oss"));
+    const table = d.querySelector("table.credits")!;
+    expect(textOf(table)).toContain("Handy");
+    table.remove();
+    expect(visibleText(d)).not.toMatch(/\bHandy/);
+  });
   /* Review finding 19: Ekko v1 Tiny, the fast model, with its layered licence (spec 11, DESK-35). */
   it("Open source credits Ekko v1 Tiny with NVIDIA's notice", () => {
     const d = doc("oss");

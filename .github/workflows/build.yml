@@ -39,6 +39,19 @@ on:
         required: false
         type: boolean
         default: false
+      # WalkieTalkey: the release dry run (pull requests) signs the updater
+      # artifacts with a throwaway key made in the job, never with ours.
+      throwaway-updater-key:
+        required: false
+        type: boolean
+        default: false
+      # WalkieTalkey: hand the release's files (installer, updater archive and
+      # its .sig) to the release workflow as the artifact release-mac or
+      # release-windows; scripts/walkietalkey/ci/release-assets.ts names them.
+      release-artifacts:
+        required: false
+        type: boolean
+        default: false
       repository:
         required: false
         type: string
@@ -80,11 +93,18 @@ jobs:
           git config --system core.longpaths true
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.repository }}
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+
+      # WalkieTalkey: one released Xcode and its own macOS SDK, never the
+      # Command Line Tools' SDK (the MacOSX27.0 beta on macos-26 images).
+      - name: Released Xcode and its own SDK (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: scripts/walkietalkey/ci/select-xcode.sh
 
       - name: Get version from tauri.conf.json
         id: get-version
@@ -176,7 +196,7 @@ jobs:
       - name: Cache trusted-signing-cli
         if: contains(inputs.platform, 'windows') && inputs.sign-binaries
         id: cache-tsc
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/bin/trusted-signing-cli*
           key: trusted-signing-cli-${{ env.TSC_VERSION }}-${{ runner.os }}-${{ runner.arch }}
@@ -237,7 +257,7 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -251,7 +271,7 @@ jobs:
         run: |
           CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
           CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
-          echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
+          echo "CERT_ID=$CERT_ID" >> "$GITHUB_ENV"
           echo "Certificate imported."
 
       - name: Patch asset name pattern
@@ -260,12 +280,12 @@ jobs:
         if: ${{ inputs.release-id != '' && inputs.asset-name-pattern != '' }}
         run: |
           platform="${{ inputs.platform }}"
-          replacement="$(echo ${platform} | sed -E 's/-latest//')"
+          replacement="$(echo "${platform}" | sed -E 's/-latest//')"
           patched_platform=$(echo '${{ inputs.asset-name-pattern }}' | sed -E "s/\[platform\]/${replacement}/")
           if [[ -n "${{ inputs.asset-prefix }}" ]]; then
             patched_platform="${{ inputs.asset-prefix }}_${patched_platform}"
           fi
-          echo "platform=${patched_platform}" >> $GITHUB_OUTPUT
+          echo "platform=${patched_platform}" >> "$GITHUB_OUTPUT"
 
       # ggml refuses to build its ARM CPU backend under MSVC (upstream check in
       # ggml/src/ggml-cpu/CMakeLists.txt: "MSVC is not supported for ARM, use
@@ -311,7 +331,7 @@ jobs:
           #     statically linking libomp.
           echo "TRANSCRIBE_CMAKE_ARGS=-DGGML_NATIVE=OFF -DGGML_OPENMP=OFF" >> $env:GITHUB_ENV
 
-      # Bundle the VC++ runtime app-local so Handy starts on machines without a
+      # Bundle the VC++ runtime app-local so WalkieTalkey starts on machines without a
       # current Microsoft redistributable. build.rs stages DLLs from these dirs
       # into transcribe-libs/, using the same VS install that compiled the code.
       # x64 also needs vcomp140.dll for ggml OpenMP; ARM64 disables OpenMP.
@@ -343,8 +363,8 @@ jobs:
             }
             $dirs = "$($crt.FullName);$($omp.FullName)"
           }
-          Write-Host "HANDY_VC_REDIST_DIRS=$dirs"
-          Add-Content -Path $env:GITHUB_ENV -Value "HANDY_VC_REDIST_DIRS=$dirs"
+          Write-Host "WALKIETALKEY_VC_REDIST_DIRS=$dirs"
+          Add-Content -Path $env:GITHUB_ENV -Value "WALKIETALKEY_VC_REDIST_DIRS=$dirs"
 
       # MSI packaging verifies bundled .dll/.exe resources with signtool before
       # custom signing. Tauri's SDK lookup has no ARM64 host mapping, so pass
@@ -397,7 +417,7 @@ jobs:
       # transcribe-cpp-sys's CMake install during the cargo build, but nothing
       # ships them. Pre-build the app so that install dir exists, then expose it
       # via LD_LIBRARY_PATH so the AppImage's linuxdeploy can resolve
-      # libtranscribe.so (a NEEDED of `handy`) while bundling. tauri-action
+      # libtranscribe.so (a NEEDED of `walkietalkey`) while bundling. tauri-action
       # reuses this compile incrementally. build.rs stages the runtime and
       # dlopen'd modules into transcribe-libs/, which tauri.conf.json includes.
       - name: Pre-build and locate transcribe-cpp backend libs (Linux)
@@ -426,7 +446,7 @@ jobs:
           echo "Located transcribe-cpp libs in: $LIBDIR"
           ls -la "$LIBDIR"
           echo "LD_LIBRARY_PATH=$LIBDIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
-          # linuxdeploy resolves `handy`'s NEEDED libs via `ldd` and HARD-FAILS
+          # linuxdeploy resolves `walkietalkey`'s NEEDED libs via `ldd` and HARD-FAILS
           # on an unresolved one (it does not warn-and-skip). libtranscribe.so
           # lives only in the cargo build tree, so also publish it (and the ggml
           # libs it pulls in) to the system linker cache — belt-and-suspenders
@@ -458,6 +478,32 @@ jobs:
           chmod +x "$tools_dir/linuxdeploy-${arch}.AppImage"
           "$tools_dir/linuxdeploy-${arch}.AppImage" --appimage-extract-and-run --version
 
+      # WalkieTalkey: a throwaway updater key for the release dry run. The build
+      # signs with it and embeds its public half (overlay below), so the
+      # artifacts are consistent and are checked against it, and the job never
+      # touches our key (DESK-110). The key lives only in this job.
+      - name: Throwaway updater key (release dry run)
+        id: throwaway-key
+        if: inputs.sign-updater && inputs.throwaway-updater-key
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/throwaway-updater-key"
+          mkdir -p "$dir"
+          password="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+          echo "::add-mask::$password"
+          # --silent: bun would otherwise echo the command line, password included.
+          bun run --silent tauri signer generate --ci -w "$dir/updater.key" -p "$password" > /dev/null
+          key="$(tr -d '\r\n' < "$dir/updater.key")"
+          echo "::add-mask::$key"
+          delimiter="WT_${RANDOM}${RANDOM}${RANDOM}"
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<$delimiter"; echo "$key"; echo "$delimiter"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<$delimiter"; echo "$password"; echo "$delimiter"
+          } >> "$GITHUB_ENV"
+          echo "pubkey=$(tr -d '\r\n' < "$dir/updater.key.pub")" >> "$GITHUB_OUTPUT"
+          echo "Throwaway updater key: $(base64 -d < "$dir/updater.key.pub" | head -1)"
+
       # WalkieTalkey: build-time config overlay. Without the updater key (pull
       # requests) no updater artifacts are made; Windows code signing runs only
       # when its secret exists (the route is the owner's decision 18.2).
@@ -466,6 +512,7 @@ jobs:
         shell: bash
         env:
           SIGN_UPDATER: ${{ inputs.sign-updater }}
+          THROWAWAY_PUBKEY: ${{ steps.throwaway-key.outputs.pubkey }}
           WINDOWS_SIGN_COMMAND: ${{ contains(inputs.platform, 'windows') && inputs.sign-binaries && secrets.WINDOWS_SIGN_COMMAND || '' }}
         run: |
           python3 - <<'PY'
@@ -473,6 +520,8 @@ jobs:
           overlay = {"bundle": {}}
           if os.environ.get("SIGN_UPDATER") != "true":
               overlay["bundle"]["createUpdaterArtifacts"] = False
+          if os.environ.get("THROWAWAY_PUBKEY"):
+              overlay["plugins"] = {"updater": {"pubkey": os.environ["THROWAWAY_PUBKEY"]}}
           if os.environ.get("WINDOWS_SIGN_COMMAND"):
               overlay["bundle"]["windows"] = {"signCommand": os.environ["WINDOWS_SIGN_COMMAND"]}
           json.dump(overlay, open("src-tauri/tauri.ci.conf.json", "w"))
@@ -495,8 +544,8 @@ jobs:
           S_AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
           S_AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
           S_AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
-          S_TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-updater && !inputs.throwaway-updater-key && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-updater && !inputs.throwaway-updater-key && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
         run: |
           for name in APPLE_ID APPLE_ID_PASSWORD APPLE_PASSWORD APPLE_TEAM_ID APPLE_CERTIFICATE \
             APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY AZURE_CLIENT_ID AZURE_CLIENT_SECRET \
@@ -510,7 +559,7 @@ jobs:
           done
 
       - name: Build with Tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The Vulkan loader and Wayland client library must come from the host
@@ -527,7 +576,8 @@ jobs:
           tagName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
           releaseName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
           releaseId: ${{ inputs.release-id }}
-          assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
+          # tauri-action v1 renamed assetNamePattern.
+          releaseAssetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
           args: ${{ inputs.build-args }} ${{ steps.overlay.outputs.args }}
 
       # tauri-action uploads release assets before returning. All AppImage
@@ -574,13 +624,54 @@ jobs:
             src-tauri/target/${{ inputs.target }}/${{ steps.build-profile.outputs.profile }}/bundle/macos/*.app
           retention-days: 30
 
+      # WalkieTalkey: the files the release publishes, flat, for its assemble job.
+      - name: Collect the release files
+        if: inputs.release-artifacts
+        shell: bash
+        env:
+          PROFILE: ${{ steps.build-profile.outputs.profile }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          if [ -n "$TARGET" ] && [ "$TARGET" != "x86_64-pc-windows-msvc" ]; then
+            bundle="src-tauri/target/$TARGET/$PROFILE/bundle"
+          else
+            bundle="src-tauri/target/$PROFILE/bundle"
+          fi
+          out="$RUNNER_TEMP/release-files"
+          mkdir -p "$out"
+          shopt -s nullglob
+          case "$RUNNER_OS" in
+            macOS) files=("$bundle"/dmg/*.dmg "$bundle"/macos/*.app.tar.gz "$bundle"/macos/*.app.tar.gz.sig) ;;
+            Windows) files=("$bundle"/nsis/*-setup.exe "$bundle"/nsis/*-setup.exe.sig) ;;
+            *) files=() ;;
+          esac
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No release files under $bundle"
+            exit 1
+          fi
+          cp "${files[@]}" "$out/"
+          if [ -f "$RUNNER_TEMP/throwaway-updater-key/updater.key.pub" ]; then
+            cp "$RUNNER_TEMP/throwaway-updater-key/updater.key.pub" "$out/updater.pub"
+          fi
+          ls -l "$out"
+
+      - name: Upload the release files
+        if: inputs.release-artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ runner.os == 'macOS' && 'mac' || 'windows' }}
+          path: ${{ runner.temp }}/release-files
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Audit Linux package runtime contents
         if: contains(inputs.platform, 'ubuntu')
         shell: bash
         run: |
           set -euo pipefail
 
-          # The runtime smoke test launches the packaged handy binary, which links
+          # The runtime smoke test launches the packaged walkietalkey binary, which links
           # GTK (via tao) even for the headless --list-devices path and therefore
           # needs a display to start. CI runners are headless, so provide a virtual
           # X server via xvfb-run.
@@ -617,17 +708,17 @@ jobs:
             local root="$1"
             local label="$2"
             local vulkan_icd="${3:-}"
-            # Run under a virtual X server: handy initializes GTK on startup even
+            # Run under a virtual X server: the app initializes GTK on startup even
             # on the headless --list-devices path, which fails without a display.
             # An AppImage audit supplies Mesa's software ICD so GPU registration
             # is deterministic even on a runner without physical graphics.
             if [ -n "$vulkan_icd" ]; then
               export VK_ICD_FILENAMES="$vulkan_icd"
             fi
-            HANDY_NO_GTK_LAYER_SHELL=1 \
-            LD_LIBRARY_PATH="${root}/usr/lib/Handy:${root}/usr/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-              xvfb-run -a "${root}/usr/bin/handy" --list-devices \
-                >/tmp/handy-package-smoke.log 2>&1
+            WALKIETALKEY_NO_GTK_LAYER_SHELL=1 \
+            LD_LIBRARY_PATH="${root}/usr/lib/WalkieTalkey:${root}/usr/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+              xvfb-run -a "${root}/usr/bin/walkietalkey" --list-devices \
+                >/tmp/wt-package-smoke.log 2>&1
             echo "${label} --list-devices smoke passed"
           }
 
@@ -636,12 +727,12 @@ jobs:
               echo "Auditing deb package: ${deb}"
               listing="$(mktemp)"
               dpkg-deb -c "$deb" > "$listing"
-              require_pattern "$listing" 'usr/bin/handy$' "handy binary"
-              require_pattern "$listing" 'usr/lib/Handy/libtranscribe\.so(\.[0-9]+)+$' "transcribe runtime library (SONAME)"
-              require_pattern "$listing" 'usr/lib/Handy/libggml-cpu.*\.so' "ggml CPU backend module"
-              # Handy's libs must stay out of the ldconfig-scanned /usr/lib
-              # (issue #1639): app-private libs belong in /usr/lib/Handy only.
-              # `[^/]+` excludes the Handy/ subdir, so only direct hits match.
+              require_pattern "$listing" 'usr/bin/walkietalkey$' "walkietalkey binary"
+              require_pattern "$listing" 'usr/lib/WalkieTalkey/libtranscribe\.so(\.[0-9]+)+$' "transcribe runtime library (SONAME)"
+              require_pattern "$listing" 'usr/lib/WalkieTalkey/libggml-cpu.*\.so' "ggml CPU backend module"
+              # The app's libs must stay out of the ldconfig-scanned /usr/lib:
+              # app-private libs belong in /usr/lib/WalkieTalkey only.
+              # `[^/]+` excludes the WalkieTalkey/ subdir, so only direct hits match.
               if grep -Eq 'usr/lib/[^/]+\.so' "$listing"; then
                 echo "ERROR: libraries installed directly into /usr/lib (issue #1639):" >&2
                 grep -E 'usr/lib/[^/]+\.so' "$listing" >&2
@@ -663,9 +754,9 @@ jobs:
               echo "Auditing rpm package: ${rpm_pkg}"
               listing="$(mktemp)"
               rpm -qpl "$rpm_pkg" > "$listing"
-              require_pattern "$listing" '/usr/bin/handy$' "handy binary"
-              require_pattern "$listing" '/usr/lib/Handy/libtranscribe\.so(\.[0-9]+)+$' "transcribe runtime library (SONAME)"
-              require_pattern "$listing" '/usr/lib/Handy/libggml-cpu.*\.so' "ggml CPU backend module"
+              require_pattern "$listing" '/usr/bin/walkietalkey$' "walkietalkey binary"
+              require_pattern "$listing" '/usr/lib/WalkieTalkey/libtranscribe\.so(\.[0-9]+)+$' "transcribe runtime library (SONAME)"
+              require_pattern "$listing" '/usr/lib/WalkieTalkey/libggml-cpu.*\.so' "ggml CPU backend module"
               # Same /usr/lib pollution guard as the deb audit (issue #1639).
               if grep -Eq 'usr/lib/[^/]+\.so' "$listing"; then
                 echo "ERROR: libraries installed directly into /usr/lib (issue #1639):" >&2
@@ -680,12 +771,12 @@ jobs:
             for appimage in "${BUNDLE_DIR}"/appimage/*.AppImage; do
               echo "Auditing AppImage package: ${appimage}"
               workdir="$(mktemp -d)"
-              cp "$appimage" "${workdir}/Handy.AppImage"
-              chmod +x "${workdir}/Handy.AppImage"
+              cp "$appimage" "${workdir}/WalkieTalkey.AppImage"
+              chmod +x "${workdir}/WalkieTalkey.AppImage"
               (
                 cd "$workdir"
-                ./Handy.AppImage --appimage-extract >/dev/null
-                require_path "squashfs-root/usr/bin/handy" "AppImage handy binary"
+                ./WalkieTalkey.AppImage --appimage-extract >/dev/null
+                require_path "squashfs-root/usr/bin/walkietalkey" "AppImage walkietalkey binary"
                 # Gear Lever and other integration tools consume the root entry;
                 # appimagetool does not update the copy under usr/share/applications.
                 desktop_file="$(find squashfs-root -maxdepth 1 -type f -name '*.desktop' -print -quit)"
@@ -731,9 +822,9 @@ jobs:
                 # llvmpipe is intentionally not exposed as a compute device by
                 # ggml, but reaching this log proves the module loaded against a
                 # usable system Vulkan loader/ICD instead of failing silently.
-                if ! grep -q 'load_backend: loaded Vulkan backend' /tmp/handy-package-smoke.log; then
+                if ! grep -q 'load_backend: loaded Vulkan backend' /tmp/wt-package-smoke.log; then
                   echo "ERROR: AppImage could not initialize its Vulkan backend with a usable system ICD" >&2
-                  cat /tmp/handy-package-smoke.log >&2
+                  cat /tmp/wt-package-smoke.log >&2
                   exit 1
                 fi
               )
@@ -793,8 +884,8 @@ jobs:
           function Assert-PackageContents {
             param([string]$Root, [string]$Label)
 
-            $handy = Get-ChildItem $Root -Filter "walkietalkey.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $handy) {
+            $exe = Get-ChildItem $Root -Filter "walkietalkey.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $exe) {
               throw "$Label package is missing walkietalkey.exe"
             }
             foreach ($dll in $stagedDlls) {
@@ -803,7 +894,7 @@ jobs:
               }
             }
 
-            $deviceOutput = (& $handy.FullName --list-devices | Out-String)
+            $deviceOutput = (& $exe.FullName --list-devices | Out-String)
             $deviceOutput | Write-Host
             if ($LASTEXITCODE -ne 0) {
               throw "$Label walkietalkey.exe --list-devices failed"

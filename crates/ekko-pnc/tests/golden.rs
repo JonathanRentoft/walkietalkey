@@ -90,7 +90,10 @@ fn model_files_match_the_golden_checksums() {
     let Some(dir) = model_dir() else { return };
     for (name, expected) in golden().model.files {
         let bytes = std::fs::read(dir.join(&name)).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let actual = format!("{:x}", Sha256::digest(&bytes));
+        let actual: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
         assert_eq!(
             actual, expected,
             "{name} differs from the file the golden set was made with"

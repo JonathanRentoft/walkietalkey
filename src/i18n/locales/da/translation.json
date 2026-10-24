@@ -490,7 +490,7 @@
       "updateChecks": {
         "label": "Tjek for opdateringer",
         "description": "Tjek automatisk for nye versioner af WalkieTalkey",
-        "lockedDescription": "Deaktiveret af systemkonfiguration (HANDY_DISABLE_UPDATER)"
+        "lockedDescription": "Deaktiveret af systemkonfiguration (WALKIETALKEY_DISABLE_UPDATER)"
       },
       "whatsNewPreview": {
         "title": "Forhåndsvisning af nyheder",
@@ -1014,7 +1014,7 @@
       "space": "Plads brugt",
       "spaceDesc": "De talemodeller, der ligger på computeren.",
       "others": "Andre modeller",
-      "othersDesc": "Edda er lavet til dansk. Ekko v1 Tiny er hurtigere på langsomme computere. De andre er Handys modeller.",
+      "othersDesc": "Edda er lavet til dansk. Ekko v1 Tiny er hurtigere på langsomme computere. De andre er generelle modeller fra transcribe.cpp.",
       "noOthers": "Ingen andre modeller.",
       "onDisk": "hentet",
       "use": "Brug",
@@ -1095,7 +1095,7 @@
       "credits": "Licenser og kreditering",
       "credit": {
         "walkietalkey": "Apache-2.0. Gratis for alle, også virksomheder.",
-        "handy": "WalkieTalkey bygger på Handy af CJ Pais. MIT.",
+        "handy": "Dele af skrivebordsappens kode. CJ Pais, MIT.",
         "transcribe": "Kører talemodellerne på computeren, sammen med ggml. MIT.",
         "edda": "Dansk talemodel fra Alexandra Instituttet, bygget på OpenAI Whisper large-v3-turbo. Apache-2.0.",
         "ekkoPnc": "Tegnsætning fra RyeAI. CC BY 4.0.",

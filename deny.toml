@@ -43,11 +43,11 @@ license-files = [
 # vulnerabilities fail the build (cargo audit runs too).
 unmaintained = "workspace"
 yanked = "warn"
-# Accepted until Tauri moves on (re-check at every Handy sync):
+# Accepted until Tauri moves on (re-check when Tauri is updated):
 ignore = [
-  # gtk-layer-shell is Handy's Linux overlay; Linux is not a supported
+  # gtk-layer-shell is the desktop app's Linux overlay; Linux is not a supported
   # WalkieTalkey platform (spec 3.2).
-  { id = "RUSTSEC-2024-0422", reason = "Linux-only dependency from Handy; Linux is not supported" },
+  { id = "RUSTSEC-2024-0422", reason = "Linux-only dependency of the overlay; Linux is not supported" },
   # quick-xml 0.38 through plist through tauri: parses only the app's own
   # property lists, never input from others.
   { id = "RUSTSEC-2026-0194", reason = "quick-xml via tauri's plist; only the app's own plists are parsed" },
@@ -57,12 +57,6 @@ ignore = [
   { id = "RUSTSEC-2026-0367", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
   { id = "RUSTSEC-2026-0368", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
   { id = "RUSTSEC-2026-0369", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
-  # crypto-bigint 0.5 under p256 0.13 (our protocol's P-256): timing variability in operations
-  # meant to be constant-time, published 2026-10-24, fixed only in crypto-bigint 0.7.6, which
-  # needs RustCrypto's next generation (p256 0.14, digest 0.11, aead 0.6): a protocol-wide
-  # upgrade checked against the shared test vectors, not a patch bump. Exposure: a few P-256
-  # operations per pairing or connection, only observable through network jitter.
-  { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5 via p256 0.13; the fix needs the p256 0.14 upgrade (planned); network-only exposure" },
 ]
 
 [bans]
@@ -75,6 +69,5 @@ unknown-git = "deny"
 allow-git = [
   "https://github.com/rustdesk-org/rdev",
   "https://github.com/cjpais/hf-hub",
-  "https://github.com/cjpais/tao",
   "https://github.com/ahkohd/tauri-nspanel",
 ]

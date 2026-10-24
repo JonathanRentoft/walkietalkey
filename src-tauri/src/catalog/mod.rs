@@ -39,7 +39,7 @@ const MIRRORS: &[&str] = &["https://blob.handy.computer"];
 /// previous generator until onboarding moves to the package's recommendations.
 /// `(id, rank, recommended)`: rank is the editorial sort position (lower =
 /// higher); recommended is the small badged onboarding subset.
-const HANDY_RANKING: &[(&str, u32, bool)] = &[
+const WALKIETALKEY_RANKING: &[(&str, u32, bool)] = &[
     ("parakeet-unified-en-0.6b", 1, true),
     ("nemotron-3.5-asr-streaming-0.6b", 2, true),
     ("canary-180m-flash", 3, true),
@@ -276,7 +276,7 @@ impl From<&CatalogModel> for ModelDescriptor {
             .map(|f| f.filename.clone())
             .unwrap_or_default();
         let ranking = crate::walkietalkey::catalog::ranking(&m.id)
-            .or_else(|| HANDY_RANKING.iter().find(|(id, _, _)| *id == m.id));
+            .or_else(|| WALKIETALKEY_RANKING.iter().find(|(id, _, _)| *id == m.id));
         let results = ROOT.results.get(&m.id);
 
         ModelDescriptor {
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn handy_ranking_names_offered_models() {
-        for (id, _, _) in HANDY_RANKING {
+        for (id, _, _) in WALKIETALKEY_RANKING {
             let model = transcription_models()
                 .find(|m| m.id == *id)
                 .unwrap_or_else(|| panic!("ranked model {id} is not in the catalog"));
@@ -529,7 +529,7 @@ mod tests {
             .count();
         assert_eq!(
             CATALOG.iter().filter(|d| d.recommended).count(),
-            HANDY_RANKING.iter().filter(|(_, _, r)| *r).count() + walkietalkey
+            WALKIETALKEY_RANKING.iter().filter(|(_, _, r)| *r).count() + walkietalkey
         );
     }
 
@@ -568,7 +568,7 @@ mod tests {
         };
         assert!(
             parse(&ROOT.transcribe_cpp) <= parse(engine),
-            "catalog built for transcribe.cpp {} but Handy links {}",
+            "catalog built for transcribe.cpp {} but WalkieTalkey links {}",
             ROOT.transcribe_cpp,
             engine
         );
@@ -576,7 +576,7 @@ mod tests {
             if let Some(min) = &m.min_engine {
                 assert!(
                     parse(min) <= parse(engine),
-                    "{} needs transcribe.cpp {min}, Handy links {engine}",
+                    "{} needs transcribe.cpp {min}, WalkieTalkey links {engine}",
                     m.id
                 );
             }
