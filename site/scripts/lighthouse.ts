@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const url = process.argv[2] || "https://walkietalkey-site.pages.dev/";
+const url = process.argv[2] || "https://walkietalkey.com/";
 const out = join(resolve(import.meta.dir, ".."), ".visual");
 mkdirSync(out, { recursive: true });
 const file = join(out, "lighthouse.json");

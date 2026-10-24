@@ -380,30 +380,9 @@ kbd.inline {
   margin: 0;
   padding-left: 1.2em;
 }
-.card p.unsigned {
-  font-size: 14px;
-  line-height: 1.5;
-}
 .card .wt-shiny {
   align-self: flex-start;
   margin-top: auto;
-}
-.card[data-recommended="true"] {
-  box-shadow:
-    var(--shadow-float),
-    inset 0 0 0 2px var(--ink);
-}
-.badge-rec {
-  display: none;
-  align-self: flex-start;
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--night);
-  color: var(--on-night);
-  font: 600 12px/1 var(--font-sans);
-}
-.card[data-recommended="true"] .badge-rec {
-  display: inline-flex;
 }
 
 .steps-list {
@@ -431,6 +410,275 @@ kbd.inline {
   background: var(--night);
   color: var(--on-night);
   font: 600 13px/1 var(--font-sans);
+}
+
+/* Hent (SITE-02, run 2 Phase 7.4). html[data-os] is set by the page's inline script before the hero is parsed:
+   "mac" or "win" shows that download first and largest and the other as a small link, "mobile" shows the phone app
+   first. Without it (no JavaScript, Linux, ChromeOS) both downloads stand side by side. */
+.get {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6) var(--space-8);
+  margin-top: var(--space-8);
+}
+.get-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.get-meta,
+.get-alt,
+.get-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--on-gradient-muted);
+}
+.get-alt {
+  display: none;
+  margin-top: var(--space-1);
+  font-size: 15px;
+}
+.get-alt a {
+  color: var(--on-gradient);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in oklab,
+    var(--on-gradient) 35%,
+    transparent
+  );
+  text-underline-offset: 3px;
+}
+.get-alt a:hover {
+  text-decoration-color: var(--on-gradient);
+}
+.get-note {
+  max-width: 44ch;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.get [data-platform="phone"],
+html[data-os="mac"] .get [data-platform="win"],
+html[data-os="win"] .get [data-platform="mac"],
+html[data-os="mobile"] .get [data-platform="mac"],
+html[data-os="mobile"] .get [data-platform="win"],
+html[data-os="mobile"] .phone-qr .qr-code {
+  display: none;
+}
+html[data-os="mobile"] .get [data-platform="phone"] {
+  display: flex;
+}
+html[data-os="mac"] .get-alt[data-for="mac"],
+html[data-os="win"] .get-alt[data-for="win"] {
+  display: block;
+}
+.dl-icon {
+  transition: transform var(--duration-base) var(--ease-flow);
+}
+.wt-shiny:hover .dl-icon {
+  transform: translateY(2px);
+}
+
+/* the first-open cards: the visitor's computer first, marked */
+.platforms .steps-list {
+  gap: var(--space-3);
+  margin: var(--space-2) 0 var(--space-4);
+}
+.platforms .steps-list > li {
+  padding-left: 40px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.platforms .steps-list > li::before {
+  top: 0;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.badge-rec {
+  display: none;
+  align-self: flex-start;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--night);
+  color: var(--on-night);
+  font: 600 12px/1 var(--font-sans);
+}
+html[data-os="mac"] .platforms [data-platform="mac"],
+html[data-os="win"] .platforms [data-platform="win"] {
+  order: -1;
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 2px var(--ink);
+}
+html[data-os="mac"] .platforms [data-platform="mac"] .badge-rec,
+html[data-os="win"] .platforms [data-platform="win"] .badge-rec {
+  display: inline-flex;
+}
+
+.hent-sec {
+  margin-top: var(--space-24);
+}
+/* on a phone, how the phone pairs comes right after the hero */
+html[data-os="mobile"] .hent-body {
+  display: flex;
+  flex-direction: column;
+}
+html[data-os="mobile"] .hent-body > .phone-get {
+  order: -1;
+  margin-top: 0;
+}
+html[data-os="mobile"] .hent-body > .hent-first {
+  margin-top: var(--space-16);
+}
+.onboard {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  counter-reset: onboard;
+}
+.onboard li {
+  counter-increment: onboard;
+  padding: var(--space-6) 18px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-200);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px var(--line);
+}
+.onboard li::before {
+  content: counter(onboard);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: var(--space-4);
+  border-radius: 50%;
+  background: var(--night);
+  color: var(--on-night);
+  font: 600 12px/1 var(--font-sans);
+}
+.onboard h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.onboard p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.tap-hold {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: var(--space-8);
+}
+.th-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--surface-200);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px var(--line);
+}
+.th-card .wt-keycap {
+  flex: none;
+}
+.th-card h3 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.th-card p {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.th-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.phone-get {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--space-12);
+  align-items: start;
+}
+.phone-get .prose {
+  max-width: 680px;
+}
+.phone-qr {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--surface-200);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px var(--line);
+  text-align: center;
+}
+/* a QR code must stay dark on light, whatever the theme */
+.qr-code {
+  width: 168px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #1b1a19;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.qr-code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.phone-qr figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.phone-qr strong {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.phone-qr a {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-control);
+  text-underline-offset: 3px;
+}
+.phone-qr a:hover {
+  text-decoration-color: var(--ink);
 }
 
 .faq-list details {
@@ -497,6 +745,19 @@ kbd.inline {
   .sub-hero-copy {
     padding: 24px 0 56px;
   }
+  .onboard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tap-hold,
+  .phone-get {
+    grid-template-columns: 1fr;
+  }
+  .phone-qr {
+    max-width: 360px;
+  }
+  .hent-sec {
+    margin-top: var(--space-16);
+  }
 }
 
 @media (max-width: 720px) {
@@ -542,6 +803,19 @@ kbd.inline {
   }
   .table td code {
     white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .onboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .th-card {
+    padding: var(--space-6);
+    gap: var(--space-4);
+  }
+  .phone-qr {
+    max-width: none;
   }
 }
 
