@@ -41,9 +41,9 @@ updates:
       # github.com/typescript-eslint/typescript-eslint/issues/10940), so `bun run lint` fails.
       - dependency-name: typescript
         versions: [">=7"]
-      # React 19: its types fail about 35 places in Handy's desktop UI and packages/ui
-      # (RefObject<T | null>, no global JSX namespace, useRef() needs an argument), and Handy is
-      # still on React 18. Move together with Handy, in one pull request for all workspaces.
+      # React 19: its types fail about 35 places in the desktop UI and packages/ui
+      # (RefObject<T | null>, no global JSX namespace, useRef() needs an argument). Move all
+      # workspaces in one pull request when that work is planned.
       - dependency-name: react
         update-types: ["version-update:semver-major"]
       - dependency-name: react-dom

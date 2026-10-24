@@ -109,7 +109,7 @@ let words: Vec<String> = pnc.punctuate_words(&["hej", "med", "dig"])?;
 ```
 
 - Words are Python's `str.split()`; tokenisation is the same `tokenizer.json`
-  through the same Rust core (`tokenizers` 0.22.2) with pre-tokenised input;
+  through the same Rust core (`tokenizers` 0.23.2, which reproduces the golden set) with pre-tokenised input;
   windows of at most 128 tokens re-read 12 words of left context and hold back
   12 words for the next window, exactly as the reference plans and merges them;
   each word's label comes from its first sub-token (NumPy `argmax` semantics);
@@ -129,7 +129,7 @@ let words: Vec<String> = pnc.punctuate_words(&["hej", "med", "dig"])?;
   1.24.2, the version the app shipped before) 6 near-tie words in 3 long inputs came out
   differently, and the Python reference itself gives exactly the same 6
   differences on onnxruntime 1.24.2; on 1.28.0 it matches the reference's 1.29.0
-  on every input, and on 1.31.0 it differs again (3 words). The crate therefore
+  on every input, and on 1.31.0 (`ort` rc.14 and rc.15) it differs again (3 words). The crate therefore
   pins **`ort` =2.0.0-rc.13 (ONNX Runtime 1.28.0)**. Any API-17+ runtime works;
   only the exact golden match needs 1.28/1.29.
 - **Targets.** `cargo check` passes for `aarch64-apple-darwin` (pyke's prebuilt

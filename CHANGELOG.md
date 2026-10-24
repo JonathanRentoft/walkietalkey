@@ -4,6 +4,16 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+<!-- TODO(copy): the Danish release notes -->
+
+**In English**
+
+- On a Mac, "Sådan løser du det" in the Secure Input warning opens WalkieTalkey's own answer on walkietalkey.com.
+- The About screen lists third-party code and models with their licences.
+- Up to date: Tauri 2.12 and its plugins, and p256 0.14 in the encryption between phone and computer (RUSTSEC-2026-0387). Nothing changes on the wire, so paired phones keep working.
+- For packagers: the environment variables are now `WALKIETALKEY_*` (for example `WALKIETALKEY_DISABLE_UPDATER`), and Linux packages keep their libraries in `/usr/lib/WalkieTalkey`.
+- Releases name the updater archive with the version (`WalkieTalkey_<version>_universal.app.tar.gz`); the direct downloads `WalkieTalkey-mac.dmg` and `WalkieTalkey-windows.exe` keep their names.
+
 ## [0.1.0] - 2026-10-24
 
 <!-- TODO(copy): the Danish release notes -->
