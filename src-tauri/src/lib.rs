@@ -1030,8 +1030,10 @@ pub fn run(cli_args: CliArgs) {
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                     .title("WalkieTalkey")
-                    .inner_size(680.0, 570.0)
-                    .min_inner_size(680.0, 570.0)
+                    // WalkieTalkey: readable at arm's length on a 16-inch
+                    // MacBook (run 2, Phase 4; Handy: 680x570).
+                    .inner_size(1040.0, 720.0)
+                    .min_inner_size(900.0, 640.0)
                     .resizable(true)
                     .maximizable(true)
                     .visible(false);
