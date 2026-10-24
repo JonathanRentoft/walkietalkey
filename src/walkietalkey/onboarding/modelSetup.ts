@@ -13,11 +13,7 @@ import { EDDA_MODEL_ID, findFastModelId } from "../lib/helpers";
 import type { DownloadProgress } from "../lib/types";
 
 export type SetupPhase =
-  | "idle"
-  | "downloading"
-  | "preparing"
-  | "ready"
-  | "failed";
+  "idle" | "downloading" | "preparing" | "ready" | "failed";
 
 interface ModelSetup {
   phase: SetupPhase;

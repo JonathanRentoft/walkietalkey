@@ -9,10 +9,7 @@ type JsQr = (
   height: number,
   opts?: {
     inversionAttempts?:
-      | "dontInvert"
-      | "onlyInvert"
-      | "attemptBoth"
-      | "invertFirst";
+      "dontInvert" | "onlyInvert" | "attemptBoth" | "invertFirst";
   },
 ) => { data: string } | null;
 

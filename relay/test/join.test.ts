@@ -108,9 +108,8 @@ describe("admissions and join (RELAY-04, RELAY-05)", () => {
     const c = await Client.open(owner.roomB64, "join");
     const ch = await challengeOf(c);
     // Signed by another key than the one sent.
-    const { signChallenge, computeJoinMac } = await import(
-      "@walkietalkey/protocol"
-    );
+    const { signChallenge, computeJoinMac } =
+      await import("@walkietalkey/protocol");
     const sig = await signChallenge(
       other.signing.privateKey,
       "wt-join-v1",

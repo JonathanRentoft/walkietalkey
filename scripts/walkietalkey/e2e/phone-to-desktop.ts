@@ -92,8 +92,7 @@ async function main() {
     },
   );
   let transcript:
-    | { text: string; wait_after_end_ms: number; audio_secs: number }
-    | undefined;
+    { text: string; wait_after_end_ms: number; audio_secs: number } | undefined;
   let phoneDone: { ok: boolean; reason?: string } | undefined;
   const started = Date.now();
 

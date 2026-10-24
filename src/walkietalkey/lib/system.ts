@@ -116,10 +116,7 @@ export async function windowsMicrophoneAllowed(): Promise<boolean> {
 }
 
 export type NotificationPermission =
-  | "granted"
-  | "denied"
-  | "not_determined"
-  | "unavailable";
+  "granted" | "denied" | "not_determined" | "unavailable";
 
 /** DESK-15. "unavailable" outside a bundled app, where notifications show
  *  inside the app window instead. */
