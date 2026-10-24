@@ -774,6 +774,12 @@ async wtAnnounce(text: string) : Promise<void> {
     await TAURI_INVOKE("wt_announce", { text });
 },
 /**
+ * The overlay page reports where the pill is whenever it moves or resizes.
+ */
+async wtPillRect(rect: PillRect) : Promise<void> {
+    await TAURI_INVOKE("wt_pill_rect", { rect });
+},
+/**
  * Checks for an update now ("Søg efter opdateringer").
  */
 async wtCheckUpdates() : Promise<void> {
@@ -1476,6 +1482,11 @@ export type PhoneView = { id: string; name: string; platform: string | null; onl
  * Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
  */
 last_seen_day: number | null }
+/**
+ * The pill's rectangle in the overlay page, in CSS pixels from the window's
+ * top-left corner.
+ */
+export type PillRect = { x: number; y: number; width: number; height: number }
 /**
  * The punctuation model's state, for Indstillinger › Model.
  */

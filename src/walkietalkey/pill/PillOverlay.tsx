@@ -42,7 +42,25 @@ export function PillOverlay() {
   const [level, setLevel] = useState(0);
   const [modelLoading, setModelLoading] = useState(false);
   const showToken = useRef(0);
+  const hostRef = useRef<HTMLDivElement>(null);
   const bars = handsFree ? BARS_HANDS_FREE : BARS;
+
+  // Run 4: the window lets clicks through except over the pill, so the
+  // backend needs to know where the pill is (walkietalkey::pill_window).
+  useEffect(() => {
+    const pill = hostRef.current?.querySelector<HTMLElement>(".wt-pill");
+    if (!visible || !pill) return;
+    const report = () => {
+      const r = pill.getBoundingClientRect();
+      commands
+        .wtPillRect({ x: r.x, y: r.y, width: r.width, height: r.height })
+        .catch(() => {});
+    };
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(pill);
+    return () => observer.disconnect();
+  }, [visible]);
 
   const resetWave = (n: number) => {
     setWave(silence(n));
@@ -167,6 +185,7 @@ export function PillOverlay() {
   if (!visible) return null;
   return (
     <div
+      ref={hostRef}
       className="wt-pill-host"
       data-testid="pill"
       data-level={level.toFixed(2)}

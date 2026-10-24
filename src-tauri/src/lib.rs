@@ -809,6 +809,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_punctuation_download,
             walkietalkey::commands::wt_restart_now,
             walkietalkey::commands::wt_announce,
+            walkietalkey::pill_window::wt_pill_rect,
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,

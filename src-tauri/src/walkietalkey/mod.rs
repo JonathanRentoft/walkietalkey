@@ -32,6 +32,7 @@ pub mod models;
 pub mod notify;
 pub mod output;
 pub mod pill;
+pub mod pill_window;
 pub mod presence;
 pub mod punctuation;
 pub mod relay;

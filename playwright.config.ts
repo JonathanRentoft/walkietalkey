@@ -16,6 +16,12 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // The Mac app draws the pill in WKWebView: its glow is checked in WebKit too (run 4).
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+      testMatch: /pill-glow.*\.spec\.ts/,
+    },
   ],
   webServer: {
     command: "bunx vite dev",
