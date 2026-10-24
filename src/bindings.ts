@@ -774,6 +774,12 @@ async wtAnnounce(text: string) : Promise<void> {
     await TAURI_INVOKE("wt_announce", { text });
 },
 /**
+ * The overlay page reports where the pill is whenever it moves or resizes.
+ */
+async wtPillRect(rect: PillRect) : Promise<void> {
+    await TAURI_INVOKE("wt_pill_rect", { rect });
+},
+/**
  * Checks for an update now ("Søg efter opdateringer").
  */
 async wtCheckUpdates() : Promise<void> {
@@ -844,6 +850,31 @@ async wtAccessibilityLost() : Promise<boolean> {
  */
 async wtAccessibilityRepair() : Promise<boolean> {
     return await TAURI_INVOKE("wt_accessibility_repair");
+},
+/**
+ * The silent-microphone notice (DESK-59), the same as the last
+ * `wt-mic-check` event, for a window that opened after it.
+ */
+async wtMicCheckStatus() : Promise<MicCheck> {
+    return await TAURI_INVOKE("wt_mic_check_status");
+},
+/**
+ * "Brug {navn}" (DESK-59): records from that input from now on.
+ */
+async wtMicUse(name: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_mic_use", { name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * "Tjek igen" (DESK-59): listens to the silent input again, and probes the
+ * others if it is still silent. The answer comes as `wt-mic-check`.
+ */
+async wtMicRecheck() : Promise<void> {
+    await TAURI_INVOKE("wt_mic_recheck");
 },
 /**
  * Check if Apple Intelligence is available on this device.
@@ -1402,6 +1433,23 @@ key_down: number; key_up: number; flags_changed: number; mouse: number; duration
 export type KeyboardImplementation = "tauri" | "handy_keys"
 export type LLMPrompt = { id: string; name: string; prompt: string }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
+/**
+ * The microphone notice in the window (`wt_mic_check_status`,
+ * `wt-mic-check`).
+ */
+export type MicCheck = { 
+/**
+ * The input that gave no sound in the last take. `None`: all is well.
+ */
+silent_input: string | null; 
+/**
+ * An input that delivered sound when probed: "Brug {navn}".
+ */
+suggestion: string | null; 
+/**
+ * The other inputs are being probed.
+ */
+probing: boolean }
 export type ModelInfo = { id: string; name: string; description: string; filename: string; source: ModelSource; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; supports_language_selection: boolean; is_custom: boolean; supports_streaming: boolean; supports_language_detection: boolean }
 export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null }
 /**
@@ -1476,6 +1524,11 @@ export type PhoneView = { id: string; name: string; platform: string | null; onl
  * Days since 1970-01-01 UTC ("sidst set"); `None` when never seen.
  */
 last_seen_day: number | null }
+/**
+ * The pill's rectangle in the overlay page, in CSS pixels from the window's
+ * top-left corner.
+ */
+export type PillRect = { x: number; y: number; width: number; height: number }
 /**
  * The punctuation model's state, for Indstillinger › Model.
  */

@@ -62,14 +62,17 @@ updates:
       github-actions-security:
         applies-to: security-updates
         patterns: ["*"]
-  # The Python tools behind the Ekko PnC golden set and the Danish accuracy harness (models/). The
-  # reference runtime (ekko-stt and the onnxruntime and tokenizers it pins) is held at the versions
-  # golden.json was generated with: crates/ekko-pnc must match that output exactly, so moving them
-  # means regenerating the golden set by hand. Security updates still come, in their own group.
+  # The Python tools behind the Ekko PnC golden set and the Danish accuracy harness (models/), and
+  # the fine-tuning workbench (training/). The reference runtime (ekko-stt and the onnxruntime and
+  # tokenizers it pins) is held at the versions golden.json was generated with: crates/ekko-pnc
+  # must match that output exactly, so moving them means regenerating the golden set by hand. The
+  # hold covers training/ too, where tokenizers moves with transformers when that is bumped.
+  # Security updates still come, in their own group.
   - package-ecosystem: uv
     directories:
       - /models/ekko-pnc
       - /models/eval
+      - /training
     schedule: { interval: weekly }
     ignore:
       - dependency-name: ekko-stt

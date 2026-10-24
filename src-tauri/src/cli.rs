@@ -35,6 +35,13 @@ pub struct CliArgs {
     #[arg(short = 'f', long, value_name = "WAV")]
     pub transcribe_file: Option<PathBuf>,
 
+    /// WalkieTalkey (training workbench): transcribe every WAV listed in this
+    /// file, one path per line (blank lines and `#` comments skipped, relative
+    /// paths read from the list's folder), loading the model once. Same batch
+    /// path as --transcribe-file; with --json, one JSON line per file.
+    #[arg(long, value_name = "LIST", conflicts_with = "transcribe_file")]
+    pub transcribe_list: Option<PathBuf>,
+
     /// Model id to load for --transcribe-file (default: the selected model).
     #[arg(long)]
     pub model: Option<String>,

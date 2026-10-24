@@ -69,7 +69,8 @@ export class PairChannel {
   }
 
   /** Encrypts a payload into a frame addressed to the peer, with a fresh counter and nonce. */
-  async seal(payload: DevicePayload): Promise<Uint8Array> {
+  /** A fresh ArrayBuffer-backed frame, so WebSocket.send takes it as is. */
+  async seal(payload: DevicePayload): Promise<Uint8Array<ArrayBuffer>> {
     if (PAYLOAD_DIRECTION[payload.type] !== this.outDirection) {
       throw new ProtocolError(
         "bad_payload",

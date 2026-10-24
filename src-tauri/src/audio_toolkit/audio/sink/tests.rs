@@ -144,6 +144,29 @@ fn each_recording_resets_the_detector_with_its_policys_hangover() {
 }
 
 #[test]
+fn the_raw_tap_sees_every_real_sample_even_those_vad_drops() {
+    // WalkieTalkey (DESK-59): a silent input is judged on the raw input.
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let h = harness(VadPolicy::Offline);
+    let mut sink = h.sink.with_raw_tap({
+        let seen = Arc::clone(&seen);
+        Box::new(move |samples: &[f32]| seen.lock().unwrap().extend_from_slice(samples))
+    });
+    sink.process_chunk(chunk(&[1.0; FRAME], FRAME));
+    sink.process_chunk(chunk(&[0.0; FRAME], FRAME));
+    // Final chunk: two real frames, two of zero padding.
+    sink.process_chunk(chunk(&[0.0, 0.5, 0.0, 0.0], 2));
+
+    assert_eq!(
+        *seen.lock().unwrap(),
+        [[1.0; FRAME].as_slice(), &[0.0; FRAME], &[0.0, 0.5]].concat()
+    );
+    // VAD still drops the noise frame for the recording itself.
+    assert_eq!(h.fed.lock().unwrap()[..FRAME], [1.0; FRAME]);
+    assert!(h.ready.try_recv().is_ok());
+}
+
+#[test]
 fn finish_returns_the_detector_for_the_next_recording() {
     let h = harness(VadPolicy::Offline);
     let captured = h.sink.finish();

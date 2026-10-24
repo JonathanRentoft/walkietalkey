@@ -17,7 +17,16 @@ pub const CONTEXT_TAIL_CHARS: usize = 300;
 /// chunk's text), or the Danish first-chunk sentence when there is none yet
 /// and the run language is Danish.
 pub fn chunk_prompt(previous: Option<&str>, language: Option<&str>) -> Option<String> {
-    let previous = previous.map(str::trim).filter(|text| !text.is_empty());
+    // A stray fragment in the previous chunk (run 4: a broken character or a
+    // letter from another script) is not carried into the next chunk's prompt.
+    let previous = previous.map(|text| match language {
+        Some("da") => super::script::strip_stray_characters(text),
+        _ => super::script::strip_broken_characters(text),
+    });
+    let previous = previous
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty());
     match previous {
         Some(text) => Some(tail_from_word_start(text, CONTEXT_TAIL_CHARS).to_string()),
         None if language == Some("da") => Some(FIRST_CHUNK_PROMPT_DA.to_string()),
@@ -68,6 +77,27 @@ mod tests {
     fn other_languages_get_no_first_prompt() {
         assert_eq!(chunk_prompt(None, Some("en")), None);
         assert_eq!(chunk_prompt(None, None), None);
+    }
+
+    #[test]
+    fn stray_fragments_stay_out_of_the_next_prompt() {
+        assert_eq!(
+            chunk_prompt(
+                Some("Husk at 수가 til staging før mødet\u{FFFD}\u{FFFD}"),
+                Some("da")
+            )
+            .as_deref(),
+            Some("Husk at til staging før mødet")
+        );
+        assert_eq!(
+            chunk_prompt(Some("Привет \u{FFFD}мир"), Some("ru")).as_deref(),
+            Some("Привет мир")
+        );
+        // Nothing left: a Danish run starts over with the first-chunk sentence.
+        assert_eq!(
+            chunk_prompt(Some("\u{FFFD}\u{FFFD}"), Some("da")).as_deref(),
+            Some(FIRST_CHUNK_PROMPT_DA)
+        );
     }
 
     #[test]

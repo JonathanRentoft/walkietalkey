@@ -841,7 +841,10 @@
       "notReady": "Talemodellen er ikke klar endnu",
       "error": "Kunne ikke hente talemodellen. Prøv igen.",
       "countdown": "{{seconds}} sekunder tilbage",
-      "handsFree": "Tryk igen for at stoppe"
+      "handsFree": "Tryk igen for at stoppe",
+      "micSilent": "Mikrofonen giver ingen lyd",
+      "micTry": "Prøv {{name}}",
+      "micNone": "Tjek mikrofonen"
     },
     "nav": {
       "label": "Indstillinger",
@@ -1171,6 +1174,13 @@
     "access": {
       "lost": "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
       "repair": "Giv adgang igen"
+    },
+    "mic": {
+      "searching": "{{name}} giver ingen lyd. Leder efter en mikrofon, der virker.",
+      "try": "{{name}} giver ingen lyd. Prøv {{other}}.",
+      "none": "{{name}} giver ingen lyd, og det gør de andre mikrofoner heller ikke. Tjek, at mikrofonen er sluttet til og tændt.",
+      "use": "Brug {{name}}",
+      "recheck": "Tjek igen"
     }
   }
 }

@@ -63,6 +63,9 @@ pub enum PillEnd {
     NoSpeech,
     /// "Brugte teksten uden oprydning".
     CleanupSkipped,
+    /// "Mikrofonen giver ingen lyd" (DESK-59): the input delivered no sound
+    /// for the whole take, so nothing was transcribed.
+    MicSilent,
 }
 
 pub fn pill_end(text: &str, delivery: Delivery, cleanup_fell_back: bool) -> PillEnd {

@@ -1,11 +1,13 @@
 /* The overlay window is transparent; only the pill is drawn. The window
-   (src-tauri/src/overlay.rs) leaves 32 px around the widest pill for the
-   halo and the shadow, so nothing is clipped. */
+   (src-tauri/src/walkietalkey/pill_window.rs) leaves --wt-glow-margin around
+   the widest pill for the halo and the shadow, so nothing is clipped
+   (tests/walkietalkey/pill-glow.spec.ts). */
 html,
 body {
   background: transparent !important;
 }
 .wt-pill-host {
+  --wt-glow-margin: 48px;
   position: fixed;
   inset: 0;
   display: flex;
@@ -14,7 +16,7 @@ body {
   font-family: var(--font-sans);
 }
 .wt-pill-host .wt-pill {
-  max-width: calc(100% - 64px);
+  max-width: calc(100% - 2 * var(--wt-glow-margin));
 }
 .wt-pill-host[data-countdown] .wt-pill-time {
   color: var(--on-night);

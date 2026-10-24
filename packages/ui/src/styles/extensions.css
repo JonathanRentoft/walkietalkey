@@ -56,6 +56,31 @@ a.wt-shiny {
   color: var(--on-night-muted);
 }
 
+/* DictationPill: the silent microphone (DESK-59). While listening the notice
+   takes the waveform's place; as the end state a smaller, quieter second
+   line follows ("Prøv {navn}"), cut short with an ellipsis if a device name
+   is long, so the pill stays as wide as its first line. */
+.wt-pill-mic {
+  white-space: nowrap;
+}
+.wt-pill-note-text {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.15;
+}
+.wt-pill-note-hint {
+  display: block;
+  max-width: 15em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82em;
+  color: var(--on-night-muted);
+}
+
 /* DictationPill size="lg": the desktop overlay (DESK-55). 56 px high, larger
    text, smoked glass on night (on-night text keeps its contrast on any
    desktop), and a halo kept within 32 px so the overlay window never clips it. */

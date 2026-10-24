@@ -47,29 +47,37 @@ pub fn apply(app: &AppHandle, text: String) -> String {
     punctuate_with(&dir, text)
 }
 
+/// Runs `f` with the shared Ekko PnC, loading it from `dir` the first time.
+/// `None` when its files are missing or it cannot load.
 #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
-fn punctuate_with(dir: &Path, text: String) -> String {
-    use std::sync::Mutex;
-
+fn with_punctuator<T>(dir: &Path, f: impl FnOnce(&ekko_pnc::Punctuator) -> T) -> Option<T> {
     use once_cell::sync::OnceCell;
 
     static PUNCTUATOR: OnceCell<Mutex<Option<ekko_pnc::Punctuator>>> = OnceCell::new();
     let cell = PUNCTUATOR.get_or_init(|| Mutex::new(None));
-    let mut guard = cell.lock().unwrap();
+    let mut guard = cell.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
         if !dir.join("pnc.int8.onnx").exists() {
-            return text;
+            return None;
         }
         match ekko_pnc::Punctuator::from_dir(dir) {
             Ok(p) => *guard = Some(p),
             Err(e) => {
                 warn!("Ekko PnC could not load: {e}");
-                return text;
+                return None;
             }
         }
     }
+    guard.as_ref().map(f)
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
+fn punctuate_with(dir: &Path, text: String) -> String {
     let started = Instant::now();
-    match guard.as_ref().expect("loaded above").punctuate(&text) {
+    let Some(result) = with_punctuator(dir, |p| p.punctuate(&text)) else {
+        return text;
+    };
+    match result {
         Ok(punctuated) => {
             info!(
                 "Punctuated {} words in {:?}",
@@ -88,6 +96,62 @@ fn punctuate_with(dir: &Path, text: String) -> String {
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 fn punctuate_with(_dir: &Path, text: String) -> String {
     text
+}
+
+/// Reads chunk joints with Ekko PnC (run 4, `pipeline::da::joints`).
+pub struct PncJointJudge {
+    dir: PathBuf,
+}
+
+/// The joint judge, unless "Tegnsætning" is "Aldrig" or Ekko PnC's files are
+/// missing. On an Intel Mac Ekko PnC does not run, so every joint stays as
+/// Whisper wrote it.
+pub fn joint_judge(app: &AppHandle) -> Option<PncJointJudge> {
+    if super::store::get(app).punctuation
+        == crate::pipeline::da::punctuation::PunctuationMode::Never
+    {
+        return None;
+    }
+    let dir = pnc_dir(app)?;
+    files_present(&dir).then_some(PncJointJudge { dir })
+}
+
+impl PncJointJudge {
+    /// A judge on the files in `dir` (tests point it at WT_EKKO_PNC_DIR).
+    pub fn from_dir(dir: PathBuf) -> Self {
+        Self { dir }
+    }
+}
+
+impl crate::pipeline::da::joints::JointJudge for PncJointJudge {
+    #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
+    fn read(
+        &self,
+        before: &[String],
+        after: &[String],
+    ) -> Option<crate::pipeline::da::joints::JointReading> {
+        let words: Vec<&str> = before.iter().chain(after).map(String::as_str).collect();
+        let rendered = with_punctuator(&self.dir, |p| p.punctuate_words(&words))?
+            .map_err(|e| warn!("Joint reading failed: {e}"))
+            .ok()?;
+        // Each word comes back as itself, maybe with a capital and one mark.
+        let last = rendered.get(before.len().checked_sub(1)?)?;
+        let next = rendered.get(before.len())?;
+        let mark: String = last.chars().skip(before.last()?.chars().count()).collect();
+        Some(crate::pipeline::da::joints::JointReading {
+            mark: (!mark.is_empty()).then_some(mark),
+            next_upper: next.chars().next().is_some_and(char::is_uppercase),
+        })
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    fn read(
+        &self,
+        _before: &[String],
+        _after: &[String],
+    ) -> Option<crate::pipeline::da::joints::JointReading> {
+        None
+    }
 }
 
 /// One file Ekko PnC needs, as `models/manifest.json` lists it.
@@ -347,6 +411,73 @@ async fn fetch(
     }
     tokio::fs::rename(&partial, dest).await?;
     Ok(())
+}
+
+/// Real chunk joints read by the real model (run 4): FLEURS sentences cut at
+/// a pause or paired, each part decoded by Edda the way the app decodes a
+/// chunk (`pipeline/da/testdata/joints-fleurs.json`, made by
+/// `scripts/walkietalkey/joints/make_fixtures.py`). Needs Ekko PnC's files in
+/// `WT_EKKO_PNC_DIR` (CI downloads them); skipped without.
+#[cfg(all(test, not(all(target_os = "macos", target_arch = "x86_64"))))]
+mod joint_tests {
+    use super::PncJointJudge;
+    use crate::pipeline::da::joints::repair;
+
+    /// Whether a sentence ends at the joint, and whether the next word has a capital.
+    fn joint(before: &str, after: &str) -> (bool, bool) {
+        (
+            before.trim_end().ends_with(['.', '?', '!', '…']),
+            after
+                .chars()
+                .find(|c| c.is_alphabetic())
+                .is_some_and(char::is_uppercase),
+        )
+    }
+
+    #[test]
+    fn real_edda_joints_are_read_again() {
+        let Ok(dir) = std::env::var("WT_EKKO_PNC_DIR") else {
+            eprintln!("skipped: set WT_EKKO_PNC_DIR to Ekko PnC's files");
+            return;
+        };
+        let judge = PncJointJudge::from_dir(dir.into());
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../pipeline/da/testdata/joints-fleurs.json"))
+                .unwrap();
+        let (mut cases, mut right_as_decoded, mut right_repaired) = (0, 0, 0);
+        let mut wrong = Vec::new();
+        for case in fixture["cases"].as_array().unwrap() {
+            let (before, after) = (
+                case["before"].as_str().unwrap(),
+                case["after"].as_str().unwrap(),
+            );
+            let expected = (
+                case["boundary"].as_bool().unwrap(),
+                case["next_upper"].as_bool().unwrap(),
+            );
+            let (b, a) = repair(before, after, &judge);
+            cases += 1;
+            right_as_decoded += usize::from(joint(before, after) == expected);
+            if joint(&b, &a) == expected {
+                right_repaired += 1;
+            } else {
+                wrong.push(format!("{}: {b} | {a}", case["id"]));
+            }
+        }
+        eprintln!(
+            "{cases} joints: {right_as_decoded} right as decoded, {right_repaired} after repair\n{}",
+            wrong.join("\n")
+        );
+        assert!(cases >= 60, "{cases} cases");
+        assert!(
+            right_repaired * 100 >= cases * JOINTS_RIGHT_PERCENT,
+            "{right_repaired} of {cases} joints right after repair"
+        );
+        assert!(right_repaired > right_as_decoded);
+    }
+
+    /// The share of real joints that must come out right.
+    const JOINTS_RIGHT_PERCENT: usize = 85;
 }
 
 #[cfg(test)]

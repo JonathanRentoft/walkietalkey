@@ -102,7 +102,7 @@ test.describe("errors (PHONE-14, PHONE-25, PHONE-30)", () => {
     const computer = await newComputer();
     await preparePage(page, browserName, { denyMic: true });
     await pairByLink(page, computer);
-    const p = await press(page);
+    const p = await press(page, { warm: false });
     await expect(label(page)).toHaveText(
       "WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.",
     );

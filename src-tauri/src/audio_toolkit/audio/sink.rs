@@ -66,6 +66,9 @@ pub type LevelCallback = Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>;
 /// Receives each 16 kHz mono frame that passes the recording's VAD policy, in
 /// order. Used to feed live streaming transcription as audio arrives.
 pub type AudioFrameCallback = Arc<dyn Fn(&[f32]) + Send + Sync + 'static>;
+/// Sees every real 16 kHz mono sample of one recording, before VAD.
+/// WalkieTalkey uses it to tell a silent input from a quiet speaker (DESK-59).
+pub type RawTap = Box<dyn FnMut(&[f32]) + Send + 'static>;
 
 /// What a finished recording hands back.
 pub struct CapturedAudio {
@@ -88,6 +91,7 @@ pub struct CaptureSink {
     /// counts; readiness is not speech.
     ready: Option<mpsc::Sender<()>>,
     samples: Vec<f32>,
+    raw_tap: Option<RawTap>,
 }
 
 /// Spectrum window at 16 kHz: 32 ms, near the overlay's ~30 Hz refresh.
@@ -123,7 +127,14 @@ impl CaptureSink {
             on_audio,
             ready: Some(ready),
             samples: Vec::new(),
+            raw_tap: None,
         }
+    }
+
+    /// Also hands every real sample, before VAD, to `tap`.
+    pub fn with_raw_tap(mut self, tap: RawTap) -> Self {
+        self.raw_tap = Some(tap);
+        self
     }
 
     /// The detector, from a sink that never recorded (its start failed).
@@ -172,6 +183,10 @@ impl Sink for CaptureSink {
         let real = &chunk.samples[..chunk.valid_frames];
         if let Some(levels) = self.visualizer.feed(real) {
             (self.on_levels)(levels);
+        }
+        // WalkieTalkey (DESK-59): the silent-microphone check.
+        if let Some(tap) = self.raw_tap.as_mut() {
+            tap(real);
         }
 
         if self.policy == VadPolicy::Disabled {

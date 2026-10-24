@@ -29,6 +29,7 @@ The desktop app has a core (audio, models, shortcuts, paste, history, tray) and 
 | `managers/model`                             | `walkietalkey::models::company_mirror`                                                                                                                         | `ModelBaseUrl` downloads                                                                                                     |
 | `catalog`                                    | `walkietalkey::catalog` (`catalog.json`)                                                                                                                       | Edda and Ekko as an overlay on the model catalog, ranking by hardware                                                        |
 | `clipboard.rs`                               | `walkietalkey::clipboard::write_private`                                                                                                                       | clipboard that stays on this computer                                                                                        |
+| `managers/audio`, `CaptureSink` raw tap      | `walkietalkey::mic::{guard, start_take, seal_take, finish_take, silent_take}`                                                                                  | silent microphone notice and probe, no system audio (DESK-59)                                                                |
 | `tray.rs`, `lib.rs` menu events              | `walkietalkey::tray`                                                                                                                                           | Seneste, Par en telefon, Sæt på pause, Genstart nu, pulse                                                                    |
 
 Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
@@ -37,6 +38,7 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 - `cleanup/`: modes, markers, guardrails, the editor prompt, providers with pooled warm connections, the chunk-by-chunk engine.
 - `settings.rs`, `managed.rs`, `store.rs`: WalkieTalkey settings and the Appendix B overlay.
 - `history.rs`, `output.rs`, `dictation.rs`, `notify.rs`, `updates.rs`, `models.rs`, `speed.rs`, `presence.rs`, `secrets.rs`.
+- `mic/`: the silent microphone (DESK-59): the level detector on the raw input, the probe that suggests a working input, and the guard that keeps every input stream a microphone (cpal on macOS would otherwise record the system audio from a device without input channels).
 
 ## Crates (`crates/`, `packages/protocol/rust/`)
 
@@ -54,3 +56,7 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 - `relay/`: Cloudflare Worker and one SQLite-backed Durable Object per room (hibernation, batching, one alarm).
 - `site/`: Astro with React islands, static, no cookies or analytics.
 - `packages/ui/`: the design system as typed React components and tokens.
+
+## Fine-tuning workbench (`training/`)
+
+Python (uv, PyTorch with MPS, Transformers, PEFT), separate from the app: one command, `wt-train`, with a step per module in `training/wt_train/` (record, fetch, build, train, eval, export, smoke). The sentences and the spelling conventions for English developer terms are in `training/data/`; recordings stay in `training/data/recordings/` (git-ignored) and everything large in the git-ignored work folder. Evaluation reuses the accuracy job's normaliser and WER (`models/eval/wt_eval`) and scores a GGUF through the app's own pipeline (`walkietalkey --transcribe-list`). An exported fine-tune is installed in the app's models folder as `edda-ft-<name>.gguf`; the app decodes ids starting with `edda-` like Edda (`walkietalkey::catalog::decodes_by_segment`).

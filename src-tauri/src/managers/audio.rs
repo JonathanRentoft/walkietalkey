@@ -307,6 +307,14 @@ impl OpenMicrophone {
 /// The `recording-error` event's `error_type` for a recording that couldn't
 /// start.
 pub fn recording_error_type(error: &anyhow::Error) -> &'static str {
+    // WalkieTalkey (DESK-59): an input refused because it has no input
+    // channels (cpal would record the system audio from it).
+    if error
+        .downcast_ref::<crate::walkietalkey::mic::guard::InputRefused>()
+        .is_some()
+    {
+        return "no_input_device";
+    }
     match error
         .downcast_ref::<handy_recorder::Error>()
         .map(handy_recorder::Error::kind)
@@ -529,8 +537,13 @@ impl AudioRecordingManager {
         };
 
         // Always-on?  Open immediately.
+        // WalkieTalkey (DESK-59): a microphone that cannot open now (none, or
+        // a default the no-loopback guard refuses) must not stop the app from
+        // starting; the next recording opens it again and reports the error.
         if matches!(mode, MicrophoneMode::AlwaysOn) {
-            manager.start_microphone_stream()?;
+            if let Err(e) = manager.start_microphone_stream() {
+                warn!("Could not open the microphone at startup: {e:#}");
+            }
         }
 
         Ok(manager)
@@ -842,11 +855,10 @@ impl AudioRecordingManager {
 
         let channel = *self.selected_channel.lock().unwrap();
         let open_started = Instant::now();
-        let microphone = match open_microphone_on_channel(
-            resolution.device.clone(),
-            channel,
-            frames_per_chunk,
-        ) {
+        // WalkieTalkey (DESK-59): the system default is opened by its ID, and
+        // only if it is an input, so cpal never records the system audio.
+        let device = crate::walkietalkey::mic::guard::resolve(resolution.device.clone())?;
+        let microphone = match open_microphone_on_channel(device, channel, frames_per_chunk) {
             Err(first_err) if resolution.from_cache => {
                 // The cached device ID may have gone stale (unplugged).
                 // Re-resolve from a fresh enumeration and retry once before
@@ -858,6 +870,11 @@ impl AudioRecordingManager {
             }
             result => result,
         }?;
+        // WalkieTalkey (DESK-59): ...and refused if cpal tapped it after all.
+        if let Err(refused) = crate::walkietalkey::mic::guard::refuse_loopback() {
+            self.close_microphone(microphone);
+            return Err(refused.into());
+        }
         debug!(
             "mic stream breakdown: device_resolve={:?} vad_ensure={:?} open={:?}",
             resolve_elapsed,
@@ -1036,6 +1053,13 @@ impl AudioRecordingManager {
                 self.return_vad(sink.into_vad());
                 return Err(anyhow::anyhow!("Recorder not available"));
             };
+            // WalkieTalkey (DESK-59): watch the raw input for silence.
+            let input = &microphone.recorder.info().device;
+            let sink = sink.with_raw_tap(crate::walkietalkey::mic::start_take(
+                &self.app_handle,
+                input.id.clone(),
+                input.name.clone(),
+            ));
             match microphone.recorder.start(sink) {
                 Ok(()) => {
                     let generation = self.capture_generation.fetch_add(1, Ordering::AcqRel) + 1;
@@ -1212,6 +1236,8 @@ impl AudioRecordingManager {
                         Vec::new()
                     }
                 };
+                // WalkieTalkey (DESK-59): this take's level verdict.
+                crate::walkietalkey::mic::seal_take();
 
                 *self.is_recording.lock().unwrap() = false;
                 self.set_state(&mut self.state.lock().unwrap(), RecordingState::Idle);

@@ -186,8 +186,12 @@ export function ModelSection() {
         >
           <>
             {currentInfo ? <DownloadState model={currentInfo} /> : null}
+            {/* A custom file (a workbench fine-tune) cannot be fetched again,
+                and redownload() deletes it first. */}
             <Button
-              disabled={!currentInfo || !!busy || modelLocked}
+              disabled={
+                !currentInfo || currentInfo.is_custom || !!busy || modelLocked
+              }
               onClick={() => void redownload()}
             >
               {t("wt.modelSettings.redownload")}

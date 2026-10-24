@@ -152,7 +152,7 @@ export class RelaySocket {
     this.ws.send(serializeControlMessage(msg));
   }
 
-  sendBinary(bytes: Uint8Array): void {
+  sendBinary(bytes: Uint8Array<ArrayBuffer>): void {
     this.ws.send(bytes);
   }
 

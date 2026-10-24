@@ -1,0 +1,386 @@
+# Spelling conventions for English developer terms in Danish text.
+#
+# One entry per term under `terms`, keyed by the term's name (a label only):
+#
+#   forms:  the spellings we write, one per spoken form of the term. Write a
+#           form the way it is said: "deployede" for the Danish past tense,
+#           "commits" for the English plural that Danish developers say.
+#   also:   other spellings of those same spoken forms, each mapped to the
+#           form it means ("PR-en: PR'en"). Optional. Never put a different
+#           spoken form here ("deployed" is not "deployede"), only another
+#           way of writing the same one.
+#
+# Who reads this file:
+#   * The dataset builder (wt-train build) rewrites every `also` spelling in a
+#     transcript into its form before training, so the model learns exactly
+#     one spelling per spoken form.
+#   * The evaluation (wt-train eval) finds the forms in each reference and
+#     counts a term right only when the hypothesis has that same form there.
+#     A form that is not listed here is not counted as a term at all.
+#   * The sentence list (sentences.csv) uses only `forms`; its tests fail on
+#     any `also` spelling, on a terms sentence without a form, and on a plain
+#     sentence with one.
+#
+# Matching: whole words, case does not count ("Deployet" at a sentence start
+# is "deployet"). An apostrophe ending belongs to the word, so "PR" does not
+# match in "PR'en". A hyphen ends a word, so "React-appen" contains "React".
+# The longest form wins: "pull requesten" before "pull request" before "PR".
+#
+# Rules the loader enforces (it stops with a message naming the spelling):
+#   * a spelling is listed once in the whole file, as a form or under also;
+#   * every `also` target is one of that term's own forms.
+#
+# Conventions (Dansk Sprognævn practice for English loanwords):
+#   * Verbs take Danish endings on the English stem: infinitive -e (deploye),
+#     present -er (deployer), past -ede (deployede), participle -et (deployet),
+#     passive -es (deployes). The imperative is the bare stem (deploy, merge).
+#     A short stressed vowel doubles a final consonant: committe, debugge.
+#   * Nouns take Danish definite endings: -en for en-words (branchen, PR'en),
+#     -et for et-words (endpointet, API'et); the same doubling (buggen,
+#     backloggen, standuppen). Plurals are written as said: mostly the English
+#     -s (commits, endpoints), Danish -er where that is what people say (PR'er,
+#     databaser).
+#   * Abbreviations take their endings after an apostrophe: PR'en, API'et,
+#     LLM'erne, CI'en.
+#   * Names are written as their owners write them (GitHub, Next.js, VS Code)
+#     and take no endings.
+#   * Compounds: a name or an abbreviation joins a Danish word with a hyphen
+#     (React-appen, API-kald). The sentences avoid closed compounds of English
+#     terms ("stagingmiljøet"), because the evaluation would not see the term.
+#
+# A few forms are ordinary Danish words too (test, database, migration,
+# sprint, rust): plain-Danish text that uses them counts them as terms.
+#
+# To change a convention: edit the form here, put the old spelling under
+# `also` (so older transcripts follow), then fix the sentences the tests name
+# and record those takes again; the recorder marks a take whose text changed.
+
+terms:
+  # Git and code review
+  pull request:
+    forms: [pull request, pull requesten, pull requests]
+    also:
+      pull-request: pull request
+      pullrequest: pull request
+      pull-requesten: pull requesten
+      pullrequesten: pull requesten
+      pull-requests: pull requests
+      pullrequests: pull requests
+  PR:
+    forms: [PR, PR'en, PR'er, PR'erne]
+    also:
+      PR-en: PR'en
+      PRen: PR'en
+      PR-er: PR'er
+      PRer: PR'er
+      PR-erne: PR'erne
+      PRerne: PR'erne
+  commit:
+    # Noun (et commit, committet, commits) and verb (committe ...) share
+    # "committet": the noun's definite form and the participle sound alike.
+    forms: [commit, commits, committet, committe, committer, committede]
+    also:
+      commit'et: committet
+      commitet: committet
+      commit'e: committe
+      commite: committe
+      commiter: committer
+      commitede: committede
+  branch:
+    forms: [branch, branchen, branches]
+    also:
+      branch'en: branchen
+  main:
+    # The default branch: "merge til main".
+    forms: [main]
+  merge:
+    forms: [merge, merger, mergede, merget, merges]
+    also:
+      merge'et: merget
+  rebase:
+    forms: [rebase, rebaser, rebasede, rebaset]
+  push:
+    forms: [push, pushe, pusher, pushede, pushet]
+    also:
+      push'e: pushe
+      push'ede: pushede
+      push'et: pushet
+  code review:
+    forms: [code review, code reviewet, code reviews]
+    also:
+      code-review: code review
+      codereview: code review
+      code-reviewet: code reviewet
+      code-reviews: code reviews
+  review:
+    # Noun (et review, reviewet, reviews) and verb (reviewe ...).
+    forms: [review, reviewet, reviews, reviewe, reviewer, reviewede]
+    also:
+      review'et: reviewet
+      review'e: reviewe
+  repo:
+    forms: [repo, repoet, repos, repository]
+    also:
+      repo'et: repoet
+
+  # Build, deploy and release
+  deploy:
+    # Noun (et deploy, deployet, deploys; et deployment) and verb (deploye ...).
+    forms:
+      [
+        deploy,
+        deploys,
+        deploye,
+        deployer,
+        deployede,
+        deployet,
+        deployes,
+        deployment,
+        deployments,
+      ]
+    also:
+      deploy'e: deploye
+      deploy'er: deployer
+      deploy'ede: deployede
+      deploy'et: deployet
+  build:
+    forms: [build, buildet, builds, builde, builder, buildede]
+    also:
+      build'et: buildet
+      build'e: builde
+  pipeline:
+    forms: [pipeline, pipelinen, pipelines]
+    also:
+      pipeline'en: pipelinen
+  release:
+    forms: [release, releasen, releases, releaser, releasede, releaset]
+    also:
+      release'en: releasen
+  CI:
+    forms: [CI, CI'en]
+    also:
+      CI-en: CI'en
+      CIen: CI'en
+  staging:
+    forms: [staging]
+  production:
+    # "prod" is what most people say; both are kept as forms.
+    forms: [production, prod]
+  preview:
+    forms: [preview, previewet, previews]
+    also:
+      preview'et: previewet
+  rollback:
+    forms: [rollback, rollbacken]
+    also:
+      roll-back: rollback
+      rollback'en: rollbacken
+  hotfix:
+    forms: [hotfix, hotfixet, hotfixes]
+    also:
+      hot fix: hotfix
+      hot-fix: hotfix
+      hotfix'et: hotfixet
+
+  # Features, bugs and code
+  feature flag:
+    forms: [feature flag, feature flaget, feature flags]
+    also:
+      featureflag: feature flag
+      feature-flag: feature flag
+      featureflaget: feature flaget
+      feature-flaget: feature flaget
+      featureflags: feature flags
+      feature-flags: feature flags
+  feature:
+    forms: [feature, featuren, features]
+    also:
+      feature'en: featuren
+  bug:
+    forms: [bug, buggen, bugs, buggene]
+    also:
+      bug'en: buggen
+      bugen: buggen
+  debug:
+    forms: [debug, debugge, debugger, debuggede, debugget, debugging]
+    also:
+      debug'e: debugge
+      debuge: debugge
+      debugede: debuggede
+      debuget: debugget
+  refactor:
+    forms:
+      [refactor, refactore, refactorer, refactorede, refactoret, refactoring]
+    also:
+      refactor'e: refactore
+      refaktore: refactore
+      refaktorede: refactorede
+      refaktoret: refactoret
+      refaktoring: refactoring
+  test:
+    forms:
+      [test, testen, tests, testene, teste, tester, testede, testet, testes]
+  mock:
+    forms: [mock, mocken, mocks, mocke, mocker, mockede, mocket]
+    also:
+      mock'e: mocke
+  cache:
+    forms: [cache, cachen, caches, cacher, cachede, cachet]
+    also:
+      cache'en: cachen
+  crash:
+    forms: [crash, crashe, crasher, crashede, crashet]
+    also:
+      crash'e: crashe
+      crash'et: crashet
+  timeout:
+    forms: [timeout, timeouten, timeouts]
+    also:
+      time-out: timeout
+      time-outen: timeouten
+      time-outs: timeouts
+  dependency:
+    forms: [dependency, dependencies]
+
+  # Architecture and data
+  endpoint:
+    forms: [endpoint, endpointet, endpoints]
+    also:
+      end point: endpoint
+      end-point: endpoint
+      endpoint'et: endpointet
+  API:
+    forms: [API, API'et, API'er, API'erne]
+    also:
+      API-et: API'et
+      APIet: API'et
+      API-er: API'er
+      APIer: API'er
+      API-erne: API'erne
+      APIerne: API'erne
+  frontend:
+    forms: [frontend, frontenden]
+    also:
+      front end: frontend
+      front-end: frontend
+      front-enden: frontenden
+  backend:
+    forms: [backend, backenden]
+    also:
+      back end: backend
+      back-end: backend
+      back-enden: backenden
+  database:
+    forms: [database, databasen, databaser, databaserne]
+  migration:
+    forms: [migration, migrationen, migrationer]
+  dashboard:
+    forms: [dashboard, dashboardet, dashboards]
+    also:
+      dashboard'et: dashboardet
+
+  # Planning
+  standup:
+    forms: [standup, standuppen]
+    also:
+      stand-up: standup
+      standupen: standuppen
+      standup'en: standuppen
+  sprint:
+    forms: [sprint, sprinten, sprints]
+  backlog:
+    forms: [backlog, backloggen]
+    also:
+      backlogen: backloggen
+      backlog'en: backloggen
+  issue:
+    forms: [issue, issuet, issues]
+    also:
+      issue'et: issuet
+  deadline:
+    forms: [deadline, deadlinen, deadlines]
+
+  # AI tools
+  prompt:
+    forms: [prompt, prompten, prompts]
+  token:
+    forms: [token, tokenet, tokens]
+  LLM:
+    forms: [LLM, LLM'en, LLM'er, LLM'erne]
+    also:
+      LLM-en: LLM'en
+      LLMen: LLM'en
+      LLM-er: LLM'er
+      LLMer: LLM'er
+      LLM-erne: LLM'erne
+
+  # Names: as written, no endings.
+  Claude Code:
+    forms: [Claude Code]
+  ChatGPT:
+    forms: [ChatGPT]
+    also:
+      Chat GPT: ChatGPT
+      Chat-GPT: ChatGPT
+  Cursor:
+    forms: [Cursor]
+  VS Code:
+    forms: [VS Code]
+    also:
+      VSCode: VS Code
+      VS-Code: VS Code
+  GitHub:
+    forms: [GitHub]
+    also:
+      Git Hub: GitHub
+      Git-Hub: GitHub
+  TypeScript:
+    forms: [TypeScript]
+    also:
+      Type Script: TypeScript
+  JavaScript:
+    forms: [JavaScript]
+    also:
+      Java Script: JavaScript
+  Python:
+    forms: [Python]
+  Rust:
+    forms: [Rust]
+  React:
+    forms: [React]
+  Tauri:
+    forms: [Tauri]
+  Next.js:
+    forms: [Next.js]
+    also:
+      NextJS: Next.js
+      Next JS: Next.js
+  Node:
+    forms: [Node, Node.js]
+    also:
+      NodeJS: Node.js
+      Node JS: Node.js
+  npm:
+    forms: [npm]
+  Bun:
+    forms: [Bun]
+  Docker:
+    forms: [Docker]
+  Kubernetes:
+    forms: [Kubernetes]
+  Cloudflare:
+    forms: [Cloudflare]
+    also:
+      Cloud Flare: Cloudflare
+  Vercel:
+    forms: [Vercel]
+  Supabase:
+    forms: [Supabase]
+  Azure:
+    forms: [Azure]
+  Linear:
+    forms: [Linear]
+  Slack:
+    forms: [Slack]
+  Figma:
+    forms: [Figma]

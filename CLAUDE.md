@@ -24,6 +24,7 @@ site/                 walkietalkey.com, Astro with React islands
 packages/ui/          React components and tokens ported from the design system
 packages/protocol/    message types, envelope crypto, test vectors; Rust crate in packages/protocol/rust/
 models/               model manifest, conversion scripts, model cards, licence texts
+training/             fine-tuning workbench (Python): recorder, datasets, LoRA training, evaluation, export
 docs/                 SPEC.md, PROTOCOL.md, PRIVACY.md, MANAGED_SETTINGS.md, ARCHITECTURE.md, MODELS.md
 deploy/               managed-settings templates (ADMX/ADML, .mobileconfig)
 licenses/             third-party licence texts

@@ -13,6 +13,16 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - Up to date: Tauri 2.12 and its plugins, and p256 0.14 in the encryption between phone and computer (RUSTSEC-2026-0387). Nothing changes on the wire, so paired phones keep working.
 - For packagers: the environment variables are now `WALKIETALKEY_*` (for example `WALKIETALKEY_DISABLE_UPDATER`), and Linux packages keep their libraries in `/usr/lib/WalkieTalkey`.
 - Releases name the updater archive with the version (`WalkieTalkey_<version>_universal.app.tar.gz`); the direct downloads `WalkieTalkey-mac.dmg` and `WalkieTalkey-windows.exe` keep their names.
+- The pill's glow is no longer cut off in a hard rectangle: its window leaves room for the whole glow, has no window shadow, and lets clicks through everywhere except on the pill.
+- Dictations from the phone arrive 15 dB louder, about as loud as the Mac's microphone, with a limiter so nothing clips.
+- On the phone, a press right after coming back to the app could record nothing and be dropped: the microphone now always starts again.
+- When the microphone gives no sound at all (an audio interface with nothing plugged in, a muted input), the pill and the window say "Mikrofonen giver ingen lyd" and offer a microphone that works. WalkieTalkey never records the computer's own sound instead.
+- No more broken characters ("mødet��") or letters from other scripts in the text: a piece that comes back with them is transcribed again without the developer vocabulary, and any left are removed.
+- No more capital letters in the middle of a sentence where a long dictation was cut at a pause ("og ikke bare Kaster mig"): each joint is read again by the punctuation model, which also removes a full stop that does not belong there.
+- For developers: a fine-tuning workbench in `training/` (`wt-train`): about 1,000 sentences with English developer terms, a recorder, LoRA training on Edda, evaluation like the accuracy job, and export to the app.
+- A fine-tuned Edda from the training workbench (`training/`) appears in the model list and is decoded like Edda; it can no longer be "downloaded again", which deleted it.
+- `walkietalkey --transcribe-list <file> --json` transcribes many WAV files with the model loaded once.
+- Up to date: TypeScript 6, Tauri 2.12.5, openssl 0.10.81 and pytest 9.
 
 ## [0.1.0] - 2026-10-24
 

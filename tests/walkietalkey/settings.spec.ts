@@ -384,6 +384,28 @@ test.describe("settings", () => {
       .toBe(false);
   });
 
+  test("a workbench fine-tune can be chosen but never re-downloaded (run 4)", async ({
+    page,
+  }) => {
+    const custom = { id: "edda-ft-devterms", name: "Edda FT devterms" };
+    await openApp(page, {
+      customModels: [custom],
+      app: { selected_model: custom.id },
+    });
+    await section(page, "Model");
+    const select = page.getByLabel("Valgt model");
+    await expect(select).toHaveValue(custom.id);
+    await expect(
+      select.getByRole("option", { name: custom.name }),
+    ).toBeAttached();
+    // "Hent igen" deletes the file first; a custom file cannot be fetched back.
+    await expect(
+      page.getByRole("button", { name: "Hent igen" }),
+    ).toBeDisabled();
+    await select.selectOption(EDDA);
+    await expect(page.getByRole("button", { name: "Hent igen" })).toBeEnabled();
+  });
+
   test("Hold talemodellen indlæst maps to the unload timeout", async ({
     page,
   }) => {

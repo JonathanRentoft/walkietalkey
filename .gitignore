@@ -38,8 +38,9 @@ test-results/
 blob-report/
 
 
-# Python bytecode (scripts/)
+# Python bytecode and test caches (scripts/, models/, training/)
 __pycache__/
+.pytest_cache/
 
 # WalkieTalkey: local kit and scratch work (never committed)
 _kit/
@@ -60,3 +61,9 @@ src-tauri/tauri.ci.conf.json
 
 # The owner's local instructions for coding agents (not part of the repository)
 CLAUDE.local.md
+
+# Fine-tuning workbench (training/): the owner's recordings never leave this Mac, and
+# downloads, caches, runs and exported models stay in the work folder.
+training/data/recordings/
+training/work/
+training/.venv/

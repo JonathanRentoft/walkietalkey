@@ -25,6 +25,8 @@ import {
   isCloudProvider,
   isCopilotBinding,
   keyParts,
+  micNotice,
+  micPillHint,
   nextStep,
   onboardingSteps,
   parseReplacements,
@@ -311,8 +313,55 @@ describe("pill (DESK-55)", () => {
     assert.equal(pillStateFromEnd("pasted"), "pasted");
     assert.equal(pillStateFromEnd("clipboard"), "ready");
     assert.equal(pillStateFromEnd("no_speech"), "nospeech");
+    assert.equal(pillStateFromEnd("mic_silent"), "micsilent");
     assert.equal(pillStateFromEnd("cleanup_skipped"), "raw");
     assert.equal(pillStateFromEnd("something_else"), "ready");
+  });
+});
+
+describe("silent microphone (DESK-59)", () => {
+  const silent = (over: Record<string, unknown> = {}) => ({
+    silent_input: "Scarlett Solo USB",
+    suggestion: null,
+    probing: false,
+    ...over,
+  });
+
+  test("no notice while the input works", () => {
+    assert.equal(micNotice(null), null);
+    assert.equal(
+      micNotice({ silent_input: null, suggestion: null, probing: false }),
+      null,
+    );
+    assert.equal(micPillHint(null), null);
+  });
+
+  test("looking, then a suggestion with Brug, or plainly none", () => {
+    assert.deepEqual(micNotice(silent({ probing: true })), {
+      key: "wt.mic.searching",
+      name: "Scarlett Solo USB",
+    });
+    assert.deepEqual(
+      micNotice(silent({ suggestion: "MacBook Pro-mikrofon" })),
+      {
+        key: "wt.mic.try",
+        name: "Scarlett Solo USB",
+        other: "MacBook Pro-mikrofon",
+      },
+    );
+    assert.deepEqual(micNotice(silent()), {
+      key: "wt.mic.none",
+      name: "Scarlett Solo USB",
+    });
+  });
+
+  test("the pill adds Prøv {navn} or Tjek mikrofonen once the probe is done", () => {
+    assert.equal(micPillHint(silent({ probing: true })), null);
+    assert.deepEqual(
+      micPillHint(silent({ suggestion: "MacBook Pro-mikrofon" })),
+      { key: "wt.pill.micTry", name: "MacBook Pro-mikrofon" },
+    );
+    assert.deepEqual(micPillHint(silent()), { key: "wt.pill.micNone" });
   });
 });
 

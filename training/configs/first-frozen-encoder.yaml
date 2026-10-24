@@ -1,0 +1,112 @@
+# First experiment: teach Edda the English developer terms by adapting only its
+# decoder (LoRA), with the encoder frozen. The encoder turns audio into features;
+# the decoder turns features into words, which is where spelling and vocabulary
+# live, so this is the cheapest place to start. With the encoder frozen its
+# outputs are computed once and cached, so each epoch only runs the small
+# decoder (4 layers).
+#
+#   wt-train build  configs/first-frozen-encoder.yaml   # splits only, to inspect them
+#   wt-train train  configs/first-frozen-encoder.yaml   # builds the splits too
+#   wt-train eval   --backend lora --run latest --dataset test
+#   wt-train export latest
+
+# Name of the experiment: its dataset build and its runs are named after it.
+# Lower-case letters, digits and "-".
+name: first-frozen-encoder
+
+base_model:
+  # The model to start from. Edda v0.2 at the revision WalkieTalkey ships; the
+  # local snapshot in <work>/dl/edda-v0.2 is used when it is there.
+  repo: danish-foundation-models/edda-v0.2
+  revision: 698f8d04b5970f963d31c4079c05a76fa7f4f5bb
+
+data:
+  # Your takes: <id>.wav (16 kHz mono) + <id>.txt per sentence. null = the
+  # defaults (training/data/recordings, training/data/sentences.csv,
+  # training/data/spelling.yaml); relative paths are relative to training/.
+  recordings: null
+  sentences: null
+  spelling: null
+  # Share of the sentences held out for validation (picks the best epoch) and
+  # for test (scored only by `wt-train eval`, never seen in training). A
+  # sentence is in exactly one split; its split follows from a hash of its
+  # normalised text and the seed, so it keeps its split when you record more.
+  validation_fraction: 0.1
+  test_fraction: 0.1
+  # Changing the seed reshuffles which sentences are held out.
+  seed: 1
+
+rehearsal:
+  # Plain Danish from FLEURS da_dk train mixed in, so the model does not forget
+  # plain Danish while it learns the terms. share = rehearsal clips as a
+  # fraction of the final training set (0.3: 3 in 10 training clips are FLEURS).
+  share: 0.3
+  # The same for the validation split, so picking the best epoch also guards
+  # plain Danish, not only the terms.
+  validation_share: 0.3
+
+lora:
+  # Rank of the low-rank update per adapted weight matrix: higher can learn
+  # more and overfits sooner. 8 to 32 is the usual range.
+  rank: 16
+  # Scale of the update: the effective step is alpha / rank. 2 x rank is common.
+  alpha: 32
+  # Dropout on the LoRA path during training (a little regularisation).
+  dropout: 0.05
+  # Decoder parts to adapt, in every decoder layer: self_attn (attention over
+  # the words so far), cross_attn (attention over the audio features), ffn
+  # (the feed-forward block, fc1 and fc2).
+  decoder: [self_attn, cross_attn, ffn]
+  # Which attention projections get an adapter (for self_attn and cross_attn,
+  # and for the encoder's self_attn below).
+  projections: [q_proj, k_proj, v_proj, out_proj]
+  # Also adapt the top N of the encoder's 32 layers (0 = encoder frozen and
+  # cached). See configs/top4-encoder.yaml.
+  encoder_top_layers: 0
+  # Encoder parts to adapt in those top layers: self_attn and/or ffn.
+  encoder: [self_attn, ffn]
+
+training:
+  # Peak learning rate of the adapter weights (AdamW).
+  learning_rate: 2e-4
+  # Fraction of all optimiser steps spent ramping the learning rate up from 0.
+  warmup_fraction: 0.1
+  # After warmup: linear (down to 0 at the end), cosine (the same, smoother) or constant.
+  schedule: linear
+  # Passes over the training set. The adapter from the epoch with the lowest
+  # validation WER is kept, so a few too many epochs cost time, not quality.
+  epochs: 5
+  # Clips per forward pass, and passes per optimiser step: the effective
+  # batch is batch_size x gradient_accumulation clips.
+  batch_size: 8
+  gradient_accumulation: 2
+  # AdamW weight decay on the adapter weights (0 = off).
+  weight_decay: 0.0
+  # Gradients are clipped to this norm (0 = no clipping).
+  max_grad_norm: 1.0
+  # Seed for the adapter's initial weights and the order of the clips.
+  seed: 1
+  # auto = Apple GPU (mps) when available, otherwise cpu.
+  device: auto
+
+evaluation:
+  # Clips per batch when transcribing the validation split after each epoch.
+  batch_size: 8
+  # Longest transcript in tokens; decoding is greedy with timestamps off and
+  # the language forced to Danish, like the app.
+  max_new_tokens: 440
+  # Also score the untouched base model on validation before training (epoch 0),
+  # so metrics.jsonl shows where training started.
+  baseline: true
+
+export:
+  # The app id becomes edda-ft-<slug>; the file edda-ft-<slug>.gguf in the
+  # app's models folder. Lower-case letters, digits and "-".
+  slug: first
+  # Name shown in the app's model list (GGUF general.name). TODO(copy)
+  name: Edda finjusteret (forsøg 1)
+  # Validation clips transcribed by both the merged model and the GGUF to check
+  # that conversion and Q8_0 quantisation kept the text.
+  verify_clips: 10
+  # How many of them may differ (after normalisation) before the export fails.
+  max_differing_clips: 1

@@ -95,7 +95,7 @@ export async function sealFrameInternal(
   h: SealHeader,
   plaintext: Uint8Array,
   nonce: Uint8Array,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   if (plaintext.length > MAX_PLAINTEXT_LEN)
     throw new ProtocolError("frame_too_large");
   const header = encodeHeader(h, nonce);
@@ -122,7 +122,7 @@ export async function sealFrame(
   key: CryptoKey,
   h: SealHeader,
   plaintext: Uint8Array,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   return sealFrameInternal(key, h, plaintext, randomBytes(NONCE_LEN));
 }
 

@@ -1,0 +1,57 @@
+# The config `wt-train smoke` runs: the whole chain on 20 FLEURS train clips
+# standing in for recordings, one epoch, small batches, a 3-clip export check.
+# It proves the tools work end to end on this machine; the model it trains is
+# meaningless and is deleted afterwards. The smoke test points data.recordings,
+# data.sentences and data.spelling at its own temporary folder.
+
+name: smoke
+
+base_model:
+  repo: danish-foundation-models/edda-v0.2
+  revision: 698f8d04b5970f963d31c4079c05a76fa7f4f5bb
+
+data:
+  recordings: null
+  sentences: null
+  spelling: null
+  # 20 sentences: about 4 for validation, 4 for test, 12 to train on.
+  validation_fraction: 0.2
+  test_fraction: 0.2
+  seed: 1
+
+rehearsal:
+  share: 0.25
+  validation_share: 0.25
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  decoder: [self_attn, cross_attn, ffn]
+  projections: [q_proj, k_proj, v_proj, out_proj]
+  encoder_top_layers: 0
+  encoder: [self_attn, ffn]
+
+training:
+  learning_rate: 1e-4
+  warmup_fraction: 0.1
+  schedule: linear
+  epochs: 1
+  batch_size: 4
+  gradient_accumulation: 1
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  seed: 1
+  device: auto
+
+evaluation:
+  batch_size: 4
+  max_new_tokens: 440
+  baseline: true
+
+export:
+  slug: smoke
+  # TODO(copy)
+  name: Edda (røgtest)
+  verify_clips: 3
+  max_differing_clips: 1

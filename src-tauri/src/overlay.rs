@@ -46,12 +46,13 @@ tauri_panel! {
 // Compact overlay (Minimal / transcribing / processing): the 40h pill animates
 // width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
 // the window must fit the widest state plus a little slack.
-// WalkieTalkey (DESK-55): the DictationPill is 56 high and grows from about
-// 220 to 416 wide with its text; its halo and shadow reach 32 px beyond it, so
-// the window leaves 32 px on every side and nothing is clipped (Handy: 256x50).
-// The pill is centred in the window (src/walkietalkey/pill/pill.css).
-const OVERLAY_WIDTH: f64 = 480.0;
-const OVERLAY_HEIGHT: f64 = 120.0;
+// WalkieTalkey (DESK-55, run 4): the DictationPill is 56 high and grows from
+// about 220 to 416 wide with its text; the window leaves room for its whole
+// glow on every side, and lets clicks through except over the pill
+// (walkietalkey::pill_window). The pill is centred in the window
+// (src/walkietalkey/pill/pill.css). Handy: 256x50.
+const OVERLAY_WIDTH: f64 = crate::walkietalkey::pill_window::WINDOW_WIDTH;
+const OVERLAY_HEIGHT: f64 = crate::walkietalkey::pill_window::WINDOW_HEIGHT;
 
 // WalkieTalkey: phone dictations stream into the same pill, so the window
 // keeps one size (Handy's live-text card was 400x120).
@@ -71,18 +72,31 @@ static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
 // WalkieTalkey: crate-visible so the phone waveform paces above it (relay/levels.rs).
 pub(crate) const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
 
-// WalkieTalkey: the window's 32 px margin around the pill is subtracted on the
-// Mac, so the pill itself sits where Handy's did (Handy: 46 and 15).
+// WalkieTalkey: the window's margin around the pill (its glow) is subtracted,
+// so the pill itself sits where it always has: on the Mac 56 px below the top
+// and 32 px above the bottom of the work area (Handy: 46 and 15), elsewhere 36
+// and 72. The window may reach past the work area's edge; that part is glow
+// only and lets clicks through.
 #[cfg(target_os = "macos")]
-const OVERLAY_TOP_OFFSET: f64 = 24.0;
+const PILL_TOP_GAP: f64 = 56.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-const OVERLAY_TOP_OFFSET: f64 = 4.0;
-
+const PILL_TOP_GAP: f64 = 36.0;
 #[cfg(target_os = "macos")]
-const OVERLAY_BOTTOM_OFFSET: f64 = 0.0;
-
+const PILL_BOTTOM_GAP: f64 = 32.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
+const PILL_BOTTOM_GAP: f64 = 72.0;
+
+const OVERLAY_TOP_OFFSET: f64 = PILL_TOP_GAP - crate::walkietalkey::pill_window::GLOW_MARGIN;
+const OVERLAY_BOTTOM_OFFSET: f64 = PILL_BOTTOM_GAP - crate::walkietalkey::pill_window::GLOW_MARGIN;
+
+/// CSS pixels per point in the overlay: Windows applies its accessibility text
+/// size to WebView2 as a zoom; everywhere else 1.
+pub fn text_scale_factor() -> f64 {
+    #[cfg(target_os = "windows")]
+    return windows_text_scale_factor();
+    #[cfg(not(target_os = "windows"))]
+    1.0
+}
 
 /// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
@@ -575,6 +589,9 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             let show_started = std::time::Instant::now();
             let _ = overlay_window.show();
             let show_elapsed = show_started.elapsed();
+            // WalkieTalkey (run 4): no window shadow, clicks through but on the pill.
+            crate::walkietalkey::pill_window::set_shown(&overlay_window, true);
+            crate::walkietalkey::pill_window::track_clicks(app_handle);
 
             // On Windows, aggressively re-assert "topmost" in the native Z-order after showing
             #[cfg(target_os = "windows")]
@@ -713,6 +730,7 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
                 return;
             }
             let _ = window_clone.hide();
+            crate::walkietalkey::pill_window::set_shown(&window_clone, false);
         });
     }
 }

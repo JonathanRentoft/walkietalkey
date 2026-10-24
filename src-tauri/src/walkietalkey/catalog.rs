@@ -35,9 +35,11 @@ pub fn non_commercial(license: &str) -> bool {
 /// Models decoded one speech segment at a time (docs/MODELS.md, "Edda and
 /// pauses"): Edda, decoded greedily, stops at the first pause of a window
 /// that holds more than one sentence. Whisper turbo gets worse that way, so
-/// it keeps its longer chunks.
+/// it keeps its longer chunks. Fine-tunes of Edda from the training workbench
+/// (`wt-train export`) are custom files named `edda-ft-<name>.gguf`, whose id
+/// is the file name without `.gguf`; they decode like Edda.
 pub fn decodes_by_segment(model_id: &str) -> bool {
-    model_id.starts_with("walkietalkey/edda-")
+    model_id.starts_with("walkietalkey/edda-") || model_id.starts_with("edda-")
 }
 
 #[cfg(test)]
@@ -91,5 +93,8 @@ mod segment_tests {
         assert!(!decodes_by_segment(
             "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf"
         ));
+        // A workbench fine-tune installed as edda-ft-<name>.gguf (run 4).
+        assert!(decodes_by_segment("edda-ft-devterms-r16"));
+        assert!(!decodes_by_segment("my-custom-model"));
     }
 }
