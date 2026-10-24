@@ -17,6 +17,8 @@ STEPS = {
     "eval": ("wt_train.evaluate", "score a model and append to results.csv"),
     "export": ("wt_train.export", "merge, convert to GGUF Q8_0 and install in the app"),
     "smoke": ("wt_train.smoke", "run the whole chain on 20 FLEURS clips"),
+    "ui": ("wt_train.ui", "open the MLflow UI for the tracked runs"),
+    "card": ("wt_train.journal", "write a lab-journal page for a run"),
 }
 
 
