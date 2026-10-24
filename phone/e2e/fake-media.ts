@@ -48,7 +48,22 @@ export function installFakeMedia(cfg: FakeMediaConfig): void {
     const dest = ctx.createMediaStreamDestination();
     src.connect(dest);
     src.start();
-    if (ctx.state !== "running") await ctx.resume().catch(() => undefined);
+    // A real microphone delivers without the page's gesture; this stand-in is an AudioContext,
+    // which some engines (WebKit on Linux) only start on one. Never hold getUserMedia on it:
+    // start it now if allowed, else on the next press.
+    if (ctx.state !== "running") {
+      void ctx.resume().catch(() => undefined);
+      const fake = ctx;
+      const onGesture = () => {
+        if (fake.state !== "running") void fake.resume().catch(() => undefined);
+        else {
+          window.removeEventListener("pointerdown", onGesture, true);
+          window.removeEventListener("keydown", onGesture, true);
+        }
+      };
+      window.addEventListener("pointerdown", onGesture, true);
+      window.addEventListener("keydown", onGesture, true);
+    }
     w.__wtFakeMic = ((w.__wtFakeMic as number) || 0) + 1;
     return dest.stream;
   }

@@ -84,6 +84,12 @@ export class Recorder implements RecorderLike {
   private openGen = 0;
   /** Changes on abort() and on every start(); a start that was overtaken does nothing. */
   private startGen = 0;
+  /**
+   * Ends the wait of a start() whose microphone is still opening. Opening can stall (a permission
+   * prompt nobody has answered, an engine that starts audio only on a gesture); stop() and
+   * abort() call this, so a press never waits on it and the dictation ends instead of hanging.
+   */
+  private giveUp: (() => void) | null = null;
 
   prime(): void {
     const ctx = this.context();
@@ -136,19 +142,29 @@ export class Recorder implements RecorderLike {
 
   async start(onBlock: BlockSink): Promise<void> {
     const gen = ++this.startGen;
-    let cap: Capture;
+    this.giveUp?.();
+    let cap: Capture | null;
     try {
-      cap = await this.open();
+      cap = await Promise.race([
+        this.open(),
+        new Promise<null>((resolve) => {
+          this.giveUp = () => resolve(null);
+        }),
+      ]);
     } catch (e) {
       if (e instanceof Closed) return;
       throw e;
+    } finally {
+      if (gen === this.startGen) this.giveUp = null;
     }
-    if (gen !== this.startGen || cap !== this.capture) return;
+    if (!cap || gen !== this.startGen || cap !== this.capture) return;
     cap.sink.begin(onBlock);
   }
 
   async stop(): Promise<void> {
     this.startGen++;
+    this.giveUp?.();
+    this.giveUp = null;
     const cap = this.capture;
     if (!cap || !cap.sink.recording) return;
     await new Promise<void>((resolve) => {
@@ -165,6 +181,8 @@ export class Recorder implements RecorderLike {
 
   abort(): void {
     this.startGen++;
+    this.giveUp?.();
+    this.giveUp = null;
     this.capture?.sink.drop();
   }
 
