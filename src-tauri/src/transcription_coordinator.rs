@@ -598,59 +598,43 @@ impl TranscriptionCoordinator {
         let (tx, rx) = mpsc::channel();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let mut state = CoordinatorState::new();
-
-                loop {
+            run_coordinator(
+                rx,
+                |state, step| {
                     // WalkieTalkey (DESK-22): a recording that turns hands-free
                     // (a tap, or a locked start) shows its pill at once.
                     let was_locked = state.locked_recording().is_some();
-                    let cmd = if let Some(deadline) = state.grace_deadline() {
-                        match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                            Ok(cmd) => cmd,
-                            Err(mpsc::RecvTimeoutError::Timeout) => {
-                                if let Some(effect) = state.on_grace_expired() {
-                                    run_effect(&app, &mut state, effect);
-                                }
-                                notice_hands_free(&app, &state, was_locked);
-                                continue;
-                            }
-                            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    let effect = match step {
+                        Step::GraceExpired => state.on_grace_expired(),
+                        Step::Command(Command::Input(input)) => {
+                            state.on_input(input, Instant::now())
                         }
-                    } else {
-                        match rx.recv() {
-                            Ok(cmd) => cmd,
-                            Err(_) => break,
-                        }
-                    };
-
-                    match cmd {
-                        Command::Input(input) => {
-                            if let Some(effect) = state.on_input(input, Instant::now()) {
-                                run_effect(&app, &mut state, effect);
-                            }
-                        }
-                        Command::Cancel {
+                        Step::Command(Command::Cancel {
                             recording_was_active,
-                        } => state.on_cancel(recording_was_active),
-                        Command::ProcessingFinished => {
-                            if let Some(effect) = state.on_processing_finished() {
-                                run_effect(&app, &mut state, effect);
-                            }
+                        }) => {
+                            state.on_cancel(recording_was_active);
+                            None
                         }
-                        Command::ForceStop => {
-                            if let Some(effect) = state.on_force_stop() {
-                                run_effect(&app, &mut state, effect);
-                            }
+                        Step::Command(Command::ProcessingFinished) => {
+                            state.on_processing_finished()
                         }
+                        Step::Command(Command::ForceStop) => state.on_force_stop(),
+                    };
+                    if let Some(effect) = effect {
+                        run_effect(&app, state, effect);
                     }
-                    notice_hands_free(&app, &state, was_locked);
-                }
-                debug!("Transcription coordinator exited");
-            }));
-            if let Err(e) = result {
-                error!("Transcription coordinator panicked: {e:?}");
-            }
+                    notice_hands_free(&app, state, was_locked);
+                },
+                || {
+                    // Whatever was recording stops without output; the next
+                    // press starts afresh.
+                    let app = app.clone();
+                    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+                        crate::utils::cancel_current_operation(&app)
+                    }));
+                },
+            );
+            debug!("Transcription coordinator exited");
         });
 
         Self { tx }
@@ -740,6 +724,55 @@ impl TranscriptionCoordinator {
     }
 }
 
+/// One thing for the coordinator thread to handle.
+enum Step {
+    Command(Command),
+    /// The deferred release's grace period ran out.
+    GraceExpired,
+}
+
+/// The coordinator thread's loop: waits for the next command (or the grace
+/// deadline), hands it to `handle`, and ends when every sender is gone.
+///
+/// WalkieTalkey (run 5): a step that panics no longer ends the thread. Run 4:
+/// one panic in a start (state that did not exist yet) killed the loop, and
+/// the key stayed dead until the app restarted. Now the state goes back to
+/// idle, `recover` stops whatever was under way, and the next command is
+/// handled as usual.
+fn run_coordinator(
+    rx: mpsc::Receiver<Command>,
+    mut handle: impl FnMut(&mut CoordinatorState, Step),
+    mut recover: impl FnMut(),
+) {
+    let mut state = CoordinatorState::new();
+    loop {
+        let step = if let Some(deadline) = state.grace_deadline() {
+            match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+                Ok(cmd) => Step::Command(cmd),
+                Err(mpsc::RecvTimeoutError::Timeout) => Step::GraceExpired,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        } else {
+            match rx.recv() {
+                Ok(cmd) => Step::Command(cmd),
+                Err(_) => break,
+            }
+        };
+        let outcome =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle(&mut state, step)));
+        if let Err(panic) = outcome {
+            let what = panic
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| panic.downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            error!("Transcription coordinator: a step panicked ({what}); back to idle");
+            state = CoordinatorState::new();
+            recover();
+        }
+    }
+}
+
 /// WalkieTalkey (DESK-22): tells the key rules when a recording has just
 /// become hands-free.
 fn notice_hands_free(app: &AppHandle, state: &CoordinatorState, was_locked: bool) {
@@ -774,6 +807,12 @@ fn run_effect(app: &AppHandle, state: &mut CoordinatorState, effect: Effect) {
 /// Execute a start effect; returns whether recording actually began, so the
 /// state machine can roll back its optimistic transition on failure.
 fn start(app: &AppHandle, binding_id: &str, hotkey_string: &str) -> bool {
+    // WalkieTalkey (run 5): nothing starts before setup is done (a
+    // remote-control flag can arrive while the app is still starting).
+    if !crate::walkietalkey::is_ready() {
+        warn!("Not starting '{binding_id}': the app is still starting");
+        return false;
+    }
     let Some(action) = ACTION_MAP.get(binding_id) else {
         warn!("No action in ACTION_MAP for '{binding_id}'");
         return false;
@@ -799,6 +838,69 @@ fn stop(app: &AppHandle, binding_id: &str, hotkey_string: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn external_press() -> Command {
+        Command::Input(InputEvent {
+            binding_id: "transcribe".into(),
+            hotkey_string: "CLI".into(),
+            is_pressed: true,
+            mode: ShortcutActivation::Toggle,
+            hold_threshold: Duration::ZERO,
+            external: true,
+        })
+    }
+
+    /// Run 4: a remote-control toggle during startup panicked in its start, the panic ended
+    /// the coordinator thread, and the key never worked again until a restart. Run 5: the
+    /// step's panic is caught, the state goes back to idle, and later commands still run.
+    #[test]
+    fn a_panicking_step_does_not_end_the_coordinator() {
+        let (tx, rx) = mpsc::channel();
+        let handled = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+        let recovered = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let (h, r) = (handled.clone(), recovered.clone());
+        let worker = thread::spawn(move || {
+            let mut first = true;
+            run_coordinator(
+                rx,
+                move |state, step| {
+                    if let Step::Command(Command::Input(input)) = step {
+                        // The production start runs here; the first one panics.
+                        let effect = state.on_input(input, Instant::now());
+                        assert!(matches!(effect, Some(Effect::Start { .. })));
+                        if std::mem::take(&mut first) {
+                            panic!("state not managed yet");
+                        }
+                        state.on_start_result("transcribe", true);
+                        h.lock().unwrap().push("started".into());
+                    } else if let Step::Command(Command::ProcessingFinished) = step {
+                        h.lock().unwrap().push("finished".into());
+                    }
+                },
+                move || {
+                    r.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                },
+            );
+        });
+        tx.send(external_press()).unwrap();
+        // After the panic the state is idle again, so the same press starts a recording
+        // (were it still "recording", a toggle press would stop instead).
+        tx.send(external_press()).unwrap();
+        tx.send(Command::ProcessingFinished).unwrap();
+        drop(tx);
+        worker
+            .join()
+            .expect("the coordinator thread ends only when its senders do");
+        assert_eq!(*handled.lock().unwrap(), vec!["started", "finished"]);
+        assert_eq!(recovered.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    /// Run 5: until setup has run to its end nothing starts recording.
+    #[test]
+    fn nothing_starts_before_setup_is_done() {
+        // The flag is process-wide and set by `setup` only; in a unit test it was never set.
+        assert!(!crate::walkietalkey::is_ready());
+    }
 
     #[test]
     fn push_to_talk_release_while_recording_defers_release() {

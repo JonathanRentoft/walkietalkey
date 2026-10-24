@@ -48,6 +48,23 @@ pub mod vocabulary;
 
 static APP: once_cell::sync::OnceCell<AppHandle> = once_cell::sync::OnceCell::new();
 
+/// Set once `setup` has run to its end: every manager and every piece of
+/// state a dictation touches exists (run 5).
+static READY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The end of `setup` (lib.rs): dictations may start from now on.
+pub fn mark_ready() {
+    READY.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// Whether a dictation may start. Run 4: a remote-control flag arrived while
+/// setup was still waiting for the keychain dialog, its start reached state
+/// that did not exist yet, and the panic ended the coordinator thread. A
+/// start before setup is done is now refused (and logged) instead.
+pub fn is_ready() -> bool {
+    READY.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 /// The app handle, for the few places Handy's code reaches us without one.
 pub fn app() -> Option<&'static AppHandle> {
     APP.get()

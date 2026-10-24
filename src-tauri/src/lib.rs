@@ -1169,6 +1169,9 @@ pub fn run(cli_args: CliArgs) {
                 show_main_window(&app_handle);
             }
 
+            // WalkieTalkey (run 5): dictations may start once setup is done.
+            walkietalkey::mark_ready();
+
             Ok(())
         })
         .on_window_event(|window, event| match event {

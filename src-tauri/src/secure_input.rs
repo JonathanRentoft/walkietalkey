@@ -61,7 +61,28 @@ pub struct KeyboardDiagnosticReport {
 #[tauri::command]
 #[specta::specta]
 pub fn get_secure_input_status(app: AppHandle) -> SecureInputStatus {
+    if !ready(&app) {
+        return SecureInputStatus {
+            enabled: false,
+            sustained: false,
+            culprit_pid: None,
+            culprit_name: None,
+            fallback_active: false,
+            covered_bindings: Vec::new(),
+            degraded_bindings: Vec::new(),
+            uncovered_bindings: Vec::new(),
+            recorder_blocked: false,
+        };
+    }
     imp::status(&app)
+}
+
+/// WalkieTalkey (run 5): whether `init` has run. A dictation can start before
+/// it (a remote-control flag that arrives while setup is still running);
+/// these entry points then do nothing instead of panicking in
+/// `app.state()` on the transcription coordinator's thread.
+fn ready(app: &AppHandle) -> bool {
+    app.try_state::<imp::SecureInputState>().is_some()
 }
 
 #[tauri::command]
@@ -81,23 +102,31 @@ pub fn is_enabled_now() -> bool {
 /// is active. Flips the warning state so the banner/tray explain the refusal
 /// even when every registered binding is covered by the fallback.
 pub fn note_recorder_blocked(app: &AppHandle) {
-    imp::note_recorder_blocked(app)
+    if ready(app) {
+        imp::note_recorder_blocked(app)
+    }
 }
 
 /// Register/unregister the dynamic Cancel binding through the Carbon fallback
 /// while a recording and sustained Secure Input overlap.
 pub fn register_cancel_fallback(app: &AppHandle) {
-    imp::register_cancel_fallback(app)
+    if ready(app) {
+        imp::register_cancel_fallback(app)
+    }
 }
 
 pub fn unregister_cancel_fallback(app: &AppHandle) {
-    imp::unregister_cancel_fallback(app)
+    if ready(app) {
+        imp::unregister_cancel_fallback(app)
+    }
 }
 
 /// Synchronize Carbon fallback registrations with current settings and
 /// lifecycle state while preserving unchanged registrations.
 pub fn reconcile_fallback(app: &AppHandle) {
-    imp::reconcile_fallback(app)
+    if ready(app) {
+        imp::reconcile_fallback(app)
+    }
 }
 
 /// Managed state + monitor startup. On non-macOS platforms the state exists
