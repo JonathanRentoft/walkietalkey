@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { commands, type OutputMode, type PunctuationMode } from "@/bindings";
 import type { WtPlatform } from "../lib/helpers";
-import { hasPermission, pasteKey, requestPermission } from "../lib/system";
+import { hasPermission, openAccessibilityPane, pasteKey } from "../lib/system";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
 import {
   Button,
@@ -26,11 +26,20 @@ export function TextSection(props: { platform: WtPlatform }) {
     if (mac) void hasPermission("accessibility").then(setAccessibility);
   }, [mac]);
 
-  const allow = async () => {
-    const ok = await requestPermission("accessibility");
-    setAccessibility(ok);
-    if (ok) void commands.initializeEnigo().catch(() => {});
-  };
+  // After "Giv adgang" the grant arrives from System Settings; notice it.
+  useEffect(() => {
+    if (!mac || accessibility !== false) return;
+    const id = setInterval(() => {
+      void hasPermission("accessibility").then((ok) => {
+        if (!ok) return;
+        setAccessibility(true);
+        void commands.initializeEnigo().catch(() => {});
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [mac, accessibility]);
+
+  const allow = () => void openAccessibilityPane();
 
   return (
     <Page title={t("wt.nav.text")}>
@@ -60,9 +69,7 @@ export function TextSection(props: { platform: WtPlatform }) {
               accessibility === false ? (
                 <div className="wt-inline">
                   <Status tone="warn">{t("wt.text.noAccessibility")}</Status>
-                  <Button onClick={() => void allow()}>
-                    {t("wt.onboarding.paste.allow")}
-                  </Button>
+                  <Button onClick={allow}>{t("wt.text.allow")}</Button>
                 </div>
               ) : null}
             </>

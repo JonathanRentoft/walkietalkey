@@ -19,6 +19,10 @@ export interface MockOptions {
   downloaded?: string[];
   /** download_model fails with this message. */
   downloadError?: string | null;
+  /** The backend started the Edda download at launch (Phase 3). Default
+   *  true while Edda is not on disk; false makes the screens fall back to
+   *  starting it themselves. */
+  backendDownloading?: boolean;
   speed?: { seconds: number; offer_fast_model: boolean; reason: string | null };
   /** macOS permissions: accessibility, microphone, input_monitoring. */
   permissions?: Record<string, boolean>;
@@ -47,6 +51,10 @@ export interface MockOptions {
   punctuation?: { state: string; message?: string };
   /** The webview label (main or recording_overlay). */
   window?: string;
+  /** The pairing QR (an SVG document). */
+  qrSvg?: string;
+  /** wt_globe_key_status (macOS Globe key, Phase 1). */
+  globeKey?: { fn_is_key: boolean; usage: number | null; needs_fix: boolean };
 }
 
 export async function installMock(page: Page, options: MockOptions = {}) {
@@ -102,7 +110,8 @@ function mockBackend(options: MockOptions) {
             current_binding: defaultBinding,
           },
         },
-        shortcut_activation: "push_to_talk",
+        shortcut_activation: "hold_or_toggle",
+        hold_threshold_ms: 500,
         audio_feedback: true,
         autostart_enabled: false,
         selected_model: "",
@@ -130,7 +139,7 @@ function mockBackend(options: MockOptions) {
         share_clipboard_with_devices: false,
         show_text_in_notifications: true,
         pill_hidden: false,
-        pill_for_phone: false,
+        pill_for_phone: true,
         replacements: [],
         developer_words: false,
         vocabulary_source: null,
@@ -168,6 +177,11 @@ function mockBackend(options: MockOptions) {
     history: options.history ?? [],
     keys: options.keys ?? [],
     restarts: 0,
+    globeKey: options.globeKey ?? {
+      fn_is_key: platform === "macos",
+      usage: 0,
+      needs_fix: false,
+    },
   });
 
   let state: any;
@@ -191,7 +205,10 @@ function mockBackend(options: MockOptions) {
     source: "Local",
     size_mb: size,
     is_downloaded: state.downloaded.includes(id),
-    is_downloading: false,
+    is_downloading:
+      id === edda &&
+      !state.downloaded.includes(id) &&
+      (options.backendDownloading ?? true),
     partial_size: 0,
     accuracy_score: 0.9,
     speed_score: 0.5,
@@ -365,6 +382,7 @@ function mockBackend(options: MockOptions) {
     },
     wt_pairing_start: () => ({
       qr_svg:
+        options.qrSvg ??
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>',
       expires_at_ms: Date.now() + (options.pairingExpiresInMs ?? 600_000),
     }),
@@ -410,6 +428,12 @@ function mockBackend(options: MockOptions) {
       setTimeout(() => emit("wt-update-status", { state: "checking" }), 0);
       setTimeout(() => emit("wt-update-status", { state: "up_to_date" }), 20);
       return null;
+    },
+    wt_accessibility_repair: () => true,
+    wt_globe_key_status: () => state.globeKey,
+    wt_globe_key_fix: () => {
+      state.globeKey = { ...state.globeKey, usage: 0, needs_fix: false };
+      return state.globeKey;
     },
     check_apple_intelligence_available: () => options.appleIntelligence ?? true,
     fetch_post_process_models: () => [],

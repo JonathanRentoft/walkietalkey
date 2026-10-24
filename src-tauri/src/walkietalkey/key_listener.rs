@@ -294,6 +294,9 @@ pub fn start(app: &AppHandle) {
         warn!("Accessibility was granted before but is not now (the app's signature changed?)");
         ACCESSIBILITY_LOST.store(true, Ordering::SeqCst);
         let _ = app.emit("wt-accessibility-lost", true);
+        // The app usually runs hidden in the menu bar, and a dead key shows no
+        // pill: open the main window so the notice and its repair button are seen.
+        crate::show_main_window(app);
     }
     let _ = ensure(app);
 }

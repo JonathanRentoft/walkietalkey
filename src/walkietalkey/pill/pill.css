@@ -1,4 +1,6 @@
-/* The overlay window is transparent; only the pill is drawn. */
+/* The overlay window is transparent; only the pill is drawn. The window
+   (src-tauri/src/overlay.rs) leaves 32 px around the widest pill for the
+   halo and the shadow, so nothing is clipped. */
 html,
 body {
   background: transparent !important;
@@ -12,21 +14,11 @@ body {
   font-family: var(--font-sans);
 }
 .wt-pill-host .wt-pill {
-  max-width: calc(100% - 16px);
-}
-/* The meter follows the microphone level. */
-.wt-pill-host .wt-bars--meter {
-  transform: scaleY(var(--wt-level, 1));
-  transition: transform 120ms linear;
+  max-width: calc(100% - 64px);
 }
 .wt-pill-host[data-countdown] .wt-pill-time {
   color: var(--on-night);
   font-weight: 600;
-}
-@media (prefers-reduced-motion: reduce) {
-  .wt-pill-host .wt-bars--meter {
-    transition: none;
-  }
 }
 .wt-visually-hidden {
   position: absolute !important;

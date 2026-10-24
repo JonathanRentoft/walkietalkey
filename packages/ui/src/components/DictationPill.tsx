@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { useIsoLayoutEffect } from "../lib/hooks";
-import type { Palette } from "../lib/palettes";
+import { pal, type Palette } from "../lib/palettes";
 import { cx, fmt } from "../lib/util";
 import { Logo } from "./Logo";
 import { GradientBars } from "./surfaces";
@@ -39,6 +39,8 @@ export interface DictationPillLabels {
   notReady?: string;
   /** Extension: "Kunne ikke hente talemodellen. Prøv igen." */
   error?: string;
+  /** Extension: "Tryk igen for at stoppe" while recording hands-free. */
+  handsFree?: string;
 }
 
 export interface DictationPillProps {
@@ -54,6 +56,17 @@ export interface DictationPillProps {
   labels?: DictationPillLabels;
   /** Loop through the four states on its own, for demos. */
   autoplay?: boolean;
+  /** Extension: the live microphone level, one bar each (0 to 1). While
+   *  listening it replaces the animated meter with a real waveform. */
+  levels?: readonly number[];
+  /** Extension: listening hands-free (tapped, not held): a lock and
+   *  "Tryk igen for at stoppe". */
+  handsFree?: boolean;
+  /** Extension: 'lg' is the desktop overlay's pill, 56 px high with larger
+   *  text and a glass surface. Default 'md', the design system's 44 px. */
+  size?: "md" | "lg";
+  /** Extension: the mark leads the listening and processing states. */
+  mark?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -70,7 +83,56 @@ export const PILL_LABELS: Required<DictationPillLabels> = {
   raw: "Brugte teksten uden oprydning",
   notReady: "Talemodellen er ikke klar endnu",
   error: "Kunne ikke hente talemodellen. Prøv igen.",
+  handsFree: "Tryk igen for at stoppe",
 };
+
+function Lock() {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      aria-hidden
+      focusable="false"
+    >
+      <path
+        d="M4.9 7.2V5.4a3.1 3.1 0 0 1 6.2 0v1.8M3.9 7.2h8.2a.8.8 0 0 1 .8.8v5a.8.8 0 0 1-.8.8H3.9a.8.8 0 0 1-.8-.8V8a.8.8 0 0 1 .8-.8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** The live waveform: one bar per level, coloured along the palette. */
+function Wave(p: { levels: readonly number[]; palette?: Palette }) {
+  const stops = pal(p.palette).stops;
+  const n = p.levels.length;
+  return (
+    <span className="wt-wave" aria-hidden>
+      {p.levels.map((v, i) => {
+        const col =
+          stops[Math.round((i / Math.max(1, n - 1)) * (stops.length - 1))];
+        return (
+          <i
+            key={i}
+            style={
+              {
+                "--v": String(
+                  Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000,
+                ),
+                "--c": "var(--" + col + ")",
+              } as CSSProperties
+            }
+          />
+        );
+      })}
+    </span>
+  );
+}
 
 function Kbd(p: { children?: ReactNode }) {
   return <kbd className="wt-kbd">{p.children}</kbd>;
@@ -149,6 +211,8 @@ export function DictationPill(props: DictationPillProps) {
   const inner = useRef<HTMLDivElement>(null);
   const [w, setW] = useState<number | null>(null);
   const timeKey = Math.floor(seconds) >= 600 ? "w" : "n";
+  const handsFree = state === "listening" && !!props.handsFree;
+  const levelCount = props.levels ? props.levels.length : -1;
   useIsoLayoutEffect(() => {
     if (inner.current)
       setW(
@@ -157,6 +221,10 @@ export function DictationPill(props: DictationPillProps) {
   }, [
     state,
     timeKey,
+    handsFree,
+    levelCount,
+    props.size,
+    props.mark,
     L.ready,
     L.processing,
     L.idleBefore,
@@ -166,29 +234,63 @@ export function DictationPill(props: DictationPillProps) {
     L.raw,
     L.notReady,
     L.error,
+    L.handsFree,
   ]);
 
+  const markEl = props.mark ? (
+    <span key="m" className="wt-pill-mark" aria-hidden>
+      <Logo
+        variant="mark"
+        tone="paper"
+        size={props.size === "lg" ? 18 : 14}
+        decorative
+      />
+    </span>
+  ) : null;
   let content: ReactNode[];
   const note = NOTES[state];
   if (state === "listening") {
-    content = [
-      <span key="rec" className="wt-rec" aria-hidden />,
-      <span key="sr" className="wt-sr">
-        {L.listening}
-      </span>,
+    const meter = props.levels ? (
+      <Wave key="wave" levels={props.levels} palette={props.palette} />
+    ) : (
       <GradientBars
         key="bars"
         variant="meter"
         bars={11}
         palette={props.palette}
         height={18}
-      />,
-      <span key="t" className="wt-pill-time">
-        {fmt(seconds)}
-      </span>,
-    ];
+      />
+    );
+    content = handsFree
+      ? [
+          <span key="lock" className="wt-pill-lock" aria-hidden>
+            <Lock />
+          </span>,
+          <span key="sr" className="wt-sr">
+            {L.listening}
+          </span>,
+          meter,
+          <span key="hf" className="wt-pill-hint">
+            {L.handsFree}
+          </span>,
+          <span key="t" className="wt-pill-time">
+            {fmt(seconds)}
+          </span>,
+        ]
+      : [
+          markEl,
+          <span key="rec" className="wt-rec" aria-hidden />,
+          <span key="sr" className="wt-sr">
+            {L.listening}
+          </span>,
+          meter,
+          <span key="t" className="wt-pill-time">
+            {fmt(seconds)}
+          </span>,
+        ];
   } else if (state === "processing") {
     content = [
+      markEl,
       <span key="d" className="wt-wait" aria-hidden>
         <i />
         <i />
@@ -228,14 +330,24 @@ export function DictationPill(props: DictationPillProps) {
   }
   return (
     <div
-      className={cx("wt-pill", "wt-pill--" + state, props.className)}
+      className={cx(
+        "wt-pill",
+        "wt-pill--" + state,
+        handsFree && "wt-pill--handsfree",
+        props.size === "lg" && "wt-pill--lg",
+        props.className,
+      )}
       style={Object.assign({ width: w == null ? undefined : w }, props.style)}
       role="status"
       aria-live="polite"
     >
       <span className="wt-pill-halo" aria-hidden />
       <div className="wt-pill-clip">
-        <div ref={inner} className="wt-pill-inner" key={state}>
+        <div
+          ref={inner}
+          className="wt-pill-inner"
+          key={handsFree ? "handsfree" : state}
+        >
           {content}
         </div>
       </div>
