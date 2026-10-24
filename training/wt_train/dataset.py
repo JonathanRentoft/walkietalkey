@@ -195,7 +195,7 @@ def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
     root = Path(root) if root is not None else paths.fleurs_dir()
     clips = fleurs.load_split("test", root)
     # Content hashes of the 930 test clips, computed once and kept next to them.
-    cache = root / "test.content-sha256.json"
+    cache = root / f"test.{audio.CONTENT_HASH_SCHEME}-sha256.json"
     known = json.loads(cache.read_text()) if cache.is_file() else {}
     if set(known) != {c.wav.name for c in clips}:
         known = {c.wav.name: audio.content_sha256(c.wav) for c in clips}

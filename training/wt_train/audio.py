@@ -1,8 +1,10 @@
 """Reading clips: 16 kHz mono audio, its length and a hash of its content.
 
-The content hash is over the decoded 16-bit samples, not the file bytes, so the
-same audio saved with a different WAV header is still recognised as the same
-audio (the dataset builder's leakage check and the encoder cache both use it).
+The content hash is over the decoded samples as float32, not the file bytes, so
+the same audio saved with a different WAV header is still recognised as the
+same audio (the dataset builder's leakage check and the encoder cache both use
+it). float32 holds 16-bit PCM exactly, and FLEURS ships 32-bit float WAV, which
+libsndfile would truncate to zeros if read as int16 without scaling.
 """
 
 from __future__ import annotations
@@ -15,6 +17,9 @@ import numpy as np
 import soundfile as sf
 
 SAMPLE_RATE = 16000
+# Names the content hash; files that store hashes carry it, so a change of scheme
+# never mixes old and new hashes.
+CONTENT_HASH_SCHEME = "pcm-f32"
 
 
 @dataclass(frozen=True)
@@ -49,9 +54,10 @@ def read_16k_mono(path: Path) -> np.ndarray:
 
 
 def content_sha256(path: Path) -> str:
-    """SHA-256 of the decoded 16-bit samples (channels interleaved)."""
-    pcm, _ = sf.read(str(path), dtype="int16", always_2d=True)
-    return hashlib.sha256(b"pcm16:" + np.ascontiguousarray(pcm).tobytes()).hexdigest()
+    """SHA-256 of the decoded float32 samples (channels interleaved) and the rate."""
+    pcm, rate = sf.read(str(path), dtype="float32", always_2d=True)
+    head = f"{CONTENT_HASH_SCHEME}:{rate}:{pcm.shape[1]}:".encode()
+    return hashlib.sha256(head + np.ascontiguousarray(pcm).tobytes()).hexdigest()
 
 
 def file_sha256(path: Path, chunk: int = 1 << 22) -> str:

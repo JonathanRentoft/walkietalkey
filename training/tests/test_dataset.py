@@ -168,7 +168,7 @@ def test_too_much_rehearsal_is_an_error(tmp_path, make_wav, fleurs_root):
 
 def test_fleurs_test_hashes_are_cached(fleurs_root):
     first = fleurs_test_held_out(fleurs_root)
-    assert (fleurs_root / "test.content-sha256.json").is_file()
+    assert (fleurs_root / "test.pcm-f32-sha256.json").is_file()
     assert fleurs_test_held_out(fleurs_root) == first and len(first.hashes) == 4
     assert "testsætning alfa" in first.keys
 
