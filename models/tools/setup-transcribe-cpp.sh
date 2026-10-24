@@ -30,10 +30,23 @@ fi
 
 CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release -DTRANSCRIBE_BUILD_TOOLS=ON -DTRANSCRIBE_BUILD_TESTS=OFF)
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  # The Command Line Tools may ship a newer default SDK than their linker can
-  # read; the stable SDK symlink always works. Without full Xcode there is no
-  # `metal` compiler, so the shader library is embedded at build time.
-  export SDKROOT="${SDKROOT:-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk}"
+  # SDKROOT wins (CI sets it to the pinned Xcode's own SDK with
+  # scripts/walkietalkey/ci/select-xcode.sh). With a full Xcode selected, use
+  # that Xcode's SDK: its linker reads it, while the Command Line Tools beside
+  # it may be a beta (GitHub's macos-26 image: CLT 27 beta, so CLT's MacOSX.sdk
+  # is MacOSX27.0, "ld: tapi error ... unknown architecture"). With only the
+  # Command Line Tools, their default SDK may be newer than their linker can
+  # read, and their stable MacOSX.sdk symlink works. Without full Xcode there
+  # is no `metal` compiler, so the shader library is embedded at build time.
+  if [[ -z "${SDKROOT:-}" ]]; then
+    if [[ "${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}" == *CommandLineTools* ]]; then
+      SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+    else
+      SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+    fi
+  fi
+  export SDKROOT
+  echo "macOS SDK: $SDKROOT"
   CMAKE_ARGS+=(-DCMAKE_OSX_SYSROOT="$SDKROOT" -DGGML_METAL_EMBED_LIBRARY=ON)
 fi
 JOBS="$(sysctl -n hw.ncpu 2>/dev/null || nproc)"

@@ -47,6 +47,8 @@ jobs:
         run: bun run test:keyboard && bun run check:model-languages
       - name: Model catalog in sync with its package
         run: bun run check:catalog
+      - name: CI and release scripts (Xcode pin, release assets and latest.json)
+        run: bun test scripts/walkietalkey/ci
       - name: Protocol (TypeScript, shared test vectors)
         working-directory: packages/protocol
         run: bun run typecheck && bun run test
@@ -107,6 +109,10 @@ jobs:
       CMAKE_POLICY_VERSION_MINIMUM: "3.5"
     steps:
       - uses: actions/checkout@v7
+      # One released Xcode and its own SDK, as in build.yml: the image's Command Line Tools SDK is
+      # the MacOSX27.0 beta.
+      - name: Released Xcode and its own SDK
+        run: scripts/walkietalkey/ci/select-xcode.sh
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4

@@ -86,6 +86,13 @@ jobs:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
+      # WalkieTalkey: one released Xcode and its own macOS SDK, never the
+      # Command Line Tools' SDK (the MacOSX27.0 beta on macos-26 images).
+      - name: Released Xcode and its own SDK (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: scripts/walkietalkey/ci/select-xcode.sh
+
       - name: Get version from tauri.conf.json
         id: get-version
         shell: bash

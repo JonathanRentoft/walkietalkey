@@ -5,6 +5,11 @@
 # owner's own dictations stay outside the repository and run locally with
 # `models/eval/run.sh --clips-dir <folder>`; AI cleanup timings need the
 # owner's keys and also run locally.
+#
+# Nightly and by hand a failed measurement fails the run. The release calls it
+# with report-only: the result (or the failure) goes to the run's summary and
+# a warning, and the release goes ahead either way (spec 15.1 reports; it does
+# not gate a release).
 name: Danish accuracy
 
 on:
@@ -16,6 +21,15 @@ on:
         description: Number of FLEURS clips
         default: "50"
   workflow_call:
+    inputs:
+      limit:
+        description: Number of FLEURS clips
+        type: string
+        default: "50"
+      report-only:
+        description: Report a failed measurement as a warning instead of failing the caller
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,41 +45,73 @@ jobs:
     timeout-minutes: 240
     env:
       WT_WORK_DIR: ${{ github.workspace }}/../wt-work
+      LIMIT: ${{ inputs.limit || '50' }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 50
       - name: Nightly only when main changed in the last day
         id: changed
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] && [ -z "$(git log --since='25 hours ago' --format=%H -1)" ]; then
+          if [ "$EVENT" = "schedule" ] && [ -z "$(git log --since='25 hours ago' --format=%H -1)" ]; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "No commits in the last day; nothing to measure." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
+      # Not the Command Line Tools' SDK: on this image that is the MacOSX27.0 beta, which the
+      # default Xcode's linker cannot read.
+      - name: Released Xcode and its own SDK
+        if: steps.changed.outputs.run == 'true'
+        run: scripts/walkietalkey/ci/select-xcode.sh
       - uses: astral-sh/setup-uv@v7
         if: steps.changed.outputs.run == 'true'
-      - name: Cache the engine, converted models and FLEURS
+      # Restored always, saved only after a complete measurement, so a half-built engine or a
+      # half-converted model never lands in the cache.
+      - name: Restore the engine, converted models and FLEURS
         if: steps.changed.outputs.run == 'true'
-        uses: actions/cache@v6
+        id: cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ env.WT_WORK_DIR }}/src
             ${{ env.WT_WORK_DIR }}/models-final
             ${{ env.WT_WORK_DIR }}/dl/whisper-large-v3-turbo-gguf
             ${{ env.WT_WORK_DIR }}/datasets/fleurs-da_dk
-          key: accuracy-${{ runner.os }}-${{ hashFiles('models/tools/setup-transcribe-cpp.sh', 'models/edda/convert.sh', 'models/edda/convert_edda.py', 'models/ekko-v1-tiny/convert.sh', 'models/eval/fetch_fleurs.sh') }}
+          # select-xcode.sh pins the Xcode the engine is built with, so it is part of the key.
+          key: accuracy-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/walkietalkey/ci/select-xcode.sh', 'models/tools/setup-transcribe-cpp.sh', 'models/edda/convert.sh', 'models/edda/convert_edda.py', 'models/ekko-v1-tiny/convert.sh', 'models/eval/fetch_fleurs.sh') }}
       - name: Run the harness
         if: steps.changed.outputs.run == 'true'
+        id: harness
+        continue-on-error: ${{ inputs.report-only == true }}
         run: |
           mkdir -p "$WT_WORK_DIR"
-          models/eval/run.sh --limit "${{ inputs.limit || '50' }}" --backend cpu --out "$RUNNER_TEMP/accuracy"
+          models/eval/run.sh --limit "$LIMIT" --backend cpu --out "$RUNNER_TEMP/accuracy"
+      - name: Save the engine, converted models and FLEURS
+        if: steps.changed.outputs.run == 'true' && steps.harness.outcome == 'success' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.WT_WORK_DIR }}/src
+            ${{ env.WT_WORK_DIR }}/models-final
+            ${{ env.WT_WORK_DIR }}/dl/whisper-large-v3-turbo-gguf
+            ${{ env.WT_WORK_DIR }}/datasets/fleurs-da_dk
+          key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Summary
         if: always() && steps.changed.outputs.run == 'true'
+        env:
+          OUTCOME: ${{ steps.harness.outcome }}
+          REPORT_ONLY: ${{ inputs.report-only == true }}
         run: |
           if [ -f "$RUNNER_TEMP/accuracy/summary.md" ]; then
             cat "$RUNNER_TEMP/accuracy/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "$OUTCOME" = "failure" ] && [ "$REPORT_ONLY" = "true" ]; then
+            msg="The Danish accuracy measurement failed (see the step \"Run the harness\"); it was reported, not counted against the run."
+            echo "::warning title=Danish accuracy::$msg"
+            { echo; echo "**$msg**"; } >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v7
         if: always() && steps.changed.outputs.run == 'true'
