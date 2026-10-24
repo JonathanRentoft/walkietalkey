@@ -63,7 +63,7 @@ security-framework = "3.7"
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray"] }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.61.3", features = [
+windows = { version = "0.62.2", features = [
   "Data_Xml_Dom",
   "Foundation",
   "UI_Notifications",
@@ -79,7 +79,7 @@ windows = { version = "0.61.3", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
-winreg = "0.55"
+winreg = "0.56"
 # Credential Manager through the keyring store, with its `persistence=local` modifier
 # (CRED_PERSIST_LOCAL_MACHINE, SEC-10). `search` is off: it would only pull in regex.
 keyring-core = "1"
