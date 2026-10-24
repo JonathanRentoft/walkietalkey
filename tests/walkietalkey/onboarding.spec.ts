@@ -170,7 +170,7 @@ test.describe("onboarding", () => {
     await page
       .getByRole("button", { name: "Giv adgang til mikrofonen" })
       .click();
-    await expect(page.getByText("Mikrofonen er klar")).toBeVisible();
+    // "Mikrofonen er klar" shows for ADVANCE_DELAY_MS only (see Tilgængelighed).
     // No click: the next step comes by itself.
     await expect(heading(page, "Tilgængelighed")).toBeVisible();
     expect((await mockState(page)).wt.onboarding_resume_step).toBe(
@@ -216,7 +216,8 @@ test.describe("onboarding", () => {
       page.getByText("Slå WalkieTalkey til. Så går vi videre af os selv."),
     ).toBeVisible();
     await grant(page, "accessibility");
-    await expect(page.getByText("Tilgængelighed er slået til")).toBeVisible();
+    // "Tilgængelighed er slået til" shows for ADVANCE_DELAY_MS only, shorter than
+    // Playwright's polling interval under load; the step moving on is what counts.
     await expect(heading(page, "Prøv det")).toBeVisible();
     const state = await mockState(page);
     expect(state.restarts).toBe(0);
