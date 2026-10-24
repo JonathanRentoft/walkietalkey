@@ -43,6 +43,10 @@ else
   echo "No valid code-signing identity \"$IDENTITY\"; the build stays ad-hoc signed" >&2
 fi
 
+# Tauri's DMG script lays out the Finder window with AppleScript unless CI is
+# set, which needs Automation permission for the terminal; skip that layout.
+export CI="${CI:-true}"
+
 # Local builds need no updater archive (its signing key lives in CI).
 bun run tauri build --bundles app,dmg \
   --config '{"bundle":{"createUpdaterArtifacts":false}}' "$@"
