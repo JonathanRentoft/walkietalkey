@@ -166,14 +166,15 @@ A single window, one step at a time, using the design system (LogoIntro on the f
 
 | Step | What happens | Must |
 |---|---|---|
+| (Talemodel) | No step of its own (run 2): the speech model (DESK-31) downloads in the background from the very first launch, from our GitHub release, shown as one calm progress line under every step and in the sidebar, never blocking. "Importér modelfil" is under Avanceret. | DESK-11 |
 | 1. Velkommen | "Dansk tale til tekst. Gratis, og det kører på din egen computer." Button "Kom i gang". | DESK-10 |
-| 2. Hent talemodel | Picks the right model for the hardware (DESK-31) and downloads it with a progress bar. The rest of onboarding can continue while it downloads. | DESK-11 |
-| 3. Mikrofon | Explains why, then triggers the OS prompt. | DESK-12 |
-| 4. Tasten | Mac: asks for Input Monitoring ("Inputovervågning"), which macOS requires before an app may see when `fn` is held, and explains that macOS must be told to leave the 🌐 key alone (System Settings › Keyboard › "Press 🌐 key to" › "Do Nothing"). Offers to open both settings pages. macOS usually only applies Input Monitoring after a restart, so the app restarts itself and resumes at this step. Windows: picks Right Ctrl by default. Many newer laptops have a Copilot key instead of Right Ctrl (it arrives as Win+Shift+F23), so the step checks which keys exist and lets the user press the key they want. Includes a live "Prøv at holde tasten" check. | DESK-13 |
-| 5. Indsæt automatisk | Mac: asks for Accessibility permission, explained as "så teksten kan sættes ind, hvor du skriver". Skippable: without it, text goes to the clipboard with a notification. | DESK-14 |
-| 6. Notifikationer | Asks for notification permission (needed for phone dictations). | DESK-15 |
-| 7. Telefon | "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Shown from M2, when the relay exists. | DESK-16 |
-| 8. Prøv det | A text field: "Hold fn nede og sig: Hej, det her er min første diktering." Shows the result. | DESK-17 |
+| 2. Mikrofon | Explains why, then one button: macOS's own question first, then the exact System Settings pane. The step notices the grant by itself and moves on. On Windows it is skipped when the microphone is already allowed. | DESK-12 |
+| 3. Tilgængelighed (Mac only) | "Så teksten kan sættes ind, hvor du skriver". One button opens Privacy & Security › Accessibility; the step notices the grant within about a second and moves on, with no restart. Accessibility is the only permission for the key and for pasting; Input Monitoring is never asked for (run 2: the v1 step "Tasten" with Input Monitoring, the 🌐 instructions and the restart is gone). Windows has no such step; the key is Right Ctrl. | DESK-13, DESK-14 |
+| 4. Prøv det | A text field: tap or hold the key and say "Hej, det her er min første diktering." Shows the result. If the Globe key still has an action of its own, one sentence and the button "Ret det for mig" (DESK-20). | DESK-17 |
+| 5. Telefon | Optional: "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Showing the code also asks for notification permission (DESK-15). | DESK-16 |
+| 6. Klar | Three tips (hold, tap, Esc). "Færdig" turns on start at login and marks onboarding finished. | DESK-10 |
+
+If Accessibility was granted before but macOS dropped it (an update with a new ad-hoc signature), the app opens its main window with one notice, "macOS har glemt WalkieTalkeys adgang efter opdateringen.", and the button "Giv adgang igen", which resets the app's own entry and shows macOS's dialog; the key starts by itself once access is back (DESK-13).
 
 Acceptance: a new user on a clean Mac goes from first launch to a working dictation without reading any docs, and every permission prompt is preceded by a Danish explanation.
 
@@ -244,7 +245,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 
 | ID | Requirement |
 |---|---|
-| DESK-55 | The DictationPill floats at the bottom centre during key dictations: Lytter (with level meter and time) → Renskriver → Indsat or Tekst klar til at indsætte. It hides 1.5 s after the end. Position and "Vis aldrig" are settings. |
+| DESK-55 | The DictationPill floats at the bottom centre during key and phone dictations: about 220×56 px and growing with its text (inside a 480×120 overlay window, so its glow is never clipped), glass, with the mark, a live waveform from the microphone level (or the phone's audio) and the time. Lytter (hands-free: a lock and "Tryk igen for at stoppe") → Renskriver → Indsat or Tekst klar til at indsætte, with the countdown from 4:45 (DESK-24). It hides 1.5 s after the end. Position and "Vis aldrig" are settings. |
 | DESK-56 | Phone dictations show a system notification: title "Tekst klar til at indsætte", body the first 80 characters, or "Tryk ⌘V for at indsætte" when "Vis teksten i notifikationen" is off (for shared screens and meetings). |
 | DESK-57 | Clicking the notification opens the history with that item selected. Implementation note: Tauri v2's notification plugin only handles actions and clicks on mobile, so this needs a small native module (a `UNUserNotificationCenter` delegate on macOS, a toast activation handler on Windows). Windows toasts only show the app's own name and icon for the installed app. |
 | DESK-58 | While a phone recording streams in, the menu bar icon pulses and the pill shows (run 2: on by default; a setting turns it off), its waveform following the phone's audio. |
@@ -552,10 +553,10 @@ offset  size  field
 | ID | Requirement |
 |---|---|
 | SITE-01 | Astro with React islands, static output, hosted on Cloudflare Pages (free plan, commercial use allowed). Components ported to TSX in `packages/ui` from the design system bundle. |
-| SITE-02 | Pages: Forside (exactly `ForsideKomplet` from the design system), Hent (detects Mac or Windows, links to the latest GitHub release), Sådan virker det, Privatliv (privacy policy, section 12), Open source, Virksomheder, Sikkerhed (architecture in plain Danish and how to report a vulnerability), Varemærke, Spørgsmål. |
-| SITE-03 | `app.walkietalkey.com` serves the phone app (same Pages project or a second one), built from `phone/` by CI. The build is plain static files, so a company can host its own copy (`PhoneAppUrl`, PRIV-03). |
+| SITE-02 | Pages: Forside (exactly `ForsideKomplet` from the design system), Hent, Sådan virker det, Privatliv (privacy policy, section 12), Open source, Virksomheder, Sikkerhed (architecture in plain Danish and how to report a vulnerability), Varemærke, Spørgsmål. Hent detects Mac, Windows or a phone before the first paint and shows that visitor's download first and largest: direct links to the newest release's stable assets `releases/latest/download/WalkieTalkey-mac.dmg` (universal) and `WalkieTalkey-windows.exe`, the other platform as a small link, both visible without JavaScript. Phones get the phone app first and are told to install the computer app. The page has the phone app link and a QR code for it (inline SVG, rendered at build time). While the builds are unsigned it gives honest first-open steps (Mac: Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel; Windows: Flere oplysninger › Kør alligevel), and it links to all releases. |
+| SITE-03 | `app.walkietalkey.com` serves the phone app, built from `phone/`. The build is plain static files, so a company can host its own copy (`PhoneAppUrl`, PRIV-03). walkietalkey.com and app.walkietalkey.com are Workers static assets on Workers custom domains, from the same builds as the Pages projects (run 2: Pages custom domains need a DNS record wrangler cannot write). The website links only to walkietalkey.com and its subdomains, never to the pages.dev or workers.dev deployments, which stay up for pairings made with v1. |
 | SITE-04 | No cookies and no analytics of any kind, so "Ingen sporing" is true for the website too. No cookie banner is needed. |
-| SITE-05 | Contact for companies is an email address on the domain (`kontakt@walkietalkey.com`) forwarded to the owner with Cloudflare Email Routing (free). No contact form, so no form data to store. |
+| SITE-05 | The contact for everyone (companies, privacy and trademark questions) is `kontakt@walkietalkey.com`, forwarded to the owner with Cloudflare Email Routing (free; live since run 2). No contact form, so no form data to store. Vulnerabilities go through GitHub's private vulnerability reporting (SECURITY.md); open questions may also go to GitHub Discussions. |
 | SITE-06 | Lighthouse 95+ on performance and accessibility on mobile. Only one WebGL surface per page. Every animation respects reduced motion. |
 | SITE-07 | Open Graph image and favicon from the design system assets. |
 | SITE-08 | `/updates/beta.json` (DESK-112) is published by the release workflow. |
@@ -749,7 +750,7 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 
 Use these strings exactly. Sentence case, no exclamation marks, no emoji.
 
-**Pill**: Hold fn for at tale · Lytter · Renskriver · Indsat · Tekst klar til at indsætte · Hørte ikke noget · Brugte teksten uden oprydning · Talemodellen er ikke klar endnu · Kunne ikke hente talemodellen. Prøv igen.
+**Pill**: Hold fn for at tale · Lytter · Tryk igen for at stoppe (hands-free, run 2) · Renskriver · Indsat · Tekst klar til at indsætte · Hørte ikke noget · Brugte teksten uden oprydning · Talemodellen er ikke klar endnu · Kunne ikke hente talemodellen. Prøv igen.
 
 **Notifications**: Tekst klar til at indsætte · Tryk ⌘V for at indsætte · Tryk Ctrl+V for at indsætte · Ny telefon parret: {navn}. Var det dig? · en telefon uden navn · Opdatering klar. Genstart for at installere · Genstart nu · Ingen forbindelse til telefonen. Prøver igen.
 
@@ -760,6 +761,8 @@ Use these strings exactly. Sentence case, no exclamation marks, no emoji.
 **AI cleanup**: Ryd op med AI · Fra · Når der er noget at rette · Altid · Kun når jeg holder Shift med · Hold talemodellen indlæst
 
 **Cleanup consent**: Teksten (ikke lyden) sendes til {udbyder}, hver gang du dikterer. · Slå til · Annullér
+
+**Key (run 2)**: Ret det for mig · macOS har glemt WalkieTalkeys adgang efter opdateringen. · Giv adgang igen (drafted, TODO(copy))
 
 **Managed**: Styret af din organisation
 
