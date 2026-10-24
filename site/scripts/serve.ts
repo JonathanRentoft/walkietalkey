@@ -1,9 +1,11 @@
 /* Serves dist/ the way Cloudflare Pages does: /hent answers hent.html, /x.html redirects to /x, unknown paths get
-   404.html, and the headers from _headers are applied. Usage: bun scripts/serve.ts [port] */
+   404.html, and the headers from _headers are applied. Usage: bun scripts/serve.ts [port] [folder, default dist] */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
-const dist = resolve(import.meta.dir, "../dist");
+const dist = process.argv[3]
+  ? resolve(process.argv[3])
+  : resolve(import.meta.dir, "../dist");
 const port = Number(process.argv[2] || process.env.PORT || 4329);
 
 /* _headers: blocks of "path pattern" followed by indented "Name: value" lines */

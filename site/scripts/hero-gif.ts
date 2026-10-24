@@ -1,4 +1,4 @@
-/* Records the hero animation (RelayDemo on the homepage) as docs/assets/hero.gif for the README (spec 14.3).
+/* Records the hero animation (the stage on the homepage, run 5) as docs/assets/hero.gif for the README (spec 14.3).
    Playwright records Chrome's screencast (a screenshot on every repaint, with its timestamp) through one loop in
    real time; ffmpeg (Homebrew) crops them to the demo and turns them into a GIF with the measured frame timings.
    Usage: bun scripts/hero-gif.ts [baseURL] (default: the local server, bun scripts/serve.ts). GIF_WIDTH sets the width. */
@@ -6,12 +6,12 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
+import { LOOP_MS } from "../src/lib/stage";
 
 const base = process.argv[2] || "http://localhost:4329";
 const site = resolve(import.meta.dir, "..");
 const frames = join(site, ".visual/gif");
 const target = resolve(site, "../docs/assets/hero.gif");
-const LOOP_MS = 14400; /* the sum of RelayDemo's steps */
 rmSync(frames, { recursive: true, force: true });
 mkdirSync(frames, { recursive: true });
 mkdirSync(resolve(target, ".."), { recursive: true });
@@ -23,25 +23,16 @@ const page = await browser.newPage({
 });
 await page.goto(base + "/");
 await page.evaluate(() => document.fonts.ready);
-const demo = page.locator(".demo");
+const demo = page.locator("[data-stage]");
 await page.evaluate(() => {
-  const d = document.querySelector(".demo")!;
+  const d = document.querySelector("[data-stage]")!;
   window.scrollTo(0, d.getBoundingClientRect().top + window.scrollY - 40);
 });
-/* wait for the island to hydrate, then for the loop to come round to its first step */
-await page.locator(".wt-relay-stage").evaluate(
-  (el) =>
-    new Promise<void>((done) => {
-      const t = setInterval(() => {
-        if (getComputedStyle(el).visibility === "visible") {
-          clearInterval(t);
-          done();
-        }
-      }, 20);
-    }),
-);
-await page.locator(".wt-relay.wt-relay--reset").waitFor({ timeout: 20000 });
-await page.locator(".wt-relay.wt-relay--home").waitFor({ timeout: 5000 });
+/* wait for the loop to come round to its first step */
+await page
+  .locator('[data-stage][data-step="reset"]')
+  .waitFor({ timeout: 20000 });
+await page.locator('[data-stage][data-step="idle"]').waitFor({ timeout: 5000 });
 
 const box = (await demo.boundingBox())!;
 const cdp = await page.context().newCDPSession(page);

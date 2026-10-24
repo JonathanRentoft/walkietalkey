@@ -19,6 +19,11 @@ import {
   WINDOWS_DOWNLOAD_URL,
   type PageKey,
 } from "../src/lib/site";
+import { DEFAULT_HERO, HERO } from "../src/lib/hero";
+import { STAGE_WORDS } from "../src/lib/stage";
+
+/** Run 5: the front page's whole JavaScript, inline and from files with their imports, uncompressed. */
+const HOME_JS_BUDGET = 6 * 1024;
 
 const dist = resolve(__dirname, "../dist");
 const fileFor = (path: string) =>
@@ -52,6 +57,28 @@ function visibleText(root: HTMLElement): string {
 /** visible text of one element */
 const textOf = (el: HTMLElement) =>
   visibleText(parse(`<body>${el.toString()}</body>`));
+
+/** Every script a page runs: inline ones and files, with the files they import, and their size in bytes. */
+function pageScripts(key: PageKey): { files: string[]; bytes: number } {
+  const seen = new Set<string>();
+  let bytes = 0;
+  const load = (file: string) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const code = readFileSync(file, "utf8");
+    bytes += Buffer.byteLength(code);
+    for (const m of code.matchAll(
+      /(?:import|export)\s*(?:[\w*{}\s,]+from\s*)?["']([^"']+\.js)["']|import\(\s*["']([^"']+\.js)["']\s*\)/g,
+    ))
+      load(resolve(dirname(file), m[1] ?? m[2]));
+  };
+  for (const s of doc(key).querySelectorAll("script")) {
+    const src = s.getAttribute("src");
+    if (src) load(join(dist, src));
+    else bytes += Buffer.byteLength(s.textContent);
+  }
+  return { files: [...seen].map((f) => basename(f)), bytes };
+}
 
 describe("pages (SITE-02)", () => {
   it.each(KEYS)(
@@ -297,92 +324,153 @@ describe("copy rules (spec 2.6, design system)", () => {
   );
 });
 
-describe("Forside is ForsideKomplet", () => {
+/* Run 5, the owner's brief: calm premium, one idea per screen, at most five sections, and one signature animation
+   (words appearing on the Mac while someone talks into the phone); everything else stands still. */
+describe("Forside: five calm sections (run 5)", () => {
   const d = doc("home");
-  it("has the hero with RelayDemo", () => {
-    expect(d.querySelector("header.wt-liquid h1")!.textContent).toBe(
-      "Tal. Slip. Indsæt.",
-    );
-    expect(d.querySelector(".wt-flip")).not.toBeNull();
-    expect(d.querySelector('.demo .wt-relay[role="img"]')).not.toBeNull();
-    expect(d.querySelector(".hero .fine")!.textContent).toBe(
-      "Apache-2.0 · Ingen konto · Dansk talemodel",
-    );
-  });
-  it("has the three promises that hold", () => {
-    expect(d.querySelectorAll(".trust li").map((l) => l.textContent)).toEqual([
-      "Talen bliver til tekst på din egen computer",
-      "Krypteret fra telefon til computer",
-      "Ingen konto, ingen sporing",
-    ]);
-  });
-  it("has the feature grid of ShowcaseCards", () => {
+  const section = (name: string) =>
+    d.querySelector(`[data-section="${name}"]`)!;
+  it("has exactly five sections: hero, how it works, privacy, free, questions", () => {
     expect(
-      d.querySelectorAll(".bento .wt-show-title").map((t) => t.textContent),
-    ).toEqual([
-      "Hold fn, tal, slip",
-      "Eller tal ind i telefonen",
-      "Den retter dig, når du retter dig selv",
-      "Dansk og engelsk i samme sætning",
-      "Lander som en notifikation",
-      "Til den computer, du sidder ved",
-      "Dine ord, stavet rigtigt",
-    ]);
+      d
+        .querySelectorAll("[data-section]")
+        .map((s) => s.getAttribute("data-section")),
+    ).toEqual(["hero", "how", "privacy", "free", "faq"]);
+    expect(d.querySelectorAll("main > *")).toHaveLength(4);
   });
-  it("has the three steps with the model download, the pairing code and the pill", () => {
-    expect(d.querySelectorAll(".step h3").map((t) => t.textContent)).toEqual([
-      "Hent appen",
-      "Par telefonen",
-      "Hold og tal",
-    ]);
-    expect(d.querySelector('.steps [role="progressbar"]')).not.toBeNull();
-    expect(d.querySelector('.steps .qr[role="img"]')).not.toBeNull();
-    expect(d.querySelector(".steps .wt-pill")).not.toBeNull();
+  it("gives every section one idea: one heading each", () => {
+    expect(section("hero").querySelectorAll("h1")).toHaveLength(1);
+    for (const s of ["how", "privacy", "free", "faq"])
+      expect(section(s).querySelectorAll("h2"), s).toHaveLength(1);
   });
-  it("has privacy on LightWaves in a dark section, open source, business, questions and the footer intro", () => {
-    expect(
-      d.querySelector('section.privacy[data-theme="dark"] .wt-waves'),
-    ).not.toBeNull();
-    expect(d.querySelector(".privacy .wt-show .wt-sc-local")).not.toBeNull();
-    expect(d.querySelector(".oss .badge")!.textContent).toBe("Apache-2.0");
-    expect(d.querySelector(".biz.wt-gbg h2")!.textContent).toBe(
-      "Gratis for alle, også for jer",
+  it("builds the fn-led hero when no variant is chosen", () => {
+    const hero = section("hero");
+    expect(hero.getAttribute("data-hero")).toBe(DEFAULT_HERO);
+    expect(hero.querySelector("h1")!.textContent).toBe(HERO.fn.title);
+    expect(textOf(hero.querySelector(".hero-lead")!).trim()).toBe(
+      HERO.fn.lead.replace("{fn}", "fn"),
     );
-    expect(d.querySelectorAll(".faq details")).toHaveLength(4);
-    expect(d.querySelector("footer .wt-intro")).not.toBeNull();
   });
-  it("loads the design system CSS before the page's own rules (the page must win, as in the preview)", () => {
-    const css = d
-      .querySelectorAll('link[rel="stylesheet"]')
-      .map((l) => readFileSync(join(dist, l.getAttribute("href")!), "utf8"))
-      .join("\n");
-    expect(css.indexOf(".wt-appicon{")).toBeGreaterThanOrEqual(0);
-    expect(css.indexOf(".wt-appicon{")).toBeLessThan(css.indexOf(".qr-mark{"));
-  });
-  it("uses only one WebGL surface (LightWaves)", () => {
-    expect(d.querySelectorAll(".wt-gl")).toHaveLength(1);
+  it("shows the italic W mark in the hero, in liquid metal on night", () => {
+    const icon = section("hero").querySelector(".hero-mark.wt-appicon")!;
+    expect(icon.querySelector("svg.wt-logo")!.toString()).toContain(
+      "<linearGradient",
+    );
   });
   it("links its calls to action", () => {
     const links = d
       .querySelectorAll("a.wt-shiny")
       .map((a) => [a.textContent, a.getAttribute("href")]);
     expect(links).toContainEqual(["Hent gratis", "/hent"]);
-    expect(links).toContainEqual(["Se koden på GitHub", REPO_URL]);
+    expect(links).toContainEqual(["Sådan virker det", PAGES.how.path]);
     expect(links).toContainEqual(["Skriv til os", CONTACT_URL]);
   });
+  it("has the signature animation as one described picture, in its calm final state without JavaScript", () => {
+    const stage = section("hero").querySelector("[data-stage]")!;
+    expect(stage.getAttribute("role")).toBe("img");
+    expect(stage.getAttribute("aria-label")).toMatch(/telefon/);
+    expect(stage.getAttribute("aria-label")).toMatch(/computer/);
+    expect(stage.getAttribute("data-step")).toBe("ready");
+    /* every word is in the HTML from the start, so nothing moves when they appear */
+    expect(
+      stage
+        .querySelectorAll("[data-words] .w")
+        .map((w) => w.textContent)
+        .join(" "),
+    ).toBe(STAGE_WORDS.join(" "));
+    /* the product says what the product says (design system, spec Appendix A) */
+    const said = stage.toString();
+    for (const s of [
+      "Lytter",
+      "Renskriver",
+      "Tekst klar til at indsætte",
+      "Klar på MacBook",
+      "Tryk ⌘V for at indsætte",
+      "Krypteret fra telefon til computer",
+    ])
+      expect(said, s).toContain(s);
+    expect(
+      stage.querySelector(".wt-phone .wt-app.wt-app--ready"),
+    ).not.toBeNull();
+    expect(stage.querySelector(".wt-laptop .wt-win")).not.toBeNull();
+  });
+  it("runs no React on the front page: no islands, no demos, no WebGL, a still footer", () => {
+    expect(d.querySelectorAll("astro-island")).toHaveLength(0);
+    for (const sel of [
+      ".wt-flip",
+      ".wt-show",
+      ".wt-relay",
+      ".wt-waves",
+      ".wt-gl",
+      "footer .wt-intro",
+    ])
+      expect(d.querySelectorAll(sel), sel).toHaveLength(0);
+    expect(d.querySelector("footer svg.wt-logo")).not.toBeNull();
+  });
+  it(`keeps the front page's JavaScript under ${HOME_JS_BUDGET / 1024} KB (SITE-06)`, () => {
+    const js = pageScripts("home");
+    expect(js.files.join(" ")).not.toMatch(/client|react|src\./);
+    expect(js.bytes).toBeLessThanOrEqual(HOME_JS_BUDGET);
+  });
+  it("loads the design system CSS before the page's own rules (the page must win)", () => {
+    const css = d
+      .querySelectorAll('link[rel="stylesheet"]')
+      .map((l) => readFileSync(join(dist, l.getAttribute("href")!), "utf8"))
+      .join("\n");
+    expect(css.indexOf(".wt-appicon{")).toBeGreaterThanOrEqual(0);
+    expect(css.indexOf(".wt-appicon{")).toBeLessThan(css.indexOf(".stage{"));
+  });
+  it("explains how it works in three steps and links to the page with the detail", () => {
+    const how = section("how");
+    expect(how.querySelectorAll(".step h3").map((h) => h.textContent)).toEqual([
+      "Hent appen",
+      "Tal",
+      "Slip",
+    ]);
+    expect(how.querySelector(`a[href="${PAGES.how.path}"]`)).not.toBeNull();
+  });
+  it("says privacy in three facts that hold: local, encrypted from the phone, open source (spec 2.6)", () => {
+    const p = section("privacy");
+    expect(p.getAttribute("data-theme")).toBe("dark");
+    expect(p.querySelectorAll(".pillar h3").map((h) => h.textContent)).toEqual([
+      "Talen bliver til tekst på din egen computer",
+      "Krypteret fra telefon til computer",
+      "Open source",
+    ]);
+    expect(textOf(p)).toContain("Relæet imellem kan ikke læse den.");
+    expect(textOf(p)).toContain("Ingen konto og ingen sporing.");
+    for (const k of ["privacy", "security", "oss"] as const)
+      expect(p.querySelector(`a[href="${PAGES[k].path}"]`), k).not.toBeNull();
+    expect(p.querySelector(`a[href="${REPO_URL}"]`)).not.toBeNull();
+  });
+  it("is free for everyone, with paid setup help for companies as a service, not a licence", () => {
+    const f = section("free");
+    expect(f.querySelector("h2")!.textContent).toBe(
+      "Gratis for alle, også for virksomheder",
+    );
+    expect(f.querySelectorAll(".plan")).toHaveLength(2);
+    expect(textOf(f)).toContain("0 kr.");
+    expect(textOf(f)).toMatch(/ikke en licens/);
+    expect(f.querySelector(`a[href="${CONTACT_URL}"]`)).not.toBeNull();
+    expect(f.querySelector(`a[href="${PAGES.business.path}"]`)).not.toBeNull();
+  });
+  it("has a short FAQ that links to the rest", () => {
+    const q = section("faq");
+    const n = q.querySelectorAll("details").length;
+    expect(n).toBeGreaterThanOrEqual(4);
+    expect(n).toBeLessThanOrEqual(6);
+    expect(q.querySelector(`a[href="${PAGES.faq.path}"]`)).not.toBeNull();
+  });
+  /* Run 5: claims nobody has measured yet (whispering, speed) are marked TODO(claim) in the source and never shown
+     as facts: the production build leaves them out, draft previews show them with a visible marker. */
+  it("shows no unmeasured claim in the production build", () => {
+    expect(d.querySelectorAll("[data-claim]")).toHaveLength(0);
+    expect(visibleText(d)).not.toMatch(/TODO|hvisk/i);
+  });
   /* Review finding 6: other computers never get the text (spec 12.1, PHONE-40/41), as Privatliv and Sådan virker det say. */
-  it("says that only the computer you use gets the text", () => {
-    const card = d
-      .querySelectorAll(".bento .wt-show")
-      .find(
-        (c) =>
-          c.querySelector(".wt-show-title")?.textContent ===
-          "Til den computer, du sidder ved",
-      )!;
-    const text = card.querySelector(".wt-show-text")!.textContent;
-    expect(text).toContain("Den computer, du bruger, får teksten.");
-    expect(text).toContain("De andre får den ikke.");
-    expect(visibleText(d)).not.toMatch(/historikken/);
+  it("never says other computers get the text", () => {
+    expect(visibleText(d)).not.toMatch(/historikken|alle dine computere/);
+    expect(textOf(section("how"))).toContain("den computer, du sidder ved");
     expect(visibleText(doc("privacy"))).toContain(
       "Den sendes aldrig til telefonen eller til andre computere.",
     );
@@ -391,16 +479,17 @@ describe("Forside is ForsideKomplet", () => {
     );
   });
   /* Review finding 17: self-corrections need the optional AI cleanup, which is off by default (spec 6.10, PRIV-04). */
-  it("ties every self-correction claim to the optional AI cleanup", () => {
+  it("ties any self-correction claim to the optional AI cleanup", () => {
     const claims = /omformuleringer|onsdag, nej, torsdag|nej, jeg mente/i;
-    const blocks = d
+    for (const p of d
       .querySelectorAll("main p")
-      .filter((p) => claims.test(p.textContent));
-    expect(blocks.length).toBe(3);
-    for (const p of blocks)
+      .filter((p) => claims.test(p.textContent)))
       expect(p.textContent, p.textContent).toMatch(
         /slår du AI-oprydning til|med AI-oprydning, hvis du slår den til/i,
       );
+    expect(textOf(section("privacy"))).toContain(
+      "AI-oprydning er valgfri og slået fra",
+    );
   });
 });
 
@@ -568,11 +657,13 @@ describe("no outdated copy (run 2)", () => {
     expect(text).toContain(IPHONE_FALLBACK);
     expect(text).not.toContain("tryk Par med en computer");
   });
-  it("the homepage's third step says tap or hold", () => {
+  it("the homepage's step with the key says tap or hold", () => {
     const step = doc("home")
       .querySelectorAll(".step")
-      .find((s) => s.querySelector("h3")!.textContent === "Hold og tal")!;
-    expect(step.querySelector("p")!.textContent).toMatch(/tryk(ke)? igen/i);
+      .find((s) => s.querySelector("h3")!.textContent === "Tal")!;
+    const text = step.querySelector("p")!.textContent;
+    expect(text).toContain("Hold fn nede");
+    expect(text).toMatch(/tryk(ke)? igen/i);
   });
   /* DESK-32 (run 2): our models are assets of the GitHub release models-v1, not on Hugging Face. */
   it.each(["privacy", "business"] as const)(

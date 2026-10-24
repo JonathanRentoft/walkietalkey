@@ -1,147 +1,147 @@
 ---
-/* Forside = ForsideKomplet (design system components/ForsideKomplet/preview.html is the spec). Text, order and
-   components are the preview's, except where the preview's copy claimed more than the app does (review findings 6
-   and 17, marked TODO(copy)) and the third step, which says tap or hold (run 2). "Skriv til os" writes to
-   kontakt@walkietalkey.com (SITE-05). Only what moves with JavaScript is an island; the rest is static HTML. */
-import {
-  FlipWords, GradientBackground, GradientFrame, LiquidBackground, Logo, RelayDemo, ShinyButton, ShowcaseCard,
-} from "@walkietalkey/ui";
-import Download from "../components/home/Download";
-import { Check, FileIcon } from "../components/home/Icons";
-import PillDemo from "../components/home/PillDemo";
-import Privacy from "../components/home/Privacy";
-import Qr from "../components/home/Qr";
-import Header from "../components/Header.astro";
+/* Forside (run 5, the owner's brief): calm premium, one idea per screen, five sections and one signature animation.
+     1. Hero: one idea in words (three variants, lib/hero.ts) and the product itself, words appearing on the Mac while
+        someone talks into the phone (components/home/Stage.astro). The page's only motion.
+     2. Sådan virker det, in three steps.
+     3. Privatliv: local transcription, encrypted from the phone, open source (spec 2.6).
+     4. Gratis for alle, with paid setup help for companies as a service, not a licence (principle 3).
+     5. A short FAQ.
+   The rest of the old ForsideKomplet (features grid, open source, business) lives on the pages these link to. Every
+   section below the hero stands still (home.css), and the page runs no React. Unmeasured claims sit in <Claim>
+   (TODO(claim)): left out of production, marked in the draft previews. */
+import { AppIcon, DictationPill, Keycap, Logo, ShinyButton } from "@walkietalkey/ui";
+import Claim from "../components/home/Claim.astro";
+import Hero from "../components/home/Hero.astro";
+import { Check } from "../components/home/Icons";
 import Base from "../layouts/Base.astro";
 import { CONTACT_URL, PAGES, REPO_URL } from "../lib/site";
 
-const files: [string, boolean, string][] = [
-  ["src-tauri", true, "Appen på din computer"], ["src", true, "Brugerfladen"], ["relay", true, "Krypteret relæ til telefonen"], ["phone", true, "Webappen til telefonen"],
-  ["README.md", false, "Kom i gang"], ["LICENSE", false, "Apache-2.0"], ["TRADEMARKS.md", false, "Navn og logo"],
-];
+/* line icons in the design system's style (1.5 to 1.7px, round ends, currentColor) */
+const ICONS = {
+  laptop: "M3 4.2h10v6.6H3ZM1.6 12.6h12.8",
+  lock: "M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z",
+  code: "M5.6 4.4 2 8l3.6 3.6M10.4 4.4 14 8l-3.6 3.6M9 3 7 13",
+  phone: "M5 1.8h6v12.4H5ZM7.2 12.2h1.6",
+};
+// TODO(copy): every string on this page that is not in spec Appendix A
+const free = ["Mac og Windows", "Telefonappen til iPhone og Android", "Dansk talemodel på din egen computer", "Ingen konto og ingen sporing"];
+const help = ["Udrulning til alle computere med færdige indstillinger", "Fælles ordliste med kunder, produkter og fagord", "Jeres eget relæ og jeres egen telefonapp", "Svar til IT og jura om data og sikkerhed"];
 ---
 <Base page="home">
-  <div class="page">
-    <LiquidBackground className="hero" palette="morgengry" as="header">
-      <Header current="home" />
-      <div class="hero-copy" id="indhold">
-        <p class="eyebrow"><b>Ny</b>Dansk tale til tekst, gratis og open source</p>
-        <h1 class="h1">Tal. Slip. Indsæt.</h1>
-        <p class="sub">Diktér <FlipWords client:idle words={["mails", "noter", "beskeder", "referater", "kode"]} /> på dansk, fra tastaturet eller telefonen.</p>
-        <p class="lead">Hold fn nede, eller tal ind i telefonen. Talen bliver til tekst på din egen computer og ligger klar til at indsætte.</p>
-        <div class="ctas">
-          <GradientFrame client:idle palette="morgengry"><ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>Hent gratis</ShinyButton></GradientFrame>
-          <ShinyButton variant="glass" size="lg" icon={false} href={REPO_URL}>Se koden på GitHub</ShinyButton>
-        </div>
-        <p class="fine">Apache-2.0 · Ingen konto · Dansk talemodel</p>
-      </div>
-    </LiquidBackground>
-    <div class="demo"><RelayDemo client:visible /></div>
-
-    <main>
-      <div class="trust">
-        <ul>
-          <li><Check />Talen bliver til tekst på din egen computer</li>
-          <li><Check />Krypteret fra telefon til computer</li>
-          <li><Check />Ingen konto, ingen sporing</li>
-        </ul>
-      </div>
-
-      <section class="block container" aria-labelledby="funktioner">
-        <div class="head">
-          <div><p class="eyebrow muted">Funktioner</p><h2 class="h2" id="funktioner">Lavet til den måde,<br />du taler på</h2></div>
-          <!-- TODO(copy): self-corrections need the optional AI cleanup, which is off by default (review finding 17) -->
-          <p class="lead muted">Du taler, som du plejer. WalkieTalkey sætter tegn og staver dine egne ord rigtigt. Slår du AI-oprydning til, retter den også dine omformuleringer.</p>
-        </div>
-        <!-- TODO(copy): the text of the "renskriv" card (AI cleanup, review finding 17) and the "enheder" card (only the
-             computer you use gets the text, as Privatliv and Sådan virker det say; review finding 6) -->
-        <div class="bento">
-          <ShowcaseCard client:visible className="s7" scene="fn" surface="liquid" palette="morgengry" ratio="16 / 10" title="Hold fn, tal, slip" text="Statuspillen lytter, mens du taler, og renskriver, når du slipper. Teksten ligger klar til ⌘V." />
-          <ShowcaseCard client:visible className="s5" scene="telefon" surface="motion" palette="nat" placement="phone" ratio="5 / 6" theme="dark" title="Eller tal ind i telefonen" text="Hold knappen, tal, slip. Teksten lander på den computer, du sidder ved." />
-          <ShowcaseCard client:visible className="s4" scene="renskriv" surface="gradient" palette="rav" title="Den retter dig, når du retter dig selv" text={"Slår du AI-oprydning til, bliver \"onsdag, nej, torsdag\" bare til torsdag. Fyldord forsvinder også uden den."} />
-          <ShowcaseCard client:visible className="s4" scene="sprog" surface="rows" palette="morgengry" title="Dansk og engelsk i samme sætning" text="Sådan som udviklere og konsulenter faktisk taler." />
-          <ShowcaseCard client:visible className="s4" scene="notifikation" surface="strips" palette="flint" title="Lander som en notifikation" text="Du vælger selv, hvor teksten skal stå." />
-          <ShowcaseCard client:visible className="s6" scene="enheder" surface="gradient" palette="morgengry" ratio="16 / 10" title="Til den computer, du sidder ved" text="Den computer, du bruger, får teksten. De andre får den ikke." />
-          <ShowcaseCard client:visible className="s6" scene="ordliste" surface="barfield" palette="rav" ratio="16 / 10" title="Dine ord, stavet rigtigt" text="Kundenavne, fagord og produktnavne fra din egen ordliste." />
-        </div>
-      </section>
-
-      <section class="block container" aria-labelledby="kom-i-gang">
-        <div class="head">
-          <div><p class="eyebrow muted">Kom i gang</p><h2 class="h2" id="kom-i-gang">Kom i gang på få minutter</h2></div>
+  <Hero />
+  <main class="home">
+    <section class="sec how" data-section="how" aria-labelledby="saadan">
+      <div class="container">
+        <div class="sec-head">
+          <p class="eyebrow muted">Sådan virker det</p>
+          <h2 class="h2" id="saadan">Tre trin fra tale til tekst</h2>
           <p class="lead muted">Ingen konto og intet abonnement. Appen henter den danske talemodel første gang.</p>
         </div>
-        <div class="steps">
-          <article class="step">
-            <div class="step-vis"><Download client:visible /></div>
-            <div class="step-body"><span class="step-n">1</span><h3>Hent appen</h3><p>Installer WalkieTalkey. Talemodellen hentes én gang og bliver på din computer.</p></div>
-          </article>
-          <article class="step">
-            <div class="step-vis"><Qr /></div>
-            <div class="step-body"><span class="step-n">2</span><h3>Par telefonen</h3><p>Scan koden med telefonen, så er de forbundet. Ingen konto og ingen kode at huske.</p></div>
-          </article>
-          <article class="step">
-            <div class="step-vis"><PillDemo client:visible /></div>
-            <!-- TODO(copy): tap or hold (run 2) -->
-            <div class="step-body"><span class="step-n">3</span><h3>Hold og tal</h3><p>Hold fn nede eller knappen på telefonen, og tal. Slip, og teksten er klar. Med fn kan du også trykke én gang og trykke igen, når du er færdig.</p></div>
-          </article>
-        </div>
-      </section>
-
-      <section class="privacy" data-theme="dark" aria-label="Privatliv">
-        <Privacy client:visible />
-      </section>
-
-      <section class="block container" aria-labelledby="open-source">
-        <div class="oss">
-          <div>
-            <p class="eyebrow muted">Open source</p>
-            <h2 class="h2" id="open-source">Åben kode, som du<br />selv kan tjekke</h2>
-            <p class="lead muted">Hele koden ligger åbent under Apache-2.0. Du kan se, hvad der sker med din stemme, bygge appen selv eller hjælpe med at gøre den bedre.</p>
-            <div class="ctas" style="justify-content: flex-start"><ShinyButton variant="ink" size="lg" href={REPO_URL}>Se koden på GitHub</ShinyButton></div>
-            <p class="credit">Med den danske talemodel Edda. Navnet og logoet er varemærker og følger ikke med licensen.</p>
-          </div>
-          <div class="repo">
-            <div class="repo-head">
-              <span class="repo-name"><Logo variant="mark" size={18} decorative /><span>walkietalkey /</span>walkietalkey</span>
-              <span class="badge">Apache-2.0</span>
+        <ol class="steps">
+          <li class="step">
+            <div class="step-vis"><AppIcon size={72} /></div>
+            <span class="step-n">1</span>
+            <h3>Hent appen</h3>
+            <p>Til Mac og Windows. Den danske talemodel hentes én gang og bliver på din computer.</p>
+          </li>
+          <li class="step">
+            <div class="step-vis step-vis--keys">
+              <Keycap size={64} pressed>fn</Keycap>
+              <span class="step-or">eller</span>
+              <span class="step-phone"><svg viewBox="0 0 16 16" width="34" height="34" aria-hidden="true"><path d={ICONS.phone} /></svg></span>
             </div>
-            <ul class="files">
-              {files.map(([name, dir, what]) => <li><FileIcon dir={dir} /><span>{name}</span><em>{what}</em></li>)}
-            </ul>
-          </div>
-        </div>
-      </section>
+            <span class="step-n">2</span>
+            <h3>Tal</h3>
+            <p>Hold fn nede, og tal. Eller tryk én gang, og tryk igen, når du er færdig. På telefonen holder du knappen.</p>
+          </li>
+          <li class="step">
+            <div class="step-vis"><DictationPill state="ready" /></div>
+            <span class="step-n">3</span>
+            <h3>Slip</h3>
+            <p>Teksten står, hvor du skriver. Fra telefonen ligger den klar til ⌘V på den computer, du sidder ved. <Claim what="ventetiden, efter du slipper (DESK-43)">Det tager omkring et sekund.</Claim></p>
+          </li>
+        </ol>
+        <p class="sec-more"><a href={PAGES.how.path}>Læs mere om, hvordan det virker</a></p>
+      </div>
+    </section>
 
-      <section class="block container" aria-label="Virksomheder">
-        <GradientBackground className="biz" palette="rav">
-          <div>
-            <p class="eyebrow" style="color: var(--on-gradient)">Virksomheder</p>
-            <h2 class="h2">Gratis for alle, også for jer</h2>
-            <p class="lead">I må bruge WalkieTalkey frit i hele virksomheden. Vil I have hjælp til at sætte det op, er det betalt hjælp, ikke en licens.</p>
-            <div class="ctas" style="justify-content: flex-start"><ShinyButton variant="ink" size="lg" href={CONTACT_URL}>Skriv til os</ShinyButton></div>
-          </div>
-          <ul>
-            <li><Check />Udrulning til alle computere med færdige indstillinger</li>
-            <li><Check />Fælles ordliste med kunder, produkter og fagord</li>
-            <li><Check />Oprydning på jeres egen Azure OpenAI i EU</li>
-            <li><Check />Svar til IT og jura om data og sikkerhed</li>
-          </ul>
-        </GradientBackground>
-      </section>
-
-      <section class="block container" aria-labelledby="spoergsmaal">
-        <div class="faq">
-          <div><p class="eyebrow muted">Spørgsmål</p><h2 class="h2 faq-h2" id="spoergsmaal">Det, folk plejer at spørge om</h2></div>
-          <div>
-            <details open><summary>Er det virkelig gratis?</summary><p>Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den.</p></details>
-            <details><summary>Hvor bliver min stemme af?</summary><p>Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den.</p></details>
-            <details><summary>Hvilken talemodel bruger I?</summary><p>Edda, en dansk udgave af Whisper, der er trænet på over 2.600 timers dansk tale. Den kører på din egen computer.</p></details>
-            <!-- TODO(copy): the answer names the optional AI cleanup (review finding 17) -->
-            <details><summary>Kan den forstå, når jeg blander dansk og engelsk?</summary><p>Ja, og din ordliste hjælper med fagord og navne. Slår du AI-oprydning til, retter den også, når du siger "nej, jeg mente".</p></details>
-          </div>
+    <section class="sec privacy" data-section="privacy" data-theme="dark" aria-labelledby="privatliv">
+      <div class="container">
+        <div class="sec-head sec-head--center">
+          <Logo variant="mark" tone="gradient" size={64} animated={false} decorative className="privacy-mark" />
+          <p class="eyebrow">Privatliv</p>
+          <h2 class="h2" id="privatliv">Din stemme forlader aldrig dine egne enheder ukrypteret.</h2>
         </div>
-      </section>
-    </main>
-  </div>
+        <ul class="pillars">
+          <li class="pillar">
+            <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true"><path d={ICONS.laptop} /></svg>
+            <h3>Talen bliver til tekst på din egen computer</h3>
+            <p>En dansk talemodel kører på din Mac eller pc. Ingen sky lytter med, og lyden gemmes ikke, medmindre du selv slår det til.</p>
+          </li>
+          <li class="pillar">
+            <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true"><path d={ICONS.lock} /></svg>
+            <h3>Krypteret fra telefon til computer</h3>
+            <p>Telefonen krypterer lyden, før den sendes, og kun din computer kan låse den op. Relæet imellem kan ikke læse den.</p>
+          </li>
+          <li class="pillar">
+            <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true"><path d={ICONS.code} /></svg>
+            <h3>Open source</h3>
+            <p>Al koden ligger åbent under Apache-2.0, så alle kan se, hvad der sker med din stemme. <a href={REPO_URL}>Se koden på GitHub</a></p>
+          </li>
+        </ul>
+        <p class="privacy-foot">
+          Ingen konto og ingen sporing. AI-oprydning er valgfri og slået fra, indtil du selv slår den til.
+          <span class="privacy-links"><a href={PAGES.privacy.path}>Privatliv</a><a href={PAGES.security.path}>Sikkerhed</a><a href={PAGES.oss.path}>Open source</a></span>
+        </p>
+      </div>
+    </section>
+
+    <section class="sec free" data-section="free" aria-labelledby="gratis">
+      <div class="container">
+        <div class="sec-head sec-head--center">
+          <p class="eyebrow muted">Pris</p>
+          <h2 class="h2" id="gratis">Gratis for alle, også for virksomheder</h2>
+          <p class="lead muted">WalkieTalkey er open source under Apache-2.0. I må bruge det frit i hele virksomheden.</p>
+        </div>
+        <div class="plans">
+          <article class="plan">
+            <h3>WalkieTalkey</h3>
+            <p class="price">0 kr.</p>
+            <p class="price-note">For alle, også virksomheder</p>
+            <ul>{free.map((s) => <li><Check s={16} />{s}</li>)}</ul>
+            <ShinyButton variant="ink" href={PAGES.hent.path}>Hent gratis</ShinyButton>
+          </article>
+          <article class="plan plan--help">
+            <h3>Hjælp til opsætning</h3>
+            <p class="price">Betalt hjælp</p>
+            <p class="price-note">Til virksomheder, der vil have det sat op</p>
+            <ul>{help.map((s) => <li><Check s={16} />{s}</li>)}</ul>
+            <ShinyButton variant="glass" href={CONTACT_URL}>Skriv til os</ShinyButton>
+            <a class="plan-link" href={PAGES.business.path}>WalkieTalkey til virksomheder</a>
+          </article>
+        </div>
+        <p class="plans-note">Hjælpen er en service, ikke en licens. Appen er den samme for alle.</p>
+      </div>
+    </section>
+
+    <section class="sec faq" data-section="faq" aria-labelledby="spoergsmaal">
+      <div class="container faq-in">
+        <div>
+          <p class="eyebrow muted">Spørgsmål</p>
+          <h2 class="h2" id="spoergsmaal">Det, folk plejer at spørge om</h2>
+          <p class="sec-more"><a href={PAGES.faq.path}>Alle spørgsmål og svar</a></p>
+        </div>
+        <div class="faq-list">
+          <details open><summary>Er det virkelig gratis?</summary><p>Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den.</p></details>
+          <details><summary>Hvor bliver min stemme af?</summary><p>Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den.</p></details>
+          <details><summary>Hvilken talemodel bruger I?</summary><p>Edda, en dansk udgave af Whisper, der er trænet på over 2.600 timers dansk tale. Den kører på din egen computer.</p></details>
+          <details><summary>Hvilke computere virker det på?</summary><p>Mac med macOS 13 Ventura eller nyere og Windows 10 (22H2) eller Windows 11 i 64-bit. Du skal bruge 8 GB RAM og omkring 2 GB fri plads til talemodellen.</p></details>
+          <details><summary>Skal jeg have en konto?</summary><p>Nej. Der er intet login, ingen e-mail og ingen adgangskode. Telefonen og computeren finder hinanden ved, at du scanner en kode.</p></details>
+          <Claim as="div" what="hvor godt talemodellen forstår hvisken">
+            <details><summary>Kan jeg hviske?</summary><p>Ja. Talemodellen forstår også, når du hvisker, så du kan diktere i et åbent kontor uden at forstyrre.</p></details>
+          </Claim>
+        </div>
+      </div>
+    </section>
+  </main>
 </Base>

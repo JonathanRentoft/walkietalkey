@@ -1,0 +1,22 @@
+---
+/* TODO(claim): a claim nobody has measured yet (run 5; spec 2.6, only claims that are true). The production build
+   leaves it out. A draft preview (SITE_DRAFT=1, lib/hero.ts) shows it with a visible TODO(claim) tag, so the owner can
+   judge the wording before anyone measures it. Once it is measured, move the text out of <Claim> and drop the tag. */
+import { BUILD } from "../../lib/hero";
+
+interface Props {
+  /** what has to be measured before this may be said */
+  what: string;
+  /** "div" around block content, such as a whole question */
+  as?: "span" | "div";
+}
+const { what, as: Tag = "span" } = Astro.props;
+---
+{
+  BUILD.draft ? (
+    <Tag class="claim" data-claim={what} title={`TODO(claim): ikke målt endnu: ${what}`}>
+      <slot />
+      <span class="claim-tag">TODO(claim)</span>
+    </Tag>
+  ) : null
+}
