@@ -40,7 +40,10 @@ pub use pairing::{
     assert_relay_url, decode_pairing_url, encode_pairing_url, room_socket_url, ComputerOs, Intent,
     PairingPayload,
 };
-pub use payload::{DevicePayload, Direction, ResultOutcome, ResultReason};
+pub use payload::{
+    DevicePayload, Direction, ResultOutcome, ResultReason, TrainingCheck, TrainingItem,
+    TrainingLast, TrainingStyle,
+};
 
 /// SHA-256 helper.
 pub fn sha256(data: &[u8]) -> [u8; 32] {

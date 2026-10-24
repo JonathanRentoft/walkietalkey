@@ -47,7 +47,12 @@ pub mod frame_type {
     pub const AUDIO_CHUNK: u8 = 0x21;
     pub const AUDIO_END: u8 = 0x22;
     pub const AUDIO_CANCEL: u8 = 0x23;
+    /// A take for the fine-tuning workbench: audio_start plus the training session and prompt.
+    pub const AUDIO_START_TRAINING: u8 = 0x24;
     pub const RESULT: u8 = 0x30;
+    /// The sentence to read, only while a training session runs (spec 12.1, PRIV-05).
+    pub const TRAINING_PROMPT: u8 = 0x31;
+    pub const TRAINING_END: u8 = 0x32;
 }
 
 /// WebSocket close codes (Appendix C.3).
@@ -76,6 +81,11 @@ pub const AUDIO_CHUNK_HEADER_LEN: usize = SESSION_ID_LEN + 4;
 pub const MAX_DEVICE_NAME_BYTES: usize = 256;
 pub const MAX_PLATFORM_BYTES: usize = 32;
 pub const MAX_COMPUTER_NAME_BYTES: usize = 256;
+
+/// Training sessions (the fine-tuning workbench's phone takes, PROTOCOL.md 8.4).
+pub const TRAINING_ID_LEN: usize = 16;
+pub const MAX_PROMPT_ID_BYTES: usize = 64;
+pub const MAX_TRAINING_TEXT_BYTES: usize = 4096;
 
 pub const ADMISSION_TTL_MS: u64 = 10 * 60 * 1000;
 pub const PING_INTERVAL_MS: u64 = 30_000;

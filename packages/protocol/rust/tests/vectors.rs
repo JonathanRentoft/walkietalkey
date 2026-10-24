@@ -225,9 +225,11 @@ fn frames() {
         assert_eq!(describe_payload(&decoded), f["decoded"], "{}", f["name"]);
         assert_eq!(decoded.encode().unwrap(), plaintext);
     }
-    let all: std::collections::BTreeSet<u8> = [0x10, 0x11, 0x12, 0x20, 0x21, 0x22, 0x23, 0x30]
-        .into_iter()
-        .collect();
+    let all: std::collections::BTreeSet<u8> = [
+        0x10, 0x11, 0x12, 0x20, 0x21, 0x22, 0x23, 0x24, 0x30, 0x31, 0x32,
+    ]
+    .into_iter()
+    .collect();
     assert_eq!(seen_types, all, "every frame type is covered");
 }
 
