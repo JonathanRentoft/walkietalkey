@@ -399,7 +399,9 @@ test.describe("settings", () => {
       select.getByRole("option", { name: custom.name }),
     ).toBeAttached();
     // "Hent igen" deletes the file first; a custom file cannot be fetched back.
-    await expect(page.getByRole("button", { name: "Hent igen" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Hent igen" }),
+    ).toBeDisabled();
     await select.selectOption(EDDA);
     await expect(page.getByRole("button", { name: "Hent igen" })).toBeEnabled();
   });
