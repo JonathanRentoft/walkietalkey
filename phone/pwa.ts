@@ -20,6 +20,7 @@ import {
   removeReadmes,
 } from "@walkietalkey/ui/build/assets";
 import type { Plugin, ResolvedConfig } from "vite";
+import { IOS_MANIFEST_FILE } from "./src/lib/platform";
 
 export const MANIFEST = {
   name: "WalkieTalkey",
@@ -57,6 +58,19 @@ export const MANIFEST = {
     },
   ],
 };
+
+/**
+ * Run 2, Phase 5: what an iPhone's Safari tab links to. The same app without `start_url`, so the
+ * start URL of the home-screen app is the URL of the page it was added from (W3C manifest:
+ * a missing start_url is the document's URL). Opened from a pairing link, that page keeps the
+ * link in its address bar, so the home-screen app pairs on its first launch without a second
+ * scan. Either way iOS picks the start URL (the manifest's or the page's), it gets the link.
+ */
+export { IOS_MANIFEST_FILE };
+export const IOS_MANIFEST = (() => {
+  const { start_url: _start, ...rest } = MANIFEST;
+  return rest;
+})();
 
 /**
  * public/_headers is the production policy: connect-src allows any wss:// relay (RelayUrl is a
@@ -157,6 +171,11 @@ export function pwa(): Plugin {
         type: "asset",
         fileName: "manifest.webmanifest",
         source: JSON.stringify(MANIFEST, null, 2),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: IOS_MANIFEST_FILE,
+        source: JSON.stringify(IOS_MANIFEST, null, 2),
       });
     },
     closeBundle() {

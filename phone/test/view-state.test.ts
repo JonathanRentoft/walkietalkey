@@ -6,11 +6,57 @@ import {
   type Phase,
 } from "../src/core/machine";
 import { COUNTDOWN_FROM_MS, MAX_RECORDING_MS } from "../src/core/controller";
-import { countdownSeconds, viewState } from "../src/ui/viewState";
+import {
+  countdownSeconds,
+  splitName,
+  statusLine,
+  viewState,
+} from "../src/ui/viewState";
 import { T } from "../src/lib/strings";
 
+describe("the status line at the top (run 2, Phase 4)", () => {
+  const room = (online: boolean, connected: boolean) => ({
+    roomId: "r",
+    name: "Jonathans MacBook Pro",
+    os: "mac" as const,
+    deviceName: "iPhone",
+    online,
+    connected,
+  });
+
+  it("names the computer the text goes to, and how it is connected", () => {
+    expect(statusLine(room(true, true), false)).toEqual({
+      kind: "online",
+      text: "Forbundet til {computer}",
+    });
+    expect(statusLine(room(false, true), false)).toEqual({
+      kind: "away",
+      text: "{computer} er ikke online",
+    });
+    expect(statusLine(room(false, false), false)).toEqual({
+      kind: "connecting",
+      text: "Forbinder til {computer}",
+    });
+    expect(statusLine(room(false, false), true)).toEqual({
+      kind: "lost",
+      text: "Ikke forbundet til {computer}",
+    });
+  });
+
+  it("splits around the name, so the name can be marked up", () => {
+    expect(splitName("Forbundet til {computer}")).toEqual([
+      "Forbundet til ",
+      "",
+    ]);
+    expect(splitName("{computer} er ikke online")).toEqual([
+      "",
+      " er ikke online",
+    ]);
+  });
+});
+
 const m = (phase: Phase): MachineState => ({
-  ...initialMachine({ mode: "hold", peerOnline: true, connected: true }),
+  ...initialMachine({ peerOnline: true, connected: true }),
   phase,
 });
 
@@ -50,15 +96,15 @@ describe("main screen states (spec 7.3)", () => {
     expect(viewState(m("rec"), true).state).toBe("rec");
   });
 
-  it("a recording that ends with a tap says so and offers the cancel control", () => {
-    const latched = { ...m("rec"), latched: true };
-    expect(viewState(latched, false).labels.rec).toBe("Tryk for at sende");
-    expect(viewState(latched, false).latched).toBe(true);
+  it("hands-free says Tryk igen for at stoppe, with the lock and the cancel control (PHONE-26)", () => {
+    const free = { ...m("rec"), handsFree: true };
+    expect(viewState(free, false).labels.rec).toBe("Tryk igen for at stoppe");
+    expect(viewState(free, false).handsFree).toBe(true);
     // During the stopping tap the release sends, as the label says.
     expect(
-      viewState({ ...latched, armed: true }, false).labels.rec,
+      viewState({ ...free, armed: true }, false).labels.rec,
     ).toBeUndefined();
-    expect(viewState(m("rec"), false).latched).toBe(false);
+    expect(viewState(m("rec"), false).handsFree).toBe(false);
   });
 
   it("sends with the ekko loader", () => {

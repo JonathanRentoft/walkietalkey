@@ -55,7 +55,8 @@ export const holdButton = (page: Page) => page.locator("button.wt-hold");
 export const label = (page: Page) =>
   page.locator(".wt-app-label > span:last-child");
 export const sub = (page: Page) => page.locator(".wt-app-sub");
-export const chip = (page: Page) => page.locator(".wt-app-dev");
+/** The target computer's name in the status line at the top; tapping it opens the picker. */
+export const statusName = (page: Page) => page.locator(".wt-status-name");
 
 /** Pairs through the link the computer shows (the app opened from the QR's URL, PHONE-11). */
 export async function pairByLink(
@@ -71,7 +72,7 @@ export async function pairByLink(
   if (opts.name) await page.getByLabel("Telefonens navn").fill(opts.name);
   await page.getByRole("button", { name: "Par telefonen" }).click();
   await expect(holdButton(page)).toBeVisible();
-  await expect(chip(page)).toHaveText(computer.name);
+  await expect(statusName(page)).toHaveText(computer.name);
   const phone = await computer.waitPhone();
   await expect(label(page)).toHaveText("Hold for at tale");
   return phone;
@@ -94,9 +95,75 @@ export async function press(page: Page) {
   };
 }
 
+/** Holds the button for at least `ms` (push-to-talk when that is 0.5 s or more, PHONE-26). */
 export async function hold(page: Page, ms: number): Promise<void> {
   const p = await press(page);
   await expect(label(page)).toHaveText("Slip for at sende");
   await page.waitForTimeout(ms);
   await p.release();
+}
+
+/**
+ * The unpaired app's first screen (PHONE-10). A home-screen app's first launch opens the scanner
+ * by itself (run 2, Phase 5); this closes it.
+ */
+export async function closeScannerIfOpen(page: Page): Promise<void> {
+  const heading = page.getByRole("heading", { name: "Par med en computer" });
+  const scan = page.locator(".wt-scan");
+  await expect(heading.or(scan)).toBeVisible();
+  if (await scan.isVisible())
+    await page.getByRole("button", { name: "Annullér" }).click();
+  await expect(heading).toBeVisible();
+}
+
+/** A quick tap on the big button (released well within 0.5 s): hands-free. */
+export async function tap(page: Page): Promise<void> {
+  const c = await center(page);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.up();
+}
+
+/** The microphone streams the app opened (recorded by the fake-media init script). */
+export async function mics(page: Page) {
+  return page.evaluate(() => {
+    const list =
+      (
+        window as unknown as {
+          __wtMics?: { stream: MediaStream; constraints: unknown }[];
+        }
+      ).__wtMics ?? [];
+    return {
+      opened: list.length,
+      live: list.filter((m) =>
+        m.stream.getAudioTracks().some((t) => t.readyState === "live"),
+      ).length,
+      constraints: list.map((m) => m.constraints),
+    };
+  });
+}
+
+/** The page goes to the background (or comes back): visibilitychange, pagehide and pageshow. */
+export async function setHidden(page: Page, hidden: boolean): Promise<void> {
+  await page.evaluate((h) => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => (h ? "hidden" : "visible"),
+    });
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => h,
+    });
+    if (h) {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(
+        new PageTransitionEvent("pagehide", { persisted: true }),
+      );
+    } else {
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      );
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+  }, hidden);
 }

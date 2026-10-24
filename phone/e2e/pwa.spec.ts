@@ -1,4 +1,4 @@
-import { expect, preparePage, test } from "./helpers";
+import { closeScannerIfOpen, expect, preparePage, test } from "./helpers";
 
 test.describe("installable web app (PHONE-01)", () => {
   test("manifest, icons, Universal Links file and headers", async ({
@@ -50,9 +50,7 @@ test.describe("installable web app (PHONE-01)", () => {
   }) => {
     await preparePage(page, browserName);
     await page.goto("/");
-    await expect(
-      page.getByRole("heading", { name: "Par med en computer" }),
-    ).toBeVisible();
+    await closeScannerIfOpen(page);
     const scope = await page.evaluate(
       async () => (await navigator.serviceWorker.ready).scope,
     );

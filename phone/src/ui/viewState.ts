@@ -1,5 +1,6 @@
 /** From the state machine to the design system's PhoneApp state and labels (spec 7.3). */
 import type { PhoneAppLabels, PhoneAppState } from "@walkietalkey/ui";
+import type { ComputerView } from "../core/controller";
 import type { MachineState } from "../core/machine";
 import { T } from "../lib/strings";
 
@@ -7,8 +8,8 @@ export interface ViewState {
   state: PhoneAppState;
   labels: PhoneAppLabels;
   recording: boolean;
-  /** Show the cancel control (a recording that ends with a tap). */
-  latched?: boolean;
+  /** Hands-free (PHONE-26): show the lock and the cancel control. */
+  handsFree?: boolean;
   /** Show LogoLoader `ekko` over the button (Appendix D: while sending). */
   sending: boolean;
 }
@@ -28,13 +29,13 @@ export function viewState(m: MachineState, noConnection: boolean): ViewState {
         : { state: "idle", labels: {}, recording, sending: false };
     case "rec":
     case "cancel":
-      // A latched recording (tap mode, Start diktering) ends with a tap, not a release.
+      // Hands-free (a tap, Start diktering) ends with another tap, not a release.
       return {
         state: m.phase,
-        labels: m.latched && !m.armed ? { rec: T.tapToSend } : {},
+        labels: m.handsFree && !m.armed ? { rec: T.tapAgainToStop } : {},
         recording,
         sending: false,
-        latched: m.latched,
+        handsFree: m.handsFree,
       };
     case "send":
       return noConnection
@@ -64,6 +65,30 @@ export function viewState(m: MachineState, noConnection: boolean): ViewState {
     case "paused":
       return { state: m.phase, labels: {}, recording, sending: false };
   }
+}
+
+export type StatusKind = "online" | "away" | "connecting" | "lost";
+
+/**
+ * The status line at the very top of the main screen (run 2, Phase 4): which computer the text
+ * goes to and how it is connected. "lost" is the phone's own connection to the relay (the big
+ * label then says "Ingen forbindelse. Prøver igen."), "away" the computer's.
+ */
+export function statusLine(
+  target: Pick<ComputerView, "online" | "connected">,
+  noConnection: boolean,
+): { kind: StatusKind; text: string } {
+  if (noConnection) return { kind: "lost", text: T.statusLost };
+  if (target.online) return { kind: "online", text: T.statusOnline };
+  if (target.connected) return { kind: "away", text: T.statusAway };
+  return { kind: "connecting", text: T.statusConnecting };
+}
+
+/** The text before and after {computer}. */
+export function splitName(template: string): [string, string] {
+  const i = template.indexOf("{computer}");
+  if (i < 0) return [template, ""];
+  return [template.slice(0, i), template.slice(i + "{computer}".length)];
 }
 
 /** PHONE-29: the clock counts down from 4:45; returns the seconds left, or null before that. */

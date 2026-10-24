@@ -10,6 +10,8 @@ import { FakeComputer, FakeRelay } from "./fake-relay";
 class ThreeBlocks implements RecorderLike {
   private onBlock: ((b: Uint8Array, level: number) => void) | null = null;
   prime(): void {}
+  async warm(): Promise<void> {}
+  cool(): void {}
   async start(onBlock: (b: Uint8Array, level: number) => void): Promise<void> {
     this.onBlock = onBlock;
     for (let i = 0; i < 3; i++)
@@ -71,9 +73,12 @@ async function paired() {
   return { c, mac };
 }
 
+/** Tap to start (hands-free), tap again to stop and send (PHONE-26). */
 async function dictate(c: PhoneController): Promise<void> {
   c.down();
+  c.up();
   await sleep(30);
+  c.down();
   c.up();
   await until(() => c.getSnapshot().machine.phase === "send", "sending");
 }

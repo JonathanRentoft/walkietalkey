@@ -23,12 +23,10 @@ export const T = {
   lock: "Krypteret fra telefon til computer",
   holdToTalk: "Hold for at tale",
 
-  // Spec section 7.6 and PHONE-26 (the setting's own wording)
+  // Spec section 7.6
   settings: "Indstillinger",
   pairedComputers: "Parrede computere",
   remove: "Fjern",
-  holdOrTap: "Hold eller tryk",
-  tapToToggle: "Tryk for at starte og stoppe",
   haptics: "Haptik",
   about: "Om og licenser",
   cancel: "Annullér",
@@ -42,6 +40,11 @@ export const T = {
     "Vælg Føj til hjemmeskærm, og tryk Tilføj.",
     "Åbn WalkieTalkey fra hjemmeskærmen.",
   ],
+  // TODO(copy): Phase 5, opened from a pairing link in a Safari tab: the home-screen app pairs itself
+  installOpenPairs:
+    "Åbn WalkieTalkey fra hjemmeskærmen. Den parrer med {computer} med det samme.",
+  installInTime: "Koden på computeren virker i 10 minutter.",
+  installAlready: "Har du allerede WalkieTalkey på hjemmeskærmen?",
   // TODO(copy): why a Safari tab is not enough (PHONE-04)
   installWhy:
     "Appen på hjemmeskærmen gemmer parringen sikkert. En fane i Safari kan glemme den.",
@@ -88,8 +91,15 @@ export const T = {
     "Bygget med React (MIT), jsQR (Apache-2.0) og skrifttypen Albert Sans (SIL Open Font License 1.1).",
   version: "Version {version}",
   sourceCode: "Kildekode",
-  // TODO(copy): label while a tap-mode or Start diktering recording runs (it ends with a tap)
-  tapToSend: "Tryk for at sende",
+  // TODO(copy): hands-free (PHONE-26), wording from the run 2 brief; shown with a lock
+  tapAgainToStop: "Tryk igen for at stoppe",
+  // TODO(copy): the status line at the top of the main screen (run 2, Phase 4)
+  statusOnline: "Forbundet til {computer}",
+  statusAway: "{computer} er ikke online",
+  statusConnecting: "Forbinder til {computer}",
+  statusLost: "Ikke forbundet til {computer}",
+  // TODO(copy): what the status line does when tapped (screen readers)
+  statusPick: "Vælg computer og indstillinger",
   // TODO(copy): the 5 minute limit (PHONE-29)
   countdown: "Optagelsen stopper om {seconds} sekunder",
   // TODO(copy): "Detaljer" texts (PHONE-25)
