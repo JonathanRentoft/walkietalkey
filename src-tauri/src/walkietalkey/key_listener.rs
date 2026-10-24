@@ -154,6 +154,29 @@ impl Lifecycle {
     }
 }
 
+/// handy-keys as `init_shortcuts` starts it. When `start_handy_keys` fails,
+/// Handy falls back to Tauri's global shortcuts and saves that choice. On
+/// macOS that fallback is never taken: Tauri's shortcuts cannot see `fn`,
+/// so the saved choice would kill the key for good (DESK-13, DESK-20).
+/// The error is returned instead and the watcher tries again. Without
+/// Accessibility it is returned everywhere (handy-keys works once granted).
+pub fn start_handy_keys(
+    macos: bool,
+    trusted: impl FnOnce() -> bool,
+    start_handy_keys: impl FnOnce() -> Result<(), String>,
+    fall_back_to_tauri: impl FnOnce(),
+) -> Result<(), String> {
+    let Err(e) = start_handy_keys() else {
+        return Ok(());
+    };
+    if macos || !trusted() {
+        return Err(e);
+    }
+    log::error!("Failed to initialize handy-keys shortcuts: {e}");
+    fall_back_to_tauri();
+    Ok(())
+}
+
 /// At start: the app had Accessibility before and has lost it (DESK-13).
 pub fn accessibility_lost(granted_once: bool, trusted: bool) -> bool {
     granted_once && !trusted
@@ -489,6 +512,95 @@ mod tests {
         backend.works.store(true, Ordering::SeqCst);
         assert!(wait_for(|| announced.load(Ordering::SeqCst)));
         assert!(lifecycle.is_running());
+    }
+
+    /// `init_shortcuts` with handy-keys: the real decision, with a fake
+    /// HotkeyManager and a fake saved setting.
+    struct HandyKeysInit {
+        macos: bool,
+        probe: Arc<FakeProbe>,
+        hotkeys_work: AtomicBool,
+        attempts: AtomicUsize,
+        /// Handy's fallback ran: Tauri's shortcuts, saved to the settings.
+        saved_tauri: AtomicBool,
+    }
+
+    impl HandyKeysInit {
+        fn new(macos: bool) -> Self {
+            Self {
+                macos,
+                probe: Arc::new(FakeProbe(AtomicBool::new(true))),
+                hotkeys_work: AtomicBool::new(false),
+                attempts: AtomicUsize::new(0),
+                saved_tauri: AtomicBool::new(false),
+            }
+        }
+    }
+
+    impl ListenerBackend for HandyKeysInit {
+        fn start(&self) -> Result<(), String> {
+            start_handy_keys(
+                self.macos,
+                || self.probe.trusted(),
+                || {
+                    self.attempts.fetch_add(1, Ordering::SeqCst);
+                    if self.hotkeys_work.load(Ordering::SeqCst) {
+                        Ok(())
+                    } else {
+                        Err("HotkeyManager failed".into())
+                    }
+                },
+                || self.saved_tauri.store(true, Ordering::SeqCst),
+            )
+        }
+    }
+
+    #[test]
+    fn on_macos_a_handy_keys_failure_is_retried_and_never_saves_tauri() {
+        // DESK-13, DESK-20: Tauri's global shortcuts cannot see fn, so
+        // Handy's saved fallback would kill the key for good.
+        let lifecycle = Arc::new(Lifecycle::new());
+        let init = Arc::new(HandyKeysInit::new(true));
+        assert!(matches!(
+            lifecycle.ensure(init.probe.as_ref(), init.as_ref()),
+            Err(StartError::Failed(_))
+        ));
+        let announced = Arc::new(AtomicBool::new(false));
+        let a = Arc::clone(&announced);
+        lifecycle.watch(
+            init.probe.clone(),
+            init.clone(),
+            Duration::from_millis(5),
+            move || a.store(true, Ordering::SeqCst),
+        );
+        assert!(wait_for(|| init.attempts.load(Ordering::SeqCst) >= 4));
+        assert!(!lifecycle.is_running());
+        assert!(!init.saved_tauri.load(Ordering::SeqCst), "nothing saved");
+        // The HotkeyManager starts on a later try: fn works.
+        init.hotkeys_work.store(true, Ordering::SeqCst);
+        assert!(wait_for(|| announced.load(Ordering::SeqCst)));
+        assert!(lifecycle.is_running());
+        assert!(!init.saved_tauri.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn without_accessibility_a_handy_keys_failure_is_retried_everywhere() {
+        let init = HandyKeysInit::new(false);
+        init.probe.0.store(false, Ordering::SeqCst);
+        assert!(init.start().is_err());
+        assert!(!init.saved_tauri.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn elsewhere_handys_fallback_to_tauri_stays() {
+        // Windows and Linux keep Handy's behaviour.
+        let init = HandyKeysInit::new(false);
+        assert_eq!(init.start(), Ok(()));
+        assert!(init.saved_tauri.load(Ordering::SeqCst));
+        let working = HandyKeysInit::new(true);
+        working.hotkeys_work.store(true, Ordering::SeqCst);
+        assert_eq!(working.start(), Ok(()));
+        assert!(!working.saved_tauri.load(Ordering::SeqCst));
     }
 
     #[test]
