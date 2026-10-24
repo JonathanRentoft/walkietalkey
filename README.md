@@ -17,7 +17,7 @@ Hold `fn` on a Mac (Right Ctrl on Windows, or a key you choose), talk, let go, a
 - **Phone**: open the phone app from the QR code in the desktop app ("Par en telefon"). It works in the browser on iPhone and Android; add it to the home screen.
 - Companies: [docs/MANAGED_SETTINGS.md](docs/MANAGED_SETTINGS.md) (own relay, own model server, managed settings for Intune, Jamf and Group Policy).
 
-The app downloads its speech model on first start (886 MB for Edda, or 134 MB for Ekko v1 Tiny on slower computers), from Hugging Face or your company's server. Until our converted models are published ([docs/MODELS.md](docs/MODELS.md)), build them with `models/` and import the file in the app's model settings.
+The app downloads its speech model on first start (886 MB for Edda, or 134 MB for Ekko v1 Tiny on slower computers), from our release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1) or your company's server, and checks every file's SHA-256 ([docs/MODELS.md](docs/MODELS.md)).
 
 ## Privacy in three lines
 

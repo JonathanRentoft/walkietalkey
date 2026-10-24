@@ -2,14 +2,14 @@
   "_comment": [
     "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
     "Accuracy: WER on FLEURS da_dk test (930 clips), Q8_0, language da, timestamps none, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
-    "Replace `revision` with the commit models/upload.sh prints; description_da is draft UI copy."
+    "Files download from the GitHub release models-v1 (models/release.sh); description_da is draft UI copy."
   ],
   "model": {
     "id": "edda-v0.2",
     "name": "Edda v0.2",
     "description": "Most accurate Danish model. Needs a GPU or Apple Silicon to be fast",
     "repository": "walkietalkey/edda-v0.2-gguf",
-    "revision": "REPLACE-WITH-COMMIT-FROM-models/upload.sh",
+    "revision": "models-v1",
     "previousRevisions": [],
     "license": "apache-2.0",
     "family": "whisper",

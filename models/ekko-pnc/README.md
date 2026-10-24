@@ -14,7 +14,8 @@ tags:
 
 # Ekko PnC v2 (mirror)
 
-DRAFT (spec DESK-33). Not uploaded yet.
+Published as assets of the WalkieTalkey release
+[`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1) (spec DESK-33).
 
 An unchanged copy of the runtime files of **Ekko PnC v2** by RyeAI, the Danish
 punctuation and capitalisation model WalkieTalkey runs locally when dictated
@@ -56,4 +57,14 @@ runtime that reproduces `ekko-stt` 0.1.2 exactly on a 52-input golden set
 ## Credit
 
 Ekko PnC v2 by RyeAI, CC BY 4.0, derived from jonfd/electra-small-nordic
-(CC BY 4.0).
+(CC BY 4.0). Mirrored unchanged by the WalkieTalkey project (Navigent.io ApS).
+
+## Download
+
+Release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1): `pnc.int8.onnx`, `tokenizer.json` and
+`config.json` under their own names, this card as `ekko-pnc-README.md`, and the
+licence files flat with an `ekko-pnc-` prefix (a release cannot hold folders):
+`ekko-pnc-MODEL_LICENSE.md`, `ekko-pnc-NOTICE`, `ekko-pnc-CC-BY-4.0.txt`,
+`ekko-pnc-CC0-1.0.txt`, `ekko-pnc-CORAL-LICENSE` and
+`ekko-pnc-FTSPEECH-LICENSE.md` (in the app they land in `LICENSES/` again).
+`SHA256SUMS` lists every file.
