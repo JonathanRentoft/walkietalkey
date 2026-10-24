@@ -2,6 +2,7 @@
 //! unit tests on fixed input (DESK-40).
 
 pub mod context;
+pub mod joints;
 pub mod punctuation;
 pub mod script;
 pub mod vocabulary;

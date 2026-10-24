@@ -34,6 +34,10 @@ pub(super) struct ChunkedDecode<'a> {
     resplit_cut_short: bool,
     backend: VadBackend,
     on_chunk: Option<ChunkObserver>,
+    /// WalkieTalkey (run 4): reads each joint again with both sides in view
+    /// (Danish runs, `pipeline::da::joints`), as soon as the chunk after it
+    /// is decoded, so the wait after the recording stays the same.
+    joint_judge: Option<crate::walkietalkey::punctuation::PncJointJudge>,
     transcripts: Vec<Transcript>,
     /// The first run that failed or was cancelled; nothing more is decoded
     /// after it.
@@ -53,6 +57,9 @@ impl<'a> ChunkedDecode<'a> {
     ) -> Self {
         // The VAD is only loaded if the audio turns out long enough to cut.
         let app_handle = tm.app_handle.clone();
+        let joint_judge = (run_options.language.as_deref() == Some("da"))
+            .then(|| crate::walkietalkey::punctuation::joint_judge(&tm.app_handle))
+            .flatten();
         Self {
             tm,
             mark,
@@ -66,6 +73,7 @@ impl<'a> ChunkedDecode<'a> {
             resplit_cut_short: crate::walkietalkey::catalog::decodes_by_segment(model_id),
             backend,
             on_chunk,
+            joint_judge,
             transcripts: Vec::new(),
             failure: None,
         }
@@ -191,7 +199,7 @@ impl<'a> ChunkedDecode<'a> {
             let kept = self.resplit_cut_short.then(|| chunk.clone());
             match self.run_guarded(chunk, &run_options) {
                 Ok(transcript) => {
-                    let transcript = match kept {
+                    let mut transcript = match kept {
                         Some(audio) if looks_cut_short(&transcript.text, audio_secs) => {
                             match self.decode_in_pieces(audio, transcript) {
                                 Ok(transcript) => transcript,
@@ -204,6 +212,17 @@ impl<'a> ChunkedDecode<'a> {
                         }
                         _ => transcript,
                     };
+                    if let (Some(judge), Some(previous)) =
+                        (&self.joint_judge, self.transcripts.last_mut())
+                    {
+                        let (before, after) = crate::pipeline::da::joints::repair(
+                            &previous.text,
+                            &transcript.text,
+                            judge,
+                        );
+                        previous.text = before;
+                        transcript.text = after;
+                    }
                     if let Some(on_chunk) = &self.on_chunk {
                         on_chunk(&transcript.text);
                     }
@@ -291,7 +310,12 @@ impl<'a> ChunkedDecode<'a> {
             previous = Some(transcript.text.clone());
             texts.push(transcript.text);
         }
-        let joined = crate::audio_toolkit::chunking::join_transcripts(&texts);
+        let joined = crate::pipeline::da::joints::join(
+            &texts,
+            self.joint_judge
+                .as_ref()
+                .map(|j| j as &dyn crate::pipeline::da::joints::JointJudge),
+        );
         let (whole_words, piece_words) = (word_count(&whole.text), word_count(&joined));
         let better = piece_words_win(whole_words, piece_words);
         info!(

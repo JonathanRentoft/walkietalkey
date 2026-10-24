@@ -160,6 +160,9 @@ jobs:
         run: bun run build
       - name: Desktop app
         working-directory: src-tauri
+        env:
+          # The chunk-joint tests read real Edda joints with Ekko PnC (run 4).
+          WT_EKKO_PNC_DIR: ${{ runner.temp }}/ekko-pnc
         run: cargo test --lib
 
   licences:
