@@ -38,8 +38,9 @@ test-results/
 blob-report/
 
 
-# Python bytecode (scripts/)
+# Python bytecode and test caches (scripts/, models/, training/)
 __pycache__/
+.pytest_cache/
 
 # WalkieTalkey: local kit and scratch work (never committed)
 _kit/
