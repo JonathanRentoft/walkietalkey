@@ -38,6 +38,8 @@ pub(super) struct ChunkedDecode<'a> {
     /// (Danish runs, `pipeline::da::joints`), as soon as the chunk after it
     /// is decoded, so the wait after the recording stays the same.
     joint_judge: Option<crate::walkietalkey::punctuation::PncJointJudge>,
+    /// Where the next chunk starts in the recording, in samples.
+    offset: usize,
     transcripts: Vec<Transcript>,
     /// The first run that failed or was cancelled; nothing more is decoded
     /// after it.
@@ -60,20 +62,26 @@ impl<'a> ChunkedDecode<'a> {
         let joint_judge = (run_options.language.as_deref() == Some("da"))
             .then(|| crate::walkietalkey::punctuation::joint_judge(&tm.app_handle))
             .flatten();
+        let edda = crate::walkietalkey::catalog::decodes_by_segment(model_id);
         Self {
             tm,
             mark,
-            run_options,
+            run_options: if edda {
+                with_fixed_seed(run_options)
+            } else {
+                run_options
+            },
             model_id: model_id.to_string(),
             chunker: Chunker::with_plan(
                 Box::new(move || create_detector(backend, &app_handle)),
                 plan,
             ),
             context_prompts,
-            resplit_cut_short: crate::walkietalkey::catalog::decodes_by_segment(model_id),
+            resplit_cut_short: edda,
             backend,
             on_chunk,
             joint_judge,
+            offset: 0,
             transcripts: Vec::new(),
             failure: None,
         }
@@ -188,6 +196,17 @@ impl<'a> ChunkedDecode<'a> {
                 return;
             }
             let audio_secs = chunk.len() as f64 / 16_000.0;
+            let range = self.offset..self.offset + chunk.len();
+            self.offset = range.end;
+            let speech = self.chunker.speech_samples(range.clone());
+            if !has_speech(speech, self.chunker.speech_samples(0..range.end)) {
+                info!(
+                    "A chunk of {:.1}s has no speech; not decoding it",
+                    audio_secs
+                );
+                continue;
+            }
+            let speech_secs = speech.map(|n| n as f64 / 16_000.0);
             let started = Instant::now();
             let mut run_options = self.run_options.clone();
             if self.context_prompts {
@@ -200,7 +219,7 @@ impl<'a> ChunkedDecode<'a> {
             match self.run_guarded(chunk, &run_options) {
                 Ok(transcript) => {
                     let mut transcript = match kept {
-                        Some(audio) if looks_cut_short(&transcript.text, audio_secs) => {
+                        Some(audio) if looks_cut_short(&transcript.text, speech_secs) => {
                             match self.decode_in_pieces(audio, transcript) {
                                 Ok(transcript) => transcript,
                                 Err(e) => {
@@ -298,7 +317,14 @@ impl<'a> ChunkedDecode<'a> {
         let count = pieces.len();
         let mut texts: Vec<String> = Vec::new();
         let mut previous = self.transcripts.last().map(|t| t.text.clone());
+        let mut at = 0;
         for piece in pieces {
+            let piece_range = at..at + piece.len();
+            at = piece_range.end;
+            let piece_speech = chunker.speech_samples(piece_range.clone());
+            if !has_speech(piece_speech, chunker.speech_samples(0..piece_range.end)) {
+                continue;
+            }
             let mut run_options = self.run_options.clone();
             if self.context_prompts {
                 run_options.prompt = crate::pipeline::da::context::chunk_prompt(
@@ -355,13 +381,54 @@ fn word_count(text: &str) -> usize {
     text.split_whitespace().count()
 }
 
+/// Run 5: whether a chunk is decoded at all. Edda has no notion of "no
+/// speech" (its no-speech probability is 0 on silence and noise), so a chunk
+/// in which the VAD found no speech at all comes back with invented words.
+/// The VAD's word is only taken when it heard speech elsewhere in the
+/// recording (`heard`, speech up to the end of this chunk): a quiet speaker
+/// the VAD misses altogether is still decoded. A chunk that was never scored
+/// (a clip too short to cut) is decoded.
+fn has_speech(speech_samples: Option<usize>, heard: Option<usize>) -> bool {
+    !(speech_samples == Some(0) && heard.is_some_and(|n| n > 0))
+}
+
+/// The sampling seed for Edda's pieces; 0 would be the library's random one.
+const DECODE_SEED: u32 = 1;
+
+/// Run 5: `run_options` with a fixed sampling seed, so the same audio always
+/// gives the same text. Where greedy decoding is unsure (average
+/// log-probability under -1, as on a piece without speech), transcribe.cpp
+/// falls back to sampling at rising temperatures and keeps the last try; with
+/// its default seed the same piece came back as different invented words on
+/// every run. The rest of the library's decoding recipe stays: without the
+/// fallback, Edda writes fluent sentences into such pieces instead.
+fn with_fixed_seed(mut run_options: RunOptions) -> RunOptions {
+    run_options.family = Some(transcribe_cpp::RunExtension::Whisper(
+        transcribe_cpp::WhisperRunOptions {
+            seed: Some(DECODE_SEED),
+            ..Default::default()
+        },
+    ));
+    run_options
+}
+
+/// Letters per second of speech below which a piece looks cut short.
+const CUT_SHORT_LETTERS_PER_SPEECH_SECOND: f64 = 9.0;
+
 /// Edda, decoded greedily, may stop at the first pause of a window that holds
 /// more than one sentence (docs/MODELS.md, "Edda and pauses"). Its text is
-/// then far shorter than the audio: below 1.6 words per second of a chunk
-/// longer than 4 s. Danish dictation runs at about 2 words per second
-/// (FLEURS windows: 5th percentile 1.4); the cut-short ones measured 0.5-1.75.
-fn looks_cut_short(text: &str, audio_secs: f64) -> bool {
-    audio_secs > 4.0 && (word_count(text) as f64) < 1.6 * audio_secs
+/// then far shorter than the speech: fewer than 9 letters per second of
+/// speech the VAD found in a piece with more than 4 s of it. Run 5: Danish
+/// pieces come out at a median of 14 letters per second of speech (1st
+/// percentile 9, on 600 FLEURS pieces). Run 4 counted words per second of
+/// the whole piece, silence included, which took a sentence with a pause
+/// around it for a cut-short one and decoded it again in short pieces that
+/// invented words.
+fn looks_cut_short(text: &str, speech_secs: Option<f64>) -> bool {
+    let letters = text.chars().filter(|c| c.is_alphanumeric()).count() as f64;
+    speech_secs.is_some_and(|speech| {
+        speech > 4.0 && letters < CUT_SHORT_LETTERS_PER_SPEECH_SECOND * speech
+    })
 }
 
 /// The pieces replace the whole only when they say clearly more: a chunk that
@@ -398,15 +465,56 @@ mod cut_short_tests {
     }
 
     #[test]
-    fn short_text_for_long_audio_is_cut_short() {
-        // 17 of about 60 words on a 30 s window (the M0 finding).
-        let seventeen = vec!["ord"; 17].join(" ");
-        assert!(looks_cut_short(&seventeen, 30.0));
-        // An ordinary 14 s chunk at 2 words per second.
-        let twenty_eight = vec!["ord"; 28].join(" ");
-        assert!(!looks_cut_short(&twenty_eight, 14.0));
-        // Short audio is never judged.
-        assert!(!looks_cut_short("hej", 3.0));
+    fn short_text_for_the_speech_is_cut_short() {
+        // 17 of about 60 words on a 30 s window with 25 s of speech (the M0
+        // finding): about 3 letters per second of speech.
+        let seventeen = vec!["sætning"; 17].join(" ");
+        assert!(looks_cut_short(&seventeen, Some(25.0)));
+        // Run 5: a sentence with silence around it is not cut short. Run 4's
+        // rule (words per second of the whole 13.7 s piece) took this FLEURS
+        // clip for one and decoded it again in pieces, which invented words.
+        let sentence = "Sondarbans er blevet tilføjet til UNESCOs verdensarvsliste, den del \
+                        af skoven, der indenfor indisk territorium kaldes Sondarbans National Park.";
+        assert!(!looks_cut_short(sentence, Some(9.8)));
+        // Little speech is never judged, nor a piece the VAD did not score.
+        assert!(!looks_cut_short("hej", Some(3.5)));
+        assert!(!looks_cut_short("hej", None));
+    }
+
+    #[test]
+    fn edda_decodes_with_a_fixed_sampling_seed() {
+        let run = with_fixed_seed(RunOptions {
+            language: Some("da".into()),
+            ..Default::default()
+        });
+        let Some(transcribe_cpp::RunExtension::Whisper(whisper)) = &run.family else {
+            panic!("a Whisper run extension, got {:?}", run.family);
+        };
+        assert_eq!(whisper.seed, Some(DECODE_SEED));
+        assert_ne!(DECODE_SEED, 0, "0 is the library's random seed");
+        // Everything else stays the library's decoding recipe.
+        assert_eq!(
+            transcribe_cpp::WhisperRunOptions {
+                seed: None,
+                ..whisper.clone()
+            },
+            transcribe_cpp::WhisperRunOptions::default()
+        );
+        assert_eq!(run.language.as_deref(), Some("da"));
+    }
+
+    #[test]
+    fn chunks_without_speech_are_not_decoded() {
+        assert!(!has_speech(Some(0), Some(16_000)));
+        assert!(has_speech(Some(1), Some(16_000)));
+        assert!(
+            has_speech(Some(0), Some(0)),
+            "a recording the VAD hears nothing in is decoded"
+        );
+        assert!(
+            has_speech(None, None),
+            "a clip too short to score is decoded"
+        );
     }
 
     #[test]
