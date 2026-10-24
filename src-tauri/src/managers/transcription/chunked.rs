@@ -10,6 +10,7 @@ use super::TranscriptionManager;
 use crate::audio_toolkit::chunking::{ChunkPlan, Chunker};
 use crate::engine_supervisor::{CancelMark, EngineError};
 use crate::managers::audio::create_detector;
+use crate::pipeline::da::script::has_foreign_letters;
 use crate::settings::VadBackend;
 
 /// WalkieTalkey (DESK-47): told each chunk's text as soon as it is decoded,
@@ -188,10 +189,7 @@ impl<'a> ChunkedDecode<'a> {
                 );
             }
             let kept = self.resplit_cut_short.then(|| chunk.clone());
-            match self
-                .tm
-                .run_batch(self.mark, chunk, &run_options, &self.model_id)
-            {
+            match self.run_guarded(chunk, &run_options) {
                 Ok(transcript) => {
                     let transcript = match kept {
                         Some(audio) if looks_cut_short(&transcript.text, audio_secs) => {
@@ -230,6 +228,33 @@ impl<'a> ChunkedDecode<'a> {
         }
     }
 
+    /// WalkieTalkey (run 2, Phase 2): one run of `audio`. A Danish run with a
+    /// vocabulary prompt that comes back with letters from another script is
+    /// decoded again without the vocabulary: on code-switched speech the
+    /// "Glossary:" prompt can tip Edda into such fragments, the plain run does
+    /// not (`pipeline::da::script`).
+    fn run_guarded(
+        &self,
+        audio: Vec<f32>,
+        run_options: &RunOptions,
+    ) -> Result<Transcript, EngineError> {
+        let retry = needs_script_guard(run_options).then(|| audio.clone());
+        let transcript = self
+            .tm
+            .run_batch(self.mark, audio, run_options, &self.model_id)?;
+        match retry {
+            Some(audio) if has_foreign_letters(&transcript.text) => {
+                let mut plain = run_options.clone();
+                plain.vocabulary.clear();
+                info!(
+                    "A chunk came back with letters from another script; decoding it again without the vocabulary"
+                );
+                self.tm.run_batch(self.mark, audio, &plain, &self.model_id)
+            }
+            _ => Ok(transcript),
+        }
+    }
+
     /// WalkieTalkey: decodes a chunk again one speech segment at a time (cut at
     /// its pauses, [`ChunkPlan::LIVE_SEGMENTS_FINE`]), each with the text
     /// before it as context, and keeps that only if it says clearly more than
@@ -262,9 +287,7 @@ impl<'a> ChunkedDecode<'a> {
                     self.run_options.language.as_deref(),
                 );
             }
-            let transcript = self
-                .tm
-                .run_batch(self.mark, piece, &run_options, &self.model_id)?;
+            let transcript = self.run_guarded(piece, &run_options)?;
             previous = Some(transcript.text.clone());
             texts.push(transcript.text);
         }
@@ -298,6 +321,12 @@ impl<'a> ChunkedDecode<'a> {
     }
 }
 
+/// Whether a run's text is checked for letters from other scripts: Danish
+/// runs that carry a vocabulary prompt.
+fn needs_script_guard(run_options: &RunOptions) -> bool {
+    run_options.language.as_deref() == Some("da") && !run_options.vocabulary.is_empty()
+}
+
 fn word_count(text: &str) -> usize {
     text.split_whitespace().count()
 }
@@ -320,6 +349,29 @@ fn piece_words_win(whole_words: usize, piece_words: usize) -> bool {
 #[cfg(test)]
 mod cut_short_tests {
     use super::*;
+
+    #[test]
+    fn only_danish_runs_with_a_vocabulary_are_guarded() {
+        let mut run = RunOptions {
+            language: Some("da".into()),
+            vocabulary: vec!["deploy".into(), "staging".into()],
+            ..Default::default()
+        };
+        assert!(needs_script_guard(&run));
+        run.vocabulary.clear();
+        assert!(
+            !needs_script_guard(&run),
+            "nothing to drop without a vocabulary"
+        );
+        run.vocabulary = vec!["deploy".into()];
+        run.language = Some("en".into());
+        assert!(
+            !needs_script_guard(&run),
+            "other languages keep their scripts"
+        );
+        run.language = None;
+        assert!(!needs_script_guard(&run));
+    }
 
     #[test]
     fn short_text_for_long_audio_is_cut_short() {

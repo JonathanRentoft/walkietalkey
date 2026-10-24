@@ -3,4 +3,5 @@
 
 pub mod context;
 pub mod punctuation;
+pub mod script;
 pub mod vocabulary;
