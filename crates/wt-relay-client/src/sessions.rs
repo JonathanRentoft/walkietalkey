@@ -307,6 +307,30 @@ mod tests {
     }
 
     #[test]
+    fn a_forgotten_session_is_received_whole_when_resent() {
+        // DESK-58, PHONE-32: the app dropped a dictation that went silent
+        // (`RelayClient::forget_session`); the phone's later resend is new again.
+        let (p, s) = ids();
+        let now = Instant::now();
+        let mut t = SessionTracker::new();
+        t.start(p, s, now);
+        for i in 0..3u32 {
+            t.chunk(p, s, i, &block(i as u8), now);
+        }
+        assert!(t.cancel(p, s));
+        assert_eq!(t.start(p, s, now), StartOutcome::New);
+        let mut pcm = Vec::new();
+        for i in 0..3u8 {
+            pcm.extend(block(i));
+        }
+        let out = t.chunk(p, s, 0, &pcm, now);
+        assert_eq!(
+            out.blocks.iter().map(|b| b.0).collect::<Vec<_>>(),
+            vec![0, 1, 2]
+        );
+    }
+
+    #[test]
     fn a_lost_audio_start_is_implied_and_absurd_indices_are_ignored() {
         let (p, s) = ids();
         let now = Instant::now();

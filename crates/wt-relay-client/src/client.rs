@@ -43,6 +43,7 @@ enum Command {
     SendResult(DeviceId, SessionId, ResultOutcome, Reply<()>),
     AnswerPresence(QueryId, u32, bool, Reply<()>),
     Status(oneshot::Sender<Status>),
+    ForgetSession(DeviceId, SessionId),
     ReconnectNow,
     Shutdown(oneshot::Sender<()>),
 }
@@ -137,6 +138,13 @@ impl RelayClient {
             .send(Command::Status(tx))
             .map_err(|_| ClientError::Shutdown)?;
         rx.await.map_err(|_| ClientError::Shutdown)
+    }
+
+    /// The app dropped a dictation that went silent without a result (its audio is gone):
+    /// its blocks are forgotten here too, so a later resend of it (PHONE-32) arrives whole,
+    /// as a new dictation, instead of as duplicates of blocks nobody has any more.
+    pub fn forget_session(&self, phone: DeviceId, session: SessionId) {
+        let _ = self.tx.send(Command::ForgetSession(phone, session));
     }
 
     /// DESK-60: reconnect now (after sleep or a network change), skipping any backoff.
@@ -450,6 +458,9 @@ impl Actor {
             }
             Command::Status(r) => {
                 let _ = r.send(self.status());
+            }
+            Command::ForgetSession(phone, session) => {
+                self.sessions.cancel(phone, session);
             }
             Command::ReconnectNow | Command::Shutdown(_) => {}
         }
@@ -981,6 +992,9 @@ impl Actor {
             }
             Command::Status(r) => {
                 let _ = r.send(self.status());
+            }
+            Command::ForgetSession(phone, session) => {
+                self.sessions.cancel(phone, session);
             }
             Command::ReconnectNow | Command::Shutdown(_) => {}
         }

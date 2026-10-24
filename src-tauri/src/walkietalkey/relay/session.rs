@@ -95,6 +95,12 @@ impl SessionAudio {
     pub fn duration(&self) -> Duration {
         Duration::from_secs_f64(self.fed.len() as f64 / 16_000.0)
     }
+
+    /// All audio received so far, the blocks after a gap included.
+    pub fn received(&self) -> Duration {
+        let waiting: usize = self.pending.values().map(Vec::len).sum();
+        Duration::from_secs_f64((self.fed.len() + waiting) as f64 / 16_000.0)
+    }
 }
 
 #[cfg(test)]
@@ -160,6 +166,15 @@ mod tests {
         assert_eq!(block_ids(&s.give_up_on_gaps()), vec![3, 4]);
         assert_eq!(block_ids(s.audio()), vec![0, 3, 4]);
         assert!(s.is_complete());
+    }
+
+    #[test]
+    fn received_audio_counts_the_blocks_after_a_gap() {
+        let mut s = SessionAudio::new();
+        s.add(0, &blocks(0, 2));
+        s.add(5, &blocks(5, 3));
+        assert_eq!(s.duration().as_millis(), 400);
+        assert_eq!(s.received().as_millis(), 1_000);
     }
 
     #[test]
