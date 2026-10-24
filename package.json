@@ -25,6 +25,7 @@
     "test:wt": "bun test src/walkietalkey",
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
+    "test:recorder": "playwright test -c training/e2e",
     "check:translations": "bun scripts/check-translations.ts",
     "copy:list": "bun scripts/walkietalkey/copy-list.ts",
     "check:copy": "bun scripts/walkietalkey/copy-list.ts --check",

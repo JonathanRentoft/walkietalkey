@@ -126,7 +126,18 @@ terms:
   # Build, deploy and release
   deploy:
     # Noun (et deploy, deployet, deploys; et deployment) and verb (deploye ...).
-    forms: [deploy, deploys, deploye, deployer, deployede, deployet, deployes, deployment, deployments]
+    forms:
+      [
+        deploy,
+        deploys,
+        deploye,
+        deployer,
+        deployede,
+        deployet,
+        deployes,
+        deployment,
+        deployments,
+      ]
     also:
       deploy'e: deploye
       deploy'er: deployer
@@ -198,7 +209,8 @@ terms:
       debugede: debuggede
       debuget: debugget
   refactor:
-    forms: [refactor, refactore, refactorer, refactorede, refactoret, refactoring]
+    forms:
+      [refactor, refactore, refactorer, refactorede, refactoret, refactoring]
     also:
       refactor'e: refactore
       refaktore: refactore
@@ -206,7 +218,8 @@ terms:
       refaktoret: refactoret
       refaktoring: refactoring
   test:
-    forms: [test, testen, tests, testene, teste, tester, testede, testet, testes]
+    forms:
+      [test, testen, tests, testene, teste, tester, testede, testet, testes]
   mock:
     forms: [mock, mocken, mocks, mocke, mocker, mockede, mocket]
     also:
