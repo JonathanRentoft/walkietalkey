@@ -97,6 +97,36 @@ fn computer_os() -> ComputerOs {
     }
 }
 
+/// The other addresses of the relay at `relay_url`. relay.walkietalkey.com
+/// and v1's workers.dev address are the same Worker, which finds a room by
+/// its id alone (RELAY-01), so a room made on one is the same room on the
+/// other and its phones stay paired (DESK-60). A company relay has none.
+fn relay_aliases(relay_url: &str) -> Vec<String> {
+    let ours = [
+        super::settings::DEFAULT_RELAY_URL,
+        super::settings::V1_RELAY_URL,
+    ];
+    let url = relay_url.trim_end_matches('/');
+    if !ours.contains(&url) {
+        return Vec::new();
+    }
+    ours.iter()
+        .filter(|other| **other != url)
+        .map(|other| other.to_string())
+        .collect()
+}
+
+fn client_config(settings: &super::settings::WtSettings) -> ClientConfig {
+    let mut config = ClientConfig::new(
+        settings.relay_url.clone(),
+        settings.phone_app_url.clone(),
+        computer_name(),
+        computer_os(),
+    );
+    config.relay_aliases = relay_aliases(&config.relay_url);
+    config
+}
+
 /// Opens the key store: keys in the keychain, the rest in the data folder.
 fn open_store(app: &AppHandle) -> anyhow::Result<Arc<dyn KeyStore>> {
     let dir = crate::portable::app_data_dir(app)?.join("relay");
@@ -140,12 +170,7 @@ async fn ensure_client(app: &AppHandle) -> Result<RelayClient, String> {
     }
     let settings = super::store::get(app);
     let store = open_store(app).map_err(|e| e.to_string())?;
-    let config = ClientConfig::new(
-        settings.relay_url.clone(),
-        settings.phone_app_url.clone(),
-        computer_name(),
-        computer_os(),
-    );
+    let config = client_config(&settings);
     let (client, events) = RelayClient::start(config, store).map_err(|e| e.to_string())?;
     let existing = {
         let mut slot = CLIENT.lock().unwrap();
@@ -685,6 +710,63 @@ pub async fn remove_phone(id: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The owner's v1 state: a confirmed room on v1's address, one phone.
+    fn v1_room() -> wt_relay_client::StoredRoom {
+        wt_relay_client::StoredRoom {
+            relay_url: super::super::settings::V1_RELAY_URL.into(),
+            room_id: wt_relay_client::wt_protocol::RoomId([7; 16]),
+            salt: wt_relay_client::wt_protocol::Salt([8; 16]),
+            created: true,
+        }
+    }
+
+    #[test]
+    fn a_v1_room_stays_the_room_after_the_move_to_walkietalkey_com() {
+        // DESK-60, RELAY-03: the migration moves the relay address, and the
+        // client counts the v1 room as this relay's, so it authenticates to
+        // it with the paired phone (crates/wt-relay-client/tests/same_relay.rs
+        // drives that against a fake relay) instead of making a new room.
+        use super::super::settings::{WtSettings, DEFAULT_RELAY_URL, V1_RELAY_URL};
+        let mut wt = WtSettings {
+            relay_url: V1_RELAY_URL.into(),
+            settings_version: 0,
+            ..WtSettings::default()
+        };
+        let mut handy = crate::settings::get_default_settings();
+        super::super::migrate::upgrade(&mut handy, &mut wt, true);
+        assert_eq!(wt.relay_url, DEFAULT_RELAY_URL);
+
+        let config = client_config(&wt);
+        assert_eq!(config.relay_url, DEFAULT_RELAY_URL);
+        assert!(config.is_same_relay(&v1_room().relay_url));
+        // A user who never saved settings has the new default too.
+        assert!(client_config(&WtSettings::default()).is_same_relay(V1_RELAY_URL));
+        // Someone who keeps v1's address keeps a room made on the new one.
+        let kept = WtSettings {
+            relay_url: V1_RELAY_URL.into(),
+            ..WtSettings::default()
+        };
+        assert!(client_config(&kept).is_same_relay(DEFAULT_RELAY_URL));
+    }
+
+    #[test]
+    fn a_company_relay_has_no_aliases() {
+        // A managed RelayUrl is another relay: a room there is new, as before.
+        use super::super::settings::{WtSettings, DEFAULT_RELAY_URL, V1_RELAY_URL};
+        let company = WtSettings {
+            relay_url: "wss://relae.firma.dk".into(),
+            ..WtSettings::default()
+        };
+        let config = client_config(&company);
+        assert!(config.relay_aliases.is_empty());
+        assert!(!config.is_same_relay(V1_RELAY_URL));
+        assert!(!config.is_same_relay(DEFAULT_RELAY_URL));
+        assert_eq!(
+            relay_aliases(&format!("{DEFAULT_RELAY_URL}/")),
+            vec![V1_RELAY_URL]
+        );
+    }
 
     #[test]
     fn the_pairing_qr_is_an_svg_in_brand_colours() {

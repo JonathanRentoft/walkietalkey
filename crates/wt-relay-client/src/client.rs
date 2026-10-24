@@ -575,8 +575,17 @@ impl Actor {
 
     /// The room to use and how to enter it: create (first time or not confirmed) or auth.
     fn room_for_connect(&mut self) -> Result<(StoredRoom, Intent), ClientError> {
-        if let Some(room) = self.store.load_room()? {
-            if room.relay_url == self.cfg.relay_url {
+        if let Some(mut room) = self.store.load_room()? {
+            if self.cfg.is_same_relay(&room.relay_url) {
+                if room.relay_url != self.cfg.relay_url {
+                    // The same relay under a new address (v1's workers.dev host before
+                    // relay.walkietalkey.com): the room and its phones stay (RELAY-01).
+                    info!("the relay has a new address; keeping the room");
+                    room.relay_url = self.cfg.relay_url.clone();
+                    if let Err(e) = self.store.save_room(&room) {
+                        warn!("could not save the room's new address: {e}");
+                    }
+                }
                 let intent = if room.created {
                     Intent::Auth
                 } else {
