@@ -152,13 +152,12 @@ body {
   display: flex;
   justify-content: center;
   margin: 0;
-  padding: max(12px, env(safe-area-inset-top)) 24px 10px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 10px;
   border: 0;
   background: none;
   box-shadow: none;
   color: var(--ink-muted);
   font: 500 16px/1.4 var(--font-sans);
-  letter-spacing: 0.005em;
   text-align: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

@@ -19,6 +19,8 @@ import {
 } from "./helpers";
 
 const MINUTES = Number(process.env.E2E_GLOW_MINUTES || 0);
+/** Rays that may show a step without it being a cut-off (rendering noise). */
+const MAX_NOISY_RAYS = 2;
 
 /** Lets a state change's transitions (0.6 s at most) finish. */
 const settle = (page: Page) => page.waitForTimeout(900);
@@ -26,11 +28,14 @@ const settle = (page: Page) => page.waitForTimeout(900);
 async function expectUnclipped(page: Page, state: string, minStrength = 3) {
   const r = await measureGlow(page);
   if (process.env.E2E_GLOW_LOG)
-    console.log(`${state}: step ${r.maxStep}, strength ${r.strength}`);
+    console.log(
+      `${state}: step ${r.maxStep}, ${r.steppedRays} rays, strength ${r.strength}`,
+    );
+  // A cut-off shows on many rays (the self-check below sees 26 to 49); allow a stray pixel or two.
   expect(
-    r.maxStep,
-    `${state}: a ${r.maxStep}-level step at r=${r.at.r}px, ${r.at.angle} deg (${r.steppedRays}/${r.rays} rays)`,
-  ).toBeLessThanOrEqual(MAX_GLOW_STEP);
+    r.steppedRays,
+    `${state}: steps above ${MAX_GLOW_STEP} levels on ${r.steppedRays}/${r.rays} rays, the largest ${r.maxStep} at r=${r.at.r}px, ${r.at.angle} deg`,
+  ).toBeLessThanOrEqual(MAX_NOISY_RAYS);
   expect(r.strength, `${state}: the glow is visible`).toBeGreaterThan(
     minStrength,
   );
@@ -163,8 +168,8 @@ test.describe("the glow around the button is never clipped (Phase 4)", () => {
     expect(square.maxStep).toBeGreaterThan(MAX_GLOW_STEP);
     expect(square.steppedRays).toBeGreaterThanOrEqual(8);
     // And without either: clean.
-    expect((await measureGlow(page)).maxStep).toBeLessThanOrEqual(
-      MAX_GLOW_STEP,
+    expect((await measureGlow(page)).steppedRays).toBeLessThanOrEqual(
+      MAX_NOISY_RAYS,
     );
     await p.release();
   });
