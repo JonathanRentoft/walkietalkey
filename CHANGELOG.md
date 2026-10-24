@@ -8,6 +8,12 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 **In English**
 
+- A first run as light as it gets: a new Mac asks for two permissions, Microphone and Accessibility, and nothing else, ever.
+- No more keychain dialog on the Mac, neither on a fresh install nor after an update. The app's keys now live in a private folder only WalkieTalkey writes (excluded from Time Machine and bound to this Mac) instead of the keychain, which asked for your password after every update of an app without an Apple Developer ID, and froze the app until you answered. **Once after updating:** pair your phone again (the app says so), and enter your AI cleanup API key again. The old keychain items "WalkieTalkey relay" and "WalkieTalkey AI cleanup" are never read again; you can delete them in Nøgleringsadgang (Keychain Access) if you like.
+- A remote-control flag during start-up can no longer stop the key for good: nothing starts before the app is ready, and one failed step never ends the dictation coordinator.
+- Mikrofon: after you have said no once, the one button opens the right pane in System Settings at the first click.
+- Pairing a phone comes after your first dictation that works, never before: Telefon follows Prøv det only when it worked, and otherwise the window offers it once, after the first dictation that works.
+- On the phone, a pairing whose computer never comes back no longer just waits: a computer away for days says so and offers "Par igen", so does a dictation that never arrived, and pairing the same computer again replaces its old pairing. An old pairing code no longer breaks a pairing that works.
 - On a Mac, "Sådan løser du det" in the Secure Input warning opens WalkieTalkey's own answer on walkietalkey.com.
 - The About screen lists third-party code and models with their licences.
 - Up to date: Tauri 2.12 and its plugins, and p256 0.14 in the encryption between phone and computer (RUSTSEC-2026-0387). Nothing changes on the wire, so paired phones keep working.

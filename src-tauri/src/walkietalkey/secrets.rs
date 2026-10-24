@@ -133,7 +133,7 @@ mod tests {
     /// ask for the login password. The binary check: the linker keeps only code something
     /// reaches, so this holds on to every function on the secret path (ours and wt-native's);
     /// whatever they call is then in the test binary, which must import none of the keychain's
-    /// item calls. (`scripts/walkietalkey/ci/check-no-keychain.sh` checks the app itself.)
+    /// item calls. (`scripts/walkietalkey/check-no-keychain.sh` checks the app itself.)
     #[cfg(target_os = "macos")]
     #[test]
     fn the_mac_build_imports_no_keychain_calls() {

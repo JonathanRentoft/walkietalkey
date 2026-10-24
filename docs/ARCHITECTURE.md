@@ -34,7 +34,7 @@ The desktop app has a core (audio, models, shortcuts, paste, history, tray) and 
 
 Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
-- `relay/`: the room connection (`crates/wt-relay-client`), pairing QR, phone dictations with their own live decode, key store (keychain for keys, a file for counters), headless e2e mode.
+- `relay/`: the room connection (`crates/wt-relay-client`), pairing QR, phone dictations with their own live decode, key store (keys in the secret store, never the macOS keychain; room and counters beside them), headless e2e mode.
 - `cleanup/`: modes, markers, guardrails, the editor prompt, providers with pooled warm connections, the chunk-by-chunk engine.
 - `settings.rs`, `managed.rs`, `store.rs`: WalkieTalkey settings and the Appendix B overlay.
 - `history.rs`, `output.rs`, `dictation.rs`, `notify.rs`, `updates.rs`, `models.rs`, `speed.rs`, `presence.rs`, `secrets.rs`.
@@ -42,12 +42,12 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
 ## Crates (`crates/`, `packages/protocol/rust/`)
 
-| Crate                                    | What                                                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `wt-protocol` (`packages/protocol/rust`) | keys, derivations, frames, payloads, control messages; shares `test-vectors.json` with the TypeScript package         |
-| `wt-relay-client`                        | the computer's side of a room: connect, create, auth, ping, backoff, pairing, decrypt, results                        |
-| `wt-native`                              | keychain, Windows clipboard formats, notifications with click handling, managed settings readers, presence, elevation |
-| `ekko-pnc`                               | Ekko PnC punctuation in Rust, reproducing the `ekko-stt` reference on a golden set                                    |
+| Crate                                    | What                                                                                                                                                                                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wt-protocol` (`packages/protocol/rust`) | keys, derivations, frames, payloads, control messages; shares `test-vectors.json` with the TypeScript package                                                                                 |
+| `wt-relay-client`                        | the computer's side of a room: connect, create, auth, ping, backoff, pairing, decrypt, results                                                                                                |
+| `wt-native`                              | secret folder (macOS), Credential Manager (Windows), microphone permission state, Windows clipboard formats, notifications with click handling, managed settings readers, presence, elevation |
+| `ekko-pnc`                               | Ekko PnC punctuation in Rust, reproducing the `ekko-stt` reference on a golden set                                                                                                            |
 
 ## Phone, relay, site
 

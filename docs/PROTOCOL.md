@@ -39,7 +39,7 @@ listed in [Clarifications and deviations](#clarifications-and-deviations).
 
 Each device has a signing key pair (ECDSA P-256) and an agreement key pair (ECDH P-256). In
 TypeScript the private keys are non-extractable `CryptoKey`s (SEC-09). The Rust side keeps the
-32-byte scalars in the `KeyStore` (keychain in the desktop app).
+32-byte scalars in the `KeyStore` (the desktop's secret store: a private folder on macOS, SEC-11; Credential Manager on Windows).
 
 ```
 deviceId = SHA-256(signing SPKI)[0..16]
@@ -486,4 +486,4 @@ corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `re
     sender id is wrong.
 24. **Counter persistence frequency:** the receiver stores its last accepted counter for every
     frame (5 per second while streaming). The desktop `KeyStore` should keep counters in a plain
-    file, not the keychain; only device keys and pair keys are secret.
+    file, not the secret store; only device keys and pair keys are secret.

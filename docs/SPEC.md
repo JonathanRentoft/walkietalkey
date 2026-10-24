@@ -65,7 +65,7 @@ WalkieTalkey is free, open-source Danish dictation. Hold `fn` on a Mac (or a cho
                                                │  → punctuation → vocabulary   │
  ┌──────────────┐  encrypted audio frames      │  → optional AI cleanup        │
  │  Phone app   │ ──────┐               ┌────▶ │  → paste or clipboard+notice  │
- │  (PWA / iOS) │ ◀─────┼─── result ────┼───── │  keys in OS keychain          │
+ │  (PWA / iOS) │ ◀─────┼─── result ────┼───── │  keys in a private folder     │
  └──────────────┘       ▼               │      └───────────────────────────────┘
                ┌──────────────────────────┐
                │ Relay: Cloudflare Worker │  sees only room ids, device public keys,
@@ -137,6 +137,7 @@ If WalkieTalkey ever gets a hosted admin console for companies, that console (no
 - **Removing from the phone**: the phone's settings › Parrede computere › "Fjern" sends `leave`; the relay tells the computer, which deletes that pair key.
 - **Removed or deleted on the other side**: if the relay answers "not a member" or "room not found", the phone shows "Parringen med <computer> er fjernet. Par igen for at bruge den." and drops the room.
 - **Factory reset or reinstall**: the keys are gone, so pair again.
+- **A computer reset, reinstalled or with a new identity** (run 5; v0.2.0 starts with one, SEC-11): its old room stays at the relay with the owner offline until the 90 days run out, and the phone cannot tell that from a computer that sleeps. So the phone keeps waiting for it (PHONE-24) but offers "Par igen" once the relay has not seen it for two whole days ("{computer} har ikke været online i {n} dage") and after a dictation that never arrived. Pairing again with that computer (the same name and kind, not online) replaces the old pairing, and the phone leaves the old room. An old pairing code of a room the phone is already in is refused as expired; it never replaces the working pair keys (PHONE-16).
 - **Do not pair while sharing your screen**: the onboarding and the pairing window say so, because the QR is valid for 10 minutes.
 
 ### 5.5 Several computers
@@ -168,13 +169,15 @@ A single window, one step at a time, using the design system (LogoIntro on the f
 |---|---|---|
 | (Talemodel) | No step of its own (run 2): the speech model (DESK-31) downloads in the background from the very first launch, from our GitHub release, shown as one calm progress line under every step and in the sidebar, never blocking. "Importér modelfil" is under Avanceret. | DESK-11 |
 | 1. Velkommen | "Dansk tale til tekst. Gratis, og det kører på din egen computer." Button "Kom i gang". | DESK-10 |
-| 2. Mikrofon | Explains why, then one button: macOS's own question first, then the exact System Settings pane. The step notices the grant by itself and moves on. On Windows it is skipped when the microphone is already allowed. | DESK-12 |
+| 2. Mikrofon | Explains why, then one button: macOS's own question while it has never been answered, else (run 5: after a no, macOS asks no more) the exact System Settings pane at the first click. The step notices the grant by itself and moves on. On Windows it is skipped when the microphone is already allowed. | DESK-12 |
 | 3. Tilgængelighed (Mac only) | "Så teksten kan sættes ind, hvor du skriver". One button opens Privacy & Security › Accessibility; the step notices the grant within about a second and moves on, with no restart. Accessibility is the only permission for the key and for pasting; Input Monitoring is never asked for (run 2: the v1 step "Tasten" with Input Monitoring, the 🌐 instructions and the restart is gone). Windows has no such step; the key is Right Ctrl, or the key chosen in Prøv det. | DESK-13, DESK-14 |
 | 4. Prøv det | A text field: tap or hold the key and say "Hej, det her er min første diktering." Shows the result, and says so if the key is not running yet (it asks the backend when the step opens). If the Globe key still has an action of its own, one sentence and the button "Ret det for mig" (DESK-20). On Windows the step offers the key picker, for example the Copilot key (Win+Shift+F23) on laptops without Right Ctrl (DESK-21). | DESK-17 |
-| 5. Telefon | Optional: "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Showing the code also asks for notification permission (DESK-15). | DESK-16 |
-| 6. Klar | Three tips (hold, tap, Esc). "Færdig" turns on start at login and marks onboarding finished. | DESK-10 |
+| 5. Telefon | Only after a dictation in Prøv det worked (run 5): pairing never comes before the first successful dictation. Optional: "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Showing the code also asks for notification permission (DESK-15). When onboarding ends without a dictation that worked, the main window offers pairing once, as soon as one has worked ("Par en telefon", "Ikke nu"). | DESK-16 |
+| 6. Klar | Three tips (hold, tap, Esc). "Færdig" turns on start at login (macOS then shows its own notice that a login item was added) and marks onboarding finished. | DESK-10 |
 
 If Accessibility was granted before but is gone now (an update with a new ad-hoc signature, or switched off), the app opens its main window with one neutral notice, "WalkieTalkey har ikke længere adgang til Tilgængelighed.", and the button "Giv adgang igen". Every Accessibility button (this notice, the Tilgængelighed step, Prøv det's warning) first resets the app's own entry and shows macOS's dialog, then opens the pane, so a stale entry that looks switched on never leaves the user waiting; the key starts by itself once access is back (DESK-13).
+
+Run 5, "a first run as light as Wispr Flow": a new Mac user grants two permissions, Microphone and Accessibility, and nothing else is ever asked for: no Input Monitoring (the active event tap needs Accessibility only), no Screen Recording, no system audio, no Automation, and no keychain dialog, neither on a fresh install nor after an update (SEC-11). Nothing at startup waits on the main thread for the user, and a dictation never starts before setup is done (a remote-control flag that arrives earlier is refused, and one failing step never stops the coordinator for good).
 
 Acceptance: a new user on a clean Mac goes from first launch to a working dictation without reading any docs, and every permission prompt is preceded by a Danish explanation.
 
@@ -276,7 +279,7 @@ Built on the post-processing module, as a mode rather than a separate shortcut.
 | ID | Requirement |
 |---|---|
 | DESK-80 | "Ryd op med AI": Fra (default), Når der er noget at rette, Altid, or Kun når jeg holder Shift med. "Når der er noget at rette" (recommended once a provider is set up) calls the provider only if the text, after the local steps, contains a self-correction marker ("nej", "nej vent", "jeg mener", "eller rettere", "undskyld", "I mean", "no wait", "sorry") or a repeated phrase. Every other dictation goes out at once with no network call. The marker list is tuned in M5 against the test set. |
-| DESK-81 | Providers, as presets: Apple Intelligence (Mac with Apple Silicon and macOS 26 or newer, on-device, no key; Apple added Danish in the 26.1 releases, to be confirmed on macOS in M5), OpenAI, Anthropic, Groq, Cerebras, OpenRouter, and Custom (any OpenAI-compatible endpoint: Azure OpenAI, LM Studio, Ollama). Keys are the user's own, stored in the OS keychain, never in settings files, and sent only to that provider. |
+| DESK-81 | Providers, as presets: Apple Intelligence (Mac with Apple Silicon and macOS 26 or newer, on-device, no key; Apple added Danish in the 26.1 releases, to be confirmed on macOS in M5), OpenAI, Anthropic, Groq, Cerebras, OpenRouter, and Custom (any OpenAI-compatible endpoint: Azure OpenAI, LM Studio, Ollama). Keys are the user's own, stored in the computer's secret store (SEC-11 on macOS, Credential Manager on Windows), never in settings files, and sent only to that provider. |
 | DESK-82 | Turning on a cloud provider shows exactly: "Teksten (ikke lyden) sendes til <udbyder>, hver gang du dikterer." with "Slå til" and "Annullér". |
 | DESK-83 | The prompt makes the model an editor, not an assistant: remove filler words, apply self-corrections ("onsdag, nej, torsdag" → "torsdag"), fix punctuation, keep the mix of Danish and English, never add content, never answer questions in the text. Temperature 0 where the model accepts it (OpenAI's reasoning models reject it), and reasoning turned off (`llm_client` sends the right field per provider). The text is wrapped in tags so it is never read as instructions. |
 | DESK-84 | Guardrails: the raw text is used instead, and the pill says "Brugte teksten uden oprydning", if the result is more than 30% longer than the input, if more than 20% of its words do not occur in the input (ignoring case and punctuation, and allowing digits, "kl." and other number and date forms that cleanup may write), or if no answer has arrived within 3 s plus 1 s per 100 words. |
@@ -366,7 +369,8 @@ Om: version, licenser og kreditering (Handy, transcribe.cpp, Edda, Ekko PnC, ONN
 | PHONE-11 | On Android, and in the iOS shell, scanning the QR with the normal camera opens the app and pairs directly. |
 | PHONE-12 | The phone asks for a name for itself, prefilled from the computer's owner when the computer's name has one ("Jonathans MacBook Pro" gives "Jonathans iPhone"), else the kind of phone ("iPhone"), which is sent encrypted to the computer. |
 | PHONE-13 | Keys are stored as non-extractable WebCrypto keys in IndexedDB, in both the PWA and the iOS app (PHONE-03). One TypeScript implementation of the protocol serves both. |
-| PHONE-14 | If the relay answers 4404 (room not found) or 4401 (not a member) for a room, the phone shows "Parringen med <computer> er fjernet. Par igen for at bruge den." and drops that room and its keys. |
+| PHONE-14 | If the relay answers 4404 (room not found) or 4401 (not a member) for a room, the phone shows "Parringen med <computer> er fjernet. Par igen for at bruge den." with the button "Par igen", and drops that room and its keys. |
+| PHONE-16 | Stale pairings (run 5, section 5.4): a pairing whose computer never comes back shows "Par igen", never a hang. The computer's status line says "{computer} har ikke været online i {n} dage" and the main screen offers "Er {computer} nulstillet eller installeret igen? Så skal telefonen parres igen." with "Par igen" once the relay's `lastSeenDay` is two whole days old, and after "Nåede ikke frem til {computer}."; a dictation still waits for the computer (PHONE-24). Pairing again with the same computer replaces its old pairing. A join refused for its admission falls back to authenticating as a member (PROTOCOL.md 7.3) only for a retry of the same code or a room the phone has no pairing with, so an old code never replaces working pair keys. |
 | PHONE-15 | The pairing page reads the fragment, then removes it with `history.replaceState`, so the secrets do not linger in browser history or history sync. Exception (run 2): an iPhone Safari tab keeps the link in its address bar, so the home-screen app added from it starts with the link (5.3 step 2); it never joins. A home-screen app remembers SHA-256(`a`) of the links it has handled (paired, cancelled or expired), never the secrets, so launching from the same start URL later is normal. |
 
 ### 7.3 Main screen
@@ -489,7 +493,7 @@ Only what WebCrypto supports in every target browser, so the phone needs no cryp
 
 | Key | Created by | Lives in | Leaves the device? |
 |---|---|---|---|
-| Signing key (ECDSA P-256) | each device | macOS Keychain, Windows Credential Manager, IndexedDB as a non-extractable key, iOS Keychain | Public half to the relay |
+| Signing key (ECDSA P-256) | each device | macOS: the app's private secret folder (SEC-11, never the keychain); Windows Credential Manager; IndexedDB as a non-extractable key; iOS Keychain | Public half to the relay |
 | Agreement key (ECDH P-256) | each device | same as above | Public half to the partner: the computer's inside the QR, the phone's through the relay, protected by the join MAC |
 | Pair keys (two AES-256 keys per pair, one per direction) | derived on both sides | same as above | Never |
 | Admission secret `a` | the computer | the QR; the relay keeps only its hash | Shown to the relay once |
@@ -544,8 +548,9 @@ offset  size  field
 | SEC-06 | The relay URL must be `wss://`. Plain `ws://` is refused except to `localhost` in debug builds. |
 | SEC-07 | Update artifacts are verified with the Tauri updater signature before install. |
 | SEC-08 | Secrets (Apple certificates, notarization key, updater private key, Cloudflare API token, Windows signing credentials) live only in GitHub Actions secrets and on the owner's machine. Never in the repo. |
-| SEC-09 | Private keys are created as non-extractable wherever the platform allows it (WebCrypto `extractable: false`, Keychain items without export). |
+| SEC-09 | Private keys are created as non-extractable wherever the platform allows it (WebCrypto `extractable: false`). The desktop keeps its private keys in its own secret store (SEC-10, SEC-11), which never leaves the computer. |
 | SEC-10 | On Windows, device keys are stored in Credential Manager with local-machine persistence (`CRED_PERSIST_LOCAL_MACHINE`, the keyring store's `persistence=local` modifier). The keyring crate's default is Enterprise, which roams to the user's other computers in a company domain, and two computers must never share a device identity. |
+| SEC-11 | On macOS (run 5) device keys, pair keys and cleanup API keys live in `secrets/` in the app's data folder, never in the keychain: an app without an Apple Team ID (CI's ad-hoc builds, the local self-signed identity) is trusted by the login keychain only for the build that wrote an item (its `cdhash`), so every update asked for the login password, and the read at start blocked the app until it was answered. The data-protection keychain needs a provisioning profile, so it waits for the Developer ID (decision 18.1). The folder is `0700` and its files `0600`, written atomically (`fsync`, then rename), excluded from Time Machine, and bound to this Mac by a hash of its host UUID: a copy that reaches another Mac (Migration Assistant, a cloned disk) is emptied there, so two computers never share a device identity. The relay state (room, phone list, counters) lives in the same folder. v0.1's keychain items are never read, because reading them would ask: v0.2.0 starts with a new device identity, its phones pair again (the window says so once), and cleanup API keys are entered again. Trade-off: another program running as the same user can read the files, as it could read an unlocked keychain item that allows it. `scripts/walkietalkey/check-no-keychain.sh` checks that a built app imports no keychain call. |
 
 ---
 
@@ -855,7 +860,7 @@ Every control message is a JSON object with its type in `t`. Permission comes fr
 - **Edda**: the Danish speech model.
 - **PnC**: punctuation and capitalisation model.
 - **Oprydning**: the optional AI step that tidies text.
-- **API-nøgle**: the user's own key for an AI provider. Only the optional cleanup uses one; it stays in the OS keychain and goes only to that provider.
+- **API-nøgle**: the user's own key for an AI provider. Only the optional cleanup uses one; it stays in the computer's secret store (SEC-11, Credential Manager on Windows) and goes only to that provider.
 - **Til stede (presence)**: a computer's answer when a phone asks how recently it was used (DESK-63).
 
 ## Sources checked for this spec (October 2026)
