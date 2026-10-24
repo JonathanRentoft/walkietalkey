@@ -14,6 +14,17 @@ use super::output::{paste_shortcut, PillEnd};
 
 /// How long the pill stays after the end.
 pub const LINGER: Duration = Duration::from_millis(1500);
+/// "Mikrofonen giver ingen lyd" stays longer (DESK-59): it is news, and the
+/// probe's "Prøv {navn}" arrives within about a second.
+pub const MIC_SILENT_LINGER: Duration = Duration::from_millis(4000);
+
+/// How long the pill shows `state` before it hides.
+pub fn linger_for(state: PillEnd) -> Duration {
+    match state {
+        PillEnd::MicSilent => MIC_SILENT_LINGER,
+        _ => LINGER,
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct PillEndEvent {
@@ -22,8 +33,8 @@ pub struct PillEndEvent {
     pub shortcut: String,
 }
 
-/// Shows the end state, then hides the pill after [`LINGER`] unless another
-/// recording has taken it over (`still_ours`).
+/// Shows the end state, then hides the pill after [`linger_for`] it unless
+/// another recording has taken it over (`still_ours`).
 pub fn finish<F>(app: &AppHandle, state: PillEnd, still_ours: F)
 where
     F: Fn() -> bool + Send + 'static,
@@ -37,7 +48,7 @@ where
     );
     let app = app.clone();
     thread::spawn(move || {
-        thread::sleep(LINGER);
+        thread::sleep(linger_for(state));
         if still_ours() {
             crate::utils::hide_recording_overlay(&app);
         }
@@ -57,4 +68,17 @@ pub fn not_ready(app: &AppHandle) {
         thread::sleep(LINGER);
         crate::utils::hide_recording_overlay(&app);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_silent_microphone_notice_stays_longer_than_the_other_end_states() {
+        assert_eq!(linger_for(PillEnd::Pasted), LINGER);
+        assert_eq!(linger_for(PillEnd::NoSpeech), LINGER);
+        assert_eq!(linger_for(PillEnd::MicSilent), MIC_SILENT_LINGER);
+        assert!(MIC_SILENT_LINGER > LINGER);
+    }
 }

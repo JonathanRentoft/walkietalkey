@@ -696,12 +696,35 @@ impl ShortcutAction for TranscribeAction {
                     return;
                 }
 
+                // WalkieTalkey (DESK-59): a take on an input that delivered no
+                // sound at all is not transcribed; the pill says so and the
+                // other inputs are probed for one that works.
+                if let Some(take) =
+                    crate::walkietalkey::mic::finish_take().filter(|take| take.is_silent())
+                {
+                    tm.cancel_stream();
+                    let session = RECORDING_SESSION.load(Ordering::SeqCst);
+                    crate::walkietalkey::mic::silent_take(&ah, take, move || {
+                        RECORDING_SESSION.load(Ordering::SeqCst) == session
+                    });
+                    set_tray_state(&ah, TrayIconState::Idle);
+                    return;
+                }
+
                 if samples.is_empty() {
                     debug!("Recording produced no audio samples; skipping persistence");
                     // Tear down any streaming worker so its channel doesn't leak
                     // and block the next start_stream.
                     tm.cancel_stream();
-                    utils::hide_recording_overlay(&ah);
+                    // WalkieTalkey: VAD found no speech on a working input:
+                    // "Hørte ikke noget" (spec 6.4 step 2), not a pill that
+                    // just disappears.
+                    let session = RECORDING_SESSION.load(Ordering::SeqCst);
+                    crate::walkietalkey::pill::finish(
+                        &ah,
+                        crate::walkietalkey::output::PillEnd::NoSpeech,
+                        move || RECORDING_SESSION.load(Ordering::SeqCst) == session,
+                    );
                     set_tray_state(&ah, TrayIconState::Idle);
                 } else {
                     // WalkieTalkey (DESK-92): audio is only kept, concurrently

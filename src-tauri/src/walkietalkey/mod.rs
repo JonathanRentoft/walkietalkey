@@ -27,6 +27,7 @@ pub mod key_listener;
 pub mod keys;
 pub mod limits;
 pub mod managed;
+pub mod mic;
 pub mod migrate;
 pub mod models;
 pub mod notify;

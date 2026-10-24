@@ -306,3 +306,26 @@ pub fn wt_accessibility_lost() -> bool {
 pub fn wt_accessibility_repair(app: AppHandle) -> bool {
     super::key_listener::repair(&app)
 }
+
+/// The silent-microphone notice (DESK-59), the same as the last
+/// `wt-mic-check` event, for a window that opened after it.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_mic_check_status() -> super::mic::MicCheck {
+    super::mic::status()
+}
+
+/// "Brug {navn}" (DESK-59): records from that input from now on.
+#[tauri::command]
+#[specta::specta]
+pub async fn wt_mic_use(app: AppHandle, name: String) -> Result<(), String> {
+    super::mic::use_input(&app, name).await
+}
+
+/// "Tjek igen" (DESK-59): listens to the silent input again, and probes the
+/// others if it is still silent. The answer comes as `wt-mic-check`.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_mic_recheck(app: AppHandle) {
+    super::mic::recheck(&app)
+}
