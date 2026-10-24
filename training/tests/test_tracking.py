@@ -59,7 +59,7 @@ def test_a_run_keeps_params_per_step_metrics_and_artifacts(store, tmp_path):
     assert got.data.params["note"] == ""
     assert [m.value for m in c.get_metric_history(got.info.run_id, "train.loss")] == [2.0, 1.5, 1.2]
     assert [m.step for m in c.get_metric_history(got.info.run_id, "train.loss")] == [1, 2, 3]
-    assert got.data.metrics["validation.wer_pct"] == 9.5 and "validation.skipped" not in got.data.metrics
+    assert got.data.metrics["validation/wer_pct"] == 9.5 and "validation/skipped" not in got.data.metrics
     assert sorted(a.path for a in c.list_artifacts(got.info.run_id)) == ["metrics.png", "per-term.md"]
     assert got.data.tags["wt.git_commit"] and got.data.tags["wt.git_dirty"] in ("true", "false")
 

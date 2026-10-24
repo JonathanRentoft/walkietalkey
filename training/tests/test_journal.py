@@ -43,9 +43,9 @@ def test_the_card_has_numbers_plots_config_diff_and_four_empty_headings(store, t
     text = page.read_text(encoding="utf-8")
     assert text.startswith(f"# first-b ({today})")
     assert "config hash bbb" in text and "dataset f00d" in text
-    assert "| best.validation_wer_pct | 8.00 |" in text and "| best.epoch | 2 |" in text
+    assert "| best/validation_wer_pct | 8.00 |" in text and "| best/epoch | 2 |" in text
     assert "### eval: first-b-test" in text
-    assert "| test.iphone-whisper.wer_pct | 9.10 |" in text and "| fleurs.wer_pct | 7.30 |" in text
+    assert "| test/iphone-whisper/wer_pct | 9.10 |" in text and "| fleurs/wer_pct | 7.30 |" in text
     assert "Against first-a" in text
     assert "| lora.rank | 8 | 16 |" in text and "| config_hash | aaa | bbb |" in text
     assert "training.epochs" not in text  # unchanged keys stay out of the diff

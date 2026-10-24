@@ -146,6 +146,10 @@ class Run:
         for key, value in flatten(values).items():
             self._c.set_tag(self.id, key, value)
 
+    def rename(self, name: str) -> None:
+        """The workbench names a training run only once its folder exists."""
+        self._c.update_run(self.id, name=name)
+
     def artifact(self, path: Path, folder: str | None = None) -> None:
         if Path(path).exists():
             self._c.log_artifact(self.id, str(path), folder)
@@ -176,6 +180,9 @@ class _NoRun(Run):
     def tags(self, values: dict) -> None:
         pass
 
+    def rename(self, name: str) -> None:
+        pass
+
     def artifact(self, path: Path, folder: str | None = None) -> None:
         pass
 
@@ -190,12 +197,14 @@ NO_RUN = _NoRun()
 
 
 def flatten_numbers(values: dict, prefix: str = "") -> dict[str, float]:
-    """``{"test": {"wer_pct": 7.2}}`` as ``{"test.wer_pct": 7.2}``, numbers only."""
+    """``{"test": {"wer": 0.07}}`` as ``{"test/wer": 0.07}``, numbers only. Metric names use
+    slashes, like the per-condition ones (``test/iphone-whisper/wer``); MLflow's UI groups
+    charts by them."""
     out: dict[str, float] = {}
     for key, value in values.items():
         name = f"{prefix}{key}"
         if isinstance(value, dict):
-            out.update(flatten_numbers(value, f"{name}."))
+            out.update(flatten_numbers(value, f"{name}/"))
         elif isinstance(value, bool):
             out[name] = float(value)
         elif isinstance(value, (int, float)) and value == value:  # NaN is not a result
@@ -211,16 +220,18 @@ def git_tags() -> dict[str, str]:
 
 
 @contextmanager
-def run(kind: str, name: str, *, parent: Run | None = None, tags: dict | None = None) -> Iterator[Run]:
+def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | None = None) -> Iterator[Run]:
     """A run of ``kind`` named ``name`` (the workbench's own run name), finished
-    when the block ends, FAILED if it raises. ``parent`` nests it under a training run."""
+    when the block ends, FAILED if it raises. ``parent`` (a run or a run id) nests it
+    under a training run."""
     if not enabled():
         yield NO_RUN
         return
     c, experiment = client()
     all_tags = {"wt.kind": kind, **git_tags(), **(tags or {})}
-    if parent is not None and parent.id:
-        all_tags["mlflow.parentRunId"] = parent.id
+    parent_id = parent if isinstance(parent, str) else (parent.id if parent is not None else "")
+    if parent_id:
+        all_tags["mlflow.parentRunId"] = parent_id
     created = c.create_run(experiment, run_name=name, tags=all_tags)
     current = Run(c, created.info.run_id)
     try:
@@ -241,6 +252,49 @@ def find_runs(*, kind: str | None = None, name: str | None = None) -> list:
         filters.append(f"attributes.run_name = '{name}'")
     return c.search_runs([experiment], filter_string=" and ".join(filters), order_by=["attributes.start_time DESC"],
                          max_results=1000)
+
+
+def train_run_id(name: str | None) -> str | None:
+    """The tracked training run of that name (the run folder's), if there is one."""
+    if not name or not enabled():
+        return None
+    runs = find_runs(kind="train", name=name)
+    return runs[0].info.run_id if runs else None
+
+
+def log_training_inputs(tracked: Run, config: dict, config_hash: str, splits: dict) -> None:
+    """A training run's inputs: the full config, its hash, and the dataset fingerprint
+    with the clip count per split and condition."""
+    fingerprint = dataset_fingerprint(splits)
+    tracked.params({**config, "config_hash": config_hash,
+                    "dataset": {"fingerprint": fingerprint["fingerprint"], "counts": fingerprint["counts"]}})
+
+
+def log_eval(report: dict) -> None:
+    """One ``wt-train eval``: every metric (overall, per condition, the FLEURS regression)
+    and its files, under its training run when it scored one."""
+    if not enabled():
+        return
+    out = Path(report["out"])
+    with run("eval", out.name, parent=train_run_id(report.get("train_run"))) as r:
+        r.params({"backend": report.get("backend", ""), "model": report.get("model", ""),
+                  "dataset": report.get("dataset", ""), "train_run": report.get("train_run") or ""})
+        r.metrics(report.get("metrics") or {})
+        for name in ("summary.json", "terms.md", "side-by-side.md"):
+            r.artifact(out / name)
+
+
+def log_export(result: dict) -> None:
+    """One ``wt-train export``: the installed model, the same-text check and the model
+    card, under its training run."""
+    if not enabled():
+        return
+    with run("export", result["model_id"], parent=train_run_id(result.get("run"))) as r:
+        r.params({k: result.get(k, "") for k in ("model_id", "name", "path", "sha256", "run")})
+        r.metrics({"size_bytes": result.get("size_bytes"), "verify": result.get("verify") or {},
+                   "seconds": result.get("seconds") or {}})
+        if result.get("card"):
+            r.artifact(Path(result["card"]))
 
 
 # results.csv columns that are numbers (logged as metrics) and the rest (params).

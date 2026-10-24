@@ -45,7 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import console, paths
+from . import console, paths, tracking
 from .audio import file_sha256
 from .config import SLUG_RE, config_from_dict, key_knobs
 from .dataset import SOURCE_RECORDING, read_manifest
@@ -317,6 +317,7 @@ def main(argv: list[str]) -> int:
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
+    tracking.log_export(result)
     print(f"select \"{result['name']}\" in WalkieTalkey, or: wt-train eval --backend gguf --model {result['model_id']}"
           " --dataset test --run " + result["run"])
     return 0

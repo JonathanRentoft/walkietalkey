@@ -52,7 +52,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import audio, console, dataset, paths, per_condition, whisper
+from . import audio, console, dataset, paths, per_condition, tracking, whisper
 from .config import Config, LoraConfig, config_hash, load_config, to_dict, with_overrides
 from .dataset import Build, Item
 from .encoder_cache import CacheSpec, EncoderCache
@@ -292,8 +292,11 @@ def save_run_inputs(run: Path, cfg: Config, build: Build) -> None:
 
 
 def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = None,
-        runs_root: Path | None = None, cache_root: Path | None = None, log=console.log) -> Path:
-    """Train one experiment; returns the run folder."""
+        runs_root: Path | None = None, cache_root: Path | None = None, log=console.log,
+        tracked: tracking.Run = tracking.NO_RUN) -> Path:
+    """Train one experiment; returns the run folder. ``tracked`` gets the config, the dataset
+    fingerprint, the loss of every step, the validation of every epoch and the files
+    (``wt-train train`` passes a tracked MLflow run; by default nothing is tracked)."""
     import torch
     from peft import LoraConfig as PeftLoraConfig
     from peft import get_peft_model
@@ -311,6 +314,8 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
 
     run_dir = new_run_dir(runs_root if runs_root is not None else paths.runs_dir(), cfg.name)
     save_run_inputs(run_dir, cfg, build)
+    tracked.rename(run_dir.name)
+    tracking.log_training_inputs(tracked, to_dict(cfg), config_hash(cfg), build.splits)
     log(f"run {run_dir.name} on {device}")
     train_items, val_items = build.splits["train"], build.splits["validation"]
 
@@ -369,6 +374,11 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
             "terms": s["terms"], "learning_rate": scheduler.get_last_lr()[0], "epoch_seconds": round(epoch_seconds, 1),
         }
         metrics.append(row)
+        tracked.metrics({"validation": {
+            "loss": s["loss"], "wer": s["wer"], "cer": s["cer"], "recordings": {"wer": row["validation_wer_recordings"]},
+            "rehearsal": {"wer": row["validation_wer_rehearsal"]}, "term_accuracy_strict": s["term_accuracy_strict"],
+            "term_accuracy_lenient": s["term_accuracy_lenient"],
+            **{cid: {"wer": wer} for cid, wer in s["wer_by_condition"].items()}}}, step=epoch)
         with (run_dir / "metrics.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         plot_metrics(metrics, run_dir / "metrics.png")
@@ -397,18 +407,23 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
         for g in range(0, len(micro), t.gradient_accumulation):
             group = micro[g:g + t.gradient_accumulation]
             group_tokens = sum(token_counts[i.id] for batch in group for i in batch)
+            group_loss = 0.0
             optimizer.zero_grad(set_to_none=True)
             for batch in group:
                 inputs, labels = batches.tokens(batch)
                 loss, n = _loss_sum(inner, batches.hidden(batch), inputs, labels)
                 (loss / group_tokens).backward()
-                loss_sum += float(loss.detach())
+                value = float(loss.detach())
+                loss_sum += value
+                group_loss += value
                 token_sum += n
             if t.max_grad_norm > 0:
                 torch.nn.utils.clip_grad_norm_(params, t.max_grad_norm)
             optimizer.step()
             scheduler.step()
             step += 1
+            tracked.metrics({"train": {"loss": group_loss / max(1, group_tokens),
+                                       "learning_rate": scheduler.get_last_lr()[0]}}, step=step)
             if step % max(1, steps_per_epoch // 5) == 0 or step == total_steps:
                 log(f"  epoch {epoch} step {step}/{total_steps}: loss {loss_sum / max(1, token_sum):.4f}, "
                     f"lr {scheduler.get_last_lr()[0]:.2e}")
@@ -425,6 +440,11 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
         "seconds": round(time.time() - started, 1),
     }
     (run_dir / "run.json").write_text(json.dumps(summary, indent=2) + "\n")
+    tracked.metrics({"best": {"epoch": best["epoch"], "validation_wer": best["validation_wer"]},
+                     "baseline": {"validation_wer": summary["baseline_validation_wer"]},
+                     "steps": step, "seconds": summary["seconds"]})
+    for name in ("metrics.png", "metrics.jsonl", "best.json", "run.json", "config.json", "config.yaml"):
+        tracked.artifact(run_dir / name)
     del model, inner, batches
     _free_memory(device)
     note = " (no epoch beat the base model)" if best["epoch"] == 0 else ""
@@ -459,7 +479,8 @@ def main(argv: list[str]) -> int:
         cfg = with_overrides(cfg, data={"recordings": str(a.recordings.resolve())})
     if a.device:
         cfg = with_overrides(cfg, training={"device": a.device})
-    run_dir = run(cfg)
+    with tracking.run("train", cfg.name) as tracked:
+        run_dir = run(cfg, tracked=tracked)
     print(f"next: wt-train eval --backend lora --run {run_dir.name} --dataset test")
     return 0
 

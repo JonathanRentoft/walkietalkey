@@ -56,7 +56,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import audio, console, paths, per_condition
+from . import audio, console, paths, per_condition, tracking
 from .conditions import IDS
 from .config import config_from_dict, config_hash, key_knobs
 from .dataset import SPLITS, read_manifest
@@ -329,6 +329,37 @@ def format_table(entries: list[tuple[str, dict]]) -> str:
     return "\n".join(lines)
 
 
+def term_table(rows: list[dict], spelling: Spelling) -> str:
+    """Per English term: how often the references hold it, how often the hypothesis had the
+    same form (strict), and the accuracy; the most missed first."""
+    seen: dict[str, int] = {}
+    missed: dict[str, int] = {}
+    for r in rows:
+        for hit in spelling.find_terms(r["reference"]):
+            seen[hit.term] = seen.get(hit.term, 0) + 1
+        for form in r.get("terms_missed") or []:
+            for hit in spelling.find_terms(form)[:1]:
+                missed[hit.term] = missed.get(hit.term, 0) + 1
+    lines = ["| term | in references | right | missed | accuracy |", "|---|---:|---:|---:|---:|"]
+    for term in sorted(seen, key=lambda t: (-missed.get(t, 0), t)):
+        n, m = seen[term], min(missed.get(term, 0), seen[term])
+        lines.append(f"| {term} | {n} | {n - m} | {m} | {(n - m) / n * 100:.1f} % |")
+    return "\n".join(lines) + "\n"
+
+
+def side_by_side(rows: list[dict], n: int = 8) -> str:
+    """The ``n`` clips with the most word errors, reference beside hypothesis."""
+
+    def cell(text: str) -> str:
+        return (text or "").replace("|", "\\|").replace("\n", " ")
+
+    worst = sorted(rows, key=lambda r: (-(r["sub"] + r["del"] + r["ins"]), str(r["id"])))[:n]
+    lines = ["| id | condition | errors | reference | hypothesis |", "|---|---|---:|---|---|"]
+    lines += [f"| {cell(str(r['id']))} | {cell(r.get('condition') or '')} | {r['sub'] + r['del'] + r['ins']} | "
+              f"{cell(r['reference'])} | {cell(r['hypothesis'])} |" for r in worst]
+    return "\n".join(lines) + "\n"
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60] or "model"
 
@@ -360,7 +391,9 @@ def gguf_model_id(model: str | None, run: Path | None) -> str:
 
 
 def main(argv: list[str], log=console.log) -> int:
-    return run(argv, log)["exit_code"]
+    report = run(argv, log)
+    tracking.log_eval(report)
+    return report["exit_code"]
 
 
 def run(argv: list[str], log=console.log) -> dict:
@@ -436,6 +469,9 @@ def run(argv: list[str], log=console.log) -> dict:
     by_condition = per_condition.summaries(rows)
     entries = [(name, main_summary)]
     _write_rows(out / f"{_slug(name)}.jsonl", rows)
+    if spelling is not None:
+        (out / "terms.md").write_text(term_table(rows, spelling), encoding="utf-8")
+    (out / "side-by-side.md").write_text(side_by_side(rows), encoding="utf-8")
     fleurs_summary = None
     if name == FLEURS_TEST:
         fleurs_summary = main_summary
@@ -463,7 +499,8 @@ def run(argv: list[str], log=console.log) -> dict:
     log(f"appended to {a.results}")
     code = 0 if all(s["failed"] == 0 for _, s in entries) else 1
     return {"exit_code": code, "results": dict(entries), "by_condition": by_condition, "metrics": metrics,
-            "out": out}
+            "out": out, "backend": a.backend, "model": label, "dataset": name,
+            "train_run": run.name if run is not None else None}
 
 
 def _write_rows(path: Path, rows: list[dict]) -> None:
