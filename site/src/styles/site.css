@@ -440,7 +440,8 @@ kbd.inline {
   margin-top: var(--space-1);
   font-size: 15px;
 }
-.get-alt a {
+.get-alt a,
+.get-meta a {
   color: var(--on-gradient);
   font-weight: 500;
   text-decoration: underline;
@@ -451,7 +452,8 @@ kbd.inline {
   );
   text-underline-offset: 3px;
 }
-.get-alt a:hover {
+.get-alt a:hover,
+.get-meta a:hover {
   text-decoration-color: var(--on-gradient);
 }
 .get-note {

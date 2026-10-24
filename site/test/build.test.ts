@@ -473,8 +473,9 @@ describe("Hent (SITE-02)", () => {
     expect(mac).toContain("WalkieTalkey-mac.dmg");
     expect(mac).toContain("Programmer");
     expect(mac).toMatch(/endnu ikke (er )?signeret af Apple/);
-    expect(mac).toContain("Systemindstillinger › Anonymitet og sikkerhed");
-    expect(mac).toContain("Åbn alligevel");
+    expect(mac).toContain(
+      "Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel",
+    );
     expect(win).toContain("WalkieTalkey-windows.exe");
     expect(win).toMatch(/endnu ikke (er )?signeret af Microsoft/);
     expect(win).toContain("Flere oplysninger › Kør alligevel");
@@ -490,6 +491,32 @@ describe("Hent (SITE-02)", () => {
     expect(card("win").querySelector("a.wt-shiny")!.getAttribute("href")).toBe(
       WINDOWS_DOWNLOAD_URL,
     );
+  });
+  /* Run 5: macOS 26 blocks the first open of an app without a Developer ID. Three short steps, the way macOS words
+     them; the button in System Settings shows only for a while after the first try, and only the first open asks. */
+  it("guides the Mac's first open past Gatekeeper in three short steps", () => {
+    const card = d.querySelector('.platforms [data-platform="mac"]')!;
+    const steps = card
+      .querySelectorAll(".gatekeeper li")
+      .map((li) => textOf(li).trim());
+    expect(steps).toEqual([
+      "Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.",
+      "Åbn den, og luk advarslen.",
+      "Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel. Bekræft med Touch ID eller adgangskoden.",
+    ]);
+    const words = steps
+      .join(" ")
+      .split(/\s+/)
+      .filter((w) => w !== "›");
+    expect(words.length).toBeLessThanOrEqual(30);
+    const note = textOf(card.querySelector(".gatekeeper-note")!);
+    expect(note).toContain("Kun første gang.");
+    expect(note).toContain("Åbn alligevel");
+    expect(note).not.toMatch(/papirkurv/i);
+    /* the hero sends a Mac visitor straight to those steps */
+    expect(
+      d.querySelector('header [data-platform="mac"] a[href="#foerste-gang"]'),
+    ).not.toBeNull();
   });
   it("walks through the new onboarding with the model downloading by itself", () => {
     expect(
@@ -594,6 +621,19 @@ describe("content of the other pages", () => {
     expect(
       d.querySelectorAll("table.threats tbody tr").length,
     ).toBeGreaterThanOrEqual(9);
+  });
+  /* SEC-11 (v0.2.0): the Mac keeps its keys in WalkieTalkey's own folder, never the keychain; Windows in Credential
+     Manager (SEC-10); the phone as a key that cannot be read out (SEC-09). */
+  it("Sikkerhed says where each device keeps its keys (SEC-09, SEC-10, SEC-11)", () => {
+    const text = visibleText(doc("security"));
+    expect(text).not.toMatch(/ligger den i nøgleringen/);
+    expect(text).toContain(
+      "På Mac ligger den i en privat mappe, som kun WalkieTalkey bruger, aldrig i nøgleringen.",
+    );
+    expect(text).toContain("Mappen er bundet til netop den Mac.");
+    expect(text).toContain(
+      "På Windows ligger den i Credential Manager, og på telefonen som en nøgle, der ikke kan læses ud.",
+    );
   });
   /* Review finding 5: no claim of Apple notarisation or Authenticode until signed releases exist (principle 6). */
   it("Sikkerhed claims only the signature the updates really have", () => {
