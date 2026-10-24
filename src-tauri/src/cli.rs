@@ -76,6 +76,13 @@ pub struct CliArgs {
     #[arg(long)]
     pub live: bool,
 
+    /// WalkieTalkey bench (run 5): pass each WAV of --transcribe-file or
+    /// --transcribe-list through the recorder's own silence removal first,
+    /// as a key recording is, then transcribe what it keeps. A phone
+    /// dictation, like a plain file, keeps its silence.
+    #[arg(long)]
+    pub key_recording: bool,
+
     /// WalkieTalkey end-to-end test (DESK-61): receive phone dictations
     /// headlessly. Prints the pairing URL as a JSON line, then each
     /// transcript, and exits after --count dictations.

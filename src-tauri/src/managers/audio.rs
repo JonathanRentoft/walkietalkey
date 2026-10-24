@@ -391,6 +391,12 @@ fn create_capture_vad(
     ))
 }
 
+/// WalkieTalkey (run 5): the recorder's VAD as a key recording gets it, for
+/// the headless bench's `--key-recording` (`walkietalkey::bench`).
+pub(crate) fn recording_vad(app_handle: &tauri::AppHandle) -> Result<CaptureVad, anyhow::Error> {
+    create_capture_vad(get_settings(app_handle).vad_backend, app_handle)
+}
+
 /// 16 kHz mono in VAD-frame chunks, from `device` (`None`: the system
 /// default). `channel` picks one zero-based input channel; `None` averages
 /// them all.

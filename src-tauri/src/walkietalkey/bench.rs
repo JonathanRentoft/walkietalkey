@@ -39,6 +39,37 @@ pub fn transcribe_live(tm: &TranscriptionManager, samples: &[f32]) -> Result<(St
     Ok((text, released.elapsed()))
 }
 
+/// A file as a key recording would have captured it (run 5): the recorder's
+/// own VAD (`vad`, as the audio manager makes it) drops what it calls silence
+/// before the live chunker sees the audio, keeping its pre-roll and hangover
+/// around speech, while a phone dictation and a file read from disk keep it
+/// all. Fed one detector frame at a time, the last one zero padded, exactly
+/// as the recorder delivers them.
+pub fn as_key_recording(vad: crate::audio_toolkit::CaptureVad, samples: &[f32]) -> Vec<f32> {
+    use handy_recorder::{AudioChunk, Sink};
+    let frame = vad.frame_samples();
+    let (ready, _) = std::sync::mpsc::channel();
+    let mut sink = crate::audio_toolkit::CaptureSink::new(
+        vad,
+        crate::audio_toolkit::VadPolicy::Offline,
+        std::sync::Arc::new(|_| {}),
+        std::sync::Arc::new(|_| {}),
+        ready,
+    );
+    let mut buffer = vec![0.0; frame];
+    for piece in samples.chunks(frame) {
+        buffer[..piece.len()].copy_from_slice(piece);
+        buffer[piece.len()..].fill(0.0);
+        sink.process_chunk(AudioChunk {
+            samples: &buffer,
+            sample_rate: crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE,
+            channels: 1,
+            valid_frames: piece.len(),
+        });
+    }
+    sink.finish().samples
+}
+
 /// Reads a WAV for the headless paths. The app only ever saves 16 kHz mono
 /// 16-bit PCM, so anything else is rejected rather than transcribed as
 /// garbage, mis-timed or mis-decoded.
@@ -98,13 +129,16 @@ pub fn list_line(file: &Path, outcome: &std::result::Result<(String, f64, u64), 
 /// Transcribes every WAV in `files` with the app's batch path (chunking at
 /// pauses, punctuation, Danish finishing), loading the model once. Prints one
 /// line per file as it finishes: JSON with `json`, else `file<TAB>text`.
-/// Returns the exit code: 0 when every file was transcribed, 1 otherwise.
+/// `prepare` turns each file's samples into the audio to transcribe (as it
+/// is, or [`as_key_recording`]). Returns the exit code: 0 when every file
+/// was transcribed, 1 otherwise.
 pub fn transcribe_list(
     tm: &TranscriptionManager,
     model_id: &str,
     device_index: Option<usize>,
     files: &[PathBuf],
     json: bool,
+    prepare: &dyn Fn(Vec<f32>) -> std::result::Result<Vec<f32>, String>,
 ) -> i32 {
     if let Err(e) = tm.load_model_with_device(model_id, device_index) {
         eprintln!("error: load_model('{}') failed: {}", model_id, e);
@@ -112,17 +146,19 @@ pub fn transcribe_list(
     }
     let mut failed = 0;
     for file in files {
-        let outcome = read_dictation_wav(file).and_then(|samples| {
-            // An "Immediately" unload timeout unloads after every run.
-            if !tm.is_model_loaded() {
-                tm.load_model_with_device(model_id, device_index)
-                    .map_err(|e| format!("reload failed: {e}"))?;
-            }
-            let audio_secs = samples.len() as f64 / 16_000.0;
-            let started = Instant::now();
-            let text = tm.transcribe(samples).map_err(|e| e.to_string())?;
-            Ok((text, audio_secs, started.elapsed().as_millis() as u64))
-        });
+        let outcome = read_dictation_wav(file)
+            .and_then(prepare)
+            .and_then(|samples| {
+                // An "Immediately" unload timeout unloads after every run.
+                if !tm.is_model_loaded() {
+                    tm.load_model_with_device(model_id, device_index)
+                        .map_err(|e| format!("reload failed: {e}"))?;
+                }
+                let audio_secs = samples.len() as f64 / 16_000.0;
+                let started = Instant::now();
+                let text = tm.transcribe(samples).map_err(|e| e.to_string())?;
+                Ok((text, audio_secs, started.elapsed().as_millis() as u64))
+            });
         failed += usize::from(outcome.is_err());
         if json {
             println!("{}", list_line(file, &outcome));
@@ -208,6 +244,44 @@ mod tests {
         assert!(read_dictation_wav(&dir.path().join("missing.wav"))
             .unwrap_err()
             .contains("cannot open"));
+    }
+
+    /// Keeps frames whose first sample is non-zero.
+    struct FirstSampleVad;
+
+    impl crate::audio_toolkit::VoiceActivityDetector for FirstSampleVad {
+        fn push_frame<'a>(
+            &'a mut self,
+            frame: &'a [f32],
+        ) -> anyhow::Result<crate::audio_toolkit::vad::VadFrame<'a>> {
+            use crate::audio_toolkit::vad::VadFrame;
+            Ok(if frame[0] != 0.0 {
+                VadFrame::Speech(frame)
+            } else {
+                VadFrame::Noise
+            })
+        }
+
+        fn frame_samples(&self) -> usize {
+            4
+        }
+    }
+
+    #[test]
+    fn a_file_is_cut_as_a_key_recording_would_capture_it() {
+        // Run 5: the recorder drops what its VAD calls silence before the
+        // live chunker sees it; a file read from disk has it all.
+        let vad = crate::audio_toolkit::CaptureVad::new(Box::new(FirstSampleVad), 1, 1);
+        let samples = [
+            1.0, 1.0, 1.0, 1.0, // speech
+            0.0, 0.0, 0.0, 0.0, // silence
+            1.0, 2.0, 3.0, 4.0, // speech
+            5.0, 6.0, // a partial last frame, padded as the recorder pads it
+        ];
+        assert_eq!(
+            as_key_recording(vad, &samples),
+            vec![1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 0.0]
+        );
     }
 
     #[test]

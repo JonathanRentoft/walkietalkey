@@ -442,6 +442,17 @@ mod headless_guard_tests {
     }
 }
 
+/// WalkieTalkey (run 5): a headless file's samples as the bench transcribes
+/// them: as they are, or with `--key-recording` as a key recording captures
+/// them.
+fn as_recorded(app: &AppHandle, args: &CliArgs, samples: Vec<f32>) -> Result<Vec<f32>, String> {
+    if !args.key_recording {
+        return Ok(samples);
+    }
+    let vad = crate::managers::audio::recording_vad(app).map_err(|e| e.to_string())?;
+    Ok(crate::walkietalkey::bench::as_key_recording(vad, &samples))
+}
+
 /// Headless one-shot transcription for the `--transcribe-file` / `--list-devices`
 /// path. Drives the same `TranscriptionManager::transcribe` the app uses; no
 /// mic, no VAD, no download. Returns a process exit code (0 ok, 1 runtime
@@ -561,6 +572,7 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             args.device_index,
             &files,
             args.json,
+            &|samples| as_recorded(app, args, samples),
         );
     }
 
@@ -568,7 +580,9 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         return 0;
     };
 
-    let samples = match crate::walkietalkey::bench::read_dictation_wav(&wav) {
+    let samples = match crate::walkietalkey::bench::read_dictation_wav(&wav)
+        .and_then(|samples| as_recorded(app, args, samples))
+    {
         Ok(s) => s,
         Err(e) => {
             eprintln!("error: {}", e);
