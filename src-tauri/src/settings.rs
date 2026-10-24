@@ -549,7 +549,8 @@ fn default_settings_schema_version() -> u32 {
 }
 
 fn default_hold_threshold_ms() -> u64 {
-    300
+    // WalkieTalkey (DESK-22): released within 0.5 s is a tap.
+    crate::walkietalkey::keys::DEFAULT_HOLD_THRESHOLD_MS
 }
 
 fn default_always_on_microphone() -> bool {
@@ -966,8 +967,9 @@ pub fn get_default_settings() -> AppSettings {
     AppSettings {
         settings_schema_version: default_settings_schema_version(),
         bindings,
-        // WalkieTalkey: hold to talk (DESK-22); sounds on by default (DESK-23).
-        shortcut_activation: ShortcutActivation::PushToTalk,
+        // WalkieTalkey: tap for hands-free, hold to talk (DESK-22); sounds on
+        // by default (DESK-23).
+        shortcut_activation: ShortcutActivation::HoldOrToggle,
         hold_threshold_ms: default_hold_threshold_ms(),
         audio_feedback: true,
         audio_feedback_volume: default_audio_feedback_volume(),
@@ -1718,15 +1720,19 @@ mod tests {
         );
     }
 
-    /// WalkieTalkey's default is hold to talk (DESK-22), not Handy's
-    /// hold-or-toggle; a settings file without a legacy key keeps it.
+    /// WalkieTalkey's default is tap or hold (DESK-22, Handy's
+    /// hold-or-toggle); a settings file without a legacy key keeps it.
     #[test]
-    fn shortcut_activation_defaults_to_push_to_talk_without_legacy_key() {
+    fn shortcut_activation_defaults_to_hold_or_toggle_without_legacy_key() {
         let mut settings = get_default_settings();
         let raw = serde_json::json!({ "selected_model": "" });
 
         apply_settings_migrations(&mut settings, &raw);
-        assert_eq!(settings.shortcut_activation, ShortcutActivation::PushToTalk);
+        assert_eq!(
+            settings.shortcut_activation,
+            ShortcutActivation::HoldOrToggle
+        );
+        assert_eq!(settings.hold_threshold_ms, 500);
     }
 
     #[test]

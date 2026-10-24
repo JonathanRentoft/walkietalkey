@@ -6,6 +6,7 @@
 
 pub mod headless;
 pub mod keystore;
+pub mod levels;
 pub mod session;
 
 use std::collections::HashMap;
@@ -44,14 +45,25 @@ struct PhoneDictation {
     side: Option<SideStream>,
     started: Instant,
     paused: bool,
+    /// The pill's waveform while it streams in (DESK-58), when the pill shows.
+    levels: Option<Arc<levels::PhoneLevels>>,
 }
 
-type Sessions = Arc<Mutex<HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>>>;
+impl PhoneDictation {
+    /// No more audio is coming: the waveform stops.
+    fn stop_levels(&mut self) {
+        if let Some(levels) = self.levels.take() {
+            levels.stop();
+        }
+    }
+}
+
+type DictationMap = HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>;
+type Sessions = Arc<Mutex<DictationMap>>;
 
 /// Dictations whose `audio_end` came, while they wait up to 5 s for the
 /// phone's resend of missing blocks (DESK-61): resent blocks still land here.
-static ENDING: Lazy<Mutex<HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static ENDING: Lazy<Mutex<DictationMap>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// The dictation a block belongs to: one still recording, or one waiting
 /// after its `audio_end` for resent blocks (DESK-61).
@@ -271,6 +283,9 @@ async fn event_loop(
                     let mut d = dictation.lock().unwrap();
                     let ready = d.audio.add(index, &pcm);
                     if !ready.is_empty() {
+                        if let Some(levels) = &d.levels {
+                            levels.push(&ready);
+                        }
                         if let Some(side) = &d.side {
                             side.feed(ready);
                         }
@@ -285,7 +300,11 @@ async fn event_loop(
             } => {
                 let dictation = sessions.lock().unwrap().remove(&(phone, session));
                 if let Some(dictation) = dictation {
-                    dictation.lock().unwrap().audio.end(chunks);
+                    {
+                        let mut d = dictation.lock().unwrap();
+                        d.audio.end(chunks);
+                        d.stop_levels();
+                    }
                     ENDING
                         .lock()
                         .unwrap()
@@ -301,7 +320,9 @@ async fn event_loop(
             }
             RelayEvent::AudioCancel { phone, session } => {
                 if let Some(dictation) = sessions.lock().unwrap().remove(&(phone, session)) {
-                    if let Some(side) = dictation.lock().unwrap().side.take() {
+                    let mut d = dictation.lock().unwrap();
+                    d.stop_levels();
+                    if let Some(side) = d.side.take() {
                         side.cancel();
                     }
                 }
@@ -336,6 +357,11 @@ fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session
             tm.start_side_stream()
         })
     };
+    // DESK-58: the menu bar icon shows that a phone recording is coming in,
+    // and the pill too (on by default), its waveform moving with the
+    // phone's audio.
+    let pill = phone_pill(app);
+    let levels = pill.then(|| levels::PhoneLevels::start(app));
     sessions.lock().unwrap().insert(
         (phone, session),
         Arc::new(Mutex::new(PhoneDictation {
@@ -343,12 +369,11 @@ fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session
             side,
             started: Instant::now(),
             paused,
+            levels,
         })),
     );
-    // DESK-58: the menu bar icon shows that a phone recording is coming in,
-    // and the pill too when that is chosen.
     crate::tray::set_tray_state(app, crate::tray::TrayIconState::Recording);
-    if phone_pill(app) {
+    if pill {
         crate::overlay::show_recording_overlay(app);
     }
     let sessions = Arc::clone(sessions);
@@ -676,6 +701,7 @@ mod tests {
             side: None,
             started: Instant::now(),
             paused: false,
+            levels: None,
         }))
     }
 

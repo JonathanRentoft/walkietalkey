@@ -265,3 +265,44 @@ pub async fn wt_request_notification_permission() -> bool {
     .await
     .unwrap_or(false)
 }
+
+/// "Ret det for mig" (DESK-20): whether fn is the key and the Globe key
+/// still has an action of its own.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_globe_key_status(app: AppHandle) -> super::globe::GlobeKeyStatus {
+    super::globe::current(&app)
+}
+
+/// "Ret det for mig" (DESK-20): sets the Globe key to "Do Nothing" while fn
+/// is the dictation key, saving the previous value to restore later.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_globe_key_fix(app: AppHandle) -> Result<super::globe::GlobeKeyStatus, String> {
+    super::globe::fix_now(&app)
+}
+
+/// Whether the key listener runs (DESK-13), the same as the last
+/// `wt-key-listener` event, for a window that opened after it.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_key_listener_status() -> super::key_listener::KeyListenerStatus {
+    super::key_listener::status()
+}
+
+/// Accessibility was granted before and is gone now (DESK-13), the same as
+/// the `wt-accessibility-lost` event, for a window that opened after it.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_accessibility_lost() -> bool {
+    super::key_listener::is_accessibility_lost()
+}
+
+/// Repairs a grant macOS dropped after an update (DESK-13): resets the
+/// app's own Accessibility entry and shows macOS's own dialog. Returns
+/// whether the app is trusted now; the key starts by itself once it is.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_accessibility_repair(app: AppHandle) -> bool {
+    super::key_listener::repair(&app)
+}

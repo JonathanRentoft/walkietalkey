@@ -9,7 +9,7 @@
 //! The active implementation is determined by the `keyboard_implementation`
 //! setting and can be changed at runtime.
 
-mod handler;
+pub(crate) mod handler;
 pub mod handy_keys;
 pub mod tauri_impl;
 
@@ -31,7 +31,11 @@ use crate::tray;
 // Note: Commands are accessed via shortcut::handy_keys:: in lib.rs
 
 /// Initialize shortcuts using the configured implementation
-pub fn init_shortcuts(app: &AppHandle) {
+///
+/// WalkieTalkey (DESK-13): returns an error when the listener could not start
+/// for want of Accessibility, so the caller retries after the grant instead
+/// of treating a dead listener as initialized.
+pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
     let user_settings = settings::load_or_create_app_settings(app);
 
     // Check which implementation to use
@@ -42,6 +46,11 @@ pub fn init_shortcuts(app: &AppHandle) {
         KeyboardImplementation::HandyKeys => {
             if let Err(e) = handy_keys::init_shortcuts(app) {
                 error!("Failed to initialize handy-keys shortcuts: {}", e);
+                // WalkieTalkey (DESK-13): without Accessibility handy-keys
+                // works once it is granted; Tauri's shortcuts never see fn.
+                if !crate::walkietalkey::key_listener::permission_granted() {
+                    return Err(e);
+                }
                 // Fall back to Tauri implementation and persist this fallback
                 warn!("Falling back to Tauri global shortcut implementation and saving fallback to settings");
 
@@ -54,6 +63,7 @@ pub fn init_shortcuts(app: &AppHandle) {
             }
         }
     }
+    Ok(())
 }
 
 /// Whether the recording lifecycle currently wants the cancel shortcut.
@@ -251,6 +261,8 @@ pub fn change_binding(
     // Save the settings and synchronize any active Secure Input shadows.
     settings::write_settings(&app, settings);
     crate::secure_input::reconcile_fallback(&app);
+    // WalkieTalkey (DESK-20): fn no longer the key restores the Globe key.
+    crate::walkietalkey::globe::reconcile(&app);
 
     // Return the updated binding
     Ok(BindingResponse {

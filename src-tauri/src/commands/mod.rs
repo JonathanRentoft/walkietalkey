@@ -175,22 +175,12 @@ pub struct ShortcutsInitialized;
 /// Initialize keyboard shortcuts.
 /// On macOS, this should be called after accessibility permissions are granted.
 /// This is idempotent - calling it multiple times is safe.
+///
+/// WalkieTalkey (DESK-13): only a listener that really runs counts as
+/// initialized. Without Accessibility this returns an error and a watcher
+/// starts the listener as soon as it is granted; a later call retries.
 #[specta::specta]
 #[tauri::command]
 pub fn initialize_shortcuts(app: AppHandle) -> Result<(), String> {
-    // Check if already initialized
-    if app.try_state::<ShortcutsInitialized>().is_some() {
-        log::debug!("Shortcuts already initialized");
-        return Ok(());
-    }
-
-    // Initialize shortcuts
-    crate::shortcut::init_shortcuts(&app);
-
-    // Mark as initialized before reconciling the macOS Secure Input fallback.
-    app.manage(ShortcutsInitialized);
-    crate::secure_input::reconcile_fallback(&app);
-
-    log::info!("Shortcuts initialized successfully");
-    Ok(())
+    crate::walkietalkey::key_listener::ensure(&app)
 }

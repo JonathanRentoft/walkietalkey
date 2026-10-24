@@ -808,6 +808,11 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,
             walkietalkey::commands::wt_request_notification_permission,
+            walkietalkey::commands::wt_globe_key_status,
+            walkietalkey::commands::wt_globe_key_fix,
+            walkietalkey::commands::wt_key_listener_status,
+            walkietalkey::commands::wt_accessibility_lost,
+            walkietalkey::commands::wt_accessibility_repair,
             commands::check_apple_intelligence_available,
             commands::initialize_enigo,
             commands::initialize_shortcuts,
@@ -1004,6 +1009,10 @@ pub fn run(cli_args: CliArgs) {
                 managers::transcription::report_compute_devices(&transcription_manager);
                 app_handle.manage(model_manager);
                 app_handle.manage(transcription_manager);
+                // WalkieTalkey: the pipeline reads our settings (Udviklerord,
+                // punctuation) through the app handle; nothing else of ours
+                // starts here (no relay, updater or downloads).
+                walkietalkey::set_app_handle(&app_handle);
 
                 let handle = app_handle.clone();
                 let args = cli_args.clone();
@@ -1100,6 +1109,10 @@ pub fn run(cli_args: CliArgs) {
             // silently blocks keyed shortcuts, warns the user, and activates
             // the Carbon fallback. See secure_input.rs and issue #1578.
             secure_input::init(&app_handle);
+
+            // WalkieTalkey (DESK-13, DESK-20): the key listener starts by
+            // itself, now or the moment Accessibility is granted.
+            walkietalkey::key_listener::start(&app_handle);
 
             // Populate the overlay-enabled cache from initial settings so the
             // audio path (overlay::emit_levels, called ~24 Hz during recording)
