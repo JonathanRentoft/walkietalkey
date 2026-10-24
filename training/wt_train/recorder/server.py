@@ -32,8 +32,10 @@ Takes are written to training/data/recordings/ (git-ignored) and nowhere else;
 the server makes no outbound connections, and the page's Content-Security-Policy
 lets it talk to this server only. Requests must name this server as their Host
 (no DNS rebinding). The page's posts need its own header and origin, so another
-web page in the same browser cannot drive it; the app's API needs the token and
-refuses any request with an Origin, which every browser request carries.
+web page in the same browser cannot drive it. The app's API needs the session's
+token, which only the app gets (the page never sees it), and refuses any request
+with an Origin, which a browser sends with every POST and every cross-origin
+request.
 """
 
 from __future__ import annotations

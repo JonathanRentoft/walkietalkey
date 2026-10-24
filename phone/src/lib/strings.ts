@@ -119,6 +119,31 @@ export const T = {
     unknown: "Der skete en uventet fejl.",
   } as Record<string, string>,
   detailCode: "Kode: {code}",
+
+  // TODO(copy): the training screen, while the computer records sentences for the fine-tuning
+  // workbench (wt-train record, PRIV-05)
+  trainingTitle: "Indtaling til {computer}",
+  trainingLeave: "Afslut",
+  trainingWhisper: "Hvisk",
+  trainingNormal: "Almindelig stemme",
+  trainingProgress: "{done} af {total}",
+  trainingComplete: "Alle sætninger er indtalt. Tak.",
+  trainingRedo: "Optag forrige igen",
+  trainingRedoing: "Du optager den forrige igen.",
+  trainingBack: "Tilbage til den næste",
+  trainingWaiting: "Venter på {computer}",
+  trainingSaved: "Gemt",
+  trainingChecks: {
+    ok: "Gemt.",
+    quiet:
+      "Optagelsen er svag. Tal lidt tættere på mikrofonen, og optag den igen.",
+    clipped:
+      "Lyden er for kraftig og forvrænget. Hold lidt mere afstand, og optag den igen.",
+    short: "Optagelsen ser ud til at være skåret af. Optag den igen.",
+    silent: "Hørte ikke noget. Optag den igen.",
+    gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
+    error: "Optagelsen kunne ikke gemmes.",
+  } as Record<string, string>,
 } as const;
 
 /** Fills {name} placeholders. */

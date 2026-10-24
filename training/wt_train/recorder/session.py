@@ -13,8 +13,8 @@ loses nothing. The commands:
 ``mac_cancel`` over, ``mac_cancel`` drops it.
 ``end``        the session is over: the app tells the phone, which returns to normal.
 
-A take is accepted for the current sentence, or for the last one recorded (a redo;
-the earlier take is kept aside). It is checked (:mod:`.checks`); a refused take
+A take is accepted for the current sentence, or for the last one kept (a redo; the
+earlier take is kept aside). It is checked (:mod:`.checks`); a refused take
 (silent, gaps) is not saved and the sentence stays; a kept take is saved with its
 metadata, and the session moves to the next sentence without a take, wrapping
 round, so stopping and starting again resumes where the owner left off. A take
@@ -70,6 +70,8 @@ class Session:
         self.app_seen = 0.0
         self.phone: dict | None = None
         self.last: dict | None = None
+        # The sentence of the last take that was kept: the one a redo reads again.
+        self.last_saved: str | None = None
         self.recording: dict | None = None
         self.error: str | None = None
         self.ended = False
@@ -181,8 +183,7 @@ class Session:
             prompt = str(meta.get("prompt") or "")
             source = meta.get("source")
             current = self.items[self.index].id if self.index is not None else None
-            redo = self.last["prompt"] if self.last else None
-            if source != self.condition.device or prompt not in {current, redo} - {None}:
+            if source != self.condition.device or prompt not in {current, self.last_saved} - {None}:
                 return {"saved": False, "check": "error", "problems": ["error"], "replaced": False,
                         "message": "not a take of the current sentence in this condition"}
             n, item = self._item(prompt)
@@ -193,6 +194,7 @@ class Session:
             if result.saved:
                 replaced = self.store.save(item.id, samples, self._meta(item, meta, result, take_no))
                 self.saved += 1
+                self.last_saved = item.id
             self.last = {"prompt": item.id, "text": item.text, "check": result.check, "saved": result.saved,
                          "problems": list(result.problems), "seconds": round(result.seconds, 2),
                          "replaced": replaced}
@@ -251,11 +253,11 @@ class Session:
         self.go((self.index if self.index is not None else len(self.items)) - 1)
 
     def redo_last(self) -> None:
-        """Back to the sentence just recorded, to read it again."""
+        """Back to the sentence last kept, to read it again."""
         with self.cond:
-            if not self.last or self.recording:
+            if not self.last_saved or self.recording:
                 return
-            n, _ = self._item(self.last["prompt"])
+            n, _ = self._item(self.last_saved)
         self.go(n)
 
     def mac_start(self) -> bool:

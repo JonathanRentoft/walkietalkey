@@ -41,6 +41,8 @@ export interface SessionLog {
   end: { chunks: number; durationMs: number } | null;
   cancelled: boolean;
   answered: number;
+  /** A training take (audio_start_training): its training session, prompt and microphone. */
+  training?: { id: string; prompt: string; microphone?: string };
 }
 
 export interface PhoneLog {
@@ -326,6 +328,16 @@ export class ScriptedComputer {
       case "audio_start":
         this.session(p.sessionId).starts++;
         break;
+      case "audio_start_training": {
+        const s = this.session(p.sessionId);
+        s.starts++;
+        s.training = {
+          id: b64uEncode(p.training),
+          prompt: p.prompt,
+          microphone: p.microphone,
+        };
+        break;
+      }
       case "audio_chunk": {
         const s = this.session(p.sessionId);
         s.chunkFrames++;
@@ -372,6 +384,12 @@ export class ScriptedComputer {
   async send(phone: PhoneLog, payload: DevicePayload): Promise<void> {
     if (!this.socket?.open) return;
     this.socket.sendBinary(await phone.channel.seal(payload));
+  }
+
+  /** A frame for the (first) paired phone, a training prompt for example. */
+  async toPhone(payload: DevicePayload): Promise<void> {
+    const phone = [...this.phones.values()][0]!;
+    await this.send(phone, payload);
   }
 
   async sendResult(sid: string, a: Exclude<Answer, null>): Promise<void> {

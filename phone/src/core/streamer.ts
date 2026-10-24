@@ -5,9 +5,11 @@
  * drops duplicates by block index.
  */
 import {
+  MAX_MICROPHONE_NAME_BYTES,
   SAMPLE_RATE,
   b64uEncode,
   randomBytes,
+  utf8Encode,
   type DevicePayload,
   type ResultReason,
 } from "@walkietalkey/protocol";
@@ -45,6 +47,21 @@ export interface AudioSession {
   /** Another resend was asked for during a resend: send the whole session once more after it. */
   again: boolean;
   endSent: boolean;
+  /**
+   * A take for the fine-tuning workbench (PROTOCOL.md 8.4): it starts with audio_start_training,
+   * the first send and every resend alike, so a computer never takes it for a dictation.
+   */
+  training?: { id: Uint8Array; prompt: string; microphone?: string };
+}
+
+/** The longest start of `text` that fits in `maxBytes` of UTF-8. */
+function fitBytes(text: string, maxBytes: number): string {
+  let out = "";
+  for (const ch of text) {
+    if (utf8Encode(out + ch).length > maxBytes) break;
+    out += ch;
+  }
+  return out;
 }
 
 export function newSession(roomId: string, now: number): AudioSession {
@@ -91,6 +108,21 @@ export class SessionStreamer {
   }
 
   private startPayload(s: AudioSession): DevicePayload {
+    if (s.training) {
+      const microphone = fitBytes(
+        s.training.microphone ?? "",
+        MAX_MICROPHONE_NAME_BYTES,
+      );
+      return {
+        type: "audio_start_training",
+        sessionId: s.id,
+        sampleRate: SAMPLE_RATE,
+        codec: "pcm16",
+        training: s.training.id,
+        prompt: s.training.prompt,
+        ...(microphone ? { microphone } : {}),
+      };
+    }
     return {
       type: "audio_start",
       sessionId: s.id,

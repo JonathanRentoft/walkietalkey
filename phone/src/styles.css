@@ -724,3 +724,102 @@ body {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- training screen */
+
+/* The training screen (the fine-tuning workbench, PRIV-05): the sentence to read on top, the main
+   screen's PhoneApp below in the space that is left (its em is set from that space, as the main
+   stage sets it from the screen). */
+.wt-training {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-100);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+    env(safe-area-inset-left);
+}
+.wt-training-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 12px 20px 0;
+  font: 500 16px/1.3 var(--font-sans);
+  color: var(--ink-muted, var(--ink));
+}
+.wt-training-leave {
+  font: 500 16px/1 var(--font-sans);
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-300);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.wt-training-card {
+  flex: 0 1 auto;
+  max-height: 46%;
+  overflow-y: auto;
+  padding: 12px 24px 8px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.wt-training-progress,
+.wt-training-note,
+.wt-training-check {
+  margin: 0 0 10px;
+  font: 400 16px/1.4 var(--font-sans);
+  color: var(--ink-muted, var(--ink));
+}
+.wt-training-voice {
+  font-weight: 600;
+  color: var(--ink);
+}
+.wt-training-text {
+  margin: 0 0 12px;
+  font: 500 clamp(22px, 6.4vw, 30px) / 1.32 var(--font-sans);
+  color: var(--ink);
+}
+.wt-training-text--long {
+  font-size: clamp(17px, 4.6vw, 21px);
+  line-height: 1.45;
+}
+.wt-training-check--redo {
+  color: var(--ink);
+  font-weight: 600;
+}
+.wt-training-redo {
+  font-size: 16px;
+}
+.wt-training-stage.wt-stage {
+  position: relative;
+  inset: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  background: transparent;
+}
+.wt-training-stage .wt-stage-inner {
+  width: min(100%, calc(100cqh * 27.4 / 59.2));
+  font-size: min(calc(100cqw / 27.4), calc(100cqh / 59.2));
+}
+/* No text below 16 px (spec 7.3), also with the smaller em of this stage. */
+.wt-training-stage .wt-app-label > span:last-child {
+  font-size: max(16px, 1.4em);
+}
+.wt-training-stage .wt-app-label,
+.wt-training-stage .wt-app-foot {
+  white-space: nowrap;
+}
+/* An exam paragraph (one to two minutes) gets more of the screen, and a soft edge shows that it
+   scrolls; the button keeps enough room to be pressed. */
+.wt-training-card:has(.wt-training-text--long) {
+  max-height: 54%;
+  padding-bottom: 32px;
+  -webkit-mask-image: linear-gradient(#000 85%, #0000);
+  mask-image: linear-gradient(#000 85%, #0000);
+}

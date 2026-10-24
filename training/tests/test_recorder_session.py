@@ -259,3 +259,18 @@ def test_the_page_state_shows_progress_and_the_last_take(tmp_path):
     assert st["items"][0]["status"] == "recorded"
     assert st["last"]["check"] == "ok" and st["last"]["prompt"] == "s0001"
     assert st["phone"]["name"] == "Jonathans iPhone"
+
+
+def test_a_redo_goes_back_to_the_last_kept_take_not_a_refused_one(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    phone_take(s, "s0001", good())
+    assert phone_take(s, "s0002", silent())["check"] == "silent"
+    s.redo_last()
+    assert last_prompt(s)["next"]["prompt"] == "s0001"
+    # Before anything is kept there is nothing to redo.
+    fresh = new_session(tmp_path / "other")
+    hello(fresh)
+    fresh.redo_last()
+    assert last_prompt(fresh)["next"]["prompt"] == "s0001"
+    assert phone_take(fresh, "s0002", good())["check"] == "error", "only the current sentence"

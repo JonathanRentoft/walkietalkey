@@ -16,6 +16,8 @@ import {
   generateDeviceKeys,
   parseControlMessage,
   randomBytes,
+  readU64BE,
+  sealFrame,
   serializeControlMessage,
   type ControlMessage,
   type DeviceKeys,
@@ -30,6 +32,8 @@ export interface ComputerSession {
   blocks: Set<number>;
   end: number | null;
   answered: number;
+  /** From audio_start_training: the training session (base64url), the prompt, the microphone. */
+  training?: { id: string; prompt: string; microphone?: string };
 }
 
 export class FakeComputer {
@@ -50,6 +54,7 @@ export class FakeComputer {
   /** presence_query frames received. */
   presenceQueries = 0;
   private channel!: PairChannel;
+  private c2p!: CryptoKey;
   private recv: Promise<unknown> = Promise.resolve();
 
   private constructor(
@@ -81,6 +86,7 @@ export class FakeComputer {
       computerId: c.keys.deviceId,
       phoneId: device.deviceId,
     });
+    c.c2p = computerKeys.c2p;
     c.channel = await PairChannel.open({
       role: "computer",
       selfId: c.keys.deviceId,
@@ -153,6 +159,16 @@ export class FakeComputer {
       case "audio_start":
         this.session(p.sessionId).starts++;
         return;
+      case "audio_start_training": {
+        const s = this.session(p.sessionId);
+        s.starts++;
+        s.training = {
+          id: b64uEncode(p.training),
+          prompt: p.prompt,
+          microphone: p.microphone,
+        };
+        return;
+      }
       case "audio_chunk": {
         const s = this.session(p.sessionId);
         const n = Math.ceil(p.pcm.length / 6400);
@@ -184,6 +200,41 @@ export class FakeComputer {
 
   private async send(socket: FakeSocket, p: DevicePayload): Promise<void> {
     socket.binary(await this.channel.seal(p));
+  }
+
+  /** A frame from the computer to the phone on every open socket (a training prompt, say). */
+  async toPhone(p: DevicePayload): Promise<void> {
+    for (const s of this.openSockets) await this.send(s, p);
+  }
+
+  /**
+   * A frame of a type the phone may not know (an older phone and a newer computer), sealed with
+   * the computer's key. It takes the counter of a frame sealed and never sent, so the frames
+   * after it still count up.
+   */
+  async toPhoneRaw(type: number, plaintext: Uint8Array): Promise<void> {
+    const spent = await this.channel.seal({
+      type: "training_end",
+      training: new Uint8Array(16),
+    });
+    const frame = await sealFrame(
+      this.c2p,
+      {
+        type,
+        sender: this.keys.deviceId,
+        recipient: spent.subarray(18, 34),
+        counter: readU64BE(spent, 34),
+      },
+      plaintext,
+    );
+    for (const s of this.openSockets) s.binary(frame);
+  }
+
+  /** The computer goes away: the relay tells the phone with `peer`. */
+  leave(): void {
+    this.online = false;
+    for (const s of this.openSockets)
+      s.control({ t: "peer", id: this.id, online: false });
   }
 }
 
