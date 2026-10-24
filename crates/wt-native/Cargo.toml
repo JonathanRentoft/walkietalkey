@@ -3,12 +3,12 @@ name = "wt-native"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "WalkieTalkey desktop platform layer: OS secret store, private clipboard, notifications, managed settings, presence and elevation checks (macOS and Windows)"
+description = "WalkieTalkey desktop platform layer: secret store (a private folder on macOS, Credential Manager on Windows), private clipboard, notifications, managed settings, presence and elevation checks (macOS and Windows)"
 publish = false
 
 # Versions follow what src-tauri already links (objc2 0.6, objc2-* 0.3, windows 0.61,
-# winreg 0.55, security-framework 3.7, windows-sys 0.61 through the keyring store), so the
-# app compiles each of them once.
+# winreg 0.55, windows-sys 0.61 through the keyring store, libc 0.2, sha2 0.10), so the app
+# compiles each of them once.
 
 [dependencies]
 log = "0.4"
@@ -56,8 +56,11 @@ objc2-user-notifications = { version = "0.3", default-features = false, features
   "UNNotificationTrigger",
   "UNUserNotificationCenter",
 ] }
-# SecItem* generic passwords in the login keychain (SEC-09).
-security-framework = "3.7"
+# The secret folder (secret_file.rs): permissions, O_NOFOLLOW, xattrs, gethostuuid; the machine
+# stamp is a SHA-256. Never the keychain (run 5).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+sha2 = "0.10"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray"] }

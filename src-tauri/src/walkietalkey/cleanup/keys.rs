@@ -1,6 +1,8 @@
-//! The user's own API keys for cleanup providers (DESK-81): kept in the OS
-//! keychain, never in settings files, and sent only to that provider. A
-//! managed `CleanupApiKey` (Appendix B) wins and lives only in memory.
+//! The user's own API keys for cleanup providers (DESK-81): kept in the app's
+//! secret store (`walkietalkey::secrets`: a private folder on macOS, never the
+//! keychain since run 5; Credential Manager on Windows), never in settings
+//! files, and sent only to that provider. A managed `CleanupApiKey`
+//! (Appendix B) wins and lives only in memory.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -9,7 +11,7 @@ use once_cell::sync::Lazy;
 
 const SERVICE: &str = "WalkieTalkey AI cleanup";
 
-/// Keys read this session, so the keychain is asked once.
+/// Keys read this session, so the store is read once.
 static CACHE: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub fn set(provider: &str, key: &str) -> Result<(), String> {
