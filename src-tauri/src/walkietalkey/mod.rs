@@ -20,11 +20,15 @@ pub mod cleanup;
 pub mod clipboard;
 pub mod commands;
 pub mod dictation;
+pub mod fn_key;
+pub mod globe;
 pub mod history;
 pub mod key_diag;
+pub mod key_listener;
 pub mod keys;
 pub mod limits;
 pub mod managed;
+pub mod migrate;
 pub mod models;
 pub mod notify;
 pub mod output;
@@ -48,6 +52,13 @@ pub fn app() -> Option<&'static AppHandle> {
     APP.get()
 }
 
+/// Makes [`app`] available, and nothing else: for the headless paths
+/// (`--transcribe-file`, `--phone-receive`), whose pipeline reads our
+/// settings too (the Udviklerord pack in `vocabulary::for_run`).
+pub fn set_app_handle(app: &AppHandle) {
+    let _ = APP.set(app.clone());
+}
+
 /// Before Tauri starts: the organisation's managed settings, so every read
 /// of the settings sees them (DESK-100).
 pub fn early_init() {
@@ -66,10 +77,16 @@ pub fn early_init() {
 }
 
 pub fn startup(app: &AppHandle) {
-    let _ = APP.set(app.clone());
+    set_app_handle(app);
+    // Before anything reads the key or pill settings.
+    migrate::run(app);
     key_diag::start(app);
+    // The key listener itself starts once Secure Input is set up
+    // (`key_listener::start`, from lib.rs).
+    globe::reconcile(app);
     notify::init(app);
     select_default_model(app);
+    models::download_default_at_first_launch(app);
     updates::start(app);
     relay::start(app);
     vocabulary::start(app);
@@ -149,10 +166,10 @@ mod tests {
         let settings = get_default_settings();
         assert_eq!(
             settings.shortcut_activation,
-            ShortcutActivation::PushToTalk,
-            "DESK-22"
+            ShortcutActivation::HoldOrToggle,
+            "DESK-22: tap for hands-free, hold to talk"
         );
-        assert_eq!(settings.hold_threshold_ms, 300, "DESK-26");
+        assert_eq!(settings.hold_threshold_ms, 500, "DESK-22");
         assert!(settings.audio_feedback, "DESK-23: sounds on by default");
         assert_eq!(settings.selected_language, "da", "DESK-70");
         assert_eq!(settings.app_language, "da", "DESK-03");

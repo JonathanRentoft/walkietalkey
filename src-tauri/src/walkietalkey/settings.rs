@@ -111,7 +111,7 @@ pub struct WtSettings {
     /// "Vis aldrig" for the pill (DESK-55); its position is Handy's
     /// overlay_position.
     pub pill_hidden: bool,
-    /// Show the pill for phone dictations too (DESK-58, optional).
+    /// Show the pill for phone dictations too (DESK-58, on by default).
     pub pill_for_phone: bool,
 
     // Ordliste
@@ -152,10 +152,28 @@ pub struct WtSettings {
     pub auto_update: bool,
     pub update_channel: UpdateChannel,
 
-    // Onboarding: the step to resume at after the restart that Input
-    // Monitoring needs (DESK-13).
+    // Onboarding: the step to resume at after a restart (DESK-13).
     pub onboarding_resume_step: Option<String>,
+
+    // Kept by the app itself; a save from the UI never changes these.
+    /// Which defaults the stored settings were migrated to (`migrate`). A
+    /// store written before the field existed reads as 0 (v1).
+    #[serde(default)]
+    pub settings_version: u32,
+    /// "Ret det for mig" (DESK-20): WalkieTalkey set the Globe key to "Do
+    /// Nothing" and restores `globe_key_previous` when fn stops being the key.
+    pub globe_key_fixed: bool,
+    /// The user's `AppleFnUsageType` before the fix; `None` when it was unset.
+    pub globe_key_previous: Option<i64>,
+    /// Accessibility was granted at least once (DESK-13). macOS drops the
+    /// grant when an unsigned build's signature changes (an update) while
+    /// System Settings still shows it on; this tells that apart from a
+    /// first run.
+    pub accessibility_granted_once: bool,
 }
+
+/// The defaults `WtSettings::default()` and `migrate` bring a store to.
+pub const SETTINGS_VERSION: u32 = 2;
 
 impl Default for WtSettings {
     fn default() -> Self {
@@ -165,9 +183,9 @@ impl Default for WtSettings {
             share_clipboard_with_devices: false,
             show_text_in_notifications: true,
             pill_hidden: false,
-            pill_for_phone: false,
+            pill_for_phone: true,
             replacements: Vec::new(),
-            developer_words: false,
+            developer_words: true,
             vocabulary_source: None,
             cleanup_mode: CleanupMode::Off,
             cleanup_provider: None,
@@ -184,6 +202,10 @@ impl Default for WtSettings {
             auto_update: true,
             update_channel: UpdateChannel::Stable,
             onboarding_resume_step: None,
+            settings_version: SETTINGS_VERSION,
+            globe_key_fixed: false,
+            globe_key_previous: None,
+            accessibility_granted_once: false,
         }
     }
 }
@@ -205,6 +227,26 @@ mod tests {
         assert_eq!(s.update_channel, UpdateChannel::Stable);
         assert!(s.relay_url.starts_with("wss://"), "SEC-06");
         assert!(s.phone_app_url.starts_with("https://"));
+        assert!(
+            s.pill_for_phone,
+            "DESK-58: the pill shows for phone dictations"
+        );
+        assert!(s.developer_words, "DESK-67: Udviklerord on by default");
+        assert_eq!(s.settings_version, SETTINGS_VERSION);
+        assert!(!s.globe_key_fixed);
+    }
+
+    #[test]
+    fn a_v1_store_reads_as_version_zero() {
+        // v1 wrote pill_for_phone and developer_words as false and had no
+        // settings_version: that is what `migrate` recognises.
+        let s: WtSettings = serde_json::from_value(serde_json::json!({
+            "pill_for_phone": false,
+            "developer_words": false
+        }))
+        .unwrap();
+        assert_eq!(s.settings_version, 0);
+        assert!(!s.pill_for_phone);
     }
 
     #[test]

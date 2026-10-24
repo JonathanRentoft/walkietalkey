@@ -492,22 +492,21 @@ impl ShortcutAction for TranscribeAction {
                 OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
             }
         };
-        // WalkieTalkey (DESK-23): in hold mode the pill (and below, the start
-        // sound) appear once the key has been held for the threshold, so quick
-        // taps and fn shortcuts stay silent. Recording itself starts now.
+        // WalkieTalkey (DESK-22, DESK-23): in the hold modes the pill (and
+        // below, the start sound) appear once the key has been held for
+        // 300 ms, or at once when a tap turns the recording hands-free, so
+        // fn shortcuts stay silent. Recording itself starts now.
         let reveal_delay = crate::walkietalkey::keys::reveal_delay(&settings);
+        let rm_reveal = Arc::clone(&rm);
+        let reveal = crate::walkietalkey::keys::RevealGate::new(
+            move || RECORDING_SESSION.load(Ordering::SeqCst) == session && rm_reveal.is_recording(),
+            show_overlay,
+        );
+        crate::walkietalkey::keys::set_current_gate(&reveal);
         match reveal_delay {
-            None => show_overlay(),
+            None => reveal.open_now(),
             Some(delay) => {
-                let rm_reveal = Arc::clone(&rm);
-                crate::walkietalkey::keys::reveal_at(
-                    start_time + delay,
-                    move || {
-                        RECORDING_SESSION.load(Ordering::SeqCst) == session
-                            && rm_reveal.is_recording()
-                    },
-                    show_overlay,
-                );
+                crate::walkietalkey::keys::reveal_at(start_time + delay, Arc::clone(&reveal))
             }
         }
         // Everything above runs before capture can begin, so each span here is
@@ -532,6 +531,7 @@ impl ShortcutAction for TranscribeAction {
                 let generation = readiness.generation();
                 let app_clone = app.clone();
                 let rm_clone = Arc::clone(&rm);
+                let reveal_sound = Arc::clone(&reveal);
                 std::thread::spawn(move || {
                     if !readiness.wait() {
                         debug!("Microphone readiness wait ended without receiving samples");
@@ -562,12 +562,8 @@ impl ShortcutAction for TranscribeAction {
                     utils::emit_recording_ready(&app_clone);
 
                     // WalkieTalkey (DESK-23): the start sound waits for the
-                    // hold threshold too; a tap ends the recording before it.
-                    if let Some(delay) = reveal_delay {
-                        std::thread::sleep(
-                            (start_time + delay).saturating_duration_since(Instant::now()),
-                        );
-                    }
+                    // pill; a short push-to-talk hold ends before it.
+                    reveal_sound.wait_open(|| rm_clone.is_recording_readiness_current(generation));
 
                     // The start chime is a readiness cue, so it must follow the
                     // first real input callback rather than Stream::play() or a
@@ -597,7 +593,7 @@ impl ShortcutAction for TranscribeAction {
             });
             // WalkieTalkey (DESK-26): fn is also a modifier, so another key
             // pressed with it (fn+Delete, fn+arrows) cancels silently.
-            if crate::walkietalkey::keys::is_modifier_only(shortcut_str) {
+            if crate::walkietalkey::keys::watches_other_keys(shortcut_str) {
                 let rm_watch = Arc::clone(&rm);
                 crate::walkietalkey::keys::cancel_on_other_key(
                     app.clone(),

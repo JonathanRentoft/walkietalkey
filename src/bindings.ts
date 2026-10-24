@@ -805,6 +805,47 @@ async wtRequestNotificationPermission() : Promise<boolean> {
     return await TAURI_INVOKE("wt_request_notification_permission");
 },
 /**
+ * "Ret det for mig" (DESK-20): whether fn is the key and the Globe key
+ * still has an action of its own.
+ */
+async wtGlobeKeyStatus() : Promise<GlobeKeyStatus> {
+    return await TAURI_INVOKE("wt_globe_key_status");
+},
+/**
+ * "Ret det for mig" (DESK-20): sets the Globe key to "Do Nothing" while fn
+ * is the dictation key, saving the previous value to restore later.
+ */
+async wtGlobeKeyFix() : Promise<Result<GlobeKeyStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_globe_key_fix") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Whether the key listener runs (DESK-13), the same as the last
+ * `wt-key-listener` event, for a window that opened after it.
+ */
+async wtKeyListenerStatus() : Promise<KeyListenerStatus> {
+    return await TAURI_INVOKE("wt_key_listener_status");
+},
+/**
+ * Accessibility was granted before and is gone now (DESK-13), the same as
+ * the `wt-accessibility-lost` event, for a window that opened after it.
+ */
+async wtAccessibilityLost() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_accessibility_lost");
+},
+/**
+ * Repairs a grant macOS dropped after an update (DESK-13): resets the
+ * app's own Accessibility entry and shows macOS's own dialog. Returns
+ * whether the app is trusted now; the key starts by itself once it is.
+ */
+async wtAccessibilityRepair() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_accessibility_repair");
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -827,6 +868,10 @@ async initializeEnigo() : Promise<Result<null, string>> {
  * Initialize keyboard shortcuts.
  * On macOS, this should be called after accessibility permissions are granted.
  * This is idempotent - calling it multiple times is safe.
+ * 
+ * WalkieTalkey (DESK-13): only a listener that really runs counts as
+ * initialized. Without Accessibility this returns an error and a watcher
+ * starts the listener as soon as it is granted; a later call retries.
  */
 async initializeShortcuts() : Promise<Result<null, string>> {
     try {
@@ -1274,6 +1319,22 @@ export type CleanupRecord = { provider: string;
 sent_text: string; duration_ms: number }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
+/**
+ * What the UI shows.
+ */
+export type GlobeKeyStatus = { 
+/**
+ * fn is the dictation key (macOS only).
+ */
+fn_is_key: boolean; 
+/**
+ * The current `AppleFnUsageType`, `None` when unset or unreadable.
+ */
+usage: number | null; 
+/**
+ * fn is the key and the Globe key still does something of its own.
+ */
+needs_fix: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 /**
@@ -1329,6 +1390,10 @@ export type ImplementationChangeResult = { success: boolean;
  * List of binding IDs that were reset to defaults due to incompatibility
  */
 reset_bindings: string[] }
+/**
+ * `wt-key-listener`: whether the key listener runs.
+ */
+export type KeyListenerStatus = { running: boolean }
 export type KeyboardDiagnosticReport = { secure_input_enabled: boolean; culprit_pid: number | null; culprit_name: string | null; 
 /**
  * Counts only — key identity is deliberately never captured.
@@ -1582,7 +1647,7 @@ show_text_in_notifications: boolean;
  */
 pill_hidden: boolean; 
 /**
- * Show the pill for phone dictations too (DESK-58, optional).
+ * Show the pill for phone dictations too (DESK-58, on by default).
  */
 pill_for_phone: boolean; replacements: Replacement[]; 
 /**
@@ -1620,7 +1685,28 @@ model_base_url: string | null; history_retention: HistoryRetention;
 /**
  * "Gem lyd til fejlfinding" (DESK-92), at most 7 days.
  */
-keep_audio_for_debugging: boolean; auto_update: boolean; update_channel: UpdateChannel; onboarding_resume_step: string | null }
+keep_audio_for_debugging: boolean; auto_update: boolean; update_channel: UpdateChannel; onboarding_resume_step: string | null; 
+/**
+ * Which defaults the stored settings were migrated to (`migrate`). A
+ * store written before the field existed reads as 0 (v1).
+ */
+settings_version?: number; 
+/**
+ * "Ret det for mig" (DESK-20): WalkieTalkey set the Globe key to "Do
+ * Nothing" and restores `globe_key_previous` when fn stops being the key.
+ */
+globe_key_fixed: boolean; 
+/**
+ * The user's `AppleFnUsageType` before the fix; `None` when it was unset.
+ */
+globe_key_previous: number | null; 
+/**
+ * Accessibility was granted at least once (DESK-13). macOS drops the
+ * grant when an unsigned build's signature changes (an update) while
+ * System Settings still shows it on; this tells that apart from a
+ * first run.
+ */
+accessibility_granted_once: boolean }
 /**
  * The settings and their locks, as the settings screens get them.
  */

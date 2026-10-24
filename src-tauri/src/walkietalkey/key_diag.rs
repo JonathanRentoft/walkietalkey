@@ -19,59 +19,11 @@ mod imp {
     use log::{info, warn};
     use tauri::AppHandle;
 
-    const HID_EVENT_TAP: u32 = 0;
-    const SESSION_EVENT_TAP: u32 = 1;
-    const HEAD_INSERT: u32 = 0;
-    const TAIL_APPEND: u32 = 1;
-    const OPTION_DEFAULT: u32 = 0;
-    const KEY_DOWN: u32 = 10;
-    const KEY_UP: u32 = 11;
-    const FLAGS_CHANGED: u32 = 12;
-    const TAP_DISABLED_BY_TIMEOUT: u32 = 0xFFFF_FFFE;
-    const TAP_DISABLED_BY_USER_INPUT: u32 = 0xFFFF_FFFF;
-    const FIELD_KEYCODE: u32 = 9;
-    const FLAG_SECONDARY_FN: u64 = 0x0080_0000;
-    /// Shift, Control, Option, Command.
-    const FLAG_OTHER_MODIFIERS: u64 = 0x0002_0000 | 0x0004_0000 | 0x0008_0000 | 0x0010_0000;
-    const KEYCODE_FUNCTION: i64 = 0x3F;
-    const KEYCODE_GLOBE: i64 = 0xB3;
-
-    type Callback = extern "C" fn(*mut c_void, u32, *mut c_void, *mut c_void) -> *mut c_void;
-
-    #[link(name = "CoreGraphics", kind = "framework")]
-    extern "C" {
-        fn CGEventTapCreate(
-            tap: u32,
-            place: u32,
-            options: u32,
-            events_of_interest: u64,
-            callback: Callback,
-            user_info: *mut c_void,
-        ) -> *mut c_void;
-        fn CGEventTapEnable(tap: *mut c_void, enable: bool);
-        fn CGEventGetFlags(event: *mut c_void) -> u64;
-        fn CGEventGetIntegerValueField(event: *mut c_void, field: u32) -> i64;
-        fn CGPreflightListenEventAccess() -> bool;
-        fn CGPreflightPostEventAccess() -> bool;
-    }
-
-    #[link(name = "CoreFoundation", kind = "framework")]
-    extern "C" {
-        fn CFMachPortCreateRunLoopSource(
-            allocator: *const c_void,
-            port: *mut c_void,
-            order: isize,
-        ) -> *mut c_void;
-        fn CFRunLoopGetCurrent() -> *mut c_void;
-        fn CFRunLoopAddSource(rl: *mut c_void, source: *mut c_void, mode: *const c_void);
-        fn CFRunLoopRun();
-        static kCFRunLoopCommonModes: *const c_void;
-    }
-
-    #[link(name = "ApplicationServices", kind = "framework")]
-    extern "C" {
-        fn AXIsProcessTrusted() -> bool;
-    }
+    // The event-tap calls and constants are shared with the fn tap.
+    use crate::walkietalkey::fn_key::ffi::*;
+    use crate::walkietalkey::fn_key::{
+        FLAG_FN as FLAG_SECONDARY_FN, FLAG_OTHER_MODIFIERS, KEYCODE_FUNCTION, KEYCODE_GLOBE,
+    };
 
     struct Tap {
         name: &'static str,

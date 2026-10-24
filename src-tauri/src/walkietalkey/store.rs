@@ -36,16 +36,56 @@ fn managed_values() -> ManagedValues {
 
 /// The user's own WalkieTalkey settings, without the managed overlay.
 fn user_settings(app: &AppHandle) -> WtSettings {
+    stored_user_settings(app).0
+}
+
+/// The user's own settings and whether the store had any yet (a fresh
+/// install has none: its defaults need no migration).
+pub fn stored_user_settings(app: &AppHandle) -> (WtSettings, bool) {
     let Ok(store) = app.store(crate::portable::store_path(SETTINGS_STORE_PATH)) else {
-        return WtSettings::default();
+        return (WtSettings::default(), false);
     };
     match store.get(STORE_KEY) {
-        Some(value) => serde_json::from_value(value).unwrap_or_else(|e| {
-            warn!("Stored WalkieTalkey settings could not be read ({e}); using defaults");
-            WtSettings::default()
-        }),
-        None => WtSettings::default(),
+        Some(value) => (
+            serde_json::from_value(value).unwrap_or_else(|e| {
+                warn!("Stored WalkieTalkey settings could not be read ({e}); using defaults");
+                WtSettings::default()
+            }),
+            true,
+        ),
+        None => (WtSettings::default(), false),
     }
+}
+
+/// Changes the fields the app keeps itself ([`keep_app_fields`]), which a
+/// save from the UI never touches.
+pub fn update_internal<F>(app: &AppHandle, change: F) -> Result<(), String>
+where
+    F: FnOnce(&mut WtSettings),
+{
+    let mut settings = user_settings(app);
+    change(&mut settings);
+    write_user_settings(app, &settings)
+}
+
+fn write_user_settings(app: &AppHandle, settings: &WtSettings) -> Result<(), String> {
+    let store = app
+        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
+        .map_err(|e| e.to_string())?;
+    store.set(
+        STORE_KEY,
+        serde_json::to_value(settings).map_err(|e| e.to_string())?,
+    );
+    Ok(())
+}
+
+/// Puts back the fields only the app writes (the migration marker and the
+/// Globe key's saved value), so a UI holding older settings cannot undo them.
+fn keep_app_fields(new: &mut WtSettings, previous: &WtSettings) {
+    new.settings_version = previous.settings_version;
+    new.globe_key_fixed = previous.globe_key_fixed;
+    new.globe_key_previous = previous.globe_key_previous;
+    new.accessibility_granted_once = previous.accessibility_granted_once;
 }
 
 /// The settings in effect, and what the organisation locked.
@@ -122,13 +162,8 @@ pub fn update(app: &AppHandle, mut new: WtSettings) -> Result<WtSettingsView, St
     let previous = user_settings(app);
     let (_, applied) = effective(app);
     restore_locked(&mut new, &previous, &applied.locked);
-    let store = app
-        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
-        .map_err(|e| e.to_string())?;
-    store.set(
-        STORE_KEY,
-        serde_json::to_value(&new).map_err(|e| e.to_string())?,
-    );
+    keep_app_fields(&mut new, &previous);
+    write_user_settings(app, &new)?;
     Ok(view(app))
 }
 
@@ -164,6 +199,28 @@ mod tests {
         restore_locked(&mut new, &previous, &["relay_url".to_string()]);
         assert_eq!(new.relay_url, previous.relay_url, "locked");
         assert_eq!(new.cleanup_mode, CleanupMode::Always, "not locked");
+    }
+
+    #[test]
+    fn a_save_from_the_ui_keeps_the_apps_own_fields() {
+        let previous = WtSettings {
+            globe_key_fixed: true,
+            globe_key_previous: Some(1),
+            accessibility_granted_once: true,
+            ..WtSettings::default()
+        };
+        // The UI read its copy before "Ret det for mig" ran.
+        let mut new = WtSettings {
+            pill_hidden: true,
+            settings_version: 0,
+            ..WtSettings::default()
+        };
+        keep_app_fields(&mut new, &previous);
+        assert!(new.globe_key_fixed);
+        assert_eq!(new.globe_key_previous, Some(1));
+        assert!(new.accessibility_granted_once);
+        assert_eq!(new.settings_version, previous.settings_version);
+        assert!(new.pill_hidden, "the user's change is kept");
     }
 
     #[test]

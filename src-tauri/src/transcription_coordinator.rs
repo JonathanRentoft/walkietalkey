@@ -250,6 +250,17 @@ impl CoordinatorState {
         self.pending_release.as_ref().map(|p| p.deadline)
     }
 
+    /// WalkieTalkey (DESK-22): the binding of a recording that outlives its
+    /// key (hands-free), if one is running.
+    fn locked_recording(&self) -> Option<&str> {
+        match &self.stage {
+            Stage::Recording(id) if self.hold.as_ref().is_some_and(|h| h.locked) => {
+                Some(id.as_str())
+            }
+            _ => None,
+        }
+    }
+
     /// Whether the current session (recording, or remembered for the drain)
     /// outlives the key, so releases are ignored and the next press ends it.
     fn is_locked(&self) -> bool {
@@ -356,8 +367,12 @@ impl CoordinatorState {
                 Stage::Idle => {
                     // Toggle never ends on a release: locked from the start.
                     let locked = input.mode == ShortcutActivation::Toggle;
+                    // WalkieTalkey (DESK-23): a push-to-talk hold that ends
+                    // before the pill appears is dropped, so it stays silent.
                     let discard_below = if input.mode == ShortcutActivation::PushToTalk {
-                        input.hold_threshold
+                        input
+                            .hold_threshold
+                            .min(crate::walkietalkey::keys::REVEAL_DELAY)
                     } else {
                         Duration::ZERO
                     };
@@ -587,6 +602,9 @@ impl TranscriptionCoordinator {
                 let mut state = CoordinatorState::new();
 
                 loop {
+                    // WalkieTalkey (DESK-22): a recording that turns hands-free
+                    // (a tap, or a locked start) shows its pill at once.
+                    let was_locked = state.locked_recording().is_some();
                     let cmd = if let Some(deadline) = state.grace_deadline() {
                         match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
                             Ok(cmd) => cmd,
@@ -594,6 +612,7 @@ impl TranscriptionCoordinator {
                                 if let Some(effect) = state.on_grace_expired() {
                                     run_effect(&app, &mut state, effect);
                                 }
+                                notice_hands_free(&app, &state, was_locked);
                                 continue;
                             }
                             Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -625,6 +644,7 @@ impl TranscriptionCoordinator {
                             }
                         }
                     }
+                    notice_hands_free(&app, &state, was_locked);
                 }
                 debug!("Transcription coordinator exited");
             }));
@@ -717,6 +737,17 @@ impl TranscriptionCoordinator {
         if self.tx.send(Command::ProcessingFinished).is_err() {
             warn!("Transcription coordinator channel closed");
         }
+    }
+}
+
+/// WalkieTalkey (DESK-22): tells the key rules when a recording has just
+/// become hands-free.
+fn notice_hands_free(app: &AppHandle, state: &CoordinatorState, was_locked: bool) {
+    if was_locked {
+        return;
+    }
+    if let Some(binding_id) = state.locked_recording() {
+        crate::walkietalkey::keys::hands_free(app, binding_id);
     }
 }
 
@@ -1542,6 +1573,85 @@ mod tests {
             Some(Effect::Stop { .. })
         ));
         assert_eq!(state.stage, Stage::Processing);
+    }
+
+    /// WalkieTalkey (DESK-22): a tap turns the recording hands-free, which
+    /// the coordinator thread announces; a long hold never does.
+    #[test]
+    fn hold_or_toggle_tap_is_reported_as_hands_free() {
+        let mode = ShortcutActivation::HoldOrToggle;
+        let threshold = |is_pressed| InputEvent {
+            hold_threshold: ms(500),
+            ..input(mode, is_pressed)
+        };
+        let mut state = CoordinatorState::new();
+        let t0 = Instant::now();
+        state.on_input(threshold(true), t0);
+        assert_eq!(state.locked_recording(), None, "held so far");
+        // Released within 0.5 s: hands-free.
+        state.on_input(threshold(false), t0 + ms(450));
+        assert!(state.on_grace_expired().is_none());
+        assert_eq!(state.locked_recording(), Some(BINDING));
+        // The next tap stops and transcribes.
+        assert!(matches!(
+            state.on_input(threshold(true), t0 + ms(4000)),
+            Some(Effect::Stop { .. })
+        ));
+        assert_eq!(state.locked_recording(), None);
+
+        // Held longer than 0.5 s: push-to-talk, never hands-free.
+        let mut state = CoordinatorState::new();
+        state.on_input(threshold(true), t0);
+        state.on_input(threshold(false), t0 + ms(700));
+        assert!(matches!(
+            state.on_grace_expired(),
+            Some(Effect::Stop { .. })
+        ));
+        assert_eq!(state.locked_recording(), None);
+    }
+
+    /// WalkieTalkey (DESK-22): quick taps are no longer discarded in the
+    /// default mode; a tap queued while busy starts hands-free at the drain.
+    #[test]
+    fn a_tap_queued_while_busy_starts_hands_free() {
+        let mode = ShortcutActivation::HoldOrToggle;
+        let mut state = CoordinatorState::new();
+        let t0 = Instant::now();
+        hold_or_toggle_into_processing(&mut state, t0);
+        state.on_input(input(mode, true), t0 + ms(2000));
+        state.on_input(input(mode, false), t0 + ms(2100));
+        assert!(state.on_grace_expired().is_none());
+        assert!(matches!(
+            state.on_processing_finished(),
+            Some(Effect::Start { .. })
+        ));
+        assert_eq!(state.locked_recording(), Some(BINDING));
+    }
+
+    /// WalkieTalkey (DESK-23): push-to-talk drops a hold that ended before
+    /// the pill appears (300 ms), whatever the hold-or-tap threshold.
+    #[test]
+    fn push_to_talk_discards_below_the_reveal_delay_only() {
+        let mode = ShortcutActivation::PushToTalk;
+        let long_threshold = |is_pressed| InputEvent {
+            hold_threshold: ms(500),
+            ..input(mode, is_pressed)
+        };
+        let mut state = CoordinatorState::new();
+        let t0 = Instant::now();
+        state.on_input(long_threshold(true), t0);
+        state.on_input(long_threshold(false), t0 + ms(400));
+        assert!(
+            matches!(state.on_grace_expired(), Some(Effect::Stop { .. })),
+            "a 400 ms push-to-talk hold is transcribed"
+        );
+        let mut state = CoordinatorState::new();
+        state.on_input(long_threshold(true), t0);
+        state.on_input(long_threshold(false), t0 + ms(200));
+        assert!(matches!(
+            state.on_grace_expired(),
+            Some(Effect::Discard { .. })
+        ));
     }
 
     /// Hold-or-toggle and toggle never discard: their short presses keep
