@@ -614,6 +614,13 @@ jobs:
             fi
           )
 
+      # WalkieTalkey (SEC-11, run 5): the Mac app never calls the keychain, so no update can make
+      # macOS ask for the login password (every build has a new code hash without a Team ID).
+      - name: No keychain calls in the Mac app
+        if: contains(inputs.platform, 'macos')
+        shell: bash
+        run: scripts/walkietalkey/check-no-keychain.sh src-tauri/target/${{ inputs.target }}/${{ steps.build-profile.outputs.profile }}/bundle/macos/*.app
+
       - name: Upload artifacts (macOS)
         if: inputs.upload-artifacts && contains(inputs.platform, 'macos')
         uses: actions/upload-artifact@v7
