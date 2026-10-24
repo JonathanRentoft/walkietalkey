@@ -4,7 +4,8 @@ import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
 import { CONTACT_EMAIL, CONTACT_URL, DISCUSSIONS_URL, PAGES } from "../lib/site";
 
-const faq: [string, string][] = [
+/** [question, answer, id]: an id makes an answer linkable, and a link to it opens it. */
+const faq: [string, string, string?][] = [
   /* from ForsideKomplet */
   ["Er det virkelig gratis?", "Ja. Koden er open source under Apache-2.0, og appen koster ikke noget, heller ikke for virksomheder. Det eneste, der koster, er hjælp til opsætning, hvis I vil have den."],
   ["Hvor bliver min stemme af?", "Den bliver til tekst på din egen computer. Taler du i telefonen, sendes lyden krypteret til din computer. Relæet imellem kan ikke læse den."],
@@ -19,6 +20,8 @@ const faq: [string, string][] = [
   ["Hvorfor advarer min computer, når jeg åbner appen?", "De første udgaver er endnu ikke signeret af Apple og Microsoft. Under Hent står, hvordan du åbner appen alligevel. Det skal kun gøres første gang."],
   /* TODO(copy): tap or hold (run 2) */
   ["Skal jeg holde tasten nede hele tiden?", "Nej. Du kan holde fn nede, tale og slippe. Eller du kan trykke én gang, tale frit og trykke igen, når du er færdig. På Windows er tasten højre Ctrl."],
+  /* TODO(copy): Secure Input; the desktop app's warning links here (run 3). macOS names must match the Danish macOS UI. */
+  ["Hvorfor virker tasten ikke lige nu på min Mac?", "Når et felt til en adgangskode er aktivt, eller et program som Terminal har Sikker tastaturindtastning slået til, slår macOS Secure Input til. Så kan WalkieTalkey ikke se tasten. Advarslen i WalkieTalkey siger, hvilket program det er, når macOS fortæller det. Luk feltet eller programmet, eller slå Sikker tastaturindtastning fra i programmets menu. Hjælper det ikke, så log ud og ind igen.", "secure-input"],
   ["Hvilke telefoner virker det på?", "iPhone med iOS 17 eller nyere og Android 10 eller nyere med Chrome."],
   ["Hvad gør AI-oprydningen?", "Den er valgfri og slået fra. Slår du den til, retter en sprogmodel teksten, fx fjerner selvrettelser som \"onsdag, nej, torsdag\". Teksten, ikke lyden, går til den udbyder, du vælger, med din egen nøgle, og du kan se præcis, hvad der blev sendt. På en Mac med Apple Silicon og macOS 26 kan den køre på selve computeren."],
   ["Hvad sker der, hvis jeg mister telefonen?", "Tryk Fjern ud for telefonen under Indstillinger › Telefon på computeren. Så kan den ikke sende mere, og dine andre telefoner virker som før."],
@@ -31,9 +34,18 @@ const faq: [string, string][] = [
   <PageHero current="faq" eyebrow="Spørgsmål" title="Det, folk plejer at spørge om" lead="Finder du ikke svaret her, så skriv til os." />
   <main class="container page-body" id="indhold">
     <div class="prose faq-list">
-      {faq.map(([q, a], i) => <details open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}
+      {faq.map(([q, a, id], i) => <details id={id} open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}
       <!-- TODO(copy) -->
       <p class="muted" style="margin-top: var(--space-8)">Mere om <a href={PAGES.privacy.path}>privatliv</a>, <a href={PAGES.security.path}>sikkerhed</a> og <a href={PAGES.business.path}>virksomheder</a>. Skriv til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>, eller stil dit spørgsmål i <a href={DISCUSSIONS_URL}>Discussions på GitHub</a>, så andre også kan finde svaret.</p>
     </div>
   </main>
+  <script is:inline>
+    // A link to one answer (e.g. #secure-input from the desktop app) opens it.
+    const opened = () => {
+      const el = location.hash && document.getElementById(location.hash.slice(1));
+      if (el instanceof HTMLDetailsElement) el.open = true;
+    };
+    opened();
+    addEventListener("hashchange", opened);
+  </script>
 </Base>

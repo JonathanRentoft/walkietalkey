@@ -490,7 +490,7 @@
       "updateChecks": {
         "label": "Check for Updates",
         "description": "Automatically check for new versions of WalkieTalkey",
-        "lockedDescription": "Disabled by system configuration (HANDY_DISABLE_UPDATER)"
+        "lockedDescription": "Disabled by system configuration (WALKIETALKEY_DISABLE_UPDATER)"
       },
       "whatsNewPreview": {
         "title": "Preview What's New",
@@ -1014,7 +1014,7 @@
       "space": "Space used",
       "spaceDesc": "The speech models on this computer.",
       "others": "Other models",
-      "othersDesc": "Edda is made for Danish. Ekko v1 Tiny is faster on slow computers. The others are Handy's models.",
+      "othersDesc": "Edda is made for Danish. Ekko v1 Tiny is faster on slow computers. The others are general models from transcribe.cpp.",
       "noOthers": "No other models.",
       "onDisk": "downloaded",
       "use": "Use",
@@ -1095,7 +1095,7 @@
       "credits": "Licences and credits",
       "credit": {
         "walkietalkey": "Apache-2.0. Free for everyone, companies included.",
-        "handy": "WalkieTalkey builds on Handy by CJ Pais. MIT.",
+        "handy": "Parts of the desktop app's code. CJ Pais, MIT.",
         "transcribe": "Runs the speech models on the computer, together with ggml. MIT.",
         "edda": "Danish speech model from the Alexandra Institute, built on OpenAI Whisper large-v3-turbo. Apache-2.0.",
         "ekkoPnc": "Punctuation from RyeAI. CC BY 4.0.",

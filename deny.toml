@@ -43,11 +43,11 @@ license-files = [
 # vulnerabilities fail the build (cargo audit runs too).
 unmaintained = "workspace"
 yanked = "warn"
-# Accepted until Tauri moves on (re-check at every Handy sync):
+# Accepted until Tauri moves on (re-check when Tauri is updated):
 ignore = [
-  # gtk-layer-shell is Handy's Linux overlay; Linux is not a supported
+  # gtk-layer-shell is the desktop app's Linux overlay; Linux is not a supported
   # WalkieTalkey platform (spec 3.2).
-  { id = "RUSTSEC-2024-0422", reason = "Linux-only dependency from Handy; Linux is not supported" },
+  { id = "RUSTSEC-2024-0422", reason = "Linux-only dependency of the overlay; Linux is not supported" },
   # quick-xml 0.38 through plist through tauri: parses only the app's own
   # property lists, never input from others.
   { id = "RUSTSEC-2026-0194", reason = "quick-xml via tauri's plist; only the app's own plists are parsed" },

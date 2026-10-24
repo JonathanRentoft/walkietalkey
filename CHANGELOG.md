@@ -20,7 +20,7 @@ Den første udgave af WalkieTalkey: dansk tale til tekst på din egen computer, 
 
 **In English**
 
-The first WalkieTalkey release, built on Handy: Danish dictation on your own computer, free and open source.
+The first WalkieTalkey release: Danish dictation on your own computer, free and open source.
 
 - Hold `fn` on a Mac (Right Ctrl on Windows), talk and release; or tap once to talk hands-free and tap again to stop. WalkieTalkey only needs Accessibility on the Mac, and offers to stop the Globe key's own action with one button.
 - Edda v0.2 as the Danish speech model, converted to GGUF and checked against the original, downloaded by the app from the `models-v1` release; Ekko v1 Tiny as the fast model for slower computers; Ekko PnC punctuation on the computer.

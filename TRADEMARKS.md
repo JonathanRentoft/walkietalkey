@@ -12,7 +12,8 @@ let you use the name or the logo.
 - Do not use the name or the logo in a way that suggests your project, product
   or service is WalkieTalkey or is endorsed by the WalkieTalkey project.
 
-WalkieTalkey is built on Handy (MIT). Handy's name and logo belong to its
-authors and are not used by WalkieTalkey.
+WalkieTalkey includes MIT-licensed code from Handy (see NOTICE); Handy's name
+and logo (not covered by its MIT licence) belong to its authors and are not used
+by WalkieTalkey.
 
 Questions: open a discussion on GitHub.

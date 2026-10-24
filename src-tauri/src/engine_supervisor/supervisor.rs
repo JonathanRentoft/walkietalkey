@@ -1124,8 +1124,8 @@ impl Worker {
         // this at the built app instead.
         #[cfg(test)]
         let exe = PathBuf::from(
-            std::env::var_os("HANDY_TRANSCRIBE_WORKER_EXE")
-                .expect("set HANDY_TRANSCRIBE_WORKER_EXE"),
+            std::env::var_os("WALKIETALKEY_TRANSCRIBE_WORKER_EXE")
+                .expect("set WALKIETALKEY_TRANSCRIBE_WORKER_EXE"),
         );
         #[cfg(not(test))]
         let exe = worker_exe()?;
@@ -1369,7 +1369,7 @@ fn record_launched_exe() {
                 let id = file_id(&path)?;
                 Ok((path, id))
             })
-            .inspect_err(|e| warn!("Could not identify Handy's executable: {}", e))
+            .inspect_err(|e| warn!("Could not identify WalkieTalkey's executable: {}", e))
             .ok()
     });
 }
@@ -1499,8 +1499,8 @@ mod unit_tests {
 /// need a debug worker exe (fault injection is compiled out of release), and
 /// the stream tests a model that can stream.
 /// Run with:
-/// `HANDY_TRANSCRIBE_WORKER_EXE=target/debug/handy HANDY_TEST_MODEL=<gguf>
-///  HANDY_TEST_WAV=<16 kHz mono wav> cargo test --lib engine_supervisor --
+/// `WALKIETALKEY_TRANSCRIBE_WORKER_EXE=target/debug/handy WALKIETALKEY_TEST_MODEL=<gguf>
+///  WALKIETALKEY_TEST_WAV=<16 kHz mono wav> cargo test --lib engine_supervisor --
 ///  --ignored --nocapture --test-threads=1`
 #[cfg(test)]
 mod tests {
@@ -1511,12 +1511,12 @@ mod tests {
     }
 
     fn test_pcm() -> Vec<f32> {
-        crate::audio_toolkit::read_wav_samples(env_path("HANDY_TEST_WAV")).expect("read wav")
+        crate::audio_toolkit::read_wav_samples(env_path("WALKIETALKEY_TEST_WAV")).expect("read wav")
     }
 
     fn spec() -> LoadSpec {
         LoadSpec {
-            path: env_path("HANDY_TEST_MODEL"),
+            path: env_path("WALKIETALKEY_TEST_MODEL"),
             backend: Backend::Auto,
             device: DeviceSelector::Auto,
         }
@@ -1526,18 +1526,18 @@ mod tests {
     fn set_fault(fault: Option<&str>, gpu_only: bool) {
         let marker = std::env::temp_dir().join("handy-worker-fault-once");
         let _ = std::fs::remove_file(&marker);
-        std::env::remove_var("HANDY_WORKER_FAULT_ONCE");
-        std::env::remove_var("HANDY_WORKER_FAULT_GPU_ONLY");
+        std::env::remove_var("WALKIETALKEY_WORKER_FAULT_ONCE");
+        std::env::remove_var("WALKIETALKEY_WORKER_FAULT_GPU_ONLY");
         match fault {
             Some(fault) => {
-                std::env::set_var("HANDY_WORKER_FAULT", fault);
+                std::env::set_var("WALKIETALKEY_WORKER_FAULT", fault);
                 if gpu_only {
-                    std::env::set_var("HANDY_WORKER_FAULT_GPU_ONLY", "1");
+                    std::env::set_var("WALKIETALKEY_WORKER_FAULT_GPU_ONLY", "1");
                 } else {
-                    std::env::set_var("HANDY_WORKER_FAULT_ONCE", marker);
+                    std::env::set_var("WALKIETALKEY_WORKER_FAULT_ONCE", marker);
                 }
             }
-            None => std::env::remove_var("HANDY_WORKER_FAULT"),
+            None => std::env::remove_var("WALKIETALKEY_WORKER_FAULT"),
         }
     }
 

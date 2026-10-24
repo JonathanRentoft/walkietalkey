@@ -58,12 +58,12 @@ bun run --cwd site test
 
 How the parts fit together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The full behaviour is specified in [docs/SPEC.md](docs/SPEC.md); the models in [docs/MODELS.md](docs/MODELS.md). Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Credits
+## Credits and licences
 
-- [Handy](https://github.com/cjpais/Handy) by CJ Pais (MIT): WalkieTalkey is a fork of Handy and keeps its structure, so improvements can flow both ways.
 - [Edda v0.2](https://huggingface.co/danish-foundation-models/edda-v0.2) (Alexandra Institute, Danish Foundation Models), [Ekko v1 Tiny](https://huggingface.co/RyeAI/ekko-v1-tiny) and [Ekko PnC](https://huggingface.co/RyeAI/ekko-pnc) (RyeAI), trained on CoRal and other Danish speech: see [NOTICE](NOTICE) and [docs/MODELS.md](docs/MODELS.md) for licences and training data.
+- [Handy](https://github.com/cjpais/Handy) by CJ Pais, MIT licence: parts of the desktop app's code ([licenses/Handy-MIT.txt](licenses/Handy-MIT.txt)).
 - [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp), [ONNX Runtime](https://onnxruntime.ai/), [Tauri](https://tauri.app/) and [Cloudflare Workers](https://workers.cloudflare.com/).
 
 ## Licence
 
-Apache-2.0, see [LICENSE](LICENSE). Files from Handy remain available under MIT as well ([licenses/Handy-MIT.txt](licenses/Handy-MIT.txt)). The name WalkieTalkey and the logo are not covered by the code licence: [TRADEMARKS.md](TRADEMARKS.md).
+Apache-2.0, see [LICENSE](LICENSE). Third-party code and models keep their own licences ([NOTICE](NOTICE), [licenses/](licenses/)). The name WalkieTalkey and the logo are not covered by the code licence: [TRADEMARKS.md](TRADEMARKS.md).

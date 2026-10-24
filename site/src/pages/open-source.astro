@@ -1,5 +1,5 @@
 ---
-/* SITE-02 Open source: Apache-2.0, based on Handy (MIT), the credits of spec 11, and the repository. */
+/* SITE-02 Open source: Apache-2.0, the third-party licences of spec 11 and 14.2, and the repository. Handy is a licence credit in the table only (DESK-01, run 3). */
 import { ShinyButton } from "@walkietalkey/ui";
 import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
@@ -9,7 +9,7 @@ const NVIDIA_OML_URL = "https://www.nvidia.com/en-us/agreements/enterprise-softw
 
 // TODO(copy): what each project does for WalkieTalkey
 const credits: [string, string, string, string][] = [
-  ["Handy", "MIT, Copyright (c) CJ Pais", "Appen bygger på Handy: optagelse med en tast, lokale talemodeller, indsættelse og historik.", "https://github.com/cjpais/Handy"],
+  ["Handy", "MIT, Copyright (c) CJ Pais", "Dele af skrivebordsappens kode: optagelse med en tast, lokale talemodeller, indsættelse og historik.", "https://github.com/cjpais/Handy"],
   ["transcribe.cpp og ggml", "MIT", "Motoren, der kører talemodellen på din computer.", "https://github.com/handy-computer/transcribe.cpp"],
   ["Edda v0.2", "Apache-2.0, Alexandra Instituttet", "Den danske talemodel, bygget på Whisper large-v3-turbo (MIT, OpenAI) og trænet på omkring 2.600 timers dansk tale.", "https://huggingface.co/danish-foundation-models/edda-v0.2"],
   /* TODO(copy): the Ekko v1 Tiny row (review finding 19; licences as in models/ekko-v1-tiny/README.md) */
@@ -29,10 +29,10 @@ const credits: [string, string, string, string][] = [
     <div class="prose">
       <h2>Licensen</h2>
       <p>WalkieTalkey er open source under <a href={LICENSE_URL}>Apache-2.0</a>. Du må bruge, ændre og dele koden, også i en virksomhed og også kommercielt, så længe du beholder licensen og meddelelserne om ophavsret.</p>
-      <p>WalkieTalkey bygger på Handy, som er under MIT-licensen. Handys licenstekst ligger uændret i projektet, og de filer, vi har overtaget fra Handy, er stadig også tilgængelige under MIT.</p>
+      <p>Kode og modeller fra andre beholder deres egne licenser. Licensteksterne ligger uændret i projektet, og tabellen herunder viser, hvilke det er.</p>
       <p>Navnet WalkieTalkey og logoet er ikke omfattet af licensen. Se <a href={PAGES.trademark.path}>Varemærke</a>.</p>
 
-      <h2>Det bygger vi på</h2>
+      <h2>Kode og modeller fra andre</h2>
     </div>
     <div class="table">
       <table class="credits">

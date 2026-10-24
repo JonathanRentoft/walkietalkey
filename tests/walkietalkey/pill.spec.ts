@@ -1,4 +1,4 @@
-// The DictationPill in Handy's overlay window (DESK-24, DESK-55, 6.17).
+// The DictationPill in the overlay window (DESK-24, DESK-55, 6.17).
 import { expect, test, type Page } from "@playwright/test";
 import { calls, emit, installMock, type MockOptions } from "./mock";
 

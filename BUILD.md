@@ -1,6 +1,6 @@
 # Build Instructions
 
-This guide covers how to set up the development environment and build WalkieTalkey from source. WalkieTalkey v1 ships for macOS and Windows; the Linux notes are Handy's, kept for upstream merges, and Linux builds are not supported yet.
+This guide covers how to set up the development environment and build WalkieTalkey from source. WalkieTalkey ships for macOS and Windows. Linux builds work but are not supported yet; the Linux notes below are for people who try.
 
 ## Prerequisites
 
@@ -131,33 +131,33 @@ rm -f key.pem id.p12; cd - >/dev/null
 
 Then build with `scripts/walkietalkey/build-local-mac.sh`. It signs with that identity when it exists (otherwise the build stays ad-hoc) and prints the designated requirement. Release builds from CI stay ad-hoc until the project has an Apple Developer ID; after such an update the app notices that macOS dropped Accessibility and offers to repair it.
 
-## Linux Install (from source; Handy's notes, not supported by WalkieTalkey v1)
+## Linux Install (from source; not supported yet)
 
-The raw binary (`src-tauri/target/release/handy`) cannot run standalone — it needs Tauri resource files (tray icons, sounds, VAD model) to be co-located at the expected path.
+The raw binary (`src-tauri/target/release/walkietalkey`) cannot run standalone — it needs Tauri resource files (tray icons, sounds, VAD model) to be co-located at the expected path.
 
 **Install from the deb bundle** (works on any Linux distro):
 
 ```bash
 cd /tmp
-ar x /path/to/Handy/src-tauri/target/release/bundle/deb/Handy_*_amd64.deb data.tar.gz
+ar x /path/to/walkietalkey/src-tauri/target/release/bundle/deb/WalkieTalkey_*_amd64.deb data.tar.gz
 tar xzf data.tar.gz
-sudo cp usr/bin/handy /usr/bin/
+sudo cp usr/bin/walkietalkey /usr/bin/
 sudo cp -a usr/lib/. /usr/lib/
 sudo cp -r usr/share/icons/hicolor/* /usr/share/icons/hicolor/
-sudo cp usr/share/applications/Handy.desktop /usr/share/applications/
+sudo cp usr/share/applications/WalkieTalkey.desktop /usr/share/applications/
 ```
 
-The runtime libraries live in the app-private `/usr/lib/Handy/` (on the binary's rpath), so no `ldconfig` step is needed.
+The runtime libraries live in the app-private `/usr/lib/WalkieTalkey/` (on the binary's rpath), so no `ldconfig` step is needed.
 
 After subsequent rebuilds, copy the binary and any refreshed runtime libraries:
 
 ```bash
-sudo cp src-tauri/target/release/handy /usr/bin/
-sudo mkdir -p /usr/lib/Handy
-sudo cp -a src-tauri/transcribe-libs/. /usr/lib/Handy/
+sudo cp src-tauri/target/release/walkietalkey /usr/bin/
+sudo mkdir -p /usr/lib/WalkieTalkey
+sudo cp -a src-tauri/transcribe-libs/. /usr/lib/WalkieTalkey/
 ```
 
-Resources only need re-copying if they change upstream (new icons, sounds, models, etc.).
+Resources only need re-copying if they change (new icons, sounds, models, etc.).
 
 ## Troubleshooting
 
@@ -190,9 +190,6 @@ codesign -dr - /Applications/WalkieTalkey.app 2>&1
 An ad-hoc requirement contains a `cdhash`; a changed requirement confirms the rebuild is
 not covered by the old grant. The reset procedure does not require this check.
 
-See [issue #1618](https://github.com/cjpais/Handy/issues/1618) for the related onboarding
-and stale-permission report.
-
 ### AppImage build fails on Arch / rolling-release distros
 
 `linuxdeploy` bundles its own `strip` binary which is too old to process system libraries built with newer toolchains on rolling-release distros (Arch, CachyOS, Manjaro, EndeavourOS).
@@ -200,7 +197,7 @@ and stale-permission report.
 The error from Tauri:
 
 ```
-Bundling Handy_*_amd64.AppImage
+Bundling WalkieTalkey_*_amd64.AppImage
 failed to bundle project `failed to run linuxdeploy`
 ```
 
@@ -209,7 +206,7 @@ Tauri swallows the real linuxdeploy error. To see it, run linuxdeploy manually:
 ```bash
 cd src-tauri/target/release/bundle/appimage
 ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
-  --appdir Handy.AppDir --plugin gtk --output appimage
+  --appdir WalkieTalkey.AppDir --plugin gtk --output appimage
 ```
 
 **Workaround:** The binary, deb, and rpm bundles all build fine — only the AppImage step fails. To skip it:

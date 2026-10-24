@@ -1,6 +1,6 @@
 // WalkieTalkey's main window: onboarding on first run (spec 6.2), then the
-// settings and history (6.12, 6.14). Replaces Handy's App as the entry point
-// (src/main.tsx); Handy's App.tsx stays untouched for upstream merges.
+// settings and history (6.12, 6.14). The entry point (src/main.tsx); the
+// older App.tsx is no longer used.
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import "@walkietalkey/ui/styles.css";

@@ -1,8 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { platform } from "@tauri-apps/plugin-os";
-// WalkieTalkey replaces Handy's App (onboarding, sidebar and settings) with
-// its own screens (DESK-05); Handy's App.tsx stays in the tree for merges.
+// The window shows WalkieTalkey's own screens (DESK-05); the older App.tsx
+// (onboarding, sidebar and settings) is no longer used.
 import "./App.css";
 import App from "./walkietalkey/App";
 import { installCompatShims } from "./lib/compat";

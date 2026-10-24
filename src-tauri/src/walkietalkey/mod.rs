@@ -1,6 +1,5 @@
-//! WalkieTalkey's own desktop features, kept out of Handy's modules so monthly
-//! upstream merges stay small (DESK-05). Handy's code calls in through a few
-//! narrow hooks: `startup` from `initialize_core_logic`, and the settings
+//! WalkieTalkey's own desktop features, in their own modules apart from the
+//! desktop core (DESK-05). The core calls in through a few narrow hooks: `startup` from `initialize_core_logic`, and the settings
 //! overlay from `settings::get_settings`.
 
 use std::sync::Arc;

@@ -98,10 +98,12 @@ Also for the owner:
 - TODO(copy): strings written by the backend and shown as they come: the
   DESK-31 speed reason (src-tauri/src/walkietalkey/speed.rs), "en telefon
   uden navn", and the notification titles (notify.rs).
-- Handy's own components under Avanceret (microphone, log level, keyboard
-  diagnostic, paste delays) keep Handy's Danish strings in \`settings.*\`.
+- The desktop core's components under Avanceret (microphone, log level,
+  keyboard diagnostic, paste delays) keep their Danish strings in \`settings.*\`.
 - TODO(copy): \`common.reset\` ("Nulstil"), the screen reader name added to
-  Handy's icon-only reset button.
+  the icon-only reset button.
+- TODO(copy): the Secure Input answer on walkietalkey.com/spoergsmaal, which
+  the app's warning links to ("Sådan løser du det", run 3).
 
 | Key | Danish | Status |
 |---|---|---|

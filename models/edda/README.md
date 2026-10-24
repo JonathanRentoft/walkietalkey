@@ -24,7 +24,7 @@ Danish speech recognition model **Edda v0.2** by the Alexandra Institute,
 converted to GGUF for [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp)
 and quantised to Q8_0. It is the default speech model of WalkieTalkey, free
 open-source Danish dictation, and loads in any app built on transcribe.cpp 0.4
-or newer (for example Handy, from its custom models folder).
+or newer.
 
 ## Original
 
@@ -87,7 +87,7 @@ Checked on this conversion before anything else (`models/edda/validate.sh`):
   the F16 GGUF on CPU against the Transformers 5.6.1 reference (fp32),
   tensor by tensor, on two Danish FLEURS clips and transcribe.cpp's `jfk.wav`.
   The Danish transcripts match the reference **exactly**. Stock
-  `openai/whisper-large-v3-turbo` (Handy's official F16 GGUF) run through the
+  `openai/whisper-large-v3-turbo` (the official F16 GGUF from transcribe.cpp's model catalog) run through the
   identical pipeline on the same machine exceeds transcribe.cpp's published
   tolerance budget on the same tensors (the budget was calibrated on another
   machine); Edda stays within it on as many tensors or more on every case, and

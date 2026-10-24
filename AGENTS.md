@@ -4,11 +4,11 @@ This file provides guidance to AI coding assistants working with code in this re
 
 ## WalkieTalkey first
 
-WalkieTalkey is a fork of [Handy](https://github.com/cjpais/Handy): free, open-source Danish dictation for Mac, Windows and the phone. The behaviour is specified in `docs/SPEC.md`; requirement IDs (`DESK-`, `PHONE-`, `RELAY-`, `SEC-`, `SITE-`, `PRIV-`, `OSS-`) are cited in tests, commits and pull requests. The code map is `docs/ARCHITECTURE.md`; the protocol is `docs/PROTOCOL.md`; the models are `docs/MODELS.md`.
+WalkieTalkey is free, open-source Danish dictation for Mac, Windows and the phone. The behaviour is specified in `docs/SPEC.md`; requirement IDs (`DESK-`, `PHONE-`, `RELAY-`, `SEC-`, `SITE-`, `PRIV-`, `OSS-`) are cited in tests, commits and pull requests. The code map is `docs/ARCHITECTURE.md`; the protocol is `docs/PROTOCOL.md`; the models are `docs/MODELS.md`.
 
-Rules that keep the fork maintainable and the product honest:
+Rules that keep the code maintainable and the product honest:
 
-- **Handy's folders stay where they are** (DESK-05), so the monthly "Sync med Handy" merge stays easy. Our code lives in our own modules: `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`, `crates/`, and the workspaces `phone/`, `relay/`, `site/`, `packages/`. A change to a Handy file is a small hook into one of ours, marked with a `WalkieTalkey` comment.
+- **Features live in their own modules** (DESK-05): `src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`, `src/walkietalkey/`, `crates/`, and the workspaces `phone/`, `relay/`, `site/`, `packages/`. The desktop core (the rest of `src-tauri/src/` and `src/`) calls them through small hooks marked with a `WalkieTalkey` comment.
 - **Tests first.** The relay tests count storage writes per dictation; the protocol has shared test vectors in TypeScript and Rust (`packages/protocol/test-vectors.json`); AI providers are always fakes in tests. Never use real API keys.
 - **English** for code, comments, commits and docs. **Danish** for user-facing text, from spec Appendix A; new strings not in the spec are marked `TODO(copy)`. No em dashes in user-facing text.
 - **Privacy**: no telemetry, no analytics, no crash reporting. Audio is never stored unless "Gem lyd til fejlfinding" is on; text never goes back to the phone.
@@ -28,7 +28,7 @@ Rules that keep the fork maintainable and the product honest:
 
 On macOS, if linking fails against a beta SDK, point `SDKROOT` at the release SDK (`/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
 
-The rest of this file is Handy's development guide, adapted. "Handy" below means the shared desktop code.
+The rest of this file is the desktop app's development guide.
 
 ## Development Commands
 
@@ -76,7 +76,7 @@ For detailed platform-specific build setup, see [BUILD.md](BUILD.md).
 
 ## Architecture Overview
 
-Handy is a cross-platform desktop speech-to-text application built with Tauri 2.x (Rust backend + React/TypeScript frontend).
+The desktop app is a cross-platform speech-to-text application built with Tauri 2.x (Rust backend + React/TypeScript frontend).
 
 ### Backend Structure (src-tauri/src/)
 
@@ -194,7 +194,7 @@ WalkieTalkey ships Danish (default) and English only (`src/walkietalkey/i18n.ts`
 
 ## CLI Parameters
 
-Handy supports command-line parameters on all platforms for integration with scripts, window managers, and autostart configurations.
+The desktop app supports command-line parameters on all platforms for integration with scripts, window managers, and autostart configurations.
 
 **Implementation:** `cli.rs` (definitions), `main.rs` (parsing), `lib.rs` (applying), `signal_handle.rs` (shared logic)
 
@@ -223,9 +223,9 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 ## Platform Notes
 
 - **macOS**: Metal acceleration, accessibility permissions required for keyboard shortcuts
-- **Windows**: Vulkan acceleration, code signing. Implicit Vulkan layers (overlays, capture hooks) are disabled for the Handy process via `VK_LOADER_LAYERS_DISABLE=~implicit~` set in `main.rs`; opt out with `HANDY_KEEP_VULKAN_IMPLICIT_LAYERS=1` or by setting `VK_LOADER_LAYERS_DISABLE` yourself
-- **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
-- **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
+- **Windows**: Vulkan acceleration, code signing. Implicit Vulkan layers (overlays, capture hooks) are disabled for the WalkieTalkey process via `VK_LOADER_LAYERS_DISABLE=~implicit~` set in `main.rs`; opt out with `WALKIETALKEY_KEEP_VULKAN_IMPLICIT_LAYERS=1` or by setting `VK_LOADER_LAYERS_DISABLE` yourself
+- **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `WALKIETALKEY_NO_GTK_LAYER_SHELL=1`)
+- **Packagers**: `WALKIETALKEY_DISABLE_UPDATER=1` force-disables the self-updater at runtime without touching the persisted setting, for installs where self-update cannot work
 
 ## Troubleshooting
 
@@ -237,7 +237,6 @@ See the [Troubleshooting](BUILD.md#troubleshooting) section in BUILD.md.
 
 - **Opening a PR:** Read [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md): What and why (with the requirement IDs from `docs/SPEC.md`), Tests, Screenshots for UI changes, and the checklist. Say plainly which parts an AI assistant wrote.
 - **Opening an issue:** Read [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/). Blank issues are disabled: `fejl.md` for bugs (version, OS, model, steps), `oenske.md` for feature wishes. Questions go to [Discussions](https://github.com/JonathanRentoft/walkietalkey/discussions); vulnerabilities go to private reporting ([SECURITY.md](SECURITY.md)), never to a public issue.
-- **Changes that belong upstream:** fixes that are useful to Handy (not branding or Danish-specific) are offered to [Handy](https://github.com/cjpais/Handy) as separate PRs, following Handy's own templates there.
 - **Translations:** WalkieTalkey's UI is Danish (spec Appendix A); new strings are drafted in Danish and marked `TODO(copy)`.
 - **Full contributor workflow:** [CONTRIBUTING.md](CONTRIBUTING.md).
 
