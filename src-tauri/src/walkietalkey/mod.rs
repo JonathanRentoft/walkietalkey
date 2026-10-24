@@ -21,6 +21,7 @@ pub mod clipboard;
 pub mod commands;
 pub mod dictation;
 pub mod history;
+pub mod key_diag;
 pub mod keys;
 pub mod limits;
 pub mod managed;
@@ -66,6 +67,7 @@ pub fn early_init() {
 
 pub fn startup(app: &AppHandle) {
     let _ = APP.set(app.clone());
+    key_diag::start(app);
     notify::init(app);
     select_default_model(app);
     updates::start(app);

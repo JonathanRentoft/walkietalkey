@@ -454,6 +454,7 @@ async fn transcribe_and_deliver(
     if selected.is_empty() || !downloaded {
         return ResultOutcome::Failed(ResultReason::ModelNotReady);
     }
+    let audio_file = keep_phone_audio(app, &audio);
     let transcribed = tauri::async_runtime::spawn_blocking(move || match side {
         Some(side) => tm.transcribe_side(side, audio),
         None => tm.transcribe(audio),
@@ -491,7 +492,7 @@ async fn transcribe_and_deliver(
         error!("Could not put the phone dictation on the clipboard: {e}");
         return ResultOutcome::Failed(ResultReason::Error);
     }
-    let history_id = super::dictation::save_history(app, &finished, &source, None);
+    let history_id = super::dictation::save_history(app, &finished, &source, audio_file.as_deref());
     let settings = super::store::get(app);
     super::notify::text_ready(
         app,
@@ -500,6 +501,26 @@ async fn transcribe_and_deliver(
     );
     drop(ticket);
     ResultOutcome::Ok
+}
+
+/// Keeps a phone recording as it arrived (16 kHz mono) when "Gem lyd til fejlfinding" is on
+/// (DESK-92), like a key dictation's, and returns its file name for the history item.
+fn keep_phone_audio(app: &AppHandle, audio: &[f32]) -> Option<String> {
+    if audio.is_empty() || !super::store::get(app).keep_audio_for_debugging {
+        return None;
+    }
+    let hm = app.try_state::<Arc<crate::managers::history::HistoryManager>>()?;
+    let file_name = format!(
+        "walkietalkey-phone-{}.wav",
+        chrono::Utc::now().timestamp_millis()
+    );
+    match crate::audio_toolkit::save_wav_file(hm.recordings_dir().join(&file_name), audio) {
+        Ok(()) => Some(file_name),
+        Err(e) => {
+            warn!("Could not keep the phone recording: {e}");
+            None
+        }
+    }
 }
 
 // ---- Commands support -------------------------------------------------
