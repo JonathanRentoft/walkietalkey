@@ -30,11 +30,12 @@ The desktop app has a core (audio, models, shortcuts, paste, history, tray) and 
 | `catalog`                                    | `walkietalkey::catalog` (`catalog.json`)                                                                                                                       | Edda and Ekko as an overlay on the model catalog, ranking by hardware                                                        |
 | `clipboard.rs`                               | `walkietalkey::clipboard::write_private`                                                                                                                       | clipboard that stays on this computer                                                                                        |
 | `managers/audio`, `CaptureSink` raw tap      | `walkietalkey::mic::{guard, start_take, seal_take, finish_take, silent_take}`                                                                                  | silent microphone notice and probe, no system audio (DESK-59)                                                                |
+| `lib.rs` single-instance handoff             | `walkietalkey::relay::training::{start, session_arg, NOT_RUNNING_EXIT}`                                                                                        | a `wt-train record` session handed to the running app (run 5)                                                                |
 | `tray.rs`, `lib.rs` menu events              | `walkietalkey::tray`                                                                                                                                           | Seneste, Par en telefon, Sæt på pause, Genstart nu, pulse                                                                    |
 
 Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
-- `relay/`: the room connection (`crates/wt-relay-client`), pairing QR, phone dictations with their own live decode, key store (keys in the secret store, never the macOS keychain; room and counters beside them), headless e2e mode.
+- `relay/`: the room connection (`crates/wt-relay-client`), pairing QR, phone dictations with their own live decode, key store (keys in the secret store, never the macOS keychain; room and counters beside them), headless e2e mode, and `relay/training` (DESK-65): the workbench's training takes, which the event loop hands over before any dictation code sees them.
 - `cleanup/`: modes, markers, guardrails, the editor prompt, providers with pooled warm connections, the chunk-by-chunk engine.
 - `settings.rs`, `managed.rs`, `store.rs`: WalkieTalkey settings and the Appendix B overlay.
 - `history.rs`, `output.rs`, `dictation.rs`, `notify.rs`, `updates.rs`, `models.rs`, `speed.rs`, `presence.rs`, `secrets.rs`.
@@ -59,4 +60,15 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 
 ## Fine-tuning workbench (`training/`)
 
-Python (uv, PyTorch with MPS, Transformers, PEFT), separate from the app: one command, `wt-train`, with a step per module in `training/wt_train/` (record, fetch, build, train, eval, export, smoke). The sentences and the spelling conventions for English developer terms are in `training/data/`; recordings stay in `training/data/recordings/` (git-ignored) and everything large in the git-ignored work folder. Evaluation reuses the accuracy job's normaliser and WER (`models/eval/wt_eval`) and scores a GGUF through the app's own pipeline (`walkietalkey --transcribe-list`). An exported fine-tune is installed in the app's models folder as `edda-ft-<name>.gguf`; the app decodes ids starting with `edda-` like Edda (`walkietalkey::catalog::decodes_by_segment`).
+Python (uv, PyTorch with MPS, Transformers, PEFT), separate from the app: one command, `wt-train`, with a step per module in `training/wt_train/` (plan, record, fetch, build, train, eval, export, smoke). The sentences and the spelling conventions for English developer terms are in `training/data/`; recordings stay in `training/data/recordings/` (git-ignored) and everything large in the git-ignored work folder. Evaluation reuses the accuracy job's normaliser and WER (`models/eval/wt_eval`) and scores a GGUF through the app's own pipeline (`walkietalkey --transcribe-list`). An exported fine-tune is installed in the app's models folder as `edda-ft-<name>.gguf`; the app decodes ids starting with `edda-` like Edda (`walkietalkey::catalog::decodes_by_segment`).
+
+Recording (run 5) goes through the app, so a clip is what the model hears:
+
+```
+wt-train record (127.0.0.1 page + API) ◀── HTTP, bearer token ── desktop relay/training ──training_prompt──▶ phone training screen
+        │ checks, saves                                             ▲   (connects out only)        ◀──audio_start_training + chunks── (dictation capture)
+        ▼                                                           └── Mac takes: AudioRecordingManager, no VAD
+recordings/<condition>/<id>.wav + .txt + .json
+```
+
+`wt-train plan` gives every sentence one condition (phone whispered, phone normal, Mac normal; 40/40/20 within each split, `training/data/plan.csv`). `wt-train record --condition <c>` hands its session to the running app with `walkietalkey --training-session http://127.0.0.1:<port>/app/v1#<token>`; the app long-polls the recorder for prompts and Mac start/stop, sends each prompt to the phone (PRIV-05), and uploads every take as the 16 kHz audio received, before VAD. The recorder checks level, clipping and silence with limits for whispers, saves the take with its metadata, keeps every replaced take, and moves on. The exam (`training/data/exam.yaml`, six long paragraphs read once per condition) is evaluated through the app's live path and never trained on; the dataset builder's leakage check keeps it, and FLEURS test, out of every split. `wt-train eval` reports per condition (`wt_train/per_condition.py`).

@@ -263,6 +263,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-62 | When the relay reports a new member (`member_joined`), the app shows "Ny telefon parret: <navn>. Var det dig?" with "Ja" and "Fjern", whether or not the phone has sent a name (without one: "en telefon uden navn"). |
 | DESK-63 | Presence (M4; only matters with two or more computers): when a phone asks (`presence_query`), the app answers with the seconds since the last keyboard or mouse input and whether the screen is locked. Nothing is sent unasked, so the relay cannot see when the user arrives at or leaves the computer. |
 | DESK-64 | After a phone dictation, the computer sends the phone a `result`: ok, or a reason (`no_speech`, `model_not_ready`, `too_long`, `paused`, `error`). The text itself is never sent back; it exists only on this computer. |
+| DESK-65 | Training takes (run 5; the fine-tuning workbench, `training/`). `walkietalkey --training-session <url>` hands a `wt-train record` session to the running app through the single-instance handoff; with no app running it exits 3 and starts nothing. The app connects out to the recorder at `http://127.0.0.1:<port>` only, with the session's token, and opens no socket of its own. It follows the recorder: each sentence goes to the session's phone as a `training_prompt` (PRIV-05), sent again when the phone or the relay is back; a phone take (`audio_start_training`, Appendix C.2) is assembled like a dictation's, waits up to 5 s for missing blocks (DESK-61), and goes to the recorder as the 16 kHz audio received, before VAD; the phone gets `ok`, `no_speech` or `error`. A Mac take starts and stops from the recorder's page on the app's own input (as a key dictation, without VAD). A training take never loads the model, shows the pill, is transcribed, put on the clipboard or kept in history; a take that belongs to no running session gets `error` and the phone is told the session is over (PROTOCOL.md 8.4). |
 
 ### 6.9 Vocabulary
 
@@ -414,6 +415,15 @@ As the design system's `PhoneApp` component: brand, the big button, the label, t
 ### 7.6 Phone settings
 
 Parrede computere (navn, Fjern, which sends `leave`), Par med en computer, haptik, om og licenser. (Run 2: "hold eller tryk" is gone; the button does both, PHONE-26.)
+
+### 7.7 Training screen (run 5)
+
+The owner records sentences for fine-tuning Edda on the phone, often whispered, because that is where he dictates (`wt-train record`, DESK-65).
+
+| ID | Requirement |
+|---|---|
+| PHONE-50 | While a computer runs a training session, its `training_prompt` replaces the main screen with the training screen: the sentence in large text (a long exam paragraph scrolls), the voice to use ("Hvisk" or "Almindelig stemme"), the progress, the last take's check with "Optag forrige igen", "Afslut", and PhoneApp's button below, which works as on the main screen (PHONE-26). A press records through the dictation capture (PHONE-30: the warm microphone and its pre-roll, the +15 dB gain and limiter, 16 kHz PCM16) and sends the take like a dictation (PHONE-31, PHONE-32), started with `audio_start_training` for the prompt, every resend too. The computer that sent the prompt becomes the target. A saved take shows "Gemt" instead of "Klar på". All training strings are drafts (`TODO(copy)`). |
+| PHONE-51 | A training take only goes to a computer that sent the prompt on the current connection: when that computer goes offline, or the phone's connection drops or is new, the prompt goes stale and the button waits ("Venter på {computer}") until the computer sends it again (it does when it sees the phone online); without a fresh prompt the phone returns to the main screen after 10 s. `training_end` and "Afslut" return it at once, and the main screen starts afresh. A phone without this update drops the training frames (unknown types, PROTOCOL.md 8.1). |
 
 ---
 
@@ -592,7 +602,9 @@ A CI check fails the build if a dependency with an unknown or non-permissive lic
 |---|---|---|---|
 | Audio from the key | computer memory | until transcribed | the user |
 | Audio from the phone | phone memory; encrypted in transit; encrypted in the relay buffer if the computer is offline | until transcribed; buffer max 10 minutes | the user's devices only |
-| Text | history on the computer it was dictated to; never sent to the phone or other computers | per retention setting (default 14 days) | the user |
+| Text | history on the computer it was dictated to; never sent to the phone or other computers (the one exception is the training sentences below, PRIV-05) | per retention setting (default 14 days) | the user |
+| Training sentences (run 5, only while the owner records for the fine-tuning workbench) | from the recorder on the computer to the phone, end-to-end encrypted; the phone's memory while shown | while the session runs | the user's devices only |
+| Training recordings | `training/data/recordings/` on the owner's computer (git-ignored), with metadata (condition, device, microphone, checks) | until the owner deletes them | the owner |
 | Text sent to AI cleanup | the provider the user chose | per that provider's terms | the provider |
 | Device public keys, room ids | relay | until removed or 90 days unused | the relay operator (meaningless on their own) |
 | IP addresses, connection times | Cloudflare, as processor for the relay operator | Cloudflare's standard retention | the relay operator |
@@ -609,6 +621,7 @@ A CI check fails the build if a dependency with an unknown or non-permissive lic
 | PRIV-02 | The privacy policy (`/privatliv`) states the table above in plain Danish, names the operator of the public relay and website, Cloudflare as processor, and how to contact the operator. |
 | PRIV-03 | Companies that want nothing to pass infrastructure we run can self-host the relay (RELAY-14) and the phone app (SITE-03), and set `ModelBaseUrl`. Update checks still go to GitHub unless the company turns updates off and installs them itself. |
 | PRIV-04 | Settings that send data anywhere (cloud cleanup, a custom relay) are off by default and clearly labelled. |
+| PRIV-05 | One deliberate exception to "text never goes back to the phone" (run 5): while the owner runs a `wt-train record` session, the computer sends the session's phone the sentence to read (`training_prompt`, and `training_end` when the session is over), inside the end-to-end encryption and only sentences from the recorder's list (`training/data/sentences.csv` or the exam), never dictated text. Nothing else changes: dictations still answer only `ok` or a reason (DESK-64). Training takes go to the recorder on the same computer and never into history, the clipboard or a transcription. |
 
 ## 13. Security and threat model
 
@@ -833,7 +846,10 @@ Every control message is a JSON object with its type in `t`. Permission comes fr
 | 0x21 | `audio_chunk` | phone → computer | binary: sessionId (16 bytes) ‖ index of the first 200 ms block (uint32, big-endian) ‖ PCM16 for 1 to 10 blocks |
 | 0x22 | `audio_end` | phone → computer | `{sessionId, chunks, durationMs}` |
 | 0x23 | `audio_cancel` | phone → computer | `{sessionId}` |
+| 0x24 | `audio_start_training` | phone → computer | `{sessionId, sampleRate: 16000, codec: "pcm16", training, prompt, microphone?}`: a training take (DESK-65, PHONE-50); its chunks, end and cancel are 0x21 to 0x23 |
 | 0x30 | `result` | computer → phone | `{sessionId, ok, reason?}`; reason is `no_speech`, `model_not_ready`, `too_long`, `paused` or `error`. Never the text |
+| 0x31 | `training_prompt` | computer → phone | `{training, style, done, total, next?: {prompt, text}, last?: {prompt, text, check}}`: the sentence to read, only during a training session (PRIV-05) |
+| 0x32 | `training_end` | computer → phone | `{training}` |
 
 `sessionId` is 16 random bytes (base64url inside JSON payloads). JSON payloads are UTF-8 before encryption.
 
