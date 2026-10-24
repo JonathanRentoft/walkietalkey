@@ -1,19 +1,22 @@
-/* Checks on the built site (run `bun run build` first). SITE-01 to SITE-08, PRIV-02, 11, 14.8. */
+/* Checks on the built site (run `bun run build` first). SITE-01 to SITE-08, PRIV-02, 11, 14.8, run 2 Phases 6 and 7.4. */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { parse, type HTMLElement } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import {
+  ALL_RELEASES_URL,
+  CONTACT_EMAIL,
   CONTACT_URL,
   DISCUSSIONS_URL,
+  MAC_DOWNLOAD_URL,
   OPERATOR,
   PAGES,
   PHONE_APP_URL,
   RELAY_URL,
-  RELEASES_URL,
   REPO_URL,
   SECURITY_REPORT_URL,
   SITE_URL,
+  WINDOWS_DOWNLOAD_URL,
   type PageKey,
 } from "../src/lib/site";
 
@@ -192,9 +195,10 @@ describe("licence and trademark files (spec 11, 14.8)", () => {
   });
 });
 
-/* Review finding 18: nobody owns walkietalkey.com yet, so nothing on the site may send a visitor there. Canonical and
-   Open Graph URLs stay on the domain and come from SITE_URL, the one constant to change once it is registered. */
-describe("while walkietalkey.com is not registered (SITE-03, SITE-05, PRIV-02)", () => {
+/* Run 2, Phase 6: walkietalkey.com, app. and relay. answer with HTTPS and wss, and kontakt@ forwards to the operator
+   (Cloudflare Email Routing). The site sends visitors to the domain, never to the test deployments on pages.dev and
+   workers.dev, which only keep working for old pairings. Canonical and Open Graph URLs come from SITE_URL. */
+describe("on walkietalkey.com (SITE-03, SITE-05, PRIV-02)", () => {
   const all: [string, HTMLElement][] = [
     ...KEYS.map((k): [string, HTMLElement] => [PAGES[k].path, doc(k)]),
     ["/404", parse(readFileSync(join(dist, "404.html"), "utf8"))],
@@ -208,40 +212,73 @@ describe("while walkietalkey.com is not registered (SITE-03, SITE-05, PRIV-02)",
     expect(config).toMatch(/site: SITE_URL/);
     expect(config).not.toMatch(/walkietalkey\.com/);
   });
+  it("points the phone app, the relay and the contact at the domain", () => {
+    expect(PHONE_APP_URL).toBe("https://app.walkietalkey.com");
+    expect(RELAY_URL).toBe("wss://relay.walkietalkey.com");
+    expect(CONTACT_EMAIL).toBe("kontakt@walkietalkey.com");
+    expect(CONTACT_URL).toBe("mailto:kontakt@walkietalkey.com");
+  });
   it.each(all)(
-    "%s links to no address on the domain and to no e-mail address",
+    "%s sends nobody to a test deployment, and links on the domain only to the phone app and kontakt@",
     (_path, d) => {
       for (const a of d.querySelectorAll("a[href]")) {
         const href = a.getAttribute("href")!;
-        expect(href).not.toMatch(/walkietalkey\.com/);
-        expect(href).not.toMatch(/^mailto:/);
+        expect(href).not.toMatch(/pages\.dev|workers\.dev/);
+        if (/walkietalkey\.com/.test(href))
+          expect([PHONE_APP_URL, CONTACT_URL]).toContain(href);
+        if (href.startsWith("mailto:")) expect(href).toBe(CONTACT_URL);
       }
-      expect(visibleText(d)).not.toMatch(
-        /@walkietalkey\.com|app\.walkietalkey\.com|relay\.walkietalkey\.com/,
-      );
+      expect(visibleText(d)).not.toMatch(/pages\.dev|workers\.dev/);
     },
   );
-  it.each(all)("%s has a Kontakt link in the footer to GitHub", (_path, d) => {
-    const kontakt = d
-      .querySelectorAll("footer a")
-      .find((a) => a.textContent === "Kontakt")!;
-    expect(kontakt.getAttribute("href")).toBe(CONTACT_URL);
+  it.each(all)(
+    "%s has a Kontakt link in the footer to kontakt@walkietalkey.com",
+    (_path, d) => {
+      const kontakt = d
+        .querySelectorAll("footer a")
+        .find((a) => a.textContent === "Kontakt")!;
+      expect(kontakt.getAttribute("href")).toBe(CONTACT_URL);
+    },
+  );
+  it.each(["privacy", "business", "trademark", "faq"] as const)(
+    "%s names kontakt@walkietalkey.com as the contact and links it",
+    (key) => {
+      const d = doc(key);
+      const links = d
+        .querySelectorAll(`main a[href="${CONTACT_URL}"]`)
+        .map((a) => a.textContent);
+      expect(links).toContain(CONTACT_EMAIL);
+      expect(visibleText(d)).not.toMatch(/GitHubs private formular/);
+    },
+  );
+  it("keeps GitHub's private form for vulnerabilities only (Sikkerhed), never as the contact", () => {
+    for (const k of KEYS.filter((k) => k !== "security"))
+      expect(
+        doc(k).querySelector(`a[href="${SECURITY_REPORT_URL}"]`),
+        k,
+      ).toBeNull();
+    expect(
+      doc("security").querySelector(`a[href="${SECURITY_REPORT_URL}"]`),
+    ).not.toBeNull();
   });
-  it("sends questions to GitHub Discussions", () => {
-    expect(CONTACT_URL).toBe(DISCUSSIONS_URL);
+  it("keeps GitHub Discussions as a place for open questions", () => {
     expect(DISCUSSIONS_URL).toBe(REPO_URL + "/discussions");
+    for (const k of ["faq", "oss"] as const)
+      expect(
+        doc(k).querySelector(`main a[href="${DISCUSSIONS_URL}"]`),
+        k,
+      ).not.toBeNull();
   });
-  it("links the phone app and names the relay at their test deployments", () => {
-    expect(PHONE_APP_URL).toBe("https://walkietalkey-app.pages.dev");
-    expect(RELAY_URL).toMatch(
-      /^wss:\/\/walkietalkey-relay\.[\w-]+\.workers\.dev$/,
-    );
-    const hent = doc("hent");
-    const link = hent.querySelector(`a[href="${PHONE_APP_URL}"]`)!;
-    expect(link.textContent).toBe("walkietalkey-app.pages.dev");
+  it("links the phone app on Hent and lists the domain's defaults for companies", () => {
+    const link = doc("hent").querySelector(`main a[href="${PHONE_APP_URL}"]`)!;
+    expect(link.textContent).toBe("app.walkietalkey.com");
     const business = visibleText(doc("business"));
     expect(business).toContain(PHONE_APP_URL);
     expect(business).toContain(RELAY_URL);
+  });
+  /* SITE-05: no contact form, so there is no form data to store. */
+  it.each(all)("%s has no form", (_path, d) => {
+    expect(d.querySelectorAll("form")).toHaveLength(0);
   });
 });
 
@@ -364,39 +401,162 @@ describe("Forside is ForsideKomplet", () => {
   });
 });
 
-describe("content of the other pages", () => {
-  it("Hent links both platforms to the latest release, both always visible", () => {
-    const d = doc("hent");
-    const mac = d.querySelector('[data-platform="mac"] a[href]')!,
-      win = d.querySelector('[data-platform="win"] a[href]')!;
-    expect(mac.getAttribute("href")).toBe(RELEASES_URL);
-    expect(win.getAttribute("href")).toBe(RELEASES_URL);
-    for (const el of d.querySelectorAll("[data-platform]"))
+/* Run 2, Phase 7.4: a non-technical visitor clicks Hent and gets an app that just works. The release v0.1.0 is a normal
+   GitHub release with stable asset names, so releases/latest/download/<name> always fetches the newest build. */
+describe("Hent (SITE-02)", () => {
+  const d = doc("hent");
+  const hero = () => d.querySelector("header .get")!;
+  it("downloads the latest release's files by their stable names", () => {
+    expect(MAC_DOWNLOAD_URL).toBe(
+      REPO_URL + "/releases/latest/download/WalkieTalkey-mac.dmg",
+    );
+    expect(WINDOWS_DOWNLOAD_URL).toBe(
+      REPO_URL + "/releases/latest/download/WalkieTalkey-windows.exe",
+    );
+    expect(ALL_RELEASES_URL).toBe(REPO_URL + "/releases");
+  });
+  it("has a large download button for each computer at the top, both in the HTML without JavaScript", () => {
+    const big = (p: string) =>
+      hero().querySelector(`[data-platform="${p}"] a.wt-shiny--lg`)!;
+    expect(big("mac").getAttribute("href")).toBe(MAC_DOWNLOAD_URL);
+    expect(textOf(big("mac")).trim()).toBe("Hent til Mac");
+    expect(big("win").getAttribute("href")).toBe(WINDOWS_DOWNLOAD_URL);
+    expect(textOf(big("win")).trim()).toBe("Hent til Windows");
+    for (const el of d.querySelectorAll("[data-platform], [data-for]"))
       expect(el.hasAttribute("hidden")).toBe(false);
   });
+  it("offers the other computer as a small link", () => {
+    const alt = (p: string) =>
+      hero().querySelector(`.get-alt[data-for="${p}"] a`)!;
+    expect(alt("mac").getAttribute("href")).toBe(WINDOWS_DOWNLOAD_URL);
+    expect(alt("mac").textContent).toBe("Hent til Windows");
+    expect(alt("win").getAttribute("href")).toBe(MAC_DOWNLOAD_URL);
+    expect(alt("win").textContent).toBe("Hent til Mac");
+  });
+  it("detects the computer before the first paint, so nothing moves", () => {
+    const script = d
+      .querySelectorAll("script")
+      .find((s) => /data-os/.test(s.textContent))!;
+    expect(script.getAttribute("src")).toBeUndefined();
+    expect(script.getAttribute("type")).toBeUndefined();
+    expect(html("hent").indexOf(script.textContent)).toBeLessThan(
+      html("hent").indexOf('class="get'),
+    );
+  });
+  it("sends phone visitors to the phone app first and tells them to install the computer app", () => {
+    const phone = hero().querySelector('[data-platform="phone"]')!;
+    const button = phone.querySelector("a.wt-shiny--lg")!;
+    expect(button.getAttribute("href")).toBe(PHONE_APP_URL);
+    expect(textOf(phone)).toContain("din Mac eller pc");
+  });
+  it("shows the phone app link and a QR code drawn at build time as inline SVG", () => {
+    const qr = d.querySelector(".phone-qr svg")!;
+    expect(qr.getAttribute("role")).toBe("img");
+    expect(qr.getAttribute("aria-label")).toContain("app.walkietalkey.com");
+    expect(qr.getAttribute("viewBox")).toMatch(/^0 0 (\d+) \1$/);
+    expect(qr.querySelector("path")!.getAttribute("d")!.length).toBeGreaterThan(
+      200,
+    );
+    expect(qr.querySelectorAll("image, use, script")).toHaveLength(0);
+    const link = d.querySelector(`.phone-qr a[href="${PHONE_APP_URL}"]`)!;
+    expect(link.textContent).toBe("app.walkietalkey.com");
+  });
   /* Review finding 20: until the signing secrets exist, the builds are not signed by Apple or Microsoft (OSS-21). */
-  it("Hent says on each card that the first builds are unsigned, and what the visitor then does", () => {
-    const d = doc("hent");
-    const mac = textOf(d.querySelector('[data-platform="mac"]')!),
-      win = textOf(d.querySelector('[data-platform="win"]')!);
-    expect(mac).toContain("endnu ikke signeret af Apple");
+  it("says on each card that the builds are unsigned, and how to open them the first time", () => {
+    const card = (p: string) =>
+      d.querySelector(`.platforms [data-platform="${p}"]`)!;
+    const mac = textOf(card("mac")),
+      win = textOf(card("win"));
+    expect(mac).toContain("WalkieTalkey-mac.dmg");
+    expect(mac).toContain("Programmer");
+    expect(mac).toMatch(/endnu ikke (er )?signeret af Apple/);
     expect(mac).toContain("Systemindstillinger › Anonymitet og sikkerhed");
     expect(mac).toContain("Åbn alligevel");
-    expect(win).toContain("endnu ikke signeret af Microsoft");
+    expect(win).toContain("WalkieTalkey-windows.exe");
+    expect(win).toMatch(/endnu ikke (er )?signeret af Microsoft/);
     expect(win).toContain("Flere oplysninger › Kør alligevel");
-    for (const card of d.querySelectorAll("[data-platform] .unsigned"))
-      expect(card.hasAttribute("hidden")).toBe(false);
+    expect(card("mac").querySelector("a.wt-shiny")!.getAttribute("href")).toBe(
+      MAC_DOWNLOAD_URL,
+    );
+    expect(card("win").querySelector("a.wt-shiny")!.getAttribute("href")).toBe(
+      WINDOWS_DOWNLOAD_URL,
+    );
   });
+  it("walks through the new onboarding with the model downloading by itself", () => {
+    expect(
+      d.querySelectorAll(".onboard li h3").map((h) => h.textContent),
+    ).toEqual([
+      "Velkommen",
+      "Mikrofon",
+      "Tilgængelighed",
+      "Prøv det",
+      "Telefon",
+      "Klar",
+    ]);
+    const text = visibleText(d);
+    expect(text).toContain("i baggrunden");
+    expect(text).not.toMatch(/Inputovervågning|Vælg tasten/);
+  });
+  it("explains tap or hold", () => {
+    const text = textOf(d.querySelector(".tap-hold")!);
+    expect(text).toContain("Hold fn nede, tal, og slip.");
+    expect(text).toContain("Tryk på fn én gang");
+    expect(text).toMatch(/tryk(ke)? igen/i);
+    expect(text).toContain("højre Ctrl");
+  });
+  it("tells how the iPhone pairs: scan the computer's code, add to the home screen", () => {
+    const text = textOf(d.querySelector(".phone-get")!);
+    expect(text).toContain("Scan koden med telefonens kamera.");
+    expect(text).toContain("hjemmeskærmen");
+  });
+  it("links to all releases", () => {
+    expect(d.querySelector(`a[href="${ALL_RELEASES_URL}"]`)).not.toBeNull();
+  });
+});
+
+/* Run 2 changed the product: Accessibility is the only key permission on the Mac, the key works by tap or hold, and
+   the iPhone pairs by scanning the computer's code and adding the app to the home screen. */
+describe("no outdated copy (run 2)", () => {
+  it.each(KEYS)("%s never asks for Input Monitoring", (key) => {
+    expect(visibleText(doc(key))).not.toMatch(
+      /Inputovervågning|Input Monitoring|Vælg tasten/,
+    );
+  });
+  it("Sådan virker det explains tap or hold and the new pairing", () => {
+    const text = visibleText(doc("how"));
+    expect(text).toMatch(/tryk(ke)? igen/i);
+    expect(text).toContain("Scan koden med telefonens kamera.");
+    expect(text).toContain("hjemmeskærmen");
+    expect(text).not.toContain("tryk Par med en computer");
+  });
+  it("the homepage's third step says tap or hold", () => {
+    const step = doc("home")
+      .querySelectorAll(".step")
+      .find((s) => s.querySelector("h3")!.textContent === "Hold og tal")!;
+    expect(step.querySelector("p")!.textContent).toMatch(/tryk(ke)? igen/i);
+  });
+  /* DESK-32 (run 2): our models are assets of the GitHub release models-v1, not on Hugging Face. */
+  it.each(["privacy", "business"] as const)(
+    "%s says the models come from GitHub",
+    (key) => {
+      const text = visibleText(doc(key));
+      expect(text).not.toMatch(/Hugging Face|huggingface/);
+      expect(text).toContain("models-v1");
+    },
+  );
+});
+
+describe("content of the other pages", () => {
   it("Privatliv states the data table, the operator, Cloudflare as processor and the contact (PRIV-02)", () => {
     const d = doc("privacy");
     const text = visibleText(d);
     expect(d.querySelectorAll("table.data tbody tr")).toHaveLength(10);
+    expect(OPERATOR).toBe("Navigent.io ApS (CVR 46285395)");
     expect(text).toContain(OPERATOR);
     expect(text).toContain("Cloudflare");
     expect(text).toContain("databehandler");
     expect(text).toContain("FileVault eller BitLocker");
-    expect(d.querySelector(`a[href="${DISCUSSIONS_URL}"]`)).not.toBeNull();
-    expect(d.querySelector(`a[href="${SECURITY_REPORT_URL}"]`)).not.toBeNull();
+    expect(d.querySelector(`main a[href="${CONTACT_URL}"]`)).not.toBeNull();
   });
   it("Sikkerhed explains private reporting through GitHub, answered within 7 days", () => {
     const d = doc("security");

@@ -1,67 +1,149 @@
 ---
-/* SITE-02 Hent: both platforms are always shown; a small script marks the one that fits the visitor's computer.
-   Both link to the latest GitHub release. Until the Apple and Windows signing secrets exist, the release builds are
-   not signed by Apple or Microsoft (OSS-21), so each card says what the visitor will see (review finding 20). Remove
-   the .unsigned notes with the first signed release. */
-import { ShinyButton } from "@walkietalkey/ui";
+/* SITE-02 Hent (run 2, Phase 7.4): click Hent, get an app that just works.
+   - The hero links straight to the newest release's files (stable names, lib/site.ts). Without JavaScript, and when
+     the computer cannot be told (Linux, ChromeOS), it shows both downloads side by side. A tiny inline script, run
+     before the hero is parsed, sets html[data-os] so the CSS shows the visitor's own download first and largest, the
+     other as a small link, and on a phone the phone app first. Nothing moves after the first paint.
+   - Until the Apple and Windows signing secrets exist, the builds are not signed by Apple or Microsoft (OSS-21), so
+     each card gives the honest first-open steps (review finding 20). Change them with the first signed release.
+   - The onboarding is run 2's (Velkommen, Mikrofon, Tilgængelighed, Prøv det, Telefon, Klar); the key works by tap or
+     hold (DESK-22, DESK-26).
+   - The QR code for the phone app is drawn at build time (lib/qr.ts), so the page runs no third-party code (SITE-04). */
+import { Keycap, ShinyButton } from "@walkietalkey/ui";
+import DownloadButton from "../components/DownloadButton";
 import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
-import { PAGES, PHONE_APP_URL, RELEASES_URL, REPO_URL } from "../lib/site";
+import { qrSvg } from "../lib/qr";
+import { ALL_RELEASES_URL, MAC_DOWNLOAD_URL, PHONE_APP_URL, WINDOWS_DOWNLOAD_URL } from "../lib/site";
 
 const phoneHost = new URL(PHONE_APP_URL).host;
+// TODO(copy): the QR code's label for screen readers
+const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}`);
 ---
 <Base page="hent">
+  <script is:inline>
+    /* Hent: which download to show first. iPadOS presents itself as a Mac, so a Mac with touch is a tablet. */
+    (function () {
+      var ua = navigator.userAgent;
+      var os = /iPhone|iPad|iPod|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 0)
+        ? "mobile"
+        : /Windows NT/.test(ua) ? "win" : /Macintosh|Mac OS X/.test(ua) ? "mac" : "";
+      if (os) document.documentElement.setAttribute("data-os", os);
+    })();
+  </script>
   <!-- TODO(copy): eyebrow, title, lead -->
-  <PageHero current="hent" eyebrow="Hent" title="Hent WalkieTalkey" lead="Gratis og open source. Appen henter den danske talemodel første gang, og derefter bliver talen til tekst på din egen computer." />
-  <main class="container page-body" id="indhold">
-    <div class="cards">
-      <section class="card" data-platform="mac" aria-labelledby="mac">
-        <!-- TODO(copy): badge and card text -->
-        <span class="badge-rec">Passer til din computer</span>
-        <h2 id="mac">Mac</h2>
-        <p>macOS 13 Ventura eller nyere. Lavet til Mac med Apple Silicon; Mac med Intel virker også, men testes mindre.</p>
-        <p>Hold fn nede, tal, og slip.</p>
-        <!-- TODO(copy): unsigned Mac builds (Gatekeeper) -->
-        <p class="unsigned">De første udgaver er endnu ikke signeret af Apple. Første gang du åbner appen, advarer din Mac. Gå så til Systemindstillinger › Anonymitet og sikkerhed, og tryk Åbn alligevel.</p>
-        <ShinyButton href={RELEASES_URL} size="lg">Hent til Mac</ShinyButton>
-      </section>
-      <section class="card" data-platform="win" aria-labelledby="win">
-        <!-- TODO(copy): badge and card text -->
-        <span class="badge-rec">Passer til din computer</span>
-        <h2 id="win">Windows</h2>
-        <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
-        <p>Hold højre Ctrl nede, tal, og slip. Du kan vælge en anden tast.</p>
-        <!-- TODO(copy): unsigned Windows builds (SmartScreen) -->
-        <p class="unsigned">De første udgaver er endnu ikke signeret af Microsoft. Viser Windows en advarsel fra SmartScreen, så tryk Flere oplysninger › Kør alligevel.</p>
-        <ShinyButton href={RELEASES_URL} size="lg">Hent til Windows</ShinyButton>
-      </section>
+  <PageHero current="hent" eyebrow="Hent" title="Hent WalkieTalkey" lead="Gratis og open source, til Mac og Windows. Appen henter selv den danske talemodel, og talen bliver til tekst på din egen computer.">
+    <!-- TODO(copy): the downloads -->
+    <div class="get">
+      <div class="get-opt" data-platform="mac">
+        <DownloadButton href={MAC_DOWNLOAD_URL} size="lg">Hent til Mac</DownloadButton>
+        <p class="get-meta">macOS 13 eller nyere · Apple Silicon og Intel</p>
+        <p class="get-alt" data-for="mac">Har du Windows? <a href={WINDOWS_DOWNLOAD_URL}>Hent til Windows</a></p>
+      </div>
+      <div class="get-opt" data-platform="win">
+        <DownloadButton href={WINDOWS_DOWNLOAD_URL} size="lg">Hent til Windows</DownloadButton>
+        <p class="get-meta">Windows 10 (22H2) eller 11 · 64-bit</p>
+        <p class="get-alt" data-for="win">Har du en Mac? <a href={MAC_DOWNLOAD_URL}>Hent til Mac</a></p>
+      </div>
+      <div class="get-opt" data-platform="phone">
+        <ShinyButton href={PHONE_APP_URL} size="lg">Åbn telefonappen</ShinyButton>
+        <p class="get-note">Det, du siger i telefonen, bliver til tekst på din computer. Installer derfor først WalkieTalkey på din Mac eller pc. Gå ind på walkietalkey.com/hent på computeren.</p>
+      </div>
     </div>
+  </PageHero>
 
-    <div class="prose">
-      <!-- TODO(copy): the rest of the page -->
-      <p class="muted" style="margin-top: var(--space-6)">Begge knapper fører til den seneste udgivelse på GitHub, hvor du vælger filen til din computer. Du skal bruge 8 GB RAM og omkring 2 GB fri plads til talemodellen. <a href={REPO_URL + "/releases"}>Se alle udgivelser</a>.</p>
+  <main class="container page-body hent-body" id="indhold">
+    <!-- TODO(copy): the rest of the page -->
+    <section class="hent-first" aria-labelledby="foerste-gang">
+      <div class="prose">
+        <h2 id="foerste-gang">Første gang du åbner appen</h2>
+        <p>WalkieTalkey er endnu ikke signeret af Apple og Microsoft. Derfor advarer din computer, første gang du åbner appen. Sådan åbner du den alligevel.</p>
+      </div>
+      <div class="cards platforms">
+        <section class="card" data-platform="mac" aria-labelledby="mac">
+          <span class="badge-rec">Passer til din computer</span>
+          <h3 id="mac">Mac</h3>
+          <p>macOS 13 Ventura eller nyere, på Mac med Apple Silicon og Mac med Intel.</p>
+          <ol class="steps-list">
+            <li>Åbn filen WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.</li>
+            <li>Åbn WalkieTalkey fra Programmer. Din Mac advarer, fordi appen endnu ikke er signeret af Apple. Luk beskeden.</li>
+            <li>Gå til Systemindstillinger › Anonymitet og sikkerhed, rul ned, og tryk Åbn alligevel. Bekræft, når din Mac spørger.</li>
+          </ol>
+          <DownloadButton href={MAC_DOWNLOAD_URL}>Hent til Mac</DownloadButton>
+        </section>
+        <section class="card" data-platform="win" aria-labelledby="win">
+          <span class="badge-rec">Passer til din computer</span>
+          <h3 id="win">Windows</h3>
+          <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
+          <ol class="steps-list">
+            <li>Åbn filen WalkieTalkey-windows.exe.</li>
+            <li>Windows advarer, fordi appen endnu ikke er signeret af Microsoft. Tryk Flere oplysninger › Kør alligevel.</li>
+            <li>Følg installationen, og åbn WalkieTalkey.</li>
+          </ol>
+          <DownloadButton href={WINDOWS_DOWNLOAD_URL}>Hent til Windows</DownloadButton>
+        </section>
+      </div>
+    </section>
 
-      <h2>Når appen er installeret</h2>
-      <ol class="steps-list">
-        <li><strong>Åbn WalkieTalkey.</strong> Appen henter den danske talemodel, omkring 890 MB. Det sker kun én gang.</li>
-        <li><strong>Giv adgang til mikrofonen.</strong> Appen forklarer hvorfor, før din computer spørger.</li>
-        <li><strong>Vælg tasten.</strong> På Mac beder appen om Inputovervågning, så den kan se, når du holder fn nede. På Windows er det højre Ctrl.</li>
-        <li><strong>Prøv det.</strong> Hold tasten nede, og sig: Hej, det her er min første diktering.</li>
+    <section class="hent-sec" aria-labelledby="resten">
+      <div class="prose">
+        <h2 id="resten">Appen viser dig resten</h2>
+        <p>Når WalkieTalkey åbner, går du gennem et par korte trin. Imens henter appen den danske talemodel i baggrunden, omkring 890 MB. Det sker kun én gang.</p>
+      </div>
+      <ol class="onboard">
+        <li><h3>Velkommen</h3><p>Dansk tale til tekst, på din egen computer.</p></li>
+        <li><h3>Mikrofon</h3><p>Giv WalkieTalkey lov til at bruge mikrofonen.</p></li>
+        <li><h3>Tilgængelighed</h3><p>Kun på Mac. Så fn-tasten virker, og teksten kan sættes ind, hvor du skriver.</p></li>
+        <li><h3>Prøv det</h3><p>Sig en sætning, og se den blive til tekst.</p></li>
+        <li><h3>Telefon</h3><p>Valgfrit. Par telefonen nu, eller spring over.</p></li>
+        <li><h3>Klar</h3><p>Nu kan du diktere, hvor du skriver.</p></li>
       </ol>
+    </section>
 
-      <h2>Telefonen</h2>
-      <p>Telefonappen kører i browseren på iPhone (iOS 17 eller nyere) og Android (10 eller nyere med Chrome). Åbn <a href={PHONE_APP_URL}>{phoneHost}</a> på telefonen, og føj WalkieTalkey til hjemmeskærmen. Par den derefter med computeren under Indstillinger › Telefon › Par en telefon.</p>
+    <section class="hent-sec" aria-labelledby="tryk-eller-hold">
+      <div class="prose">
+        <h2 id="tryk-eller-hold">Tryk eller hold</h2>
+      </div>
+      <div class="tap-hold">
+        <div class="th-card">
+          <Keycap size={56} pressed>fn</Keycap>
+          <div><h3>Hold</h3><p>Hold fn nede, tal, og slip. Når du slipper, bliver talen til tekst.</p></div>
+        </div>
+        <div class="th-card">
+          <Keycap size={56}>fn</Keycap>
+          <div><h3>Tryk</h3><p>Tryk på fn én gang, og tal frit. Tryk igen, når du er færdig.</p></div>
+        </div>
+        <p class="th-note">På Windows er tasten højre Ctrl. Du kan vælge en anden tast i appen.</p>
+      </div>
+    </section>
 
-      <h2>Nye versioner</h2>
-      <p>Appen søger selv efter opdateringer og installerer dem, næste gang du starter den. Vil du prøve nye versioner før andre, kan du vælge kanalen beta under Indstillinger › Opdateringer.</p>
-    </div>
+    <section class="hent-sec phone-get" aria-labelledby="telefonen">
+      <div class="prose">
+        <h2 id="telefonen">Telefonen</h2>
+        <p>Telefonen er valgfri. Du taler ind i den, og teksten lander på din computer. Telefonappen kører i browseren på iPhone (iOS 17 eller nyere) og Android (10 eller nyere med Chrome), på <a href={PHONE_APP_URL}>{phoneHost}</a>.</p>
+        <ol class="steps-list">
+          <li>Åbn WalkieTalkey på computeren, og gå til Indstillinger › Telefon › Par en telefon. Computeren viser en kode.</li>
+          <li>Scan koden med telefonens kamera.</li>
+          <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. På Android parrer den med det samme.</li>
+        </ol>
+      </div>
+      <figure class="phone-qr">
+        <div class="qr-code" set:html={qr} />
+        <figcaption>
+          <strong>Åbn telefonappen</strong>
+          <a href={PHONE_APP_URL}>{phoneHost}</a>
+          <span>Du parrer med koden i appen på din computer.</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="hent-sec prose" aria-labelledby="godt-at-vide">
+      <h2 id="godt-at-vide">Godt at vide</h2>
+      <ul>
+        <li>Du skal bruge 8 GB RAM og omkring 2 GB fri plads til talemodellen.</li>
+        <li>Appen søger selv efter opdateringer og installerer dem, næste gang du starter den. Vil du prøve nye versioner før andre, kan du vælge kanalen beta under Indstillinger › Opdateringer.</li>
+        <li>Alle udgivelser og hvad der er nyt i hver, står på GitHub. <a href={ALL_RELEASES_URL}>Se alle udgivelser</a>.</li>
+      </ul>
+    </section>
   </main>
 </Base>
-
-<script>
-  /* Marks the card that fits this computer. Both stay visible either way. */
-  const ua = navigator.userAgent;
-  const touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1; /* iPadOS presents itself as a Mac */
-  const os = /Windows NT/.test(ua) ? "win" : /Macintosh|Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua) && !touchMac ? "mac" : null;
-  if (os) document.querySelector(`[data-platform="${os}"]`)?.setAttribute("data-recommended", "true");
-</script>

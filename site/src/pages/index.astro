@@ -1,8 +1,8 @@
 ---
 /* Forside = ForsideKomplet (design system components/ForsideKomplet/preview.html is the spec). Text, order and
    components are the preview's, except where the preview's copy claimed more than the app does (review findings 6
-   and 17, marked TODO(copy)) and the contact, which is GitHub until the domain's e-mail works (finding 18). Only what
-   moves with JavaScript is an island; the rest is static HTML. */
+   and 17, marked TODO(copy)) and the third step, which says tap or hold (run 2). "Skriv til os" writes to
+   kontakt@walkietalkey.com (SITE-05). Only what moves with JavaScript is an island; the rest is static HTML. */
 import {
   FlipWords, GradientBackground, GradientFrame, LiquidBackground, Logo, RelayDemo, ShinyButton, ShowcaseCard,
 } from "@walkietalkey/ui";
@@ -82,7 +82,8 @@ const files: [string, boolean, string][] = [
           </article>
           <article class="step">
             <div class="step-vis"><PillDemo client:visible /></div>
-            <div class="step-body"><span class="step-n">3</span><h3>Hold og tal</h3><p>Hold fn nede eller knappen på telefonen, og tal. Slip, og teksten er klar.</p></div>
+            <!-- TODO(copy): tap or hold (run 2) -->
+            <div class="step-body"><span class="step-n">3</span><h3>Hold og tal</h3><p>Hold fn nede eller knappen på telefonen, og tal. Slip, og teksten er klar. Med fn kan du også trykke én gang og trykke igen, når du er færdig.</p></div>
           </article>
         </div>
       </section>
