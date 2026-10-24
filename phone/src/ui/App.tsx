@@ -38,6 +38,8 @@ export interface AppProps {
   link: { payload: PairingPayload | null; invalid: boolean; seq: number };
   /** The home-screen app's first launch without a link: open the scanner at once (Phase 5). */
   scanOnStart?: boolean;
+  /** A pairing link is done with: paired, cancelled, or refused as expired or full (Phase 5). */
+  onLinkHandled?: (payload: PairingPayload) => void;
 }
 
 export function App({
@@ -46,6 +48,7 @@ export function App({
   allowInsecureLocalhost,
   link,
   scanOnStart = false,
+  onLinkHandled,
 }: AppProps) {
   const snap = useSyncExternalStore(
     controller.subscribe,
@@ -120,13 +123,25 @@ export function App({
         }
         pairing={snap.pairing}
         onPair={async (name) => {
-          if (await controller.pair(view.payload, name)) home();
+          const p = view.payload;
+          if (await controller.pair(p, name)) {
+            onLinkHandled?.(p);
+            home();
+            return;
+          }
+          const r = controller.getSnapshot().pairing;
+          if (
+            r.state === "error" &&
+            (r.kind === "expired" || r.kind === "full")
+          )
+            onLinkHandled?.(p);
         }}
         onRescan={() => {
           controller.clearPairingError();
           setView({ name: "scan" });
         }}
         onCancel={() => {
+          onLinkHandled?.(view.payload);
           controller.clearPairingError();
           home();
         }}

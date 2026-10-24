@@ -120,13 +120,21 @@ async function main(): Promise<void> {
   }
 
   const storage = await PhoneStorage.open();
-  // Phase 5: a home-screen app starts with the same URL every time; its pairing link pairs once.
+  // Phase 5: a home-screen app starts with the same URL every time, so the pairing link it was
+  // added with is offered until it is handled (paired, cancelled, expired), and then never again.
+  // A browser tab only opens a link when the user does, so it always offers it.
   let firstPayload = first.kind === "pairing" ? first.payload : null;
-  if (firstPayload) {
-    const id = await pairingLinkId(firstPayload);
-    if (await storage.hasSeenLink(id)) firstPayload = null;
-    else await storage.markLinkSeen(id);
-  }
+  if (
+    firstPayload &&
+    platform.standalone &&
+    (await storage.hasSeenLink(await pairingLinkId(firstPayload)))
+  )
+    firstPayload = null;
+  const linkHandled = (p: PairingPayload) => {
+    void pairingLinkId(p)
+      .then((id) => storage.markLinkSeen(id))
+      .catch(() => undefined);
+  };
   // Phase 5: if iOS dropped the link, the home-screen app's first launch opens the scanner itself.
   const scanOnStart =
     (await storage.firstRun()) &&
@@ -158,6 +166,7 @@ async function main(): Promise<void> {
           allowInsecureLocalhost={!!policy.allowInsecureLocalhost}
           link={link}
           scanOnStart={scanOnStart}
+          onLinkHandled={linkHandled}
         />
       </StrictMode>,
     );

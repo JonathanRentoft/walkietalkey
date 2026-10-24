@@ -271,12 +271,25 @@ test.describe("the raw, warm microphone (PHONE-30, PHONE-33)", () => {
     });
     // Let the pre-roll fill.
     await page.waitForTimeout(800);
-    const t0 = Date.now();
+    // How long the button was down, measured in the page.
+    await page.evaluate(() => {
+      const w = window as unknown as { __press: number[] };
+      w.__press = [];
+      for (const type of ["pointerdown", "pointerup"])
+        document.addEventListener(
+          type,
+          () => w.__press.push(performance.now()),
+          { capture: true },
+        );
+    });
     const p = await press(page);
     await expect(label(page)).toHaveText("Slip for at sende");
     await page.waitForTimeout(1000);
     await p.release();
-    const held = Date.now() - t0;
+    const [down, up] = await page.evaluate(
+      () => (window as unknown as { __press: number[] }).__press,
+    );
+    const held = up! - down!;
     const s = await computer.waitEnded();
     // The audio starts before the press: everything held, plus most of the 300 ms pre-roll.
     expect(s.end!.durationMs).toBeGreaterThanOrEqual(held + 200);

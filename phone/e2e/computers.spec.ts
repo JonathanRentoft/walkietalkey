@@ -91,6 +91,27 @@ test.describe("several computers (PHONE-40, PHONE-41) and settings (7.6)", () =>
     const haptics = page.getByRole("switch");
     await expect(haptics).toBeChecked();
     await haptics.uncheck();
+    // The setting is written in the background; reload once it is stored.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            new Promise((resolve) => {
+              const r = indexedDB.open("walkietalkey");
+              r.onsuccess = () => {
+                const get = r.result
+                  .transaction("settings")
+                  .objectStore("settings")
+                  .get("settings");
+                get.onsuccess = () => {
+                  resolve((get.result as { haptics?: boolean })?.haptics);
+                  r.result.close();
+                };
+              };
+            }),
+        ),
+      )
+      .toBe(false);
     await page.reload();
     await statusName(page).click();
     await page.getByRole("button", { name: "Indstillinger" }).click();

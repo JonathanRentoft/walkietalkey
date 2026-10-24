@@ -271,6 +271,11 @@ test.describe("iPhone in a Safari tab (PHONE-04) and the home-screen app (Phase 
       app.getByRole("heading", { name: "Hvad hedder telefonen?" }),
     ).toBeVisible();
     expect(app.url()).toBe(`${APP_URL}/`);
+    // Closed before pairing (iOS killed it, say): the next launch still offers the link.
+    await app.goto(startUrl);
+    await expect(
+      app.getByRole("heading", { name: "Hvad hedder telefonen?" }),
+    ).toBeVisible();
     // PHONE-12: prefilled from the computer's name.
     await expect(app.getByLabel("Telefonens navn")).toHaveValue(
       "Jonathans iPhone",
@@ -289,6 +294,33 @@ test.describe("iPhone in a Safari tab (PHONE-04) and the home-screen app (Phase 
     ).toHaveCount(0);
     expect(computer.log.filter((l) => l.startsWith("joined")).length).toBe(1);
     await appContext.close();
+  });
+
+  test("an expired link in the home-screen app says so once; later launches are normal", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    const url = await computer.pairingUrl(APP_URL);
+    await computer.cancelAdmission();
+    await preparePage(page, browserName, { standalone: true });
+    await page.goto(url);
+    await page.getByRole("button", { name: "Par telefonen" }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Koden er udløbet. Lav en ny på computeren.",
+      }),
+    ).toBeVisible();
+    await page.goto(url);
+    await expect(
+      page.getByRole("heading", { name: "Par med en computer" }),
+    ).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(
+      page.getByRole("heading", { name: "Hvad hedder telefonen?" }),
+    ).toHaveCount(0);
+    expect(computer.phones.size).toBe(0);
   });
 
   test("if iOS drops the link, the first launch opens the scanner by itself, and only the first", async ({
