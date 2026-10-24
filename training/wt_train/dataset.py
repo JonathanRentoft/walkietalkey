@@ -1,17 +1,24 @@
 """``wt-train build <config>``: train, validation and test splits, checked for leakage.
 
 Inputs
-    The owner's takes in ``data.recordings`` (default training/data/recordings):
-    ``<id>.wav`` (16 kHz mono) and ``<id>.txt`` (the text as read), one take
-    per sentence id, joined with ``sentences.csv`` for the kind (terms or
-    plain). Every transcript is re-spelled with ``Spelling.apply`` so the model
-    learns one spelling per term form. Takes without a text, or whose id is not
-    in sentences.csv, are skipped and listed in the summary.
+    The owner's takes in ``data.recordings`` (default training/data/recordings),
+    one folder per recording condition (``conditions.py``):
+    ``<condition>/<id>.wav`` (16 kHz mono, as the app received it),
+    ``<id>.txt`` (the text as read) and ``<id>.json`` (device, style,
+    microphone, checks; ``recorder/takes.py``). A clip's id is
+    ``<sentence id>.<condition>``. Run 4's browser takes in the top folder
+    (``<id>.wav`` + ``<id>.txt``) are read too, as condition mac-normal with
+    capture "browser". Takes are joined with ``sentences.csv`` for the kind
+    (terms or plain). Every transcript is re-spelled with ``Spelling.apply`` so
+    the model learns one spelling per term form. Takes without a text, or whose
+    id is not in sentences.csv, are skipped and listed in the summary. The exam
+    (``recordings/exam/``) is never read here.
 
 Splits are by sentence
     A sentence is its text after the accuracy job's normaliser (case,
     punctuation and number spelling do not make two sentences different). Each
-    sentence goes to exactly one split, chosen by a hash of the seed and its
+    sentence goes to exactly one split, with every recording of it (all
+    conditions, the browser take, a redo), chosen by a hash of the seed and its
     normalised text: below ``test_fraction`` it is test, below ``test_fraction
     + validation_fraction`` validation, otherwise train. The split of a sentence
     therefore never changes when more takes are recorded, so test results from
@@ -27,15 +34,20 @@ Rehearsal
     a sentence that is also among the owner's takes.
 
 Leakage check (fails loudly, the build is not written)
-    * the same sentence (normalised text) in two splits;
+    * the same sentence (normalised text) in two splits, whichever conditions
+      its recordings are in;
     * the same audio (hash of the decoded samples) twice anywhere;
     * any FLEURS da_dk test text in train or validation, or any FLEURS test
       audio (by content or by path) in any split. FLEURS test is the regression
-      check of ``wt-train eval`` and must stay unseen.
+      check of ``wt-train eval`` and must stay unseen;
+    * any exam paragraph (``exam.yaml``) by its text, any exam take by its
+      audio, or any file under ``recordings/exam/``, in any split. The exam
+      tests the app path only and is never trained on.
 
 Output, in ``<work>/builds/<config name>/``: ``train.jsonl``,
 ``validation.jsonl``, ``test.jsonl`` (one clip per line: id, audio path,
-text, kind, source, audio_sha256, seconds) and ``summary.json``. The takes are
+text, kind, source, audio_sha256, seconds, and for takes sentence, condition,
+device, style, microphone, capture) and ``summary.json``. The takes are
 referenced by path, never copied.
 """
 
@@ -55,6 +67,7 @@ from pathlib import Path
 
 from . import audio, console, fleurs, paths
 from .audio import file_sha256
+from .conditions import BROWSER_CONDITION, BY_ID, IDS
 from .config import Config, load_config, to_dict, with_overrides
 from .harness import normalize
 from .sentences import load_sentences
@@ -78,6 +91,14 @@ class Item:
     source: str
     audio_sha256: str
     seconds: float
+    # The owner's takes: which sentence, recorded how (empty for rehearsal clips and for
+    # manifests written before run 5).
+    sentence: str = ""
+    condition: str = ""
+    device: str = ""
+    style: str = ""
+    microphone: str = ""
+    capture: str = ""
 
     @property
     def key(self) -> str:
@@ -93,32 +114,49 @@ def sentence_key(text: str) -> str:
 
 
 def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling) -> tuple[list[Item], list[dict]]:
-    """(usable takes, skipped takes with a reason)."""
+    """(usable takes, skipped takes with a reason): run 4's browser takes in the top folder,
+    then each condition's folder."""
     folder = Path(folder)
     if not folder.is_dir():
         raise FileNotFoundError(f"no recordings folder at {folder}; record takes with: wt-train record")
     kinds = {s.id: s.kind for s in load_sentences(sentences_csv)}
     items, skipped = [], []
-    for wav in sorted(folder.glob("*.wav")):
-        sid = wav.stem
-        txt = wav.with_suffix(".txt")
-        if not txt.is_file():
-            skipped.append({"id": sid, "reason": "no .txt next to the .wav"})
-            continue
-        if sid not in kinds:
-            skipped.append({"id": sid, "reason": "id not in sentences.csv"})
-            continue
-        text = spelling.apply(txt.read_text(encoding="utf-8").strip())
-        if not sentence_key(text):
-            skipped.append({"id": sid, "reason": "empty text"})
-            continue
-        info = audio.info(wav)
-        if not info.is_16k_mono:
-            raise ValueError(f"{wav}: {info.rate} Hz, {info.channels} channel(s); takes must be 16 kHz mono")
-        items.append(Item(id=sid, audio=str(wav.resolve()), text=text, kind=kinds[sid],
-                          source=SOURCE_RECORDING, audio_sha256=audio.content_sha256(wav),
-                          seconds=round(info.seconds, 3)))
+    browser = BY_ID[BROWSER_CONDITION]
+    places = [(folder, browser.id, "browser")] + [(folder / cid, cid, "app") for cid in IDS]
+    for place, cid, capture in places:
+        for wav in sorted(place.glob("*.wav")):
+            sid = wav.stem
+            clip_id = sid if capture == "browser" else f"{sid}.{cid}"
+            txt = wav.with_suffix(".txt")
+            if not txt.is_file():
+                skipped.append({"id": clip_id, "reason": "no .txt next to the .wav"})
+                continue
+            if sid not in kinds:
+                skipped.append({"id": clip_id, "reason": "id not in sentences.csv"})
+                continue
+            text = spelling.apply(txt.read_text(encoding="utf-8").strip())
+            if not sentence_key(text):
+                skipped.append({"id": clip_id, "reason": "empty text"})
+                continue
+            info = audio.info(wav)
+            if not info.is_16k_mono:
+                raise ValueError(f"{wav}: {info.rate} Hz, {info.channels} channel(s); takes must be 16 kHz mono")
+            meta = _meta(wav.with_suffix(".json"))
+            items.append(Item(id=clip_id, audio=str(wav.resolve()), text=text, kind=kinds[sid],
+                              source=SOURCE_RECORDING, audio_sha256=audio.content_sha256(wav),
+                              seconds=round(info.seconds, 3), sentence=sid, condition=cid,
+                              device=str(meta.get("device") or BY_ID[cid].device),
+                              style=str(meta.get("style") or BY_ID[cid].style),
+                              microphone=str(meta.get("microphone") or ""), capture=capture))
     return items, skipped
+
+
+def _meta(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
 def split_of(key: str, seed: int, validation_fraction: float, test_fraction: float) -> str:
@@ -191,6 +229,27 @@ class HeldOut:
     folder: Path
 
 
+@dataclass(frozen=True)
+class Exam:
+    """What must never be trained on either: the exam paragraphs, by text, audio and folder."""
+
+    keys: frozenset[str]
+    hashes: frozenset[str]
+    folder: Path
+
+
+def exam_held_out(recordings: Path, exam_yaml: Path | None = None) -> Exam:
+    """The exam's texts (exam.yaml) and the audio of every exam take, current and replaced."""
+    from .exam import EXAM_FOLDER, load_exam
+
+    exam_yaml = Path(exam_yaml) if exam_yaml is not None else paths.EXAM_YAML
+    keys = frozenset(sentence_key(p.text) for p in load_exam(exam_yaml)) if exam_yaml.is_file() else frozenset()
+    recordings = Path(recordings)
+    folders = [recordings / EXAM_FOLDER, recordings / ".replaced" / EXAM_FOLDER]
+    hashes = frozenset(audio.content_sha256(w) for f in folders if f.is_dir() for w in sorted(f.rglob("*.wav")))
+    return Exam(keys=keys, hashes=hashes, folder=(recordings / EXAM_FOLDER).resolve())
+
+
 def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
     root = Path(root) if root is not None else paths.fleurs_dir()
     clips = fleurs.load_split("test", root)
@@ -204,7 +263,7 @@ def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
                    hashes=frozenset(known.values()), folder=(root / "test").resolve())
 
 
-def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut) -> dict:
+def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None) -> dict:
     """Raise LeakageError listing every problem; otherwise a short report."""
     problems: list[str] = []
 
@@ -238,14 +297,31 @@ def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut) -> dict:
             problems.append(f"FLEURS test audio in {name}: {where}")
         if Path(item.audio).resolve().is_relative_to(held_out.folder):
             problems.append(f"a FLEURS test file in {name}: {item.audio}")
+        if exam is not None:
+            if item.key in exam.keys:
+                problems.append(f"an exam paragraph in {name}: {where}")
+            if item.audio_sha256 in exam.hashes:
+                problems.append(f"exam audio in {name}: {where}")
+            if Path(item.audio).resolve().is_relative_to(exam.folder):
+                problems.append(f"an exam file in {name}: {item.audio}")
 
     if problems:
         raise LeakageError("leakage check failed:\n  " + "\n  ".join(problems))
+    # Every recording of a sentence (its conditions, the browser take) is in the split of its
+    # text: the check above found no text in two splits, and this counts the sentences it covers.
+    recordings: dict[str, set[str]] = {}
+    for _, item in every:
+        if item.source == SOURCE_RECORDING:
+            recordings.setdefault(item.key, set()).add(item.id)
     return {
         "passed": True,
-        "checks": ["no sentence in two splits", "no audio twice", "no FLEURS test text in train or validation",
-                   "no FLEURS test audio in any split"],
+        "checks": ["no sentence in two splits", "every recording of a sentence in one split", "no audio twice",
+                   "no FLEURS test text in train or validation", "no FLEURS test audio in any split",
+                   "no exam paragraph in any split"],
         "fleurs_test_sentences": len(held_out.keys),
+        "sentences_recorded_more_than_once": sum(1 for ids in recordings.values() if len(ids) > 1),
+        "exam_paragraphs": len(exam.keys) if exam is not None else 0,
+        "exam_takes": len(exam.hashes) if exam is not None else 0,
     }
 
 
@@ -286,12 +362,13 @@ def _split_summary(items: list[Item], manifest: Path) -> dict:
         "hours": round(sum(i.seconds for i in items) / 3600, 3),
         "by_kind": dict(sorted(Counter(i.kind for i in items).items())),
         "by_source": dict(sorted(Counter(i.source for i in items).items())),
+        "by_condition": {cid: n for cid in IDS if (n := sum(1 for i in items if i.condition == cid))},
         "manifest_sha256": file_sha256(manifest),
     }
 
 
 def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None = None,
-          log=console.log) -> Build:
+          exam_yaml: Path | None = None, log=console.log) -> Build:
     """Build, check and write the splits for one experiment config."""
     spelling = load_spelling(cfg.data.path("spelling"))
     own, skipped = load_recordings(cfg.data.path("recordings"), cfg.data.path("sentences"), spelling)
@@ -320,7 +397,7 @@ def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None 
         splits["train"] = sorted(splits["train"] + reh_train, key=lambda i: i.id)
         splits["validation"] = sorted(splits["validation"] + reh_val, key=lambda i: i.id)
 
-    report = check_leakage(splits, held_out)
+    report = check_leakage(splits, held_out, exam_held_out(cfg.data.path("recordings"), exam_yaml))
 
     out = Path(out_dir) if out_dir is not None else paths.builds_dir() / cfg.name
     out.mkdir(parents=True, exist_ok=True)
@@ -365,6 +442,10 @@ def format_summary(b: Build) -> str:
         lines.append(f"{name:<11} {s['clips']:>6} {s['sentences']:>9} {s['hours']:>6.2f} "
                      f"{s['by_kind'].get('terms', 0):>6} {s['by_kind'].get('plain', 0):>6} "
                      f"{s['by_source'].get(SOURCE_REHEARSAL, 0):>9}")
+    for name in SPLITS:
+        mix = b.summary["splits"][name].get("by_condition") or {}
+        if mix:
+            lines.append(f"  {name}: " + ", ".join(f"{cid} {n}" for cid, n in mix.items()))
     skipped = b.summary["inputs"]["skipped"]
     if skipped:
         lines.append(f"skipped {len(skipped)} take(s): " + ", ".join(f"{s['id']} ({s['reason']})" for s in skipped[:5])

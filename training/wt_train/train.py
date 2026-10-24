@@ -52,7 +52,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import audio, console, dataset, paths, whisper
+from . import audio, console, dataset, paths, per_condition, whisper
 from .config import Config, LoraConfig, config_hash, load_config, to_dict, with_overrides
 from .dataset import Build, Item
 from .encoder_cache import CacheSpec, EncoderCache
@@ -232,12 +232,15 @@ def validate(model, batches: _Batches, items: list[Item], tokens: whisper.Tokens
         loss += float(batch_loss)
         n_tokens += batch_tokens
         for item, text in zip(batch, texts):
-            rows.append({**score_clip(item.id, item.text, text, spelling), "kind": item.kind, "source": item.source})
+            rows.append({**score_clip(item.id, item.text, text, spelling), "kind": item.kind, "source": item.source,
+                         "condition": item.condition})
     summary = summarize(rows)
     summary["loss"] = loss / n_tokens if n_tokens else 0.0
     for source in (dataset.SOURCE_RECORDING, dataset.SOURCE_REHEARSAL):
         part = [r for r in rows if r["source"] == source]
         summary[f"wer_{source}"] = summarize(part)["wer"] if part else None
+    # Per recording condition (phone whispered, phone normal, Mac normal).
+    summary["wer_by_condition"] = {cid: s["wer"] for cid, s in per_condition.summaries(rows).items()}
     return rows, summary
 
 
@@ -361,6 +364,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
             "validation_wer": s["wer"], "validation_cer": s["cer"],
             "validation_wer_recordings": s[f"wer_{dataset.SOURCE_RECORDING}"],
             "validation_wer_rehearsal": s[f"wer_{dataset.SOURCE_REHEARSAL}"],
+            "validation_wer_by_condition": s["wer_by_condition"],
             "term_accuracy_strict": s["term_accuracy_strict"], "term_accuracy_lenient": s["term_accuracy_lenient"],
             "terms": s["terms"], "learning_rate": scheduler.get_last_lr()[0], "epoch_seconds": round(epoch_seconds, 1),
         }
