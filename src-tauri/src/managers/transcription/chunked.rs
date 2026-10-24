@@ -10,7 +10,7 @@ use super::TranscriptionManager;
 use crate::audio_toolkit::chunking::{ChunkPlan, Chunker};
 use crate::engine_supervisor::{CancelMark, EngineError};
 use crate::managers::audio::create_detector;
-use crate::pipeline::da::script::has_foreign_letters;
+use crate::pipeline::da::script::has_stray_characters;
 use crate::settings::VadBackend;
 
 /// WalkieTalkey (DESK-47): told each chunk's text as soon as it is decoded,
@@ -229,10 +229,10 @@ impl<'a> ChunkedDecode<'a> {
     }
 
     /// WalkieTalkey (run 2, Phase 2): one run of `audio`. A Danish run with a
-    /// vocabulary prompt that comes back with letters from another script is
-    /// decoded again without the vocabulary: on code-switched speech the
-    /// "Glossary:" prompt can tip Edda into such fragments, the plain run does
-    /// not (`pipeline::da::script`).
+    /// vocabulary prompt that comes back with letters from another script, or
+    /// with broken characters (run 4), is decoded again without the
+    /// vocabulary: on code-switched speech the "Glossary:" prompt can tip Edda
+    /// into such fragments, the plain run does not (`pipeline::da::script`).
     fn run_guarded(
         &self,
         audio: Vec<f32>,
@@ -243,11 +243,11 @@ impl<'a> ChunkedDecode<'a> {
             .tm
             .run_batch(self.mark, audio, run_options, &self.model_id)?;
         match retry {
-            Some(audio) if has_foreign_letters(&transcript.text) => {
+            Some(audio) if has_stray_characters(&transcript.text) => {
                 let mut plain = run_options.clone();
                 plain.vocabulary.clear();
                 info!(
-                    "A chunk came back with letters from another script; decoding it again without the vocabulary"
+                    "A chunk came back with letters from another script or broken characters; decoding it again without the vocabulary"
                 );
                 self.tm.run_batch(self.mark, audio, &plain, &self.model_id)
             }
