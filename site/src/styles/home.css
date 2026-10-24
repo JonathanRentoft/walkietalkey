@@ -714,8 +714,8 @@ div.claim {
   margin-left: 0.5em;
   padding: 1px 7px;
   border-radius: var(--radius-pill);
-  background: var(--rav-dyb);
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--on-ink);
   font: 600 11px/1.5 var(--font-mono);
   vertical-align: 0.15em;
 }
