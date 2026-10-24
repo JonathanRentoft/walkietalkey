@@ -122,7 +122,7 @@ If WalkieTalkey ever gets a hosted admin console for companies, that console (no
 ### 5.3 Pairing flow
 
 1. On the computer: Indstillinger › Telefon › "Par en telefon". If the computer has no room yet, it creates one first; the room id is bound to the computer's signing key (RELAY-03). The app creates `a` and `s` (32 random bytes each), registers SHA-256(`a`) with the relay with a 10-minute expiry, and shows a QR code with a countdown. Closing the window cancels the code (`cancel_admission`).
-2. On the phone: open the WalkieTalkey app, tap "Par med en computer", scan the QR inside the app. (On Android and in the iOS app, scanning with the normal camera also opens the app directly. On an iPhone without the iOS app, the camera opens Safari, whose storage is separate from the home-screen app, so that page never joins and says "Åbn WalkieTalkey fra hjemmeskærmen og scan koden der.")
+2. On the phone: open the WalkieTalkey app, tap "Par med en computer", scan the QR inside the app. (On Android and in the iOS app, scanning with the normal camera also opens the app directly. On an iPhone without the iOS app, the camera opens Safari, whose storage is separate from the home-screen app, so that page never joins and never creates keys. Run 2: it keeps the pairing link in its address bar and links a manifest without `start_url`, so the app added to the home screen from there starts with the link and pairs on its first launch with one tap; the secrets are single-use and expire after 10 minutes, so a stale copy is harmless. If iOS drops the link, the home-screen app's first launch opens the scanner by itself. Only a real iPhone can confirm which of the two happens on a given iOS version.)
 3. The QR holds a URL whose secret part is after `#`, so browsers never send it to any server: `https://app.walkietalkey.com/p#<base64url(JSON)>` (or the company's `PhoneAppUrl`) with `{"v":1,"r":roomId,"a":admission,"s":secret,"e":computerAgreementPublicKey,"u":relayUrl,"n":computerName,"o":"mac"}` (`o` is `mac` or `win`, so the phone says ⌘V or Ctrl+V). The page removes the fragment from the address bar and history (`history.replaceState`) as soon as it has read it.
 4. The phone creates its key pairs (if it has none), computes the pair keys (section 9.3), and sends `join` to the relay with `a`, its two public keys, and a MAC over those keys made with a key derived from `s`.
 5. The relay checks SHA-256(`a`) against the stored hash, deletes it (single use), adds the phone's signing key to the room, and forwards the phone's public keys and MAC to the computer.
@@ -361,21 +361,21 @@ Om: version, licenser og kreditering (Handy, transcribe.cpp, Edda, Ekko PnC, ONN
 
 | ID | Requirement |
 |---|---|
-| PHONE-10 | First screen when not paired: "Par med en computer" with a short explanation and a button that opens the camera to scan the QR (QR decoding in JavaScript, no server). |
+| PHONE-10 | First screen when not paired: "Par med en computer" with a short explanation and a button that opens the camera to scan the QR (QR decoding in JavaScript, no server). A home-screen app's first launch without a pairing link opens the scanner by itself (run 2). |
 | PHONE-11 | On Android, and in the iOS shell, scanning the QR with the normal camera opens the app and pairs directly. |
-| PHONE-12 | The phone asks for a name for itself, prefilled ("iPhone"), which is sent encrypted to the computer. |
+| PHONE-12 | The phone asks for a name for itself, prefilled from the computer's owner when the computer's name has one ("Jonathans MacBook Pro" gives "Jonathans iPhone"), else the kind of phone ("iPhone"), which is sent encrypted to the computer. |
 | PHONE-13 | Keys are stored as non-extractable WebCrypto keys in IndexedDB, in both the PWA and the iOS app (PHONE-03). One TypeScript implementation of the protocol serves both. |
 | PHONE-14 | If the relay answers 4404 (room not found) or 4401 (not a member) for a room, the phone shows "Parringen med <computer> er fjernet. Par igen for at bruge den." and drops that room and its keys. |
-| PHONE-15 | The pairing page reads the fragment, then removes it with `history.replaceState`, so the secrets do not linger in browser history or history sync. |
+| PHONE-15 | The pairing page reads the fragment, then removes it with `history.replaceState`, so the secrets do not linger in browser history or history sync. Exception (run 2): an iPhone Safari tab keeps the link in its address bar, so the home-screen app added from it starts with the link (5.3 step 2); it never joins. A home-screen app remembers SHA-256(`a`) of the links it has handled (paired, cancelled or expired), never the secrets, so launching from the same start URL later is normal. |
 
 ### 7.3 Main screen
 
-Exactly as the design system's `PhoneApp` component: brand, the target computer as a chip, the big hold button, the label, the lock line "Krypteret fra telefon til computer".
+As the design system's `PhoneApp` component: brand, the big button, the label, the lock line "Krypteret fra telefon til computer". Run 2: the target computer is one quiet status line at the very top (a small dot and "Forbundet til {computer}", "Forbinder til {computer}", "Ikke forbundet til {computer}" or "{computer} er ikke online", low contrast, wrapping, safe-area aware) instead of a chip; tapping it picks a computer and opens the settings. Text is never below 16 px.
 
 | ID | State | Label | Must |
 |---|---|---|---|
 | PHONE-20 | idle | "Hold for at tale" | M2 |
-| PHONE-21 | rec | "Slip for at sende", red dot and time, level meter, glowing ring | M2 |
+| PHONE-21 | rec | "Slip for at sende" while a finger is on the button; hands-free shows a lock and "Tryk igen for at stoppe" with "Annullér". Red dot and time, level meter, glowing ring; the glow is never clipped (only the full screen clips it; run 2 fixed the PhoneApp box's `overflow: hidden`, which cut it on home-screen screens wider than its proportions) | M2 |
 | PHONE-22 | send | "Sender til <computer>" | M2 |
 | PHONE-23 | ready | "Klar på <computer>" and "Tryk ⌘V for at indsætte" ("Tryk Ctrl+V for at indsætte" when the QR said `o: win`) | M2 |
 | PHONE-24 | offline | "<computer> er ikke online. Optagelsen venter i 10 minutter." The phone keeps the recording in memory until it gets a result. If none arrives within 10 minutes: "Nåede ikke frem til <computer>." with "Prøv igen" (resends from memory while the app is open). | M2 |
@@ -383,19 +383,19 @@ Exactly as the design system's `PhoneApp` component: brand, the target computer 
 
 | ID | Requirement |
 |---|---|
-| PHONE-26 | Hold to talk is the default. Sliding the finger off the button shows "Slip for at annullere", and letting go there cancels (`audio_cancel`). Setting "Tryk for at starte og stoppe" for one-handed use. |
+| PHONE-26 | Tap or hold (run 2; replaces hold to talk with the "Tryk for at starte og stoppe" setting). Recording starts at button-down. Released within 0.5 s it is hands-free until the next tap (sends), "Annullér", the 5-minute limit, or the app going to the background (sends). Held longer it is push-to-talk and the release sends. Sliding the finger off the button while it is down shows "Slip for at annullere", and letting go there cancels (`audio_cancel`). There is no setting. |
 | PHONE-27 | Haptic tick on start and stop where the platform allows (Android vibration API, iOS shell native haptics). |
 | PHONE-28 | The screen stays awake while recording (Screen Wake Lock API where available). |
-| PHONE-29 | Maximum 5 minutes per recording, with a countdown from 4:45. |
+| PHONE-29 | Maximum 5 minutes per recording, also hands-free, with a countdown from 4:45. |
 
 ### 7.4 Recording and streaming
 
 | ID | Requirement |
 |---|---|
-| PHONE-30 | Audio is captured with `getUserMedia` and an AudioWorklet, downsampled to 16 kHz mono, 16-bit PCM, in 200 ms frames. |
+| PHONE-30 | Audio is captured with `getUserMedia` (channelCount 1; echoCancellation, noiseSuppression and autoGainControl off, so speech recognition gets the raw microphone instead of the call-processing chain) and an AudioWorklet, downsampled to 16 kHz mono, 16-bit PCM, in 200 ms frames. While the app is visible and paired the microphone stays open and keeps the last 300 ms in memory as the start of the next dictation, so the first word is never lost (run 2, Phase 0: v1 opened the microphone at button-down and lost first words); it closes when the page is hidden, after 3 idle minutes, or when no computer is paired. |
 | PHONE-31 | Each frame is encrypted (section 9) and sent while the user is still talking, so the computer has nearly all the audio the moment the button is released. Every audio payload carries the session id and its chunk index (Appendix C.2). |
 | PHONE-32 | The phone keeps every chunk of the open session in memory until the computer's result arrives. After a reconnect it resends the whole session, packing up to 10 chunks (2 s of audio) per frame and sending at most 25 frames per second, so it stays under the relay's limit (RELAY-11). The computer drops duplicates by chunk index. |
-| PHONE-33 | The phone never stores audio on disk. |
+| PHONE-33 | The phone never stores audio on disk. Between dictations it keeps at most the last 300 ms in memory, overwritten all the time, and sends nothing unless a dictation is made. |
 | PHONE-34 | Data use is about 32 kB per second of speech (about 2 MB per minute). Opus compression is a later optimisation, not v1. |
 | PHONE-35 | The hold button uses pointer events with pointer capture, blocks the long-press menu and text selection, and resumes the AudioContext on the first touch (browsers only start audio after a user gesture). |
 
@@ -408,7 +408,7 @@ Exactly as the design system's `PhoneApp` component: brand, the target computer 
 
 ### 7.6 Phone settings
 
-Parrede computere (navn, Fjern, which sends `leave`), Par med en computer, hold eller tryk, haptik, om og licenser.
+Parrede computere (navn, Fjern, which sends `leave`), Par med en computer, haptik, om og licenser. (Run 2: "hold eller tryk" is gone; the button does both, PHONE-26.)
 
 ---
 
