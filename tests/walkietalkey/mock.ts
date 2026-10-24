@@ -9,7 +9,7 @@ export const EKKO_TINY =
 
 export interface MockOptions {
   platform?: "macos" | "windows";
-  /** Overrides for Handy's AppSettings. */
+  /** Overrides for the desktop core's AppSettings. */
   app?: Record<string, unknown>;
   /** Overrides for WtSettings. */
   wt?: Record<string, unknown>;
@@ -262,7 +262,7 @@ function mockBackend(options: MockOptions) {
   }
 
   const handlers: Record<string, (args: any) => any> = {
-    // Handy settings
+    // Desktop core settings
     get_app_settings: () => state.app,
     get_default_settings: () => state.app,
     change_autostart_setting: (a) => (state.app.autostart_enabled = a.enabled),
