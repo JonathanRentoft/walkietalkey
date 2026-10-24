@@ -45,6 +45,97 @@ test.describe("pill", () => {
     await expect(page.getByTestId("pill")).toBeHidden();
   });
 
+  test("the mark and a live waveform from the microphone level", async ({
+    page,
+  }) => {
+    await openPill(page);
+    await emit(page, "show-overlay", "recording");
+    const pill = page.locator(".wt-pill");
+    await expect(pill).toHaveClass(/wt-pill--lg/);
+    await expect(pill.locator(".wt-pill-mark")).toBeVisible();
+    const bars = pill.locator(".wt-wave i");
+    await expect(bars).toHaveCount(15);
+    const heights = () =>
+      bars.evaluateAll((els) =>
+        els.map((el) =>
+          Number((el as HTMLElement).style.getPropertyValue("--v")),
+        ),
+      );
+    const quiet = Math.max(...(await heights()));
+    for (let i = 0; i < 4; i++)
+      await emit(page, "mic-level", Array(16).fill(0.9));
+    await expect
+      .poll(async () => Math.max(...(await heights())))
+      .toBeGreaterThan(quiet + 0.3);
+    // Silence falls back slowly to a calm row of dots.
+    for (let i = 0; i < 20; i++)
+      await emit(page, "mic-level", Array(16).fill(0));
+    await expect
+      .poll(async () => Math.max(...(await heights())))
+      .toBeLessThan(0.2);
+  });
+
+  test("hands-free: a lock and Tryk igen for at stoppe (Phase 1)", async ({
+    page,
+  }) => {
+    await openPill(page);
+    await emit(page, "show-overlay", "recording");
+    await emit(page, "recording-ready");
+    await expect(page.getByText("Tryk igen for at stoppe")).toHaveCount(0);
+    await emit(page, "wt-pill-handsfree", true);
+    await expect(page.getByText("Tryk igen for at stoppe")).toBeVisible();
+    await expect(page.getByTestId("pill")).toHaveAttribute(
+      "data-handsfree",
+      "true",
+    );
+    await expect(page.locator(".wt-pill-lock")).toBeVisible();
+    await expect
+      .poll(async () =>
+        (await calls(page, "wt_announce")).map((c) => c.args.text),
+      )
+      .toContain("Lytter. Tryk igen for at stoppe");
+    // The next tap ends it like any dictation.
+    await emit(page, "show-overlay", "transcribing");
+    await expect(page.getByText("Renskriver")).toBeVisible();
+    await expect(page.getByText("Tryk igen for at stoppe")).toHaveCount(0);
+    await emit(page, "wt-pill-end", { state: "pasted", shortcut: "⌘V" });
+    await expect(page.getByText("Indsat")).toBeVisible();
+    // A new dictation starts held, not hands-free.
+    await emit(page, "show-overlay", "recording");
+    await expect(page.getByText("Tryk igen for at stoppe")).toHaveCount(0);
+  });
+
+  test("the overlay window leaves room for the halo in every state", async ({
+    page,
+  }) => {
+    // overlay.rs: OVERLAY_WIDTH x OVERLAY_HEIGHT.
+    await page.setViewportSize({ width: 480, height: 120 });
+    await openPill(page);
+    const fits = async () => {
+      const box = await page.locator(".wt-pill").boundingBox();
+      expect(box).not.toBeNull();
+      // The halo and shadow reach about 30 px past the pill.
+      expect(box!.x).toBeGreaterThanOrEqual(30);
+      expect(box!.y).toBeGreaterThanOrEqual(30);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(450);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(90);
+    };
+    await emit(page, "show-overlay", "recording");
+    await emit(page, "wt-pill-handsfree", true);
+    await page.waitForTimeout(600);
+    await fits();
+    await emit(page, "wt-pill-countdown", { seconds_left: 12 });
+    await page.waitForTimeout(600);
+    await fits();
+    await emit(page, "show-overlay", "transcribing");
+    await emit(page, "wt-pill-not-ready");
+    await page.waitForTimeout(600);
+    await fits();
+    await emit(page, "wt-pill-end", { state: "clipboard", shortcut: "Ctrl+V" });
+    await page.waitForTimeout(600);
+    await fits();
+  });
+
   test("the end states of Appendix A", async ({ page }) => {
     await openPill(page);
     await emit(page, "show-overlay", "recording");

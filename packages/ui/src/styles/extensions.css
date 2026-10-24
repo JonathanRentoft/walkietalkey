@@ -22,6 +22,104 @@ a.wt-shiny {
   opacity: 0.75;
 }
 
+/* DictationPill: the live waveform (levels), one bar per level */
+.wt-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  flex: none;
+}
+.wt-wave i {
+  width: 3px;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--c) 70%, var(--night)),
+    var(--c)
+  );
+  transform: scaleY(var(--v, 0.12));
+  transition: transform 90ms linear;
+}
+.wt-pill-mark,
+.wt-pill-lock {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--on-night);
+}
+.wt-pill-hint {
+  color: var(--on-night);
+}
+.wt-pill--handsfree .wt-pill-time {
+  color: var(--on-night-muted);
+}
+
+/* DictationPill size="lg": the desktop overlay (DESK-55). 56 px high, larger
+   text, smoked glass on night (on-night text keeps its contrast on any
+   desktop), and a halo kept within 32 px so the overlay window never clips it. */
+.wt-pill--lg {
+  height: 56px;
+  font: 500 15px/1 var(--font-sans);
+}
+.wt-pill--lg .wt-pill-inner {
+  gap: 12px;
+  padding: 0 22px 0 20px;
+}
+.wt-pill--lg .wt-pill-clip {
+  background:
+    linear-gradient(180deg, #ffffff17 0%, #ffffff06 45%, #ffffff00 70%),
+    color-mix(in srgb, var(--night) 92%, transparent);
+  box-shadow:
+    0 2px 6px #00000029,
+    0 14px 24px -12px #00000059,
+    inset 0 0 0 1px var(--night-line),
+    inset 0 1px 0 #ffffff21;
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(1.2);
+  backdrop-filter: blur(var(--blur-glass)) saturate(1.2);
+}
+.wt-pill--lg .wt-pill-halo {
+  inset: -2px;
+  filter: blur(10px);
+  opacity: 0.4;
+}
+.wt-pill--lg.wt-pill--listening .wt-pill-halo {
+  inset: -4px;
+  opacity: 0.85;
+}
+.wt-pill--lg.wt-pill--handsfree .wt-pill-halo {
+  opacity: 0.95;
+}
+.wt-pill--lg .wt-rec {
+  width: 8px;
+  height: 8px;
+}
+.wt-pill--lg .wt-pill-time {
+  min-width: 36px;
+}
+.wt-pill--lg .wt-wave {
+  height: 26px;
+}
+.wt-pill--lg .wt-kbd {
+  min-width: 30px;
+  height: 26px;
+  font-size: 13px;
+}
+.wt-pill--lg .wt-ok {
+  width: 20px;
+  height: 20px;
+}
+.wt-pill--lg .wt-wait i {
+  width: 6px;
+  height: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-wave i {
+    transition: none;
+  }
+}
+
 /* PhoneApp as a real control (buttonProps, onDeviceClick, onRetry, onDetails) */
 button.wt-app-btn {
   border: 0;
