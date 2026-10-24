@@ -37,6 +37,19 @@ def main() -> int:
     problems: list[str] = []
     if not str(m.get("baseUrl", "")).endswith("/"):
         problems.append("baseUrl must end with /")
+    assets = set()
+    for model in m["models"]:
+        for f in model["files"]:
+            if not model.get("bundled"):
+                assets.add(f["path"])
+        for name, la in model.get("licenseAssets", {}).items():
+            if name not in model.get("licenseFiles", []):
+                problems.append(f"{model['id']}: licenseAssets lists {name}, not in licenseFiles")
+            if not SHA.match(la["sha256"]):
+                problems.append(f"{model['id']}/{name}: bad sha256")
+            if la["asset"] in assets or "/" in la["asset"]:
+                problems.append(f"{model['id']}/{name}: asset name {la['asset']} must be unique and flat")
+            assets.add(la["asset"])
     ids = set()
     for model in m["models"]:
         mid = model["id"]
@@ -48,8 +61,8 @@ def main() -> int:
         for f in model["files"]:
             if not SHA.match(f["sha256"]):
                 problems.append(f"{mid}/{f['name']}: bad sha256")
-            if not model.get("bundled") and not (f["path"] or "").startswith(model["repository"] + "/"):
-                problems.append(f"{mid}/{f['name']}: path must start with the repository")
+            if not model.get("bundled") and f["path"] != f["name"]:
+                problems.append(f"{mid}/{f['name']}: path must be the release asset name (flat)")
             if a.dir and not model.get("bundled"):
                 local = a.dir / mid / f["name"]
                 if not local.is_file():

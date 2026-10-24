@@ -1,8 +1,7 @@
 /* Shared facts for every page. User-facing strings are Danish; everything new is marked TODO(copy) where it is written. */
 
-/** OPEN DECISION 18.1 (owner): who operates the public relay and the website: Jonathan personally, or Navigent.io ApS.
-    This is the only placeholder on the site; replace the value once the owner has decided. */
-export const OPERATOR = "[Operatør: afventer ejerens beslutning]";
+/** Who operates the public relay and the website (decision 18.1, decided in run 2). */
+export const OPERATOR = "Navigent.io ApS (CVR 46285395)";
 
 export const REPO_URL = "https://github.com/JonathanRentoft/walkietalkey";
 export const RELEASES_URL = `${REPO_URL}/releases/latest`;

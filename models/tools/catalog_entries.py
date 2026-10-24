@@ -6,7 +6,7 @@ harness summary (models/eval/run.sh).
     python3 models/tools/catalog_entries.py <harness-out>/summary.json
 
 Writes models/ekko-v1-tiny/catalog-entry.json and models/edda/catalog-entry.json.
-`revision` must be replaced by the commit models/upload.sh prints. `results`
+`revision` names the GitHub release the files are published in (models-v1). `results`
 carries accuracy only: the catalog's performance numbers are real-time factors
 on Handy's benchmark machine (Ryzen 7 PRO 4750U), which we did not measure.
 """
@@ -53,8 +53,8 @@ def main() -> int:
             "id": mid,
             "name": m["name"],
             "description": spec["description"],
-            "repository": manifest["baseUrl"].rstrip("/").rsplit("/", 1)[-1] + "/" + m["repository"],
-            "revision": "REPLACE-WITH-COMMIT-FROM-models/upload.sh",
+            "repository": "walkietalkey/" + mid + ("-gguf" if f["name"].endswith(".gguf") else ""),
+            "revision": "models-v1",
             "previousRevisions": [],
             "license": m["license"],
             "family": m["family"],
@@ -76,7 +76,7 @@ def main() -> int:
                 "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
                 f"Accuracy: WER on FLEURS da_dk test ({s['clips']} clips), Q8_0, language da, timestamps "
                 f"{s['timestamps']}, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
-                "Replace `revision` with the commit models/upload.sh prints; description_da is draft UI copy.",
+                "Files download from the GitHub release models-v1 (models/release.sh); description_da is draft UI copy.",
             ],
             "model": entry,
             "description_da": spec["description_da"],

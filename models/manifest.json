@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "baseUrl": "https://huggingface.co/walkietalkey/",
-  "_baseUrl": "A file's URL is baseUrl + path. A company's ModelBaseUrl (spec Appendix B, DESK-102) replaces Hugging Face with one flat folder: <ModelBaseUrl>/<file name>, the same names and bytes; every file is checked against its sha256 (DESK-32). The walkietalkey Hugging Face organisation does not exist yet; the paths use 'resolve/main' until the first upload pins a commit (models/upload.sh prints it).",
+  "baseUrl": "https://github.com/JonathanRentoft/walkietalkey/releases/download/models-v1/",
+  "_baseUrl": "A file's URL is baseUrl + path: the assets of GitHub release models-v1, one flat folder (a release cannot hold folders, so licence files carry a '<model>-' prefix there and land in LICENSES/ locally again). A company's ModelBaseUrl (spec Appendix B, DESK-102) replaces it with <ModelBaseUrl>/<file name>, the same names and bytes as today's layout; every file is checked against its sha256 (DESK-32). Hugging Face is not used for our models.",
   "models": [
     {
       "id": "edda-v0.2",
@@ -11,17 +11,22 @@
       "minEngine": "0.4.0",
       "family": "whisper",
       "default": true,
-      "languages": ["da"],
-      "runOptions": { "language": "da", "timestamps": "none" },
+      "languages": [
+        "da"
+      ],
+      "runOptions": {
+        "language": "da",
+        "timestamps": "none"
+      },
       "_runOptions": "Edda was fine-tuned on <|notimestamps|> sequences only. With segment timestamps (transcribe-cpp TimestampKind::Auto, the default) it drops or cuts leading words; decode with TimestampKind::None.",
       "license": "apache-2.0",
       "licenseFiles": [
         "LICENSE",
         "LICENSES/Whisper-MIT.txt",
         "LICENSES/CORAL-LICENSE",
-        "LICENSES/FTSPEECH-LICENSE.md"
+        "LICENSES/FTSPEECH-LICENSE.md",
+        "NOTICE"
       ],
-      "repository": "edda-v0.2-gguf",
       "source": {
         "repository": "danish-foundation-models/edda-v0.2",
         "revision": "698f8d04b5970f963d31c4079c05a76fa7f4f5bb",
@@ -35,9 +40,35 @@
           "quant": "Q8_0",
           "size": 886381920,
           "sha256": "63ac884ad3d436642e8599ed3bda6c2b3456a0bb939a497c796589dee3f3b18d",
-          "path": "edda-v0.2-gguf/resolve/main/edda-v0.2-Q8_0.gguf"
+          "path": "edda-v0.2-Q8_0.gguf"
         }
-      ]
+      ],
+      "modelCard": {
+        "asset": "edda-v0.2-README.md",
+        "repoPath": "models/edda/README.md"
+      },
+      "licenseAssets": {
+        "LICENSE": {
+          "asset": "edda-v0.2-LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        "LICENSES/Whisper-MIT.txt": {
+          "asset": "edda-v0.2-Whisper-MIT.txt",
+          "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+        },
+        "LICENSES/CORAL-LICENSE": {
+          "asset": "edda-v0.2-CORAL-LICENSE",
+          "sha256": "ee93c98df9a894464d1c042b66c6039543776c463d06d1a6e93f176e08ca67bd"
+        },
+        "LICENSES/FTSPEECH-LICENSE.md": {
+          "asset": "edda-v0.2-FTSPEECH-LICENSE.md",
+          "sha256": "39708f5d77ae217b3a540363cb1b37fe079478e4ed1d3464f38d05d5a1c58b9a"
+        },
+        "NOTICE": {
+          "asset": "edda-v0.2-NOTICE",
+          "sha256": "1b51309a5c8db3292a59cacac4cdd0a6a10e42f3bfe4d16bfc66cf3b125daf60"
+        }
+      }
     },
     {
       "id": "ekko-v1-tiny",
@@ -48,8 +79,13 @@
       "family": "parakeet",
       "default": false,
       "fastModel": true,
-      "languages": ["da"],
-      "runOptions": { "language": "da", "timestamps": "auto" },
+      "languages": [
+        "da"
+      ],
+      "runOptions": {
+        "language": "da",
+        "timestamps": "auto"
+      },
       "_shipping": "DESK-35 fast model. The licence terms allow free and commercial use (docs/MODELS.md); like Edda it was trained on FT Speech, so it waits on the same owner decision (spec 18.7). Output has no punctuation or casing, so Ekko PnC always runs after it.",
       "license": "other",
       "licenseName": "NVIDIA Open Model License (base model) + CC BY 4.0 (RyeAI modifications) + CoRal use restrictions",
@@ -61,7 +97,6 @@
         "LICENSES/CORAL-LICENSE",
         "LICENSES/FTSPEECH-LICENSE.md"
       ],
-      "repository": "ekko-v1-tiny-gguf",
       "source": {
         "repository": "RyeAI/ekko-v1-tiny",
         "revision": "3658535e7b2fa98d5d9aad8114573c0fab1e6203",
@@ -75,9 +110,39 @@
           "quant": "Q8_0",
           "size": 133940896,
           "sha256": "ccb40917c85575a6045b63e97896b882d778de1632bd99296dd94a6dc4039a1d",
-          "path": "ekko-v1-tiny-gguf/resolve/main/ekko-v1-tiny-Q8_0.gguf"
+          "path": "ekko-v1-tiny-Q8_0.gguf"
         }
-      ]
+      ],
+      "modelCard": {
+        "asset": "ekko-v1-tiny-README.md",
+        "repoPath": "models/ekko-v1-tiny/README.md"
+      },
+      "licenseAssets": {
+        "MODEL_LICENSE.md": {
+          "asset": "ekko-v1-tiny-MODEL_LICENSE.md",
+          "sha256": "3f0c10a453c459d4342fe0f079c98677fd733f9a49b5ad2084b5e2e159370c07"
+        },
+        "NOTICE": {
+          "asset": "ekko-v1-tiny-NOTICE",
+          "sha256": "1d720ec5fac9815e9374778a39406cb23a775b44c7fb0185709461cc597affef"
+        },
+        "LICENSES/NVIDIA-OPEN-MODEL-LICENSE.pdf": {
+          "asset": "ekko-v1-tiny-NVIDIA-OPEN-MODEL-LICENSE.pdf",
+          "sha256": "4d2fb590aa9b30c47f2058bff17291df7fa2aa0c1bd775a20703da9bb267cfab"
+        },
+        "LICENSES/CC-BY-4.0.txt": {
+          "asset": "ekko-v1-tiny-CC-BY-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        },
+        "LICENSES/CORAL-LICENSE": {
+          "asset": "ekko-v1-tiny-CORAL-LICENSE",
+          "sha256": "ee93c98df9a894464d1c042b66c6039543776c463d06d1a6e93f176e08ca67bd"
+        },
+        "LICENSES/FTSPEECH-LICENSE.md": {
+          "asset": "ekko-v1-tiny-FTSPEECH-LICENSE.md",
+          "sha256": "39708f5d77ae217b3a540363cb1b37fe079478e4ed1d3464f38d05d5a1c58b9a"
+        }
+      }
     },
     {
       "id": "ekko-pnc",
@@ -86,7 +151,9 @@
       "engine": "onnxruntime",
       "_engine": "crates/ekko-pnc (ort 2.0.0-rc.13, ONNX Runtime 1.28.0); 128-token windows, 12 words of overlap (DESK-41).",
       "default": true,
-      "languages": ["da"],
+      "languages": [
+        "da"
+      ],
       "license": "cc-by-4.0",
       "licenseFiles": [
         "MODEL_LICENSE.md",
@@ -96,7 +163,6 @@
         "LICENSES/CORAL-LICENSE",
         "LICENSES/FTSPEECH-LICENSE.md"
       ],
-      "repository": "ekko-pnc",
       "source": {
         "repository": "RyeAI/ekko-pnc",
         "revision": "d3129544e4e0155093e192cac58a9e69a4dea1ff",
@@ -107,21 +173,51 @@
           "name": "pnc.int8.onnx",
           "size": 22424741,
           "sha256": "46bb979d409731872f10b6cb71298594595f16368d2aec2fcaf94d87b4266527",
-          "path": "ekko-pnc/resolve/main/pnc.int8.onnx"
+          "path": "pnc.int8.onnx"
         },
         {
           "name": "tokenizer.json",
           "size": 2301084,
           "sha256": "a1e0d43ee307ad7a1ccc23e6e5398d877a68ca7f576067ac507625a0d50e9502",
-          "path": "ekko-pnc/resolve/main/tokenizer.json"
+          "path": "tokenizer.json"
         },
         {
           "name": "config.json",
           "size": 1062,
           "sha256": "dc655c46f69eeb15dd43786ad58fb5862cc794b36cc9d2c426ab5bc4b01f23ca",
-          "path": "ekko-pnc/resolve/main/config.json"
+          "path": "config.json"
         }
-      ]
+      ],
+      "modelCard": {
+        "asset": "ekko-pnc-README.md",
+        "repoPath": "models/ekko-pnc/README.md"
+      },
+      "licenseAssets": {
+        "MODEL_LICENSE.md": {
+          "asset": "ekko-pnc-MODEL_LICENSE.md",
+          "sha256": "590f820521961c89e7795bd3f46575794f4cbdcb02cc9db682e825c0afc874aa"
+        },
+        "NOTICE": {
+          "asset": "ekko-pnc-NOTICE",
+          "sha256": "bc86a9b47ff32a3ab29bb0ff8f414ae8b2ef1932ccf8bae2e4dacb5a6812ba8d"
+        },
+        "LICENSES/CC-BY-4.0.txt": {
+          "asset": "ekko-pnc-CC-BY-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        },
+        "LICENSES/CC0-1.0.txt": {
+          "asset": "ekko-pnc-CC0-1.0.txt",
+          "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+        },
+        "LICENSES/CORAL-LICENSE": {
+          "asset": "ekko-pnc-CORAL-LICENSE",
+          "sha256": "ee93c98df9a894464d1c042b66c6039543776c463d06d1a6e93f176e08ca67bd"
+        },
+        "LICENSES/FTSPEECH-LICENSE.md": {
+          "asset": "ekko-pnc-FTSPEECH-LICENSE.md",
+          "sha256": "39708f5d77ae217b3a540363cb1b37fe079478e4ed1d3464f38d05d5a1c58b9a"
+        }
+      }
     },
     {
       "id": "silero-vad-v6.2",
@@ -152,5 +248,10 @@
     "reference": "Længere nordpå er der store områder, som er ret tyndt befolket, og nogle er næsten ubeboet vildmark.",
     "license": "cc-by-4.0",
     "attribution": "models/clips/ATTRIBUTION.md"
+  },
+  "release": {
+    "tag": "models-v1",
+    "url": "https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1",
+    "checksums": "SHA256SUMS"
   }
 }

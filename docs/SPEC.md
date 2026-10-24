@@ -225,8 +225,8 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-29 | M0 converts Edda to GGUF with transcribe.cpp's `scripts/convert-whisper.py`, quantises it to Q8_0 with `transcribe-quantize`, and checks it against the Transformers reference the way transcribe.cpp validates its own Whisper models (`dump_reference_whisper_transformers.py`), plus the same text as the original on 10 real clips, before anything is published. Stock Handy loads the result from its custom models folder, so M0 needs no app code. |
 | DESK-30 | Default model: **Edda v0.2** (Whisper large-v3-turbo fine-tuned on about 2,600 hours of Danish, 809M parameters, Apache-2.0, Alexandra Institute). We publish it as GGUF for transcribe.cpp, `Q8_0` (about 890 MB) by default. Smaller quantisations save download size but not time: in transcribe.cpp's own measurements Q4_K_M is as fast as Q8_0. About 1,690 of the training hours are FTSpeech (parliament) with lower-case, unpunctuated transcripts, so some output arrives without punctuation and DESK-41 will run often. Whether the FTSpeech terms limit use of the weights is an open question for M0 (section 11). |
 | DESK-31 | Model choice by measured speed: after the download, the app transcribes a bundled 10-second Danish clip. If Edda needs 1.5 s or less (Apple Silicon and most recent GPUs), Edda is the default. If it needs more (older or CPU-only Windows machines), the app offers the fast model (DESK-35) and says why in one sentence. The user can always switch. |
-| DESK-32 | Models download from our Hugging Face organisation, or from the company's own server if `ModelBaseUrl` is set (many companies block huggingface.co). Every file is checked against a SHA-256 from `models/manifest.json` shipped inside the app. Downloads resume after interruption. A failed check deletes the file and retries once, then shows an error. |
-| DESK-33 | Model cards on Hugging Face state the original, the licence (Apache-2.0), what we changed (conversion, quantisation) and the dataset terms (the CoRal terms forbid speech synthesis and biometric identification; dictation is fine). |
+| DESK-32 | Models download from the assets of our GitHub release `models-v1` (run 2; was our Hugging Face organisation), or from the company's own server if `ModelBaseUrl` is set. Every file is checked against a SHA-256 from `models/manifest.json` shipped inside the app. Downloads resume after interruption. A failed check deletes the file and retries once, then shows an error. |
+| DESK-33 | Model cards, published with the models in the GitHub release (`<model>-README.md`), state the original, the licence (Apache-2.0), what we changed (conversion, quantisation) and the dataset terms (the CoRal terms forbid speech synthesis and biometric identification; dictation is fine). |
 | DESK-34 | Handy's other models (Whisper, Parakeet) remain under "Andre modeller". |
 | DESK-35 | **Fast model** for slower PCs: Ekko v1 tiny (RyeAI; 110M parameters; FastConformer RNN-T fine-tuned from NVIDIA's `parakeet-rnnt-110m-da-dk`). Mean WER 12.1 on the Danish ASR leaderboard against Edda's 8.6, at 60 to 75 times real time on CPU alone. Evaluated in M0 on the ThinkPad. Before it ships: read its layered licence (NVIDIA Open Model License for the base model, CC BY 4.0 for RyeAI's changes, the CoRal terms, and its FTSpeech note), and convert the `.nemo` checkpoint with transcribe.cpp's `convert-parakeet.py` (transcribe.cpp already runs Parakeet RNN-T models). Its output has no punctuation, so DESK-41 always runs. |
 
@@ -591,7 +591,7 @@ A CI check fails the build if a dependency with an unknown or non-permissive lic
 | IP addresses, connection times | Cloudflare, as processor for the relay operator | Cloudflare's standard retention | the relay operator |
 | Website visits and phone app files | Cloudflare Pages (or the company's `PhoneAppUrl`) | Cloudflare's standard logs; no analytics | the site operator |
 | Update checks | GitHub (release files and update manifests) | GitHub's retention | GitHub: IP address and app version |
-| Model downloads | Hugging Face, or the company's `ModelBaseUrl` | their retention | Hugging Face: IP address |
+| Model downloads | GitHub releases, or the company's `ModelBaseUrl` | their retention | GitHub: IP address |
 | Shared word list | the company's `VocabularySource` server | the company's rules | the company |
 
 ### 12.2 Requirements
@@ -633,8 +633,8 @@ This section explains how running the project works in practice, step by step.
 
 | File | Content |
 |---|---|
-| `LICENSE` | Apache License 2.0, full text, copyright "2026 <copyright holder> and the WalkieTalkey contributors", where the holder is the owner's full name or Navigent.io ApS (decision 18.1) |
-| `NOTICE` | "WalkieTalkey. Copyright 2026 <copyright holder>". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
+| `LICENSE` | Apache License 2.0, full text, copyright "2026 Navigent.io ApS and the WalkieTalkey contributors" (decision 18.1: Navigent.io ApS, CVR 46285395) |
+| `NOTICE` | "WalkieTalkey. Copyright 2026 Navigent.io ApS and the WalkieTalkey contributors". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
 | `licenses/Handy-MIT.txt` | Handy's MIT licence, unchanged |
 | `TRADEMARKS.md` | The name WalkieTalkey and the logo are not covered by the code licence. Forks must use another name and logo. Saying "based on WalkieTalkey" is fine |
 
@@ -674,7 +674,7 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | OSS-21 | Release workflow: build macOS (arm64 and x64, universal if feasible) and Windows x64; sign and notarize the Mac app (Developer ID); sign the Windows installer (route decided in section 18); create the GitHub Release with assets, Tauri updater signatures and `latest.json`; publish release notes from `CHANGELOG.md`. |
 | OSS-22 | The relay deploys only on release tags `relay-vX.Y.Z`, not on every merge, because a deploy restarts every Durable Object and drops all sockets (RELAY-09). `wrangler deploy` with the Cloudflare API token as a secret, after the relay tests pass. The protocol version only changes with a new `/vN/` path, so old apps keep working. |
 | OSS-23 | Site deploys from `main` through Cloudflare Pages. |
-| OSS-24 | Models are uploaded once per version to Hugging Face, and the manifest with SHA-256 sums is committed. |
+| OSS-24 | Models are published once per version as the assets of a GitHub release (`models-v1`, made by `models/release.sh`), and the manifest with SHA-256 sums is committed. |
 | OSS-25 | Later: Homebrew cask and winget manifests. |
 | OSS-26 | `deploy/` holds the managed-settings templates (DESK-102): ADMX/ADML for Windows Group Policy and Intune, and a sample `.mobileconfig` for macOS. |
 
@@ -729,19 +729,19 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | Apple Developer Program | 99 USD per year | Signing and notarizing the Mac app, the iOS app (one membership covers both) |
 | Domain walkietalkey.com | about 10 USD per year at cost through Cloudflare Registrar | Website, relay, email |
 | Cloudflare (Pages, Workers, Durable Objects, Email Routing) | Workers Paid 5 USD per month for the public relay from launch (8.5, decision 18.6); Pages and Email Routing free | Relay, website, email forwarding |
-| GitHub, Hugging Face | 0 | Code, releases, model hosting |
+| GitHub | 0 | Code, releases, model hosting |
 | Windows signing | 0 with SignPath Foundation if accepted for open source; about 10 USD per month with Azure Artifact Signing (available to organisations in the EU, so through a company, not as a private person in Denmark); 150 to 300 USD per year for an OV certificate | Avoiding Windows SmartScreen warnings. No option gives instant trust; reputation builds over releases |
 | AI cleanup | 0 for us; users bring their own key or use on-device options | |
 
 ## 18. Decisions for the owner
 
-1. **Who runs the public relay and website**: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
+1. **Who runs the public relay and website**: decided (run 2): **Navigent.io ApS** (CVR 46285395), the copyright holder in LICENSE and NOTICE and the operator on the privacy page. Was: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
 2. **Windows signing**: apply to SignPath Foundation first (free), with Azure Artifact Signing through a company as the fallback. Unsigned beta builds until then.
 3. **GitHub home**: organisation `walkietalkey` (recommended) or your personal account.
 4. **iPhone**: build the iOS shell in M3 (recommended, because of PHONE-02), or live with the permission prompt in the PWA.
 5. **History default**: 14 days (proposed).
 6. **Public relay on Workers Paid from launch**: 5 USD per month (recommended), or the free tier with the risk that the relay stops for everyone until midnight UTC on a busy day (8.5).
-7. **Edda's training data**: ask the Alexandra Institute whether the FTSpeech terms limit use of the weights (section 11) before M0 picks the default model.
+7. **Edda's training data**: ask the Alexandra Institute whether the FTSpeech terms limit use of the weights (section 11) before M0 picks the default model. Run 2: the owner chose to publish the converted models as assets of the GitHub release `models-v1` (not Hugging Face); the open question only concerns companies' use and stays open.
 
 ---
 
@@ -773,7 +773,7 @@ macOS domain `com.walkietalkey.app`; Windows `HKLM\SOFTWARE\Policies\WalkieTalke
 |---|---|---|---|
 | `RelayUrl` | string | `wss://relay.walkietalkey.com` | Own relay |
 | `PhoneAppUrl` | string | `https://app.walkietalkey.com` | Own copy of the phone app; used in the pairing QR |
-| `ModelBaseUrl` | string | our Hugging Face organisation | Own model server with the same file names and SHA-256 sums |
+| `ModelBaseUrl` | string | our GitHub release `models-v1` | Own model server with the same file names and SHA-256 sums |
 | `AllowPhonePairing` | bool | true | Turn off the phone feature |
 | `CleanupMode` | `off`, `when-needed`, `always`, `shift` | `off` | AI cleanup mode (DESK-80) |
 | `CleanupProvider` | `apple`, `openai`, `anthropic`, `groq`, `cerebras`, `openrouter`, `custom` | | Forces a provider |
