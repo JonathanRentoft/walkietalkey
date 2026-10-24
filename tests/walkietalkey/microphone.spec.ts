@@ -1,6 +1,7 @@
 // The silent microphone (DESK-59): the pill while recording and at the end,
 // and the notice with "Brug {navn}" in the window, against the mocked
-// backend.
+// backend. Their fit in the overlay window is in pill-glow-mic.spec.ts, which
+// also runs in WebKit.
 import { expect, test, type Page } from "@playwright/test";
 import { calls, EDDA, emit, installMock, type MockOptions } from "./mock";
 
