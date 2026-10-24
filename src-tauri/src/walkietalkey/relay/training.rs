@@ -243,11 +243,8 @@ impl<E: Effects> Trainer<E> {
         if let Some(Action::Phone(phone, payload)) = active.session.end_frame() {
             self.effects.send_phone(phone, payload).await;
         }
-        let mut inner_refused = Vec::new();
-        for key in active.session.open_takes() {
-            inner_refused.push(key);
-        }
-        self.inner.lock().unwrap().refused.extend(inner_refused);
+        let open = active.session.open_takes();
+        self.inner.lock().unwrap().refused.extend(open);
         let _ = active.link.event(&serde_json::json!({"type": "bye"})).await;
     }
 
