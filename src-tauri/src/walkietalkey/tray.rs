@@ -3,10 +3,12 @@
 //! nu" once an update is ready, and the listening pulse.
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
 use log::{info, warn};
+use once_cell::sync::Lazy;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// "Sæt på pause" (DESK-96): the key does nothing and phone dictations are
@@ -18,7 +20,35 @@ static UPDATE_READY: AtomicBool = AtomicBool::new(false);
 
 /// Which of the two listening frames the icon shows (DESK-95 pulse).
 static PULSE_PHASE: AtomicBool = AtomicBool::new(false);
-static PULSING: AtomicBool = AtomicBool::new(false);
+
+type Listening = Box<dyn Fn() -> bool + Send>;
+
+/// Everything that is listening now (a key dictation, phone dictations) and
+/// whether the pulse thread runs. One lock, so a listener that joins just as
+/// the last one ends still gets a pulse.
+#[derive(Default)]
+struct Listeners {
+    list: Vec<Listening>,
+    pulsing: bool,
+}
+
+impl Listeners {
+    /// Adds a listener; true when the caller must start the pulse thread.
+    fn join(&mut self, is_listening: Listening) -> bool {
+        self.list.push(is_listening);
+        !std::mem::replace(&mut self.pulsing, true)
+    }
+
+    /// Drops the listeners that ended; false (and the thread stops) when
+    /// none is left.
+    fn still_listening(&mut self) -> bool {
+        self.list.retain(|is_listening| is_listening());
+        self.pulsing = !self.list.is_empty();
+        self.pulsing
+    }
+}
+
+static LISTENERS: Lazy<Mutex<Listeners>> = Lazy::new(|| Mutex::new(Listeners::default()));
 
 pub fn is_paused() -> bool {
     PAUSED.load(Ordering::SeqCst)
@@ -54,22 +84,34 @@ pub fn pulse_phase() -> bool {
     PULSE_PHASE.load(Ordering::Relaxed)
 }
 
-/// Pulses the listening icon while `is_listening` holds.
+/// Pulses the listening icon while `is_listening` holds (DESK-58, DESK-95),
+/// and as long as any other dictation still listens: a phone dictation that
+/// outlasts a key dictation keeps the pulse going.
 pub fn pulse_while<F>(app: AppHandle, is_listening: F)
 where
     F: Fn() -> bool + Send + 'static,
 {
-    if PULSING.swap(true, Ordering::SeqCst) {
+    let start = LISTENERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .join(Box::new(is_listening));
+    if !start {
         return;
     }
     thread::spawn(move || {
-        while is_listening() {
+        loop {
             thread::sleep(Duration::from_millis(700));
+            let listening = LISTENERS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .still_listening();
+            if !listening {
+                break;
+            }
             PULSE_PHASE.fetch_xor(true, Ordering::Relaxed);
             crate::tray::refresh_tray_icon(&app);
         }
         PULSE_PHASE.store(false, Ordering::Relaxed);
-        PULSING.store(false, Ordering::SeqCst);
         crate::tray::refresh_tray_icon(&app);
     });
 }
@@ -135,6 +177,29 @@ mod tests {
         let label = recent_label(&long);
         assert_eq!(label.chars().count(), 40);
         assert!(label.ends_with('…'));
+    }
+
+    #[test]
+    fn the_pulse_lasts_while_any_dictation_listens() {
+        // DESK-58, DESK-95: a key dictation ends while a phone one streams.
+        use std::sync::Arc;
+        let key = Arc::new(AtomicBool::new(true));
+        let phone = Arc::new(AtomicBool::new(true));
+        let mut listeners = Listeners::default();
+        let k = Arc::clone(&key);
+        assert!(listeners.join(Box::new(move || k.load(Ordering::SeqCst))));
+        let p = Arc::clone(&phone);
+        assert!(
+            !listeners.join(Box::new(move || p.load(Ordering::SeqCst))),
+            "one pulse thread"
+        );
+        assert!(listeners.still_listening());
+        key.store(false, Ordering::SeqCst);
+        assert!(listeners.still_listening(), "the phone still streams");
+        phone.store(false, Ordering::SeqCst);
+        assert!(!listeners.still_listening());
+        // The next dictation starts a new pulse.
+        assert!(listeners.join(Box::new(|| true)));
     }
 
     #[test]
