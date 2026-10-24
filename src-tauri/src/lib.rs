@@ -468,7 +468,7 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
                 println!("  {}", d);
             }
         }
-        if args.transcribe_file.is_none() {
+        if args.transcribe_file.is_none() && args.transcribe_list.is_none() {
             return 0;
         }
     }
@@ -509,7 +509,7 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
                 );
             }
         }
-        if args.transcribe_file.is_none() {
+        if args.transcribe_file.is_none() && args.transcribe_list.is_none() {
             return 0;
         }
     }
@@ -535,38 +535,43 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         );
     }
 
+    // WalkieTalkey --transcribe-list: the training workbench's batch runner.
+    if let Some(list) = &args.transcribe_list {
+        let text = match std::fs::read_to_string(list) {
+            Ok(text) => text,
+            Err(e) => {
+                eprintln!("error: cannot read {}: {}", list.display(), e);
+                return 2;
+            }
+        };
+        let base = list.parent().unwrap_or(std::path::Path::new("."));
+        let files = crate::walkietalkey::bench::parse_wav_list(&text, base);
+        let model_id = args
+            .model
+            .clone()
+            .unwrap_or_else(|| get_settings(app).selected_model);
+        if model_id.is_empty() {
+            eprintln!("error: no model selected (pass --model or pick one in the app)");
+            return 2;
+        }
+        let tm = app.state::<Arc<TranscriptionManager>>();
+        return crate::walkietalkey::bench::transcribe_list(
+            &tm,
+            &model_id,
+            args.device_index,
+            &files,
+            args.json,
+        );
+    }
+
     let Some(wav) = args.transcribe_file.clone() else {
         return 0;
     };
 
-    // read_wav_samples reads 16-bit int samples and does no validation; the app
-    // only ever saves 16 kHz mono 16-bit PCM, so reject anything else rather than
-    // transcribe garbage / mis-time / mis-decode.
-    match hound::WavReader::open(&wav) {
-        Ok(reader) => {
-            let spec = reader.spec();
-            if spec.sample_rate != 16_000
-                || spec.channels != 1
-                || spec.bits_per_sample != 16
-                || spec.sample_format != hound::SampleFormat::Int
-            {
-                eprintln!(
-                    "error: expected 16 kHz mono 16-bit PCM WAV, got {} Hz / {} ch / {}-bit {:?}",
-                    spec.sample_rate, spec.channels, spec.bits_per_sample, spec.sample_format
-                );
-                return 2;
-            }
-        }
-        Err(e) => {
-            eprintln!("error: cannot open {}: {}", wav.display(), e);
-            return 2;
-        }
-    }
-
-    let samples = match crate::audio_toolkit::read_wav_samples(&wav) {
+    let samples = match crate::walkietalkey::bench::read_dictation_wav(&wav) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error: failed to read {}: {}", wav.display(), e);
+            eprintln!("error: {}", e);
             return 2;
         }
     };
@@ -876,6 +881,7 @@ pub fn run(cli_args: CliArgs) {
     // The headless path must run as its own instance (see the single-instance
     // note below), not forward to an already-running app.
     let headless_mode = cli_args.transcribe_file.is_some()
+        || cli_args.transcribe_list.is_some()
         || cli_args.list_devices
         || cli_args.list_models
         || cli_args.phone_receive;

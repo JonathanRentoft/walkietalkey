@@ -17,6 +17,8 @@ export interface MockOptions {
   managedApiKey?: boolean;
   /** Ids of models already on disk. */
   downloaded?: string[];
+  /** Custom model files in the models folder (a workbench fine-tune): id and name. */
+  customModels?: { id: string; name: string }[];
   /** download_model fails with this message. */
   downloadError?: string | null;
   /** The backend started the Edda download at launch (Phase 3). Default
@@ -228,6 +230,16 @@ function mockBackend(options: MockOptions) {
     model(edda, "Edda v0.2", 886),
     model(ekko, "Ekko v1 Tiny", 134),
     model("whisper-small", "Whisper Small", 487),
+    ...(options.customModels ?? []).map((c) =>
+      model(c.id, c.name, 886, {
+        filename: `${c.id}.gguf`,
+        is_downloaded: true,
+        is_custom: true,
+        is_recommended: false,
+        accuracy_score: 0,
+        speed_score: 0,
+      }),
+    ),
   ];
 
   function emit(event: string, payload?: unknown) {
