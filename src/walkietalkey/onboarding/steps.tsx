@@ -16,6 +16,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { dictationWorked, type WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import {
+  comeBack,
   hasPermission,
   microphoneAccess,
   openSettingsPage,
@@ -91,6 +92,7 @@ function useAdvanceOnGrant(granted: boolean | null, onGranted: () => void) {
       return;
     }
     if (!granted || first.current) return;
+    comeBack();
     const id = setTimeout(() => next.current(), ADVANCE_DELAY_MS);
     return () => clearTimeout(id);
   }, [granted]);

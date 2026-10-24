@@ -82,6 +82,12 @@ export async function requestPermission(p: MacPermission): Promise<boolean> {
   return hasPermission(p);
 }
 
+/** A grant came from System Settings, which is now in front: WalkieTalkey
+ *  comes back by itself, so the user never has to find its window (run 5). */
+export function comeBack() {
+  void commands.showMainWindowCommand().catch(() => undefined);
+}
+
 export type MicAccess =
   "granted" | "denied" | "restricted" | "not_determined" | "unknown";
 

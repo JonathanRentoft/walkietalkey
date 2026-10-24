@@ -210,6 +210,7 @@ test.describe("onboarding", () => {
         (await calls(page, "plugin:opener|open_url")).map((c) => c.args.url),
       )
       .toContain(MICROPHONE_PANE);
+    expect(await calls(page, "show_main_window_command")).toHaveLength(0);
     // macOS would show nothing for a question it has had its answer to.
     expect(
       await calls(
@@ -219,6 +220,9 @@ test.describe("onboarding", () => {
     ).toHaveLength(0);
     await grant(page, "microphone");
     await expect(heading(page, "Tilgængelighed")).toBeVisible();
+    expect(
+      (await calls(page, "show_main_window_command")).length,
+    ).toBeGreaterThan(0);
   });
 
   test("Tilgængelighed: one button repairs a stale entry, opens the exact pane, and the grant moves on with no restart", async ({
@@ -254,10 +258,15 @@ test.describe("onboarding", () => {
     await expect(
       page.getByText("Slå WalkieTalkey til. Så går vi videre af os selv."),
     ).toBeVisible();
+    expect(await calls(page, "show_main_window_command")).toHaveLength(0);
     await grant(page, "accessibility");
     // "Tilgængelighed er slået til" shows for ADVANCE_DELAY_MS only, shorter than
     // Playwright's polling interval under load; the step moving on is what counts.
     await expect(heading(page, "Prøv det")).toBeVisible();
+    // Run 5: System Settings is in front now; WalkieTalkey comes back by itself.
+    expect(
+      (await calls(page, "show_main_window_command")).length,
+    ).toBeGreaterThan(0);
     const state = await mockState(page);
     expect(state.restarts).toBe(0);
   });

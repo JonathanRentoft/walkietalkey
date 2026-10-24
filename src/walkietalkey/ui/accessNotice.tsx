@@ -12,7 +12,11 @@ import { create } from "zustand";
 import { commands } from "@/bindings";
 import type { WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
-import { hasPermission, repairAccessibilityAndOpenPane } from "../lib/system";
+import {
+  comeBack,
+  hasPermission,
+  repairAccessibilityAndOpenPane,
+} from "../lib/system";
 import { Button } from "./controls";
 
 const SEEN_KEY = "wt.accessibilitySeen";
@@ -91,6 +95,14 @@ export function AccessNotice(props: { platform: WtPlatform }) {
       clearInterval(id);
     };
   }, [mac, setLost]);
+
+  // Given back in System Settings after "Giv adgang igen" (the poll or the
+  // key listener noticed): WalkieTalkey comes back to the front (run 5).
+  useEffect(() => {
+    if (!asked || (lost && !granted)) return;
+    setAsked(false);
+    comeBack();
+  }, [asked, lost, granted]);
 
   if (!mac || !lost || granted) return null;
 

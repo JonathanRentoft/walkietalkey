@@ -568,8 +568,13 @@ test.describe("settings", () => {
       .toContain(
         "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
       );
+    expect(await calls(page, "show_main_window_command")).toHaveLength(0);
     await emit(page, "wt-key-listener", { running: true });
     await expect(notice).toHaveCount(0);
+    // Run 5: given back in System Settings, WalkieTalkey comes back to the front.
+    await expect
+      .poll(async () => (await calls(page, "show_main_window_command")).length)
+      .toBe(1);
   });
 
   test("a grant seen before and gone now shows the notice without the event", async ({
