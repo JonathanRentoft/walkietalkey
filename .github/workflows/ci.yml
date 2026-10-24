@@ -165,7 +165,10 @@ jobs:
       - name: npm licences
         run: bun scripts/walkietalkey/check-js-licenses.ts
       - name: npm advisories
-        run: bun audit --audit-level=high
+        # Two advisories sit only in test, deploy and build tooling and have no fixed upstream release
+        # yet (run 2): undici <7.30.1 pinned by miniflare (wrangler, @cloudflare/vitest-plugin) and
+        # zod <4.6.6 pinned by @cloudflare/vitest-plugin. No app, the relay Worker or the site ships them.
+        run: bun audit --audit-level=high --ignore=GHSA-xjj6-f33q-929c --ignore=GHSA-mrhx-c7xc-m3w5
       - name: cargo deny (desktop app)
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
