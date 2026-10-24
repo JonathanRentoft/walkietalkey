@@ -195,7 +195,7 @@ test.describe("onboarding", () => {
     await expect(heading(page, "Tilgængelighed")).toBeVisible();
   });
 
-  test("Tilgængelighed: one button opens the exact pane, and the grant moves on with no restart", async ({
+  test("Tilgængelighed: one button repairs a stale entry, opens the exact pane, and the grant moves on with no restart", async ({
     page,
   }) => {
     await startAt(page, "accessibility", { permissions: { microphone: true } });
@@ -212,6 +212,19 @@ test.describe("onboarding", () => {
         (await calls(page, "plugin:opener|open_url")).map((c) => c.args.url),
       )
       .toContain(ACCESSIBILITY_PANE);
+    // DESK-13: a reinstalled build can show WalkieTalkey switched on while
+    // macOS does not trust it. The button first resets the app's own entry
+    // and shows macOS's dialog, then opens the pane, so the switch works.
+    const order = (await calls(page))
+      .map((c) => c.cmd)
+      .filter(
+        (cmd) =>
+          cmd === "wt_accessibility_repair" || cmd === "plugin:opener|open_url",
+      );
+    expect(order).toEqual([
+      "wt_accessibility_repair",
+      "plugin:opener|open_url",
+    ]);
     await expect(
       page.getByText("Slå WalkieTalkey til. Så går vi videre af os selv."),
     ).toBeVisible();
@@ -350,6 +363,119 @@ test.describe("onboarding", () => {
     await emit(page, "wt-key-listener", { running: true });
     await expect(
       page.getByText("WalkieTalkey kan ikke se tasten endnu."),
+    ).toHaveCount(0);
+  });
+
+  test("Prøv det asks the backend whether the key listener runs, because its startup event came before the window (DESK-17)", async ({
+    page,
+  }) => {
+    // The backend reported `wt-key-listener` once, at startup; no event comes.
+    await startAt(page, "try", {
+      permissions: { microphone: true, accessibility: true },
+      keyListener: { running: false },
+    });
+    const warning = page.getByText("WalkieTalkey kan ikke se tasten endnu.");
+    await expect(warning).toBeVisible();
+    expect(
+      (await calls(page, "wt_key_listener_status")).length,
+    ).toBeGreaterThan(0);
+    // Its button repairs the entry and opens the pane, as in Tilgængelighed.
+    await page
+      .locator(".wt-onb-card")
+      .getByRole("button", { name: "Åbn Systemindstillinger" })
+      .click();
+    await expect
+      .poll(async () => (await calls(page, "wt_accessibility_repair")).length)
+      .toBe(1);
+    await expect
+      .poll(async () =>
+        (await calls(page, "plugin:opener|open_url")).map((c) => c.args.url),
+      )
+      .toContain(ACCESSIBILITY_PANE);
+    // The listener starts later: the event still counts.
+    await emit(page, "wt-key-listener", { running: true });
+    await expect(warning).toHaveCount(0);
+  });
+
+  test("Prøv det shows no warning when the key listener already runs", async ({
+    page,
+  }) => {
+    await startAt(page, "try", {
+      permissions: { microphone: true, accessibility: true },
+      keyListener: { running: true },
+    });
+    await expect(heading(page, "Prøv det")).toBeVisible();
+    await expect
+      .poll(async () => (await calls(page, "wt_key_listener_status")).length)
+      .toBeGreaterThan(0);
+    await page.waitForTimeout(300);
+    await expect(
+      page.getByText("WalkieTalkey kan ikke se tasten endnu."),
+    ).toHaveCount(0);
+  });
+
+  test("Windows: Prøv det lets a laptop without Right Ctrl choose its key, for example the Copilot key (DESK-21)", async ({
+    page,
+  }) => {
+    await startAt(page, "try", {
+      platform: "windows",
+      permissions: { microphone: true },
+    });
+    await expect(
+      page.getByText(
+        "Hold Ctrl nede og sig: Hej, det her er min første diktering.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText(/Copilot-tast/)).toBeVisible();
+    await page.getByRole("button", { name: "Vælg en anden tast" }).click();
+    await expect(
+      page.getByText("Tryk på den tast, du vil bruge"),
+    ).toBeVisible();
+    await expect
+      .poll(
+        async () => (await calls(page, "start_handy_keys_recording")).length,
+      )
+      .toBe(1);
+    // The Copilot key arrives as Win+Shift+F23.
+    const copilot = {
+      modifiers: ["super", "shift"],
+      key: "f23",
+      hotkey_string: "super+shift+f23",
+    };
+    await emit(page, "handy-keys-event", { ...copilot, is_key_down: true });
+    await emit(page, "handy-keys-event", { ...copilot, is_key_down: false });
+    await expect
+      .poll(
+        async () =>
+          (await mockState(page)).app.bindings.transcribe.current_binding,
+      )
+      .toBe("super+shift+f23");
+    await expect(
+      page.getByText(
+        "Hold Copilot-tasten nede og sig: Hej, det her er min første diktering.",
+      ),
+    ).toBeVisible();
+    // Back in the field, where the test dictation is pasted.
+    await expect(page.getByRole("textbox")).toBeFocused();
+    // And back to Right Ctrl.
+    await page.getByRole("button", { name: "Brug standardtasten" }).click();
+    await expect
+      .poll(
+        async () =>
+          (await mockState(page)).app.bindings.transcribe.current_binding,
+      )
+      .toBe("ctrl_right");
+  });
+
+  test("Mac: Prøv det has no key picker (third-party keyboards choose under Indstillinger › Tast)", async ({
+    page,
+  }) => {
+    await startAt(page, "try", {
+      permissions: { microphone: true, accessibility: true },
+    });
+    await expect(heading(page, "Prøv det")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Vælg en anden tast" }),
     ).toHaveCount(0);
   });
 

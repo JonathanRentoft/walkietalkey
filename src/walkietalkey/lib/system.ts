@@ -90,6 +90,21 @@ export async function openAccessibilityPane() {
   await openSettingsPage("accessibility");
 }
 
+/** Every Accessibility button (DESK-13): an ad-hoc build that was rebuilt or
+ *  reinstalled can show WalkieTalkey switched on in System Settings while
+ *  macOS does not trust it, and that switch then does nothing. The backend
+ *  resets only WalkieTalkey's own entry and shows macOS's dialog (a no-op
+ *  when the app is trusted), so the pane that opens has a switch that works. */
+export async function repairAccessibilityAndOpenPane() {
+  try {
+    await commands.wtAccessibilityRepair();
+    await openSettingsPage("accessibility");
+  } catch {
+    // A backend without the repair: the pane alone.
+    await openAccessibilityPane();
+  }
+}
+
 /** Windows: whether the privacy settings let desktop apps use the microphone. */
 export async function windowsMicrophoneAllowed(): Promise<boolean> {
   try {

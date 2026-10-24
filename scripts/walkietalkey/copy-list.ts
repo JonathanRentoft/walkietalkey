@@ -91,8 +91,10 @@ Also for the owner:
   button that opens the exact pane.
 - TODO(copy): "Tryk igen for at stoppe" (the pill while recording
   hands-free) and "Ret det for mig" come from the run 2 brief, not from
-  Appendix A; "macOS har glemt WalkieTalkeys adgang efter opdateringen." and
-  "Giv adgang igen" from the lead.
+  Appendix A; "Giv adgang igen" from the lead, and the neutral "WalkieTalkey
+  har ikke længere adgang til Tilgængelighed." from the run 2 review (the
+  user may have switched access off on purpose), replacing spec 6.2's "macOS
+  har glemt WalkieTalkeys adgang efter opdateringen.".
 - TODO(copy): strings written by the backend and shown as they come: the
   DESK-31 speed reason (src-tauri/src/walkietalkey/speed.rs), "en telefon
   uden navn", and the notification titles (notify.rs).

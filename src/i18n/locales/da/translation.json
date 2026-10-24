@@ -768,7 +768,8 @@
         "fieldLabel": "Teksten kommer her",
         "done": "Det virker. Du er klar.",
         "modelWaiting": "Talemodellen hentes stadig. Du kan prøve, så snart den er klar.",
-        "keyNotRunning": "WalkieTalkey kan ikke se tasten endnu."
+        "keyNotRunning": "WalkieTalkey kan ikke se tasten endnu.",
+        "otherKeyWindows": "Mange nye bærbare har en Copilot-tast i stedet for højre Ctrl. Vil du bruge den eller en anden tast, så tryk på Vælg en anden tast og derefter på tasten."
       },
       "done": {
         "title": "Klar",
@@ -1168,7 +1169,7 @@
       "pausedSub": "Tasten gør ingenting lige nu."
     },
     "access": {
-      "lost": "macOS har glemt WalkieTalkeys adgang efter opdateringen.",
+      "lost": "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
       "repair": "Giv adgang igen"
     }
   }

@@ -768,7 +768,8 @@
         "fieldLabel": "The text appears here",
         "done": "It works. You are ready.",
         "modelWaiting": "The speech model is still downloading. You can try as soon as it is ready.",
-        "keyNotRunning": "WalkieTalkey cannot see the key yet."
+        "keyNotRunning": "WalkieTalkey cannot see the key yet.",
+        "otherKeyWindows": "Many new laptops have a Copilot key instead of Right Ctrl. To use it or another key, press Choose another key and then the key."
       },
       "done": {
         "title": "Ready",
@@ -1168,7 +1169,7 @@
       "pausedSub": "The key does nothing right now."
     },
     "access": {
-      "lost": "macOS forgot WalkieTalkey's access after the update.",
+      "lost": "WalkieTalkey no longer has Accessibility access.",
       "repair": "Allow again"
     }
   }

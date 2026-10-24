@@ -976,6 +976,20 @@ textarea.wt-input {
   background: var(--surface-100);
   border: 1px solid var(--line);
 }
+/* Windows (DESK-21): the key column holds the key picker. */
+.wt-try-key--picker {
+  /* Wide enough for "Tryk på den tast, du vil bruge", so nothing moves. */
+  width: 15rem;
+  padding: var(--space-4);
+}
+.wt-try-key--picker .wt-keypicker {
+  align-items: center;
+  text-align: center;
+}
+.wt-try-key--picker .wt-keypicker-actions {
+  flex-direction: column;
+  align-items: center;
+}
 .wt-try-main {
   display: flex;
   flex-direction: column;
