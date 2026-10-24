@@ -8,33 +8,35 @@
   </head>
   <body>
     <header>
-      <h1>Indtaling</h1>
+      <h1>Indtaling <span id="condition"></span></h1>
       <p id="progress" aria-live="polite">Henter sætninger</p>
     </header>
 
-    <section id="input" aria-label="Mikrofon">
-      <label for="device">Mikrofon</label>
-      <select id="device"></select>
-      <div class="meter" aria-hidden="true">
-        <div id="level"></div>
-        <div id="peak"></div>
-      </div>
-      <span id="db">-∞ dB</span>
+    <section id="link" aria-live="polite">
+      <p id="link-text">Venter på WalkieTalkey på denne Mac</p>
+      <button id="connect" type="button" hidden>Forbind</button>
     </section>
 
-    <p id="warning" role="alert" hidden></p>
+    <table id="conditions" aria-label="Fremskridt">
+      <tbody></tbody>
+    </table>
 
     <main>
       <p id="meta"><span id="sid"></span> <span id="badge"></span></p>
       <p id="sentence" lang="da"></p>
+      <p id="hint"></p>
     </main>
+
+    <section id="last" hidden>
+      <p id="last-text"></p>
+    </section>
 
     <nav id="controls">
       <button id="prev" type="button" title="Venstre pil">← Forrige</button>
       <button id="record" type="button" class="primary" title="Mellemrum">
         Optag
       </button>
-      <button id="redo" type="button" title="R">Optag igen</button>
+      <button id="redo" type="button" title="R">Optag forrige igen</button>
       <button id="play" type="button" title="P">Afspil</button>
       <button id="next" type="button" title="Højre pil">Næste →</button>
     </nav>
@@ -42,13 +44,10 @@
     <p id="message" role="status" aria-live="polite"></p>
 
     <footer>
-      <label
-        ><input id="advance" type="checkbox" checked /> Gå videre til næste
-        sætning efter hver optagelse</label
-      >
+      <p id="keys"></p>
       <p>
-        Mellemrum: optag og stop. R: optag igen. P: afspil. Pile: forrige og
-        næste. Esc: annuller. Optagelserne bliver på denne Mac.
+        Lyden optages gennem WalkieTalkey, præcis som når du dikterer, og
+        optagelserne bliver på denne Mac.
       </p>
     </footer>
 

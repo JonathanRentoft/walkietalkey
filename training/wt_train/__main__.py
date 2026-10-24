@@ -10,7 +10,8 @@ import importlib
 import sys
 
 STEPS = {
-    "record": ("wt_train.recorder", "read the sentences aloud in the browser"),
+    "plan": ("wt_train.plan", "give every sentence its recording condition"),
+    "record": ("wt_train.recorder", "record the sentences through the app, on the phone or the Mac"),
     "fetch": ("wt_train.fleurs", "download FLEURS da_dk train and test"),
     "build": ("wt_train.dataset", "build train/validation/test splits"),
     "train": ("wt_train.train", "train a LoRA adapter from a YAML config"),

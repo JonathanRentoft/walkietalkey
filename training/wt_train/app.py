@@ -54,6 +54,42 @@ def find_app(explicit: Path | str | None = None) -> "App":
     return next((a for a in existing if a.supports_batch), existing[0])
 
 
+# `walkietalkey --training-session <url>` exits with this when no WalkieTalkey is running: the
+# session is handed to a running app only, never to a new one started from here (macOS would
+# then count the terminal as the app that uses the microphone).
+NOT_RUNNING_EXIT = 3
+
+
+def handoff_training(url: str, explicit: Path | str | None = None) -> tuple[str, str]:
+    """Hands a recorder session to the running WalkieTalkey (the single-instance handoff, like
+    ``--toggle-transcription``). Returns ``(status, detail)``: ``ok`` (handed over; the app now
+    connects), ``not_running``, ``unsupported`` (no binary knows --training-session), ``missing``
+    or ``failed``."""
+    chosen = explicit or os.environ.get("WT_APP_BIN")
+    if chosen:
+        apps = [App(Path(chosen))]
+        if not apps[0].bin.is_file():
+            return "missing", f"no WalkieTalkey binary at {apps[0].bin}"
+    else:
+        # The installed app first: it is the one the owner runs.
+        apps = [App(p) for p in [INSTALLED_APP, *candidates()[:2]] if p.is_file()]
+        if not apps:
+            return "missing", "no WalkieTalkey app found; install it, or pass --app-bin"
+    app = next((a for a in apps if a.supports_training), None)
+    if app is None:
+        return "unsupported", f"{apps[0].bin} is too old for training sessions; update WalkieTalkey"
+    try:
+        out = app._run(["--training-session", url], timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "failed", f"{app.bin}: {e}"
+    if out.returncode == 0:
+        return "ok", f"handed to WalkieTalkey ({app.bin})"
+    if out.returncode == NOT_RUNNING_EXIT:
+        return "not_running", "WalkieTalkey is not running on this Mac; start it, then connect again"
+    tail = out.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] or [""]
+    return "failed", f"{app.bin} exited with {out.returncode}: {tail[0][:300]}"
+
+
 @dataclass(frozen=True)
 class AppResult:
     file: str
@@ -101,12 +137,30 @@ class App:
                                   timeout=timeout or self.timeout)
 
     @cached_property
-    def supports_batch(self) -> bool:
+    def help_text(self) -> bytes:
         try:
             out = self._run(["--help"], timeout=60)
         except (OSError, subprocess.SubprocessError):
-            return False
-        return b"--transcribe-list" in out.stdout + out.stderr
+            return b""
+        return out.stdout + out.stderr
+
+    @cached_property
+    def supports_batch(self) -> bool:
+        return b"--transcribe-list" in self.help_text
+
+    @cached_property
+    def supports_training(self) -> bool:
+        return b"--training-session" in self.help_text
+
+    def transcribe_live(self, wavs: list[Path], model_id: str, progress=None) -> list[AppResult]:
+        """Each file through the live path at real-time speed (``-f <wav> --live``): the
+        chunker and its joints as in a dictation (DESK-43, DESK-46). Slow by design."""
+        results = []
+        for n, wav in enumerate(wavs, 1):
+            results.append(self._one(Path(wav).resolve(), model_id, live=True))
+            if progress:
+                progress(n, len(wavs))
+        return results
 
     def list_models(self) -> list[dict]:
         out = self._run(["--list-models", "--json"], timeout=120)
@@ -167,9 +221,9 @@ class App:
                                          audio_secs=row.get("audio_secs"), transcribe_ms=row.get("transcribe_ms")))
         return results
 
-    def _one(self, wav: Path, model_id: str) -> AppResult:
+    def _one(self, wav: Path, model_id: str, live: bool = False) -> AppResult:
         try:
-            out = self._run(["-f", str(wav), "--model", model_id, "--json"])
+            out = self._run(["-f", str(wav), "--model", model_id, "--json", *(["--live"] if live else [])])
         except subprocess.TimeoutExpired:
             return AppResult(file=str(wav), text="", error="timed out")
         rows = [r for r in _json_lines(out.stdout.decode("utf-8", "replace")) if "text" in r or "error" in r]

@@ -1,95 +1,92 @@
-"""The recorder's takes on disk: resume, redo keeps the old take, ids from the CSV only."""
+"""The takes on disk: one folder per condition, metadata beside each take, redo keeps the old take,
+ids from the list only, and run 4's browser takes stay where they are."""
+
+import json
 
 import numpy as np
 import pytest
 import soundfile as sf
-from fake_audio import take
-from wt_train.recorder.audio import process
-from wt_train.recorder.takes import Takes, UnknownSentence
-from wt_train.sentences import Sentence
+from fake_audio import app_take, pcm16
+from wt_train.recorder.takes import TakeStore, UnknownItem, condition_folder, log_session
 
-ROWS = [
-    Sentence("s0001", "Vi merger PR'en i dag.", "terms"),
-    Sentence("s0002", "Det regner i Aarhus.", "plain"),
-    Sentence("s0003", "Kan du deploye til staging?", "terms"),
-    Sentence("s0004", "Vi ses i morgen.", "plain"),
-]
+TEXTS = {"s0001": "Vi merger PR'en i dag.", "s0002": "Det regner i Aarhus."}
 
 
-def a_take(seconds: float = 1.0):
-    return process(take(48000, [("silence", 0.3), ("speech", seconds), ("silence", 0.3)]), 48000)
+def a_take():
+    return pcm16(app_take([("silence", 0.3), ("speech", 1.0), ("silence", 0.3)]))
 
 
 @pytest.fixture
-def takes(tmp_path):
-    return Takes(ROWS, tmp_path / "recordings")
+def store(tmp_path):
+    return TakeStore(tmp_path / "recordings", "phone-whisper", TEXTS)
 
 
-def test_resumes_at_the_first_sentence_without_a_take(takes):
-    assert takes.first_open() == 0
-    takes.save("s0001", a_take())
-    takes.save("s0002", a_take())
-    assert takes.first_open() == 2
-    takes.save("s0004", a_take())
-    assert takes.first_open() == 2, "a gap is filled before going on"
-    takes.save("s0003", a_take())
-    assert takes.first_open() is None
-    assert takes.recorded_count() == 4
+def test_a_take_is_a_wav_its_text_and_its_metadata(store, tmp_path):
+    assert store.status("s0001") == "missing"
+    assert store.save("s0001", a_take(), {"take": 1, "device": "iphone"}) is False
+    folder = tmp_path / "recordings" / "phone-whisper"
+    assert sf.info(str(folder / "s0001.wav")).samplerate == 16000
+    assert (folder / "s0001.txt").read_text(encoding="utf-8") == "Vi merger PR'en i dag.\n"
+    assert json.loads((folder / "s0001.json").read_text())["device"] == "iphone"
+    assert store.meta("s0001")["take"] == 1
+    assert store.status("s0001") == "recorded" and store.recorded() == {"s0001"}
 
 
-def test_resume_survives_a_restart(tmp_path):
-    Takes(ROWS, tmp_path).save("s0001", a_take())
-    assert Takes(ROWS, tmp_path).first_open() == 1
+def test_a_redo_keeps_every_earlier_take(store, tmp_path):
+    store.save("s0001", a_take(), {"take": 1})
+    assert store.earlier_takes("s0001") == 0
+    assert store.save("s0001", a_take(), {"take": 2}) is True
+    assert store.save("s0001", a_take(), {"take": 3}) is True
+    replaced = tmp_path / "recordings" / ".replaced" / "phone-whisper"
+    assert len(list(replaced.glob("s0001.*.wav"))) == 2
+    assert len(list(replaced.glob("s0001.*.json"))) == 2
+    assert store.earlier_takes("s0001") == 2
+    assert store.meta("s0001")["take"] == 3
 
 
-def test_saves_the_wav_and_the_text_as_shown(takes):
-    path = takes.save("s0001", a_take())
-    assert path == takes.folder / "s0001.wav"
-    assert sf.info(str(path)).samplerate == 16000
-    assert (takes.folder / "s0001.txt").read_text(encoding="utf-8") == "Vi merger PR'en i dag.\n"
-    assert takes.status("s0001") == "recorded"
-    assert takes.status("s0002") == "missing"
+def test_an_edited_sentence_makes_its_take_stale(tmp_path):
+    TakeStore(tmp_path, "mac-normal", TEXTS).save("s0002", a_take(), {})
+    edited = TakeStore(tmp_path, "mac-normal", {**TEXTS, "s0002": "Det regner i Aalborg."})
+    assert edited.status("s0002") == "stale"
 
 
-def test_a_take_whose_text_changed_counts_as_open(tmp_path):
-    Takes(ROWS, tmp_path).save("s0001", a_take())
-    edited = [Sentence("s0001", "Vi merger PR'en i morgen.", "terms"), *ROWS[1:]]
-    takes = Takes(edited, tmp_path)
-    assert takes.status("s0001") == "stale"
-    assert takes.first_open() == 0
-    assert takes.recorded_count() == 0
+def test_conditions_and_the_exam_have_their_own_folders(tmp_path):
+    assert condition_folder(tmp_path, "phone-normal") == tmp_path / "phone-normal"
+    assert condition_folder(tmp_path, "mac-normal", exam=True) == tmp_path / "exam" / "mac-normal"
+    with pytest.raises(ValueError):
+        condition_folder(tmp_path, "../x")
+    TakeStore(tmp_path, "phone-normal", TEXTS).save("s0001", a_take(), {})
+    assert TakeStore(tmp_path, "phone-whisper", TEXTS).status("s0001") == "missing"
 
 
-def test_a_redo_keeps_the_replaced_take(takes):
-    takes.save("s0001", a_take(1.0))
-    first = sf.read(str(takes.folder / "s0001.wav"), dtype="int16")[0]
-    takes.save("s0001", a_take(2.0))
-    current = sf.read(str(takes.folder / "s0001.wav"), dtype="int16")[0]
-    assert len(current) > len(first)
-    kept = sorted(p.name for p in takes.replaced.iterdir())
-    assert len(kept) == 2 and kept[0].startswith("s0001.") and {p[-4:] for p in kept} == {".wav", ".txt"}
-    old = sf.read(str(next(takes.replaced.glob("s0001.*.wav"))), dtype="int16")[0]
-    assert np.array_equal(old, first)
-    # A third take keeps both earlier ones.
-    takes.save("s0001", a_take(1.5))
-    assert len(list(takes.replaced.glob("s0001.*.wav"))) == 2
+def test_the_browser_takes_of_run_4_are_left_alone(tmp_path):
+    # Run 4's recorder wrote <id>.wav and <id>.txt in the top folder; nothing here moves them.
+    (tmp_path / "s0001.wav").write_bytes(b"RIFF")
+    (tmp_path / "s0001.txt").write_text("Vi merger PR'en i dag.\n")
+    store = TakeStore(tmp_path, "mac-normal", TEXTS)
+    store.save("s0001", a_take(), {})
+    assert (tmp_path / "s0001.wav").read_bytes() == b"RIFF"
+    assert (tmp_path / "mac-normal" / "s0001.wav").is_file()
 
 
-def test_no_partial_files_are_left(takes):
-    takes.save("s0001", a_take())
-    assert sorted(p.name for p in takes.folder.iterdir()) == ["s0001.txt", "s0001.wav"]
+@pytest.mark.parametrize("bad", ["s9999", "../x", ""])
+def test_only_ids_from_the_list(store, bad):
+    with pytest.raises(UnknownItem):
+        store.save(bad, a_take(), {})
 
 
-@pytest.mark.parametrize("bad", ["../s0001", "s0001/../../x", "", "a b", "s0001.wav", ".hidden", "x" * 65])
-def test_only_plain_ids_are_accepted_from_the_csv(tmp_path, bad):
-    with pytest.raises(ValueError, match="id"):
-        Takes([Sentence(bad, "Hej med dig.", "plain")], tmp_path)
+def test_unsafe_ids_are_refused(tmp_path):
+    with pytest.raises(ValueError, match="letters"):
+        TakeStore(tmp_path, "mac-normal", {"../evil": "x"})
 
 
-@pytest.mark.parametrize("unknown", ["s9999", "../s0001", "s0001.wav", "..", ""])
-def test_only_ids_from_the_csv_get_a_path(takes, unknown):
-    with pytest.raises(UnknownSentence):
-        takes.wav_path(unknown)
-    with pytest.raises(UnknownSentence):
-        takes.save(unknown, a_take())
-    assert not takes.folder.exists() or list(takes.folder.iterdir()) == []
+def test_the_session_log_appends_lines(tmp_path):
+    log_session(tmp_path, {"event": "start", "session": "a"})
+    log_session(tmp_path, {"event": "end", "session": "a"})
+    lines = (tmp_path / "sessions.jsonl").read_text().splitlines()
+    assert [json.loads(line)["event"] for line in lines] == ["start", "end"]
+
+
+def test_no_part_files_are_left(store, tmp_path):
+    store.save("s0002", np.zeros(1600, dtype=np.int16), {})
+    assert not list((tmp_path / "recordings").rglob("*.part"))

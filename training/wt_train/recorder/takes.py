@@ -1,106 +1,152 @@
-"""The takes on disk, one per sentence, in training/data/recordings/.
+"""The takes on disk, in training/data/recordings/ (git-ignored; the owner's voice
+never leaves this Mac).
 
-For sentence ``s0042`` a take is ``s0042.wav`` (16 kHz mono 16-bit PCM) and
-``s0042.txt`` (the sentence exactly as the page showed it, plus a newline).
-A redo moves the previous pair into ``.replaced/`` as
-``s0042.<UTC time>.wav`` and ``.txt``, so a slip never loses a take; the
-dataset builder reads only the top folder.
+Layout::
 
-A take counts as recorded while its ``.txt`` matches the sentence list. If the
-owner edits a sentence (a spelling convention changed), the old take is
-"stale" and the recorder brings him back to it.
+    <condition>/<id>.wav          16 kHz mono 16-bit PCM, as the app received it (before VAD)
+    <condition>/<id>.txt          the text exactly as shown, plus a newline
+    <condition>/<id>.json         its metadata (``Session._meta``: device, microphone, style,
+                                  session, take number, time, check results, ...)
+    exam/<condition>/<id>.*       the exam paragraphs, the same three files
+    .replaced/<condition>/<id>.<UTC time>.wav|txt|json    every earlier take of a sentence
+    .replaced/exam/<condition>/...
+    sessions.jsonl                one line when a session starts and one when it ends
+    <id>.wav, <id>.txt            run 4's browser takes (Mac, normal voice), still read by
+    .replaced/<id>.<time>.*       the dataset builder as condition mac-normal
 
-Paths are built only from ids in the sentence list, and those must be plain
-(letters, digits, ``_`` and ``-``), so nothing outside the folder is touched.
+A redo moves the previous trio into ``.replaced/``, so a slip never loses a take;
+the dataset builder reads only the current one. A take counts as recorded while
+its ``.txt`` matches the text; if the owner edits a sentence (a spelling
+convention changed), the old take is "stale" and the recorder comes back to it.
+
+Paths are built only from ids in the sentence list (or the exam), and those must
+be plain (letters, digits, ``_`` and ``-``), so nothing outside the folder is
+touched.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from ..sentences import Sentence
-from .audio import Take, write_wav
+import numpy as np
+
+from ..conditions import IDS
+from ..exam import EXAM_FOLDER
+from .audio import write_wav
 
 SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 STATUSES = ("missing", "recorded", "stale")
+REPLACED = ".replaced"
+SESSIONS_LOG = "sessions.jsonl"
 
 
-class UnknownSentence(KeyError):
-    """An id that is not in the sentence list."""
+class UnknownItem(KeyError):
+    """An id that is not in the sentence list (or the exam)."""
 
 
-class Takes:
-    def __init__(self, sentences: list[Sentence], folder: Path):
-        for s in sentences:
-            if not SAFE_ID.fullmatch(s.id):
-                raise ValueError(f"sentence id {s.id!r} must be letters, digits, '_' or '-' (at most 64)")
-        self.sentences = list(sentences)
-        self._by_id = {s.id: s for s in self.sentences}
-        self.folder = Path(folder)
-        self.replaced = self.folder / ".replaced"
+def condition_folder(root: Path, condition: str, exam: bool = False) -> Path:
+    if condition not in IDS:
+        raise ValueError(f"unknown condition {condition!r}")
+    return Path(root) / EXAM_FOLDER / condition if exam else Path(root) / condition
 
-    def sentence(self, sentence_id: str) -> Sentence:
+
+class TakeStore:
+    """The takes of one condition (or of its exam) for the texts in ``texts`` (id -> text)."""
+
+    def __init__(self, root: Path, condition: str, texts: dict[str, str], exam: bool = False):
+        for item_id in texts:
+            if not SAFE_ID.fullmatch(item_id):
+                raise ValueError(f"id {item_id!r} must be letters, digits, '_' or '-' (at most 64)")
+        self.root = Path(root)
+        self.condition = condition
+        self.exam = exam
+        self.texts = dict(texts)
+        self.folder = condition_folder(root, condition, exam)
+        sub = Path(EXAM_FOLDER) / condition if exam else Path(condition)
+        self.replaced = self.root / REPLACED / sub
+
+    def text(self, item_id: str) -> str:
         try:
-            return self._by_id[sentence_id]
+            return self.texts[item_id]
         except KeyError:
-            raise UnknownSentence(sentence_id) from None
+            raise UnknownItem(item_id) from None
 
-    def wav_path(self, sentence_id: str) -> Path:
-        return self.folder / f"{self.sentence(sentence_id).id}.wav"
+    def _path(self, item_id: str, suffix: str) -> Path:
+        self.text(item_id)
+        return self.folder / f"{item_id}{suffix}"
 
-    def txt_path(self, sentence_id: str) -> Path:
-        return self.folder / f"{self.sentence(sentence_id).id}.txt"
+    def wav_path(self, item_id: str) -> Path:
+        return self._path(item_id, ".wav")
 
-    def status(self, sentence_id: str) -> str:
-        """``missing``, ``recorded``, or ``stale`` (recorded, but the sentence changed since)."""
-        wav, txt = self.wav_path(sentence_id), self.txt_path(sentence_id)
-        if not wav.is_file():
+    def txt_path(self, item_id: str) -> Path:
+        return self._path(item_id, ".txt")
+
+    def meta_path(self, item_id: str) -> Path:
+        return self._path(item_id, ".json")
+
+    def status(self, item_id: str) -> str:
+        """``missing``, ``recorded``, or ``stale`` (recorded, but the text changed since)."""
+        if not self.wav_path(item_id).is_file():
             return "missing"
         try:
-            shown = txt.read_text(encoding="utf-8").rstrip("\n")
+            shown = self.txt_path(item_id).read_text(encoding="utf-8").rstrip("\n")
         except FileNotFoundError:
             return "stale"
-        return "recorded" if shown == self.sentence(sentence_id).text else "stale"
+        return "recorded" if shown == self.text(item_id) else "stale"
 
-    def statuses(self) -> list[str]:
-        return [self.status(s.id) for s in self.sentences]
+    def recorded(self) -> set[str]:
+        return {i for i in self.texts if self.status(i) == "recorded"}
 
-    def first_open(self) -> int | None:
-        """Index of the first sentence without a current take, or None when all are done."""
-        for i, s in enumerate(self.sentences):
-            if self.status(s.id) != "recorded":
-                return i
-        return None
+    def meta(self, item_id: str) -> dict | None:
+        try:
+            return json.loads(self.meta_path(item_id).read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return None
 
-    def recorded_count(self) -> int:
-        return sum(status == "recorded" for status in self.statuses())
+    def earlier_takes(self, item_id: str) -> int:
+        """How many takes of this item were replaced so far."""
+        self.text(item_id)
+        if not self.replaced.is_dir():
+            return 0
+        return sum(1 for p in self.replaced.glob(f"{item_id}.*.wav"))
 
-    def save(self, sentence_id: str, take: Take) -> Path:
-        """Write the take and its text; an earlier take of the sentence goes to ``.replaced/``."""
-        sentence = self.sentence(sentence_id)
-        wav, txt = self.wav_path(sentence.id), self.txt_path(sentence.id)
+    def save(self, item_id: str, samples: np.ndarray, meta: dict) -> bool:
+        """Write the take, its text and its metadata; an earlier take goes to ``.replaced/``.
+        Returns whether one was replaced."""
+        text = self.text(item_id)
+        wav, txt, js = self.wav_path(item_id), self.txt_path(item_id), self.meta_path(item_id)
         self.folder.mkdir(parents=True, exist_ok=True)
-        if wav.exists() or txt.exists():
-            self._keep(sentence.id, wav, txt)
-        # Text first: a take only counts once its WAV is in place.
-        part = txt.with_name(txt.name + ".part")
-        part.write_text(sentence.text + "\n", encoding="utf-8")
-        os.replace(part, txt)
-        write_wav(wav, take)
-        return wav
+        replaced = any(p.exists() for p in (wav, txt, js))
+        if replaced:
+            self._keep(item_id, wav, txt, js)
+        # Text and metadata first: a take only counts once its WAV is in place.
+        for path, body in ((txt, text + "\n"), (js, json.dumps(meta, ensure_ascii=False, indent=2) + "\n")):
+            part = path.with_name(path.name + ".part")
+            part.write_text(body, encoding="utf-8")
+            os.replace(part, path)
+        write_wav(wav, samples)
+        return replaced
 
-    def _keep(self, sentence_id: str, wav: Path, txt: Path) -> None:
+    def _keep(self, item_id: str, *paths: Path) -> None:
         self.replaced.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-        stem = f"{sentence_id}.{stamp}"
-        n = 1
-        while (self.replaced / f"{stem}.wav").exists() or (self.replaced / f"{stem}.txt").exists():
+        stem, n = f"{item_id}.{stamp}", 1
+        while any((self.replaced / f"{stem}{s}").exists() for s in (".wav", ".txt", ".json")):
             n += 1
-            stem = f"{sentence_id}.{stamp}-{n}"
-        for path, suffix in ((wav, ".wav"), (txt, ".txt")):
+            stem = f"{item_id}.{stamp}-{n}"
+        for path in paths:
             if path.exists():
-                shutil.move(str(path), self.replaced / f"{stem}{suffix}")
+                shutil.move(str(path), self.replaced / f"{stem}{path.suffix}")
+
+
+def log_session(root: Path, event: dict) -> None:
+    """One line in ``sessions.jsonl``."""
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / SESSIONS_LOG).open("a", encoding="utf-8") as f:
+        f.write(json.dumps(event, ensure_ascii=False) + "\n")

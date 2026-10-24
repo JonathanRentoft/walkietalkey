@@ -1,0 +1,128 @@
+# The long-form exam: six paragraphs of everyday Danish developer talk, each one
+# to two minutes read aloud, with English developer terms in the spellings of
+# spelling.yaml (only its `forms`, never an `also` spelling).
+#
+# Read each paragraph once per condition (wt-train record --condition <c> --exam).
+# The takes land in training/data/recordings/exam/<condition>/ and are used only to
+# test the full app path, the live chunking and its joints included
+# (wt-train eval --backend gguf --dataset exam --live). They are never trained on:
+# the dataset builder keeps them out of every split and its leakage check proves it,
+# and no sentence of sentences.csv appears inside a paragraph.
+#
+# Numbers are written as words, so a reading has one right transcript. No em dashes.
+
+paragraphs:
+  - id: e01
+    title: Mandagens standup
+    text: >-
+      God morgen allesammen. Jeg starter lige standuppen, så vi kan komme i gang.
+      I fredags fik vi merget PR'en med det nye login, og den ligger nu på staging.
+      Jeg vil gerne have, at en af jer tester den grundigt i dag, især på mobilen,
+      for jeg så en bug i går aftes, hvor knappen forsvandt, når man drejede
+      skærmen. Jeg har lavet et issue i Linear og lagt et skærmbillede i Slack.
+      Derudover er buildet stadig langsomt. Pipelinen bruger næsten tyve minutter,
+      og det meste af tiden går med at installere dependencies, så jeg tror, vi
+      skal kigge på cachen igen. Sara, du sagde, at du havde en idé om at dele
+      cachen mellem branches. Kan du tage den? Når det er på plads, kan vi måske
+      deploye flere gange om dagen uden at vente så længe. Til sidst: deadlinen
+      for releasen er torsdag, og der er stadig tre ting i backloggen, som vi har
+      lovet kunden. Hvis nogen sidder fast, så sig det hellere i dag end på
+      onsdag. Vi tager en kort snak om sprinten efter frokost, og så kan vi flytte
+      rundt på opgaverne, hvis det bliver nødvendigt. Er der noget, I vil nævne,
+      før vi går hver til sit?
+
+  - id: e02
+    title: Natten med nedbrud
+    text: >-
+      I nat crashede backenden to gange, og det tog mig lidt tid at finde ud af
+      hvorfor. Dashboardet viste, at svartiden steg kraftigt lige før, og at mange
+      kald til API'et endte i en timeout. Først troede jeg, at det var databasen,
+      men den havde det fint. Så kiggede jeg på den seneste release og kunne se,
+      at vi havde ændret et endpoint, så det hentede alle brugere på én gang i
+      stedet for side for side. Det gik godt på staging, fordi der kun er nogle få
+      brugere der, men i production er der mange tusinde. Jeg lavede en rollback
+      med det samme, og siden da har alt kørt stabilt. Nu vil jeg gerne lave et
+      hotfix, der henter brugerne i mindre bidder, og så skal vi skrive en test,
+      der fanger den slags, før det rammer kunderne. Jeg har også slået et feature
+      flag til, så vi kan slå den nye visning fra igen uden at deploye. Kan du
+      reviewe pull requesten i løbet af formiddagen? Den er ikke stor, men jeg vil
+      gerne have et par ekstra øjne på den, før vi merger. Bagefter skriver jeg en
+      kort opsummering i Slack, så supporten ved, hvad der skete, og hvad de skal
+      svare, hvis kunderne spørger.
+
+  - id: e03
+    title: En uge med AI-værktøjer
+    text: >-
+      Jeg har brugt Claude Code hele ugen til at refactore den gamle frontend, og
+      jeg er faktisk ret imponeret. Jeg skriver en prompt om, hvad jeg vil have
+      ændret, og så foreslår den ændringerne fil for fil, så jeg selv kan godkende
+      dem. Det meste af koden er skrevet i TypeScript og React, og den gamle del i
+      JavaScript har den langsomt flyttet over. Det sjove er, at den også skriver
+      testene, og de fanger faktisk fejl, jeg selv havde overset. Til gengæld skal
+      man holde øje med tokens, for hvis man giver den hele repoet på én gang,
+      bliver det hurtigt dyrt. Jeg har prøvet ChatGPT og Cursor til det samme, og
+      de er også gode, men jeg synes, at Claude Code passer bedst til den måde, vi
+      arbejder på. Mit råd er, at man stadig læser alt igennem, før man committer,
+      for LLM'en kan godt finde på at opfinde en funktion, der ikke findes. Jeg
+      plejer at bede den om at forklare sine ændringer, inden jeg laver et commit,
+      og så gennemgår jeg ændringerne i VS Code. Hvis I vil prøve det, kan jeg vise
+      jer, hvordan jeg har sat det op, på fredag efter frokost. Det tager højst en
+      halv time, og så kan I selv vurdere, om det er noget for jer.
+
+  - id: e04
+    title: Næste sprint
+    text: >-
+      Lad os bruge et øjeblik på næste sprint, før alle har travlt igen. Kunden
+      vil gerne have den nye betalingsside så hurtigt som muligt, men den kræver
+      en migration af databasen, og den skal vi være forsigtige med. Mit forslag
+      er, at vi først laver migrationen på en separat branch og kører den mod en
+      kopi af databasen, så vi kan se, hvor lang tid den tager. Når den er testet,
+      kan vi deploye den om aftenen, hvor der er færrest brugere. Samtidig skal
+      backenden have et nyt endpoint til betalingerne, og frontenden skal kalde
+      det. Jeg tænker, at Mads tager backenden i Python, og at Line tager
+      frontenden i Next.js, mens jeg skriver dokumentationen og sørger for, at vi
+      kan teste det hele med mocks. Vi har talt om at flytte det hele fra Vercel
+      til Cloudflare, men det synes jeg, vi venter med til efter releasen. Der er
+      nok at se til, og vi skal ikke ændre for mange ting på én gang. Hvis
+      designet i Figma ændrer sig undervejs, så sig det i Slack med det samme, så
+      vi ikke bygger det forkerte. Jeg lægger opgaverne i Linear i eftermiddag, og
+      så kan I selv tage dem, I har lyst til. Lyder det som en plan, alle kan leve
+      med?
+
+  - id: e05
+    title: Velkommen til holdet
+    text: >-
+      Velkommen til holdet. Før du går i gang, skal du have sat dit
+      udviklingsmiljø op, og det tager normalt en times tid. Først henter du
+      repoet fra GitHub og installerer Node og Bun. Vi bruger Bun til det meste,
+      men nogle af de ældre pakker kræver stadig npm, så du skal have begge dele.
+      Bagefter starter du databasen og de andre tjenester med Docker, og så kan
+      du køre hele systemet på din egen maskine. I production kører det hele på
+      Kubernetes i Azure, men det skal du ikke bekymre dig om de første uger. Den
+      del af appen, der kører på skrivebordet, er skrevet i Rust med Tauri, og den
+      er lidt sværere at bygge, så spørg endelig, hvis den driller. Når du laver
+      din første ændring, opretter du en ny branch, committer løbende og pusher,
+      når du er klar. CI'en kører alle testene automatisk, og den skal være grøn,
+      før nogen kan reviewe din PR. Vi forsøger at holde pull requests små, så det
+      er nemt at give et ordentligt code review. Hvis du bliver i tvivl om noget,
+      så skriv i Slack i stedet for at sidde fast i flere timer. Der er ingen
+      dumme spørgsmål, og alle her har selv været nye engang.
+
+  - id: e06
+    title: Ugen der gik
+    text: >-
+      Lad os runde ugen af med en kort snak om, hvad der gik godt, og hvad vi kan
+      gøre bedre. Det gik godt, at vi fik releasen ud til tiden, selvom vi måtte
+      lave et hotfix om onsdagen. Feature flaget betød, at vi kunne slå den nye
+      funktion fra i production, mens vi rettede fejlen, og det var præcis det,
+      der var meningen med det. Det, der gik mindre godt, var, at flere pull
+      requests lå og ventede på code review i to eller tre dage. Det gør, at
+      branches kommer langt fra main, og så bliver det svært at rebase dem
+      bagefter. Jeg foreslår, at vi hver dag sætter en halv time af efter
+      standuppen, hvor vi kun reviewer. En anden ting er, at vores dashboard i
+      Supabase viser, at nogle forespørgsler er blevet langsommere, og det skal vi
+      kigge på, før det bliver et problem. Måske skal vi tilføje en cache foran de
+      tungeste kald. Til sidst vil jeg gerne sige tak for en god uge. I har
+      knoklet, og kunden er glad. Næste uge starter vi på den nye feature, og jeg
+      glæder mig til at se, hvad I finder på. God weekend, og husk at slå
+      notifikationerne fra i Slack.

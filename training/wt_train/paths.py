@@ -32,6 +32,10 @@ REPO = TRAINING.parent
 DATA = TRAINING / "data"
 SENTENCES_CSV = DATA / "sentences.csv"
 SPELLING_YAML = DATA / "spelling.yaml"
+# Which condition each sentence is recorded in (wt-train plan), committed.
+PLAN_CSV = DATA / "plan.csv"
+# The long-form exam paragraphs: read once per condition, never trained on.
+EXAM_YAML = DATA / "exam.yaml"
 # Git-ignored; the owner's voice never leaves this Mac.
 RECORDINGS = DATA / "recordings"
 CONFIGS = TRAINING / "configs"
