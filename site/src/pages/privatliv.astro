@@ -7,10 +7,11 @@ import { Check } from "../components/home/Icons";
 import Base from "../layouts/Base.astro";
 import { CONTACT_EMAIL, CONTACT_URL, OPERATOR, PAGES } from "../lib/site";
 
-// TODO(copy): every row of the table (spec 12.1; model downloads from GitHub since run 2, DESK-32)
+// TODO(copy): every row of the table (spec 12.1; model downloads from GitHub since run 2, DESK-32; the phone's 0.3 s
+// pre-roll, PHONE-33)
 const rows: [string, string, string, string][] = [
   ["Lyd fra tasten", "I computerens hukommelse.", "Indtil den er skrevet ud.", "Dig."],
-  ["Lyd fra telefonen", "I telefonens hukommelse. Krypteret undervejs. Krypteret i relæets buffer, hvis computeren ikke er online.", "Indtil den er skrevet ud. I bufferen højst 10 minutter.", "Kun dine egne enheder."],
+  ["Lyd fra telefonen", "I telefonens hukommelse. Krypteret undervejs. Krypteret i relæets buffer, hvis computeren ikke er online.", "Indtil den er skrevet ud. Mellem dikteringerne overskrives den efter 0,3 sekunder. I bufferen højst 10 minutter.", "Kun dine egne enheder."],
   ["Teksten", "I historikken på den computer, du dikterede til. Den sendes aldrig til telefonen eller til andre computere.", "Så længe du har valgt i indstillingerne (14 dage, hvis du ikke ændrer det).", "Dig."],
   ["Tekst til AI-oprydning (kun hvis du slår det til)", "Hos den udbyder, du selv har valgt.", "Efter udbyderens vilkår.", "Udbyderen."],
   ["Enhedernes offentlige nøgler og rummenes id'er", "På relæet.", "Indtil de fjernes, eller efter 90 dage uden brug.", "Relæets operatør. De siger ikke noget om dig i sig selv."],
@@ -58,10 +59,12 @@ const rows: [string, string, string, string][] = [
       <h2>Historikken på din computer</h2>
       <p>Hver diktering gemmes i appens datamappe på din computer med tidspunkt, kilde (tasten eller telefonens navn) og teksten, så du kan finde den igen. Du vælger selv, hvor længe: Gem ikke, 1 dag, 14 dage, 90 dage eller Altid. Du kan slette alt med Slet al historik.</p>
       <p>Historikken er kun krypteret på disken, hvis computerens diskkryptering (FileVault eller BitLocker) er slået til.</p>
-      <p>Lyd bliver ikke gemt. Den eneste undtagelse er indstillingen Gem lyd til fejlfinding, som er slået fra, og som højst gemmer lyd i 7 dage.</p>
+      <p>Lyd bliver ikke gemt. Den eneste undtagelse er indstillingen Gem lyd til fejlfinding, som er slået fra. Slår du den til, gemmer computeren lyden fra både tasten og telefonen i højst 7 dage.</p>
 
       <h2>Telefonen og relæet</h2>
       <p>Telefonen optager og krypterer lyden, før den sendes. Lyden går gennem relæet til din computer, og kun telefonen og computeren har nøglen. Relæet ser rummenes id'er, enhedernes offentlige nøgler, IP-adresser, tidspunkter og hvor store beskederne er. Det ser aldrig lyd eller tekst. Teksten sendes aldrig tilbage til telefonen.</p>
+      <!-- TODO(copy): the warm microphone (PHONE-30, PHONE-33) -->
+      <p>Mens telefonappen er åben og parret, er telefonens mikrofon tændt, så dit første ord kommer med, når du trykker. Telefonen viser imens sit eget tegn for, at mikrofonen er i brug. Mellem dikteringerne ligger højst de seneste 0,3 sekunder lyd i telefonens hukommelse, og de bliver hele tiden overskrevet. Når du trykker på knappen, kommer op til 0,3 sekunder fra lige før trykket med i dikteringen. Ellers bliver intet sendt eller gemt. Mikrofonen slukker, når appen går i baggrunden, efter 3 minutter uden brug, og når ingen computer er parret.</p>
       <p>Er computeren ikke online, venter den krypterede lyd højst 10 minutter i relæet. Telefonen gemmer aldrig lyd på sin disk.</p>
 
       <h2>AI-oprydning</h2>

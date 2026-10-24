@@ -5,7 +5,8 @@
      before the hero is parsed, sets html[data-os] so the CSS shows the visitor's own download first and largest, the
      other as a small link, and on a phone the phone app first. Nothing moves after the first paint.
    - Until the Apple and Windows signing secrets exist, the builds are not signed by Apple or Microsoft (OSS-21), so
-     each card gives the honest first-open steps (review finding 20). Change them with the first signed release.
+     each card gives the honest first-open steps (review finding 20; on Windows Edge's own download warning comes
+     before SmartScreen). Change them with the first signed release.
    - The onboarding is run 2's (Velkommen, Mikrofon, Tilgængelighed, Prøv det, Telefon, Klar); the key works by tap or
      hold (DESK-22, DESK-26).
    - The QR code for the phone app is drawn at build time (lib/qr.ts), so the page runs no third-party code (SITE-04). */
@@ -76,6 +77,8 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <h3 id="win">Windows</h3>
           <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
           <ol class="steps-list">
+            <!-- TODO(copy): Edge's own words must match the Danish Edge UI -->
+            <li>Henter du med Edge, siger den måske, at filen ikke er almindeligt downloadet. Tryk på de tre prikker ud for filen › Behold › Vis mere › Behold alligevel.</li>
             <li>Åbn filen WalkieTalkey-windows.exe.</li>
             <li>Windows advarer, fordi appen endnu ikke er signeret af Microsoft. Tryk Flere oplysninger › Kør alligevel.</li>
             <li>Følg installationen, og åbn WalkieTalkey.</li>
@@ -124,7 +127,8 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
         <ol class="steps-list">
           <li>Åbn WalkieTalkey på computeren, og gå til Indstillinger › Telefon › Par en telefon. Computeren viser en kode.</li>
           <li>Scan koden med telefonens kamera.</li>
-          <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. På Android parrer den med det samme.</li>
+          <!-- TODO(copy): spec 5.3; only a real iPhone confirms whether iOS keeps the link, hence the fallback -->
+          <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. Ellers åbner appen kameraet, og du scanner koden igen. På Android parrer den med det samme.</li>
         </ol>
       </div>
       <figure class="phone-qr">
