@@ -64,6 +64,7 @@ impl SecretStore for CredentialManager {
 static STORE: OnceCell<Arc<dyn SecretStore>> = OnceCell::new();
 
 /// The secret folder's path (macOS, Linux).
+#[cfg_attr(not(unix), allow(dead_code))]
 pub fn secret_dir() -> Result<PathBuf, String> {
     let app = super::app().ok_or("the app is not set up yet")?;
     Ok(crate::portable::app_data_dir(app)
