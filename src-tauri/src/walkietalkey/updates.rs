@@ -22,9 +22,8 @@ use super::settings::UpdateChannel;
 pub const STABLE_MANIFEST: &str =
     "https://github.com/JonathanRentoft/walkietalkey/releases/latest/download/latest.json";
 
-/// Beta: written by the release workflow to the website (SITE-08). Until the
-/// walkietalkey.com domain exists, the site's pages.dev address serves it.
-pub const BETA_MANIFEST: &str = "https://walkietalkey-site.pages.dev/updates/beta.json";
+/// Beta: written by the release workflow to the website (SITE-08).
+pub const BETA_MANIFEST: &str = "https://walkietalkey.com/updates/beta.json";
 
 pub const CHECK_EVERY: Duration = Duration::from_secs(6 * 60 * 60);
 

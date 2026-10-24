@@ -89,11 +89,16 @@ pub enum UpdateChannel {
     Beta,
 }
 
-/// The public test relay and phone app until walkietalkey.com exists. Both
-/// are settings (Avanceret › relæ-adresse; managed `RelayUrl`, `PhoneAppUrl`),
+/// The public relay and phone app on walkietalkey.com (run 2). Both are
+/// settings (Avanceret › relæ-adresse; managed `RelayUrl`, `PhoneAppUrl`),
 /// never hard-coded elsewhere.
-pub const DEFAULT_RELAY_URL: &str = "wss://walkietalkey-relay.jonathan0912.workers.dev";
-pub const DEFAULT_PHONE_APP_URL: &str = "https://walkietalkey-app.pages.dev";
+pub const DEFAULT_RELAY_URL: &str = "wss://relay.walkietalkey.com";
+pub const DEFAULT_PHONE_APP_URL: &str = "https://app.walkietalkey.com";
+/// v1's defaults, which still answer (the same Worker and Pages project), so
+/// pairings made with them keep working; settings still on them move to the
+/// new hosts once (`migrate`).
+pub const V1_RELAY_URL: &str = "wss://walkietalkey-relay.jonathan0912.workers.dev";
+pub const V1_PHONE_APP_URL: &str = "https://walkietalkey-app.pages.dev";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default)]

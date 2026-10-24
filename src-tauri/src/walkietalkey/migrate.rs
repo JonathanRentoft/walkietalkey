@@ -6,6 +6,9 @@
 //!   hold-or-toggle with 500 ms.
 //! - The pill for phone dictations (DESK-58): v1's `false` becomes `true`.
 //! - "Udviklerord" (DESK-67): v1's `false` becomes `true`.
+//! - walkietalkey.com (Phase 6): v1's relay and phone app addresses become
+//!   relay.walkietalkey.com and app.walkietalkey.com. Both old addresses still
+//!   reach the same relay and phone app, so existing pairings keep working.
 //!
 //! v1 persisted its defaults like any choice, so a v1 value equal to v1's
 //! default is read as "never chosen". A fresh install already has the new
@@ -14,7 +17,10 @@
 use log::info;
 use tauri::AppHandle;
 
-use super::settings::{WtSettings, SETTINGS_VERSION};
+use super::settings::{
+    WtSettings, DEFAULT_PHONE_APP_URL, DEFAULT_RELAY_URL, SETTINGS_VERSION, V1_PHONE_APP_URL,
+    V1_RELAY_URL,
+};
 use crate::settings::{AppSettings, ShortcutActivation};
 
 /// v1's hold threshold.
@@ -47,6 +53,12 @@ pub fn upgrade(handy: &mut AppSettings, wt: &mut WtSettings, wt_stored: bool) ->
         if wt_stored {
             wt.pill_for_phone = true;
             wt.developer_words = true;
+            if wt.relay_url == V1_RELAY_URL {
+                wt.relay_url = DEFAULT_RELAY_URL.to_string();
+            }
+            if wt.phone_app_url == V1_PHONE_APP_URL {
+                wt.phone_app_url = DEFAULT_PHONE_APP_URL.to_string();
+            }
         }
     }
     wt.settings_version = SETTINGS_VERSION;
@@ -68,6 +80,8 @@ pub fn run(app: &AppHandle) {
         if let Err(e) = super::store::update_internal(app, move |stored| {
             stored.pill_for_phone = wt.pill_for_phone;
             stored.developer_words = wt.developer_words;
+            stored.relay_url = wt.relay_url;
+            stored.phone_app_url = wt.phone_app_url;
             stored.settings_version = version;
         }) {
             log::warn!("Settings migration could not be saved: {e}");
@@ -91,9 +105,26 @@ mod tests {
         WtSettings {
             pill_for_phone: false,
             developer_words: false,
+            relay_url: V1_RELAY_URL.to_string(),
+            phone_app_url: V1_PHONE_APP_URL.to_string(),
             settings_version: 0,
             ..WtSettings::default()
         }
+    }
+
+    #[test]
+    fn v1_addresses_move_to_walkietalkey_com_and_chosen_ones_stay() {
+        let (mut handy, mut wt) = (v1_handy(), v1_wt());
+        upgrade(&mut handy, &mut wt, true);
+        assert_eq!(wt.relay_url, "wss://relay.walkietalkey.com");
+        assert_eq!(wt.phone_app_url, "https://app.walkietalkey.com");
+
+        let (mut handy, mut wt) = (v1_handy(), v1_wt());
+        wt.relay_url = "wss://relae.firma.dk".into();
+        wt.phone_app_url = "https://diktat.firma.dk".into();
+        upgrade(&mut handy, &mut wt, true);
+        assert_eq!(wt.relay_url, "wss://relae.firma.dk");
+        assert_eq!(wt.phone_app_url, "https://diktat.firma.dk");
     }
 
     #[test]

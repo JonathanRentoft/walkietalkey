@@ -688,7 +688,7 @@ mod tests {
 
     #[test]
     fn the_pairing_qr_is_an_svg_in_brand_colours() {
-        let svg = qr_svg("https://walkietalkey-app.pages.dev/p#eyJ2IjoxfQ").unwrap();
+        let svg = qr_svg("https://app.walkietalkey.com/p#eyJ2IjoxfQ").unwrap();
         assert!(svg.starts_with("<?xml") || svg.starts_with("<svg"));
         assert!(svg.contains("#1b1a19"));
         // The secret part of the URL is never in the SVG as text.
