@@ -5,46 +5,21 @@ import shutil
 
 import pytest
 
+from conftest import WORDS, takes_config, write_takes
 from wt_train import dataset
-from wt_train.config import config_from_dict
 from wt_train.dataset import (
     HeldOut, Item, LeakageError, build, check_leakage, fleurs_test_held_out, load_build, rehearsal_count,
     split_by_sentence,
 )
 from wt_train.spelling import Spelling, Term
 
-WORDS = ["kat", "hund", "fisk", "fugl", "hest", "ko", "gris", "får", "ged", "and", "ugle", "ræv",
-         "ulv", "bjørn", "elg", "mus", "rotte", "hare", "pindsvin", "odder", "sæl", "hval", "laks", "ørred"]
-
 
 def make_takes(tmp_path, make_wav, n=24):
-    """n takes of distinct sentences; every third has a term written the unconventional way."""
-    folder = tmp_path / "recordings"
-    rows = ["id,text,kind"]
-    for i, word in enumerate(WORDS[:n]):
-        sid = f"s{i:04d}"
-        if i % 3 == 0:
-            text, kind = f"Vi skal deploy'e {word} i dag.", "terms"
-        else:
-            text, kind = f"Der er en {word} i haven.", "plain"
-        rows.append(f'{sid},"{text}",{kind}')
-        make_wav(folder / f"{sid}.wav", seed=i)
-        (folder / f"{sid}.txt").write_text(text + "\n", encoding="utf-8")
-    sentences = tmp_path / "sentences.csv"
-    sentences.write_text("\n".join(rows) + "\n", encoding="utf-8")
-    spelling = tmp_path / "spelling.yaml"
-    spelling.write_text("terms:\n  deploy:\n    forms: [deploye, deployer]\n    also:\n      deploy'e: deploye\n",
-                        encoding="utf-8")
-    return folder, sentences, spelling
+    return write_takes(tmp_path, n)
 
 
 def config(folder, sentences, spelling, **overrides):
-    raw = {"name": "t", "data": {"recordings": str(folder), "sentences": str(sentences), "spelling": str(spelling),
-                                 "validation_fraction": 0.25, "test_fraction": 0.25, "seed": 3},
-           "rehearsal": {"share": 0.25, "validation_share": 0.2}}
-    for section, values in overrides.items():
-        raw[section].update(values)
-    return config_from_dict(raw)
+    return takes_config(folder, sentences, spelling, **overrides)
 
 
 def item(i, text, split_hash=None, kind="plain", source="recording", audio=None):

@@ -31,6 +31,45 @@ def make_wav():
     return write_wav
 
 
+WORDS = ["kat", "hund", "fisk", "fugl", "hest", "ko", "gris", "får", "ged", "and", "ugle", "ræv",
+         "ulv", "bjørn", "elg", "mus", "rotte", "hare", "pindsvin", "odder", "sæl", "hval", "laks", "ørred"]
+
+
+def write_takes(root: Path, n: int = 24) -> tuple[Path, Path, Path]:
+    """n takes of distinct sentences (every third with a term spelled the
+    unconventional way), their sentences.csv and a spelling.yaml."""
+    folder = root / "recordings"
+    rows = ["id,text,kind"]
+    for i, word in enumerate(WORDS[:n]):
+        sid = f"s{i:04d}"
+        if i % 3 == 0:
+            text, kind = f"Vi skal deploy'e {word} i dag.", "terms"
+        else:
+            text, kind = f"Der er en {word} i haven.", "plain"
+        rows.append(f'{sid},"{text}",{kind}')
+        write_wav(folder / f"{sid}.wav", seed=i)
+        (folder / f"{sid}.txt").write_text(text + "\n", encoding="utf-8")
+    sentences = root / "sentences.csv"
+    sentences.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    spelling = root / "spelling.yaml"
+    spelling.write_text("terms:\n  deploy:\n    forms: [deploye, deployer]\n    also:\n      deploy'e: deploye\n",
+                        encoding="utf-8")
+    return folder, sentences, spelling
+
+
+def takes_config(folder: Path, sentences: Path, spelling: Path, **sections):
+    """A config over write_takes() output; ``sections`` update its sections."""
+    from wt_train.config import config_from_dict
+
+    raw = {"name": "t",
+           "data": {"recordings": str(folder), "sentences": str(sentences), "spelling": str(spelling),
+                    "validation_fraction": 0.25, "test_fraction": 0.25, "seed": 3},
+           "rehearsal": {"share": 0.25, "validation_share": 0.2}}
+    for section, values in sections.items():
+        raw.setdefault(section, {}).update(values)
+    return config_from_dict(raw)
+
+
 def write_fleurs(root: Path, split: str, rows: list[tuple[str, str, str]], seed0: int) -> Path:
     """rows: (sentence id, file stem, raw text). Writes <split>.tsv, <split>/*.wav and the marker."""
     root.mkdir(parents=True, exist_ok=True)
