@@ -92,8 +92,11 @@ export class Recorder implements RecorderLike {
   private giveUp: (() => void) | null = null;
 
   prime(): void {
-    const ctx = this.context();
-    if (ctx.state !== "running") void ctx.resume().catch(() => undefined);
+    // Always, even when the state says running: a suspend from cool() may still be on its way,
+    // and only a resume after it leaves the context running (PHONE-33).
+    void this.context()
+      .resume()
+      .catch(() => undefined);
   }
 
   private context(): AudioContext {
@@ -231,7 +234,9 @@ export class Recorder implements RecorderLike {
       throw new Closed();
     }
     // Allowed without a gesture while capturing (WebKit); otherwise the next touch (prime) does it.
-    if (ctx.state !== "running") void ctx.resume().catch(() => undefined);
+    // Always, as in prime(): back from the background at once, cool()'s suspend may not have
+    // landed yet.
+    void ctx.resume().catch(() => undefined);
     const sink = new CaptureSink(ctx.sampleRate);
     const source = ctx.createMediaStreamSource(stream);
     const node = new AudioWorkletNode(ctx, "wt-capture", {
