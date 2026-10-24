@@ -158,7 +158,7 @@ Handy (MIT licence, Tauri v2) already does push-to-talk, local speech models (Wh
 | DESK-03 | Danish is the default UI language. English strings stay in the codebase for later. |
 | DESK-04 | Features from Handy that we keep but hide behind "Avanceret": manual model install, debug mode, paste delays, CLI flags. |
 | DESK-05 | Changes are kept in our own modules where possible (for example `src-tauri/src/relay/`, `src-tauri/src/pipeline/da/`), so upstream merges stay small. |
-| DESK-06 | From M1, development builds on the Mac are signed with an Apple Development certificate. macOS ties permission grants (Input Monitoring, Accessibility, Microphone) to the app's signature, and ad-hoc signed builds lose them on every rebuild. |
+| DESK-06 | Local Mac builds are signed with one self-signed code-signing identity, "WalkieTalkey Local" (`scripts/walkietalkey/build-local-mac.sh`, BUILD.md), until an Apple Development certificate exists. macOS ties permission grants (Accessibility, Microphone) to the app's signature, and ad-hoc signed builds lose them on every rebuild; a signature from one certificate keeps the designated requirement the same. CI release builds stay ad-hoc until the Apple Developer ID (decision 18.1 done, enrolment open); after such an update the app detects the dropped Accessibility grant and offers to repair it (DESK-13). |
 
 ### 6.2 First run (onboarding)
 
@@ -181,13 +181,13 @@ Acceptance: a new user on a clean Mac goes from first launch to a working dictat
 
 | ID | Requirement |
 |---|---|
-| DESK-20 | Default trigger on macOS is `fn` (the 🌐 key) on Apple keyboards, in hold mode. Handy marks Globe support as in progress upstream; if it is not merged, we implement it with a `CGEventTap` on `flagsChanged`. |
+| DESK-20 | Default trigger on macOS is `fn` (🌐) alone, tap or hold (DESK-22). WalkieTalkey's own active `CGEventTap` at the head of the HID event stream drives it, with Accessibility as the only permission (no Input Monitoring). It swallows fn-only events and the Globe key's follow-up event (keycode 0xB3), and passes fn combined with other keys through. macOS fires the Globe key's own action (for example Change Input Source) upstream of every event tap (run 2, Phase 0), so while `fn` is the key the app offers one button, "Ret det for mig", that sets the Globe key to Do Nothing (`com.apple.HIToolbox AppleFnUsageType` 0; applies at once, no logout), remembers the previous value and restores it when `fn` stops being the key. The user never has to change System Settings. |
 | DESK-21 | Default trigger on Windows is Right Ctrl, hold mode. Any key or combination can be chosen. Third-party keyboards do not send `fn`, so the Mac settings also offer other keys. |
-| DESK-22 | Modes: hold to talk (default) and tap to start, tap to stop. |
-| DESK-23 | Recording starts within 100 ms of the key going down, so the first word is never cut. The start sound and the pill only appear once the key has been held for 300 ms (DESK-26), so quick taps and `fn` shortcuts stay silent. Sounds are on by default and can be turned off. |
+| DESK-22 | Tap or hold (run 2; replaces "hold to talk or tap to start"). Recording starts the moment the key goes down. Released within 0.5 s, the dictation is hands-free: it records until the next tap (stop and transcribe), Esc (cancel, DESK-25) or the 5-minute limit (DESK-24), and the pill shows a lock and "Tryk igen for at stoppe". Held longer, it is push-to-talk and stops on release. Settings also offer hold only and tap only. |
+| DESK-23 | Recording starts within 100 ms of the key going down, so the first word is never cut. The start sound and the pill appear once the key has been held for 300 ms, or at once when a tap makes the dictation hands-free, so `fn` shortcuts stay silent. Sounds are on by default and can be turned off. |
 | DESK-24 | Maximum 5 minutes per dictation. At 4:45 the pill shows a countdown. At 5:00 it stops and transcribes what it has. |
 | DESK-25 | Esc while recording cancels without output. |
-| DESK-26 | Holding the key for less than 300 ms is ignored (accidental taps). If any other key is pressed while `fn` is down (fn+Delete, fn+arrows, fn+F-keys), the dictation is cancelled silently, because `fn` is also a modifier. |
+| DESK-26 | If any other key is pressed while `fn` is down (fn+Delete, fn+arrows, fn+F-keys), the dictation is cancelled silently, because `fn` is also a modifier. Modifiers alone (Shift for DESK-80) do not cancel, and typing during a hands-free dictation does not cancel it. A quick tap is no longer ignored (it starts a hands-free dictation, DESK-22); in the hold-only setting a hold under 300 ms is dropped silently. |
 | DESK-27 | One transcription at a time, in the order the recordings end. A phone dictation that arrives during a key dictation waits; its notification follows the key dictation's paste. |
 
 ### 6.4 The pipeline
@@ -247,7 +247,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-55 | The DictationPill floats at the bottom centre during key dictations: Lytter (with level meter and time) → Renskriver → Indsat or Tekst klar til at indsætte. It hides 1.5 s after the end. Position and "Vis aldrig" are settings. |
 | DESK-56 | Phone dictations show a system notification: title "Tekst klar til at indsætte", body the first 80 characters, or "Tryk ⌘V for at indsætte" when "Vis teksten i notifikationen" is off (for shared screens and meetings). |
 | DESK-57 | Clicking the notification opens the history with that item selected. Implementation note: Tauri v2's notification plugin only handles actions and clicks on mobile, so this needs a small native module (a `UNUserNotificationCenter` delegate on macOS, a toast activation handler on Windows). Windows toasts only show the app's own name and icon for the installed app. |
-| DESK-58 | While a phone recording streams in, the menu bar icon shows that it is listening. Optionally (setting) the pill appears too. |
+| DESK-58 | While a phone recording streams in, the menu bar icon pulses and the pill shows (run 2: on by default; a setting turns it off), its waveform following the phone's audio. |
 
 ### 6.8 Receiving from the phone
 
@@ -264,7 +264,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | ID | Requirement |
 |---|---|
 | DESK-66 | Indstillinger › Ordliste has two lists. **Ord**: names and terms to spell right (fed to the model's vocabulary field, about 150 tokens max, most recent first, because Whisper's 223-token prompt budget is shared with the context from the previous chunk, DESK-46). **Erstatninger**: "når jeg siger X, skriv Y" (applied after recognition, whole words, case-insensitive match, keeps the replacement's casing). |
-| DESK-67 | An optional built-in pack "Udviklerord" (pull request, deploy, standup, merge, commit, frontend, backend and similar) helps mixed Danish and English. |
+| DESK-67 | A built-in pack "Udviklerord" (pull request, deploy, standup, merge, commit, frontend, backend and similar, 30 terms) helps mixed Danish and English. On by default (run 2). It reaches Whisper models through transcribe.cpp's vocabulary field as a "Glossary:" prompt (73 Whisper tokens; with the longest chunk context 164 of the 223). Measured on the owner's sentences (run 2, Phase 2): Mac WER 11.8 % to 9.2 % with it, English terms unchanged (3 of 8); adding the inflected forms that failed did not help, so English words inside Danish speech need a code-switched fine-tune (run 3). |
 | DESK-68 | Lists can be imported and exported as plain text, one entry per line, and can be set by the company (Appendix B). |
 
 ### 6.10 AI cleanup (optional)
