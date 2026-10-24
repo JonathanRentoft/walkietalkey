@@ -39,16 +39,43 @@ const LEGACY_STEPS: Record<string, OnboardingStepId> = {
 
 /** The steps this computer shows. Tilgængelighed is a Mac permission;
  *  Windows needs none for the key or for pasting. The phone step needs
- *  pairing to be allowed (Appendix B `AllowPhonePairing`). */
+ *  pairing to be allowed (Appendix B `AllowPhonePairing`) and, run 5, a
+ *  dictation in Prøv det that worked: pairing never comes before the first
+ *  successful dictation. */
 export function onboardingSteps(
   platform: WtPlatform,
-  opts: { phonePairing: boolean },
+  opts: { phonePairing: boolean; dictated: boolean },
 ): OnboardingStepId[] {
   return ONBOARDING_STEPS.filter((step) => {
     if (step === "accessibility") return platform === "macos";
-    if (step === "phone") return opts.phonePairing;
+    if (step === "phone") return opts.phonePairing && opts.dictated;
     return true;
   });
+}
+
+/** The step list to resume in after a restart: a stored Telefon was only
+ *  reached after a dictation that worked. */
+export function resumeOptions(
+  saved: string | null | undefined,
+  phonePairing: boolean,
+): { phonePairing: boolean; dictated: boolean } {
+  return { phonePairing, dictated: saved === "phone" };
+}
+
+/** A dictation worked: its text was pasted or put on the clipboard. */
+export function dictationWorked(state: string | null | undefined): boolean {
+  return (
+    state === "pasted" || state === "clipboard" || state === "cleanup_skipped"
+  );
+}
+
+/** Run 5: onboarding that ended without its Telefon step offers pairing
+ *  once, after the first dictation that works (`phone_offer_pending`). */
+export function phoneOfferPending(opts: {
+  phonePairing: boolean;
+  phoneStepShown: boolean;
+}): boolean {
+  return opts.phonePairing && !opts.phoneStepShown;
 }
 
 export function nextStep(

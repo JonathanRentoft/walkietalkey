@@ -6,6 +6,7 @@
 //! | [`secret_file`] | SEC-09, DESK-81 (run 5) | a private folder: `0700`, `0600` files, atomic writes, excluded from Time Machine, bound to this Mac; never the keychain | (not used) |
 //! | [`secrets`] | SEC-09, SEC-10, DESK-81 | `Unsupported` (never the keychain) | Credential Manager, `CRED_PERSIST_LOCAL_MACHINE` |
 //! | [`clipboard_windows`] | DESK-54 | (not used; the app writes with NSPasteboard current-host-only) | clipboard formats that keep text out of Clipboard History and Cloud Clipboard |
+//! | [`microphone`] | DESK-12 | `AVCaptureDevice` authorization status (never asks) | (always granted here) |
 //! | [`notifications`] | DESK-56, DESK-57 | `UNUserNotificationCenter` with a delegate | toasts with an `Activated` handler |
 //! | [`notification_permission`] | DESK-15 | `getNotificationSettings` | the toast notifier's setting |
 //! | [`managed`] | DESK-100..102, Appendix B | forced `CFPreferences` values of `com.walkietalkey.app` | `HKLM\SOFTWARE\Policies\WalkieTalkey` |
@@ -20,6 +21,7 @@ pub mod clipboard_windows;
 pub mod elevation;
 pub mod keyboard;
 pub mod managed;
+pub mod microphone;
 pub mod notification_permission;
 pub mod notifications;
 pub mod presence;
@@ -34,12 +36,13 @@ mod no_keychain {
     //! Run 5: the Mac build never calls the keychain, so it can never ask for the login
     //! password. This reads every source file of the crate and its manifest.
 
-    const SOURCES: [(&str, &str); 12] = [
+    const SOURCES: [(&str, &str); 13] = [
         ("lib.rs", include_str!("lib.rs")),
         ("clipboard_windows.rs", include_str!("clipboard_windows.rs")),
         ("elevation.rs", include_str!("elevation.rs")),
         ("keyboard.rs", include_str!("keyboard.rs")),
         ("managed.rs", include_str!("managed.rs")),
+        ("microphone.rs", include_str!("microphone.rs")),
         (
             "notification_permission.rs",
             include_str!("notification_permission.rs"),

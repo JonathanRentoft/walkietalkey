@@ -9,6 +9,7 @@ import { commands } from "@/bindings";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
   onboardingFinished,
+  resumeOptions,
   resumeStep,
   onboardingSteps,
   type OnboardingStepId,
@@ -48,10 +49,11 @@ export default function WalkieTalkeyApp() {
       const completed =
         appResult?.status === "ok" &&
         appResult.data.onboarding_completed === true;
-      const steps = onboardingSteps(platform, {
-        phonePairing: view?.settings.allow_phone_pairing ?? true,
-      });
       const saved = view?.settings.onboarding_resume_step;
+      const steps = onboardingSteps(
+        platform,
+        resumeOptions(saved, view?.settings.allow_phone_pairing ?? true),
+      );
       const resume = resumeStep(saved, steps);
       if (resume) setMode({ kind: "onboarding", step: resume });
       else if (!completed && !onboardingFinished(saved))

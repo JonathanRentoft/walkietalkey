@@ -159,6 +159,10 @@ pub struct WtSettings {
 
     // Onboarding: the step to resume at after a restart (DESK-13).
     pub onboarding_resume_step: Option<String>,
+    /// Phone pairing is offered after the first successful dictation, never
+    /// before (run 5): onboarding finished without one, so the main window
+    /// offers it once, after the first dictation that works.
+    pub phone_offer_pending: bool,
 
     // Kept by the app itself; a save from the UI never changes these.
     /// Which defaults the stored settings were migrated to (`migrate`). A
@@ -211,6 +215,7 @@ impl Default for WtSettings {
             auto_update: true,
             update_channel: UpdateChannel::Stable,
             onboarding_resume_step: None,
+            phone_offer_pending: false,
             settings_version: SETTINGS_VERSION,
             globe_key_fixed: false,
             globe_key_previous: None,

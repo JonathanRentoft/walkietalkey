@@ -813,6 +813,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,
+            walkietalkey::commands::wt_microphone_access,
             walkietalkey::commands::wt_request_notification_permission,
             walkietalkey::commands::wt_globe_key_status,
             walkietalkey::commands::wt_globe_key_fix,

@@ -61,6 +61,10 @@ export function PhoneSection() {
 
   return (
     <Page title={t("wt.nav.phone")} description={t("wt.phone.intro")}>
+      {relay?.pair_again && phones.length === 0 ? (
+        // Run 5: v0.2.0 has a new identity; phones paired before pair again.
+        <Status tone="warn">{t("wt.phoneOffer.pairAgain")}</Status>
+      ) : null}
       <Group title={t("wt.phone.paired")}>
         {phones.length ? (
           <ul className="wt-list">

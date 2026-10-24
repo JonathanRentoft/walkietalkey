@@ -1114,6 +1114,12 @@ textarea.wt-input {
   color: var(--on-ink);
   flex: none;
 }
+/* Two buttons in a banner (the phone offer, run 5). */
+.wt-banner-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex: none;
+}
 
 /* ----------------------------------------------------------- History */
 .wt-history-tools {

@@ -480,7 +480,7 @@ mod tests {
         };
         let moved = phone();
         {
-            let plain = JsonFileKeyStore::open(&legacy.join(PLAIN_KEYS_FILE)).unwrap();
+            let plain = JsonFileKeyStore::open(legacy.join(PLAIN_KEYS_FILE)).unwrap();
             plain.save_device_keys(&keys).unwrap();
             plain.save_room(&room()).unwrap();
             plain.save_phone(&moved).unwrap();
