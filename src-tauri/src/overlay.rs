@@ -68,7 +68,8 @@ fn overlay_dimensions(state: &str) -> (f64, f64) {
 }
 
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
-const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
+// WalkieTalkey: crate-visible so the phone waveform paces above it (relay/levels.rs).
+pub(crate) const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
 
 // WalkieTalkey: the window's 32 px margin around the pill is subtracted on the
 // Mac, so the pill itself sits where Handy's did (Handy: 46 and 15).

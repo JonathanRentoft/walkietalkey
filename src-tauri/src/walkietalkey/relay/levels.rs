@@ -1,9 +1,12 @@
 //! The pill's waveform for phone dictations (DESK-58): `mic-level` frames
-//! computed from the PCM blocks the phone sends, in the same shape and at the
-//! same rate as the microphone's (16 bands, one frame per 512 samples, about
-//! 31 a second). Blocks arrive 200 ms at a time, so the frames are queued and
-//! paced out; a backlog (a burst after a stall) is dropped from the front so
-//! the waveform stays live.
+//! computed from the PCM blocks the phone sends, in the same shape as the
+//! microphone's (16 bands, one frame per 512 samples, about 31 a second).
+//! Blocks arrive 200 ms at a time, so the frames are queued and paced out
+//! just above the overlay's emit throttle (`overlay::emit_levels` drops a
+//! frame within 33 ms of the last one), so none is dropped there; the
+//! queue is short and a backlog (a burst after a stall, or the frames the
+//! slightly slower pacing leaves over) is dropped from the front so the
+//! waveform stays live.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,10 +23,14 @@ use crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE;
 /// 4 kHz.
 pub const WINDOW: usize = 512;
 pub const BANDS: usize = 16;
-/// One window of audio.
-pub const FRAME_INTERVAL: Duration = Duration::from_millis(32);
-/// At most this many frames wait (about half a second).
-pub const MAX_QUEUE: usize = 16;
+/// The audio one frame covers: one window (32 ms).
+pub const WINDOW_DURATION: Duration = Duration::from_millis((WINDOW * 1000 / 16_000) as u64);
+/// The pacing: a millisecond above the overlay's throttle, so whole
+/// milliseconds between two frames are never fewer than it lets through.
+pub const FRAME_INTERVAL: Duration = Duration::from_millis(crate::overlay::EMIT_THROTTLE_MS + 1);
+/// At most this many frames wait (about a third of a second: a block and a
+/// half, so the network's jitter is smoothed but the lag stays short).
+pub const MAX_QUEUE: usize = 10;
 
 /// Turns received audio into level frames and holds them for pacing.
 pub struct LevelFeed {
@@ -116,6 +123,20 @@ impl PhoneLevels {
     pub fn stop(&self) {
         self.live.store(false, Ordering::SeqCst);
     }
+
+    /// Still pacing frames out.
+    pub fn is_live(&self) -> bool {
+        self.live.load(Ordering::SeqCst)
+    }
+
+    /// Levels without a pacer (tests).
+    #[cfg(test)]
+    pub fn detached() -> Arc<Self> {
+        Arc::new(Self {
+            feed: Mutex::new(LevelFeed::new()),
+            live: AtomicBool::new(true),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -131,7 +152,7 @@ mod tests {
 
     #[test]
     fn a_block_gives_the_microphones_shape_and_rate() {
-        // DESK-58: 16 bands, one frame per 32 ms, as overlay.rs emits.
+        // DESK-58: 16 bands, one frame per 32 ms of audio, as overlay.rs emits.
         let mut feed = LevelFeed::new();
         feed.push(&block(0.3));
         assert_eq!(
@@ -142,7 +163,50 @@ mod tests {
         let frame = feed.pop().unwrap();
         assert_eq!(frame.len(), BANDS);
         assert!(frame.iter().all(|v| (0.0..=1.0).contains(v)));
-        assert_eq!(FRAME_INTERVAL.as_millis() as usize, WINDOW * 1000 / 16_000);
+        assert_eq!(WINDOW_DURATION, Duration::from_millis(32));
+    }
+
+    /// `overlay::emit_levels`'s throttle: a frame within the throttle of the
+    /// last one sent is dropped, on a whole-millisecond clock.
+    fn frames_the_overlay_drops(interval: Duration, frames: usize) -> usize {
+        let throttle = crate::overlay::EMIT_THROTTLE_MS;
+        // Start between two milliseconds, where rounding hurts most.
+        let start_us = 1_000_000_123u64;
+        let mut last_ms = 0u64;
+        let mut dropped = 0;
+        for k in 0..frames as u64 {
+            let now_ms = (start_us + k * interval.as_micros() as u64) / 1_000;
+            if now_ms.saturating_sub(last_ms) < throttle {
+                dropped += 1;
+            } else {
+                last_ms = now_ms;
+            }
+        }
+        dropped
+    }
+
+    #[test]
+    fn the_overlay_lets_every_paced_frame_through() {
+        // At 32 ms, about every other frame fell under the 33 ms throttle.
+        assert!(frames_the_overlay_drops(Duration::from_millis(32), 100) > 30);
+        assert_eq!(frames_the_overlay_drops(FRAME_INTERVAL, 1_000), 0);
+        assert!(FRAME_INTERVAL > Duration::from_millis(crate::overlay::EMIT_THROTTLE_MS));
+    }
+
+    #[test]
+    fn the_slower_pacing_never_lags_more_than_the_queue() {
+        // 34 ms per frame against 32 ms of audio per frame: the surplus is
+        // dropped from the front, so the waveform stays within a third of a
+        // second of the voice.
+        let mut feed = LevelFeed::new();
+        for _ in 0..50 {
+            feed.push(&block(0.3)); // 200 ms of audio
+            for _ in 0..(200 / FRAME_INTERVAL.as_millis() as usize) {
+                feed.pop();
+            }
+            assert!(feed.queued() <= MAX_QUEUE);
+        }
+        assert!(FRAME_INTERVAL * MAX_QUEUE as u32 <= Duration::from_millis(350));
     }
 
     #[test]
