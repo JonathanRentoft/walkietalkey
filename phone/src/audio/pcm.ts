@@ -154,6 +154,76 @@ export class Downsampler {
   }
 }
 
+/**
+ * Run 4: the raw microphone (no voice processing, run 2) gives the owner's iPhone speech at about
+ * -46 dBFS RMS, 17-18 dB below the Mac's microphone. Edda copes, but turned down that far the Mac's
+ * own takes went from 9.2 % to 18.4 % WER, so the phone adds a fixed 15 dB.
+ */
+export const PHONE_GAIN_DB = 15;
+/** The limiter's ceiling, -1 dBFS: no sample after the gain goes past it, so PCM16 never clips. */
+export const LIMITER_CEILING = 10 ** (-1 / 20);
+/** How far ahead the limiter looks: the gain is down before a peak arrives. Delays the audio this much. */
+const LOOKAHEAD_MS = 5;
+/** How quickly the gain comes back after a peak (time constant); slow enough to keep speech's shape. */
+const RELEASE_MS = 120;
+
+/**
+ * A fixed gain with a look-ahead peak limiter, at 16 kHz. Each sample's allowed gain is the
+ * smallest one any sample in the next 5 ms allows; the gain falls to it at once, comes back over
+ * about 120 ms, and is then averaged over the look-ahead, so it glides down before a peak instead
+ * of stepping. Every sample within 5 ms after a moment counts toward that moment's average, so
+ * no sample ever goes past the ceiling. Samples are held back by the look-ahead (in order, none
+ * added or dropped) and depend only on the input samples, never on how the input was chunked;
+ * `flush` returns the rest.
+ */
+export class Limiter {
+  private readonly gain: number;
+  private readonly look: number;
+  private readonly release: number;
+  /** Gained samples not yet sent out, oldest first. */
+  private pending: number[] = [];
+  /** The released gain of the newest sample sent out. */
+  private released = 1;
+  /** The released gains of the last look + 1 samples sent out, and their sum. */
+  private recent: number[] = [];
+  private recentSum = 0;
+
+  constructor(gainDb: number, rate = SAMPLE_RATE) {
+    this.gain = 10 ** (gainDb / 20);
+    this.look = Math.round((rate * LOOKAHEAD_MS) / 1000);
+    this.release = 1 - Math.exp(-1000 / (RELEASE_MS * rate));
+  }
+
+  process(input: Float32Array): Float32Array {
+    if (this.gain === 1) return input;
+    for (let i = 0; i < input.length; i++) this.pending.push(input[i]! * this.gain);
+    return this.drain(this.look);
+  }
+
+  /** The samples still held back by the look-ahead. */
+  flush(): Float32Array {
+    return this.gain === 1 ? new Float32Array(0) : this.drain(0);
+  }
+
+  private drain(keep: number): Float32Array {
+    const out = new Float32Array(Math.max(0, this.pending.length - keep));
+    for (let o = 0; o < out.length; o++) {
+      let allowed = 1;
+      const end = Math.min(this.pending.length, this.look + 1);
+      for (let k = 0; k < end; k++) {
+        const a = Math.abs(this.pending[k]!);
+        if (a * allowed > LIMITER_CEILING) allowed = LIMITER_CEILING / a;
+      }
+      this.released = Math.min(allowed, this.released + (1 - this.released) * this.release);
+      this.recent.push(this.released);
+      this.recentSum += this.released;
+      if (this.recent.length > this.look + 1) this.recentSum -= this.recent.shift()!;
+      out[o] = this.pending.shift()! * (this.recentSum / this.recent.length);
+    }
+    return out;
+  }
+}
+
 /** A finished 200 ms block (PCM16 little-endian) and its RMS (pcm16Rms, for the level meter). */
 export type BlockSink = (block: Uint8Array, rms: number) => void;
 
@@ -197,24 +267,29 @@ export class BlockFramer {
   }
 }
 
-/** Capture-rate float mono in, 200 ms PCM16 blocks out, each with its RMS. */
+/**
+ * Capture-rate float mono in, 200 ms PCM16 blocks out, each with its RMS: resampled to 16 kHz,
+ * raised by `gainDb` (PHONE_GAIN_DB) under the limiter, then PCM16.
+ */
 export class PcmPipeline {
   private readonly ds: Downsampler;
+  private readonly limiter: Limiter;
   private readonly framer: BlockFramer;
 
-  constructor(inRate: number, onBlock: BlockSink) {
+  constructor(inRate: number, onBlock: BlockSink, gainDb = PHONE_GAIN_DB) {
     this.ds = new Downsampler(inRate);
+    this.limiter = new Limiter(gainDb);
     this.framer = new BlockFramer(onBlock);
   }
 
   push(input: Float32Array): void {
-    const y = this.ds.process(input);
+    const y = this.limiter.process(this.ds.process(input));
     if (y.length) this.framer.push(floatToPcm16(y));
   }
 
   finish(): void {
-    const y = this.ds.flush();
-    if (y.length) this.framer.push(floatToPcm16(y));
+    for (const y of [this.limiter.process(this.ds.flush()), this.limiter.flush()])
+      if (y.length) this.framer.push(floatToPcm16(y));
     this.framer.flush();
   }
 

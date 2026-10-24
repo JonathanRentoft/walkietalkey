@@ -15,7 +15,7 @@
  * app's sound) stops the batches; without the time stamps the ring would still hold the audio from
  * before it, however old, and the next press would send it (review finding, run 2).
  */
-import { PcmPipeline, type BlockSink } from "./pcm";
+import { PHONE_GAIN_DB, PcmPipeline, type BlockSink } from "./pcm";
 
 /** How much audio before the press a dictation starts with. */
 export const PRE_ROLL_MS = 300;
@@ -131,9 +131,17 @@ export class CaptureSink {
   /** When the last batch arrived. */
   private lastAt: number | null = null;
 
-  constructor(sampleRate: number, now: () => number = () => performance.now()) {
+  private readonly gainDb: number;
+
+  /** `gainDb` is the pipeline's gain (PHONE_GAIN_DB); tests that follow samples by value use 0. */
+  constructor(
+    sampleRate: number,
+    now: () => number = () => performance.now(),
+    gainDb = PHONE_GAIN_DB,
+  ) {
     this.sampleRate = sampleRate;
     this.now = now;
+    this.gainDb = gainDb;
     this.preRoll = new PreRoll(sampleRate);
   }
 
@@ -163,7 +171,7 @@ export class CaptureSink {
 
   /** Button down: a new dictation that starts with what was captured in the last 300 ms. */
   begin(onBlock: BlockSink): void {
-    this.pipeline = new PcmPipeline(this.sampleRate, onBlock);
+    this.pipeline = new PcmPipeline(this.sampleRate, onBlock, this.gainDb);
     const pre = this.preRoll.take(this.now());
     this.preRoll.clear();
     if (pre.length) this.pipeline.push(pre);

@@ -10,13 +10,14 @@ function ramp(from: number, n: number): Float32Array {
 
 /**
  * A CaptureSink on a fake clock that runs like the real microphone: each batch arrives the moment
- * its last sample was captured, so the clock moves on by the batch's length.
+ * its last sample was captured, so the clock moves on by the batch's length. Samples are followed
+ * by their values, so the pipeline runs without gain (the gain has its own tests in pcm.test.ts).
  */
 class RealtimeSink extends CaptureSink {
   readonly clock: { t: number };
   constructor(sampleRate: number) {
     const clock = { t: 10_000 };
-    super(sampleRate, () => clock.t);
+    super(sampleRate, () => clock.t, 0);
     this.clock = clock;
   }
   override push(samples: Float32Array): void {
