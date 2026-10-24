@@ -1385,6 +1385,7 @@ impl Actor {
                 session_id,
                 training,
                 prompt,
+                microphone,
             } => {
                 // Tracked like a dictation, so its blocks never start one implicitly; a resend
                 // or an answered take adds nothing.
@@ -1394,6 +1395,7 @@ impl Actor {
                         session: session_id,
                         training,
                         prompt,
+                        microphone,
                     });
                 }
             }

@@ -160,11 +160,13 @@ pub enum DevicePayload {
         session_id: SessionId,
     },
     /// audio_start for a training take; `training` is the session's id (16 random bytes, like
-    /// a session id) and `prompt` the prompt this take reads.
+    /// a session id), `prompt` the prompt this take reads, and `microphone` the phone's
+    /// microphone as its browser names it, when known.
     AudioStartTraining {
         session_id: SessionId,
         training: SessionId,
         prompt: String,
+        microphone: Option<String>,
     },
     Result {
         session_id: SessionId,
@@ -284,6 +286,8 @@ struct AudioStartTrainingJson<'a> {
     codec: &'static str,
     training: SessionId,
     prompt: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    microphone: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -389,14 +393,19 @@ impl DevicePayload {
                 session_id,
                 training,
                 prompt,
+                microphone,
             } => {
                 check_non_empty(prompt, MAX_PROMPT_ID_BYTES, "prompt")?;
+                if let Some(m) = microphone {
+                    check_non_empty(m, MAX_MICROPHONE_NAME_BYTES, "microphone")?;
+                }
                 to_json(&AudioStartTrainingJson {
                     session_id: *session_id,
                     sample_rate: SAMPLE_RATE,
                     codec: "pcm16",
                     training: *training,
                     prompt,
+                    microphone: microphone.as_deref(),
                 })
             }
             DevicePayload::TrainingPrompt {
@@ -516,10 +525,19 @@ impl DevicePayload {
                 let training = training_field(&o)?;
                 let prompt = str_field(&o, "prompt")?;
                 check_non_empty(&prompt, MAX_PROMPT_ID_BYTES, "prompt")?;
+                let microphone = match o.get("microphone") {
+                    None => None,
+                    Some(Value::String(m)) => {
+                        check_non_empty(m, MAX_MICROPHONE_NAME_BYTES, "microphone")?;
+                        Some(m.clone())
+                    }
+                    Some(_) => return bad("microphone must be a string"),
+                };
                 DevicePayload::AudioStartTraining {
                     session_id,
                     training,
                     prompt,
+                    microphone,
                 }
             }
             ft::TRAINING_PROMPT => {
@@ -725,9 +743,21 @@ mod tests {
                     session_id: sid,
                     training: tid,
                     prompt: "s0042".into(),
+                    microphone: Some("iPhone-mikrofon".into()),
                 },
                 format!(
-                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"s0042"}}"#
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"s0042","microphone":"iPhone-mikrofon"}}"#
+                ),
+            ),
+            (
+                DevicePayload::AudioStartTraining {
+                    session_id: sid,
+                    training: tid,
+                    prompt: "e01".into(),
+                    microphone: None,
+                },
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"e01"}}"#
                 ),
             ),
             (
@@ -872,8 +902,16 @@ mod tests {
             session_id: SessionId([3; 16]),
             training: SessionId([4; 16]),
             prompt: String::new(),
+            microphone: None,
         };
         assert!(empty_prompt.encode().is_err());
+        let empty_mic = DevicePayload::AudioStartTraining {
+            session_id: SessionId([3; 16]),
+            training: SessionId([4; 16]),
+            prompt: "s1".into(),
+            microphone: Some(String::new()),
+        };
+        assert!(empty_mic.encode().is_err());
     }
 
     #[test]

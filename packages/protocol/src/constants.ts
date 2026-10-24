@@ -117,6 +117,7 @@ export type ResultReason = (typeof RESULT_REASONS)[number];
 export const TRAINING_ID_LEN = 16;
 export const MAX_PROMPT_ID_BYTES = 64;
 export const MAX_TRAINING_TEXT_BYTES = 4096;
+export const MAX_MICROPHONE_NAME_BYTES = 128;
 export const TRAINING_STYLES = ["normal", "whisper"] as const;
 export type TrainingStyle = (typeof TRAINING_STYLES)[number];
 /** How the computer judged the last take; a decoder maps any other value to "error". */

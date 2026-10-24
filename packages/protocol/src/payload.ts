@@ -12,6 +12,7 @@ import {
   FrameType,
   MAX_BLOCKS_PER_FRAME,
   MAX_DEVICE_NAME_BYTES,
+  MAX_MICROPHONE_NAME_BYTES,
   MAX_PLATFORM_BYTES,
   MAX_PROMPT_ID_BYTES,
   MAX_TRAINING_TEXT_BYTES,
@@ -72,6 +73,8 @@ export type DevicePayload =
       training: Uint8Array;
       /** The prompt this take is a reading of. */
       prompt: string;
+      /** The microphone's name as the phone's browser reports it, when it is known. */
+      microphone?: string;
     }
   | { type: "result"; sessionId: Uint8Array; ok: true }
   | { type: "result"; sessionId: Uint8Array; ok: false; reason: ResultReason }
@@ -261,6 +264,8 @@ export function encodePayload(p: DevicePayload): {
         bad("only 16 kHz pcm16 is supported");
       checkTrainingId(p.training);
       checkNonEmpty(p.prompt, MAX_PROMPT_ID_BYTES, "prompt");
+      if (p.microphone !== undefined)
+        checkNonEmpty(p.microphone, MAX_MICROPHONE_NAME_BYTES, "microphone");
       return {
         frameType,
         bytes: json({
@@ -269,6 +274,7 @@ export function encodePayload(p: DevicePayload): {
           codec: "pcm16",
           training: b64uEncode(p.training),
           prompt: p.prompt,
+          microphone: p.microphone,
         }),
       };
     case "training_prompt": {
@@ -410,7 +416,7 @@ export function decodePayload(
       const sessionId = sessionIdField(o);
       if (o.sampleRate !== SAMPLE_RATE || o.codec !== "pcm16")
         bad("only 16 kHz pcm16 is supported");
-      return {
+      const start: DevicePayload = {
         type,
         sessionId,
         sampleRate: SAMPLE_RATE,
@@ -418,6 +424,13 @@ export function decodePayload(
         training: trainingField(o),
         prompt: checkNonEmpty(o.prompt, MAX_PROMPT_ID_BYTES, "prompt"),
       };
+      if (o.microphone !== undefined)
+        start.microphone = checkNonEmpty(
+          o.microphone,
+          MAX_MICROPHONE_NAME_BYTES,
+          "microphone",
+        );
+      return start;
     }
     case "training_prompt": {
       const p: DevicePayload = {

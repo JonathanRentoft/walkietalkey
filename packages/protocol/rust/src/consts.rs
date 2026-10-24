@@ -86,6 +86,7 @@ pub const MAX_COMPUTER_NAME_BYTES: usize = 256;
 pub const TRAINING_ID_LEN: usize = 16;
 pub const MAX_PROMPT_ID_BYTES: usize = 64;
 pub const MAX_TRAINING_TEXT_BYTES: usize = 4096;
+pub const MAX_MICROPHONE_NAME_BYTES: usize = 128;
 
 pub const ADMISSION_TTL_MS: u64 = 10 * 60 * 1000;
 pub const PING_INTERVAL_MS: u64 = 30_000;

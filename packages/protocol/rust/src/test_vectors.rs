@@ -107,10 +107,17 @@ pub fn describe_payload(p: &DevicePayload) -> Value {
             session_id,
             training,
             prompt,
-        } => json!({
-            "type": "audio_start_training", "sessionId": hex(session_id.as_bytes()), "sampleRate": 16000,
-            "codec": "pcm16", "training": hex(training.as_bytes()), "prompt": prompt
-        }),
+            microphone,
+        } => {
+            let mut out = json!({
+                "type": "audio_start_training", "sessionId": hex(session_id.as_bytes()), "sampleRate": 16000,
+                "codec": "pcm16", "training": hex(training.as_bytes()), "prompt": prompt
+            });
+            if let Some(m) = microphone {
+                out["microphone"] = json!(m);
+            }
+            out
+        }
         DevicePayload::TrainingPrompt {
             training,
             style,
@@ -497,6 +504,7 @@ pub fn generate() -> Value {
                 session_id: session,
                 training,
                 prompt: "s0042".into(),
+                microphone: Some("iPhone-mikrofon".into()),
             },
         ),
         (

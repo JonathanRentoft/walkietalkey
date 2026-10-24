@@ -89,6 +89,8 @@ pub enum RelayEvent {
         training: SessionId,
         /// The prompt this take reads.
         prompt: String,
+        /// The phone's microphone, as its browser names it, when known.
+        microphone: Option<String>,
     },
     /// One 200 ms block (the last one of a session may be shorter), each index exactly once.
     AudioChunk {

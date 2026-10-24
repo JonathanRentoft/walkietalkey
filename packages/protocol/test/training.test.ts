@@ -48,9 +48,22 @@ describe("training payloads", () => {
           codec: "pcm16",
           training,
           prompt: "s0042",
+          microphone: "iPhone-mikrofon",
         },
         0x24,
-        `{"sessionId":"${sid}","sampleRate":16000,"codec":"pcm16","training":"${tid}","prompt":"s0042"}`,
+        `{"sessionId":"${sid}","sampleRate":16000,"codec":"pcm16","training":"${tid}","prompt":"s0042","microphone":"iPhone-mikrofon"}`,
+      ],
+      [
+        {
+          type: "audio_start_training",
+          sessionId,
+          sampleRate: 16000,
+          codec: "pcm16",
+          training,
+          prompt: "e01",
+        },
+        0x24,
+        `{"sessionId":"${sid}","sampleRate":16000,"codec":"pcm16","training":"${tid}","prompt":"e01"}`,
       ],
       [
         {

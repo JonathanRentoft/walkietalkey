@@ -199,6 +199,7 @@ async fn a_training_take_is_its_own_event_and_never_a_dictation() {
         session_id: session,
         training,
         prompt: "s0042".into(),
+        microphone: Some("iPhone-mikrofon".into()),
     });
     s.send(DevicePayload::AudioChunk {
         session_id: session,
@@ -218,6 +219,7 @@ async fn a_training_take_is_its_own_event_and_never_a_dictation() {
             session,
             training,
             prompt: "s0042".into(),
+            microphone: Some("iPhone-mikrofon".into()),
         }
     );
     assert!(matches!(
@@ -235,6 +237,7 @@ async fn a_training_take_is_its_own_event_and_never_a_dictation() {
         session_id: session,
         training,
         prompt: "s0042".into(),
+        microphone: Some("iPhone-mikrofon".into()),
     });
     s.send(DevicePayload::AudioChunk {
         session_id: session,
