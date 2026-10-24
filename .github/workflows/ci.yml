@@ -165,6 +165,28 @@ jobs:
           WT_EKKO_PNC_DIR: ${{ runner.temp }}/ekko-pnc
         run: cargo test --lib
 
+  # The Python tools: the Danish accuracy harness (models/eval) and the fine-tuning workbench
+  # (training/). macOS, because PyPI's Linux torch wheels pull in CUDA; the workbench tests run on
+  # the CPU, offline, with a tiny random Whisper, so no model is downloaded.
+  python:
+    name: Python tools (accuracy harness, training workbench)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: |
+            models/eval/uv.lock
+            training/uv.lock
+      - name: Accuracy harness (models/eval)
+        working-directory: models/eval
+        run: uv run --frozen pytest
+      - name: Training workbench (training)
+        working-directory: training
+        run: uv run --frozen pytest
+
   licences:
     name: Licences and advisories
     runs-on: ubuntu-24.04
