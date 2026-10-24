@@ -32,7 +32,6 @@ import {
   type Effect,
   type MachineEvent,
   type MachineState,
-  type Mode,
 } from "./machine";
 import {
   chooseTarget,
@@ -60,6 +59,11 @@ export const NO_CONNECTION_GRACE_MS = 3000;
 export const PRESENCE_WAIT_MS = 1000;
 /** PHONE-40: how long the target choice waits for each link's fresh state (auth, failure or pong). */
 export const LINKS_SETTLE_MS = 3000;
+/**
+ * PHONE-30: the warm microphone closes after this long without a dictation or a touch (the
+ * screen usually locks sooner, which closes it too).
+ */
+export const MIC_IDLE_MS = 3 * 60 * 1000;
 
 export interface ComputerView {
   roomId: string;
@@ -113,6 +117,10 @@ export interface ControllerDeps {
   now?: () => number;
   /** Link timings, shortened in tests. */
   backoffMs?: number[];
+  /** MIC_IDLE_MS, shortened in tests. */
+  micIdleMs?: number;
+  /** Whether the page is visible now (document.visibilityState). */
+  visible?: () => boolean;
 }
 
 interface RoomEntry {
@@ -133,11 +141,10 @@ export class PhoneController {
     ReturnType<typeof setTimeout>
   >();
   private machine: MachineState = initialMachine({
-    mode: "hold",
     peerOnline: false,
     connected: false,
   });
-  private settings: Settings = { mode: "hold", haptics: true };
+  private settings: Settings = { haptics: true };
   private target: string | null = null;
   private notices: Notice[] = [];
   private noticeId = 0;
@@ -152,10 +159,20 @@ export class PhoneController {
   private readonly listeners = new Set<() => void>();
   private choosing = false;
   private chooseAgain = false;
+  /** The page is visible (not in the background). */
+  private visible: boolean;
+  /** The microphone is open or opening (warm), as far as the controller asked for it. */
+  private micOpen = false;
+  /** No dictation and no touch for MIC_IDLE_MS. */
+  private micIdle = false;
+  /** Opening the microphone was refused; ask again only when the app comes back. */
+  private micRefused = false;
+  private micIdleTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
     this.now = deps.now ?? Date.now;
+    this.visible = (deps.visible ?? pageVisible)();
     this.snapshot = this.buildSnapshot();
   }
 
@@ -211,13 +228,13 @@ export class PhoneController {
         ? this.settings.target
         : this.lastUsed();
     this.machine = initialMachine({
-      mode: this.settings.mode,
       peerOnline: false,
       connected: false,
     });
     this.loaded = true;
     for (const r of this.rooms.values()) r.link.start();
     this.watchConnection();
+    this.micPolicy(true);
     this.changed();
     void this.retryPendingLeaves();
     void this.chooseOnForeground();
@@ -355,10 +372,80 @@ export class PhoneController {
   // ------------------------------------------------------------------ machine
 
   private dispatch(e: MachineEvent): void {
+    const was = this.recording();
     const { state, effects } = transition(this.machine, e);
     this.machine = state;
     for (const fx of effects) this.effect(fx);
+    // The idle time of the warm microphone counts from the end of a dictation.
+    if (was !== this.recording()) this.micPolicy(true);
     this.changed();
+  }
+
+  private recording(): boolean {
+    return this.machine.phase === "rec" || this.machine.phase === "cancel";
+  }
+
+  // ------------------------------------------------------------------ microphone
+
+  /**
+   * PHONE-30: the microphone is open while the app is visible and paired, so a dictation starts
+   * with the 300 ms before the press (src/audio/capture.ts). It closes when the page is hidden,
+   * after MIC_IDLE_MS without a dictation or a touch, and when no computer is paired. Audio
+   * between dictations stays in that short ring in memory and is never sent (PHONE-33).
+   */
+  private micWanted(): boolean {
+    return (
+      this.loaded &&
+      this.visible &&
+      this.rooms.size > 0 &&
+      !this.micIdle &&
+      !this.micRefused
+    );
+  }
+
+  private micPolicy(restartIdle = false): void {
+    const { recorder } = this.deps;
+    if (this.micWanted()) {
+      if (!this.micOpen) {
+        this.micOpen = true;
+        recorder.warm().catch((e: unknown) => {
+          this.micOpen = false;
+          if (e instanceof MicDeniedError) this.micRefused = true;
+        });
+      }
+    } else if (this.micOpen && !this.recording()) {
+      this.micOpen = false;
+      // After the last block of a dictation that is still stopping; unless it was wanted again.
+      this.recChain = this.recChain.then(() => {
+        if (!this.micOpen) recorder.cool();
+      });
+    }
+    if (restartIdle || !this.micOpen || this.recording()) this.armMicIdle();
+  }
+
+  private armMicIdle(): void {
+    if (this.micIdleTimer) clearTimeout(this.micIdleTimer);
+    this.micIdleTimer = null;
+    if (!this.micOpen || this.recording()) return;
+    this.micIdleTimer = setTimeout(() => {
+      this.micIdleTimer = null;
+      if (this.recording()) return;
+      this.micIdle = true;
+      this.micPolicy();
+    }, this.deps.micIdleMs ?? MIC_IDLE_MS);
+  }
+
+  /** A touch or a key anywhere: the user is here, keep (or open) the microphone. */
+  activity(): void {
+    this.micIdle = false;
+    this.micPolicy(true);
+  }
+
+  /** The page went to the background: send a recording that is under way, close the microphone. */
+  hidden(): void {
+    this.visible = false;
+    if (this.recording()) this.dispatch({ type: "hidden" });
+    this.micPolicy();
   }
 
   private effect(fx: Effect): void {
@@ -399,6 +486,8 @@ export class PhoneController {
     const entry = this.rooms.get(s.roomId);
     if (!entry) return;
     this.sessions.set(sid, s);
+    // A recording opens the microphone (if warming it was refused, the press may still be granted).
+    this.micOpen = true;
     this.level = 0;
     this.trimFailed();
     void entry.streamer.start(s);
@@ -418,7 +507,9 @@ export class PhoneController {
           void entry.streamer.addBlock(s, block);
           this.showLevel(sid, rms);
         });
+        this.micRefused = false;
       } catch (e) {
+        if (e instanceof MicDeniedError) this.micRefused = true;
         if (this.machine.sessionId !== sid) return;
         if (e instanceof MicDeniedError) this.dispatch({ type: "mic_denied" });
         else
@@ -520,26 +611,38 @@ export class PhoneController {
     }
   }
 
+  /** The button went down: recording starts now (PHONE-26). */
   down(): void {
     if (!this.target || !this.rooms.has(this.target)) return;
     this.prime();
+    this.activity();
     const s = newSession(this.target, this.now());
     this.pendingSession = s;
     this.dispatch({ type: "down", sessionId: s.sid, at: this.now() });
     this.pendingSession = null;
   }
 
+  /** The button came up: within 0.5 s of the press it goes hands-free, later it sends. */
   up(): void {
-    this.dispatch({ type: "up" });
+    this.dispatch({ type: "up", at: this.now() });
+  }
+
+  /**
+   * The system took the touch away (pointercancel: an iOS gesture, a call, an alert). The press
+   * ends as if released, but never as a tap: a short one sends too instead of going hands-free.
+   */
+  interrupted(): void {
+    this.dispatch({ type: "up", at: this.now(), interrupted: true });
   }
 
   /**
    * The iOS shell's "Start diktering" (`wt-shell-start`, or `?start=1` on a cold start): starts a
-   * recording as in tap mode. Ignored when not paired or already recording.
+   * hands-free recording. Ignored when not paired or already recording.
    */
   shellStart(): boolean {
     if (!this.target || !this.rooms.has(this.target)) return false;
     this.prime();
+    this.activity();
     const s = newSession(this.target, this.now());
     this.pendingSession = s;
     this.dispatch({ type: "shell_start", sessionId: s.sid, at: this.now() });
@@ -547,7 +650,7 @@ export class PhoneController {
     return this.machine.sessionId === s.sid && this.machine.phase === "rec";
   }
 
-  /** The cancel control of a latched recording (tap mode, Start diktering). */
+  /** The cancel control of a hands-free recording ("Annullér"). */
   cancel(): void {
     this.dispatch({ type: "cancel" });
   }
@@ -559,8 +662,10 @@ export class PhoneController {
     this.resultTimers.clear();
     if (this.maxTimer) clearTimeout(this.maxTimer);
     if (this.noConnTimer) clearTimeout(this.noConnTimer);
+    if (this.micIdleTimer) clearTimeout(this.micIdleTimer);
     this.maxTimer = null;
     this.noConnTimer = null;
+    this.micIdleTimer = null;
   }
 
   slide(inside: boolean): void {
@@ -594,8 +699,15 @@ export class PhoneController {
     this.watchConnection();
   }
 
-  /** Back in the foreground (PHONE-40): check the sockets, then pick the computer you sit at. */
+  /**
+   * Back in the foreground (PHONE-40): open the microphone again, check the sockets, then pick
+   * the computer you sit at.
+   */
   foreground(): void {
+    this.visible = true;
+    this.micIdle = false;
+    this.micRefused = false;
+    this.micPolicy(true);
     this.deps.wake.visible();
     this.dispatch({ type: "foreground" });
     for (const r of this.rooms.values()) r.link.reconnectNow();
@@ -749,6 +861,7 @@ export class PhoneController {
     this.settings = { ...this.settings, deviceName: name };
     this.pairing = { state: "idle" };
     this.setTarget(roomId);
+    this.activity();
     return true;
   }
 
@@ -808,12 +921,12 @@ export class PhoneController {
         this.deps.wake.release();
       }
       this.machine = initialMachine({
-        mode: this.settings.mode,
         peerOnline: false,
         connected: false,
       });
       this.setTarget(this.lastUsed());
     }
+    this.micPolicy();
     this.changed();
   }
 
@@ -823,12 +936,6 @@ export class PhoneController {
   }
 
   // ------------------------------------------------------------------ settings
-
-  setMode(mode: Mode): void {
-    this.settings = { ...this.settings, mode };
-    void this.deps.storage.putSettings(this.settings).catch(() => undefined);
-    this.dispatch({ type: "mode", mode });
-  }
 
   setHaptics(on: boolean): void {
     this.settings = { ...this.settings, haptics: on };
@@ -842,4 +949,10 @@ export class PhoneController {
       ? 0
       : this.now() - this.machine.recStartedAt;
   }
+}
+
+function pageVisible(): boolean {
+  return (
+    typeof document === "undefined" || document.visibilityState !== "hidden"
+  );
 }

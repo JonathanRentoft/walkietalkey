@@ -168,22 +168,48 @@ describe("frame counters (spec 9.4)", () => {
   });
 });
 
-describe("settings and pending leaves", () => {
-  it("defaults to hold to talk with haptics on", async () => {
+describe("the home-screen app's first launch (Phase 5)", () => {
+  it("remembers the pairing links it has seen, so a start URL that keeps one pairs once", async () => {
     const s = await openStorage(dbName());
-    expect(await s.getSettings()).toEqual({ mode: "hold", haptics: true });
+    expect(await s.hasSeenLink("abc")).toBe(false);
+    await s.markLinkSeen("abc");
+    expect(await s.hasSeenLink("abc")).toBe(true);
+    // Only the newest 20 are kept.
+    for (let i = 0; i < 20; i++) await s.markLinkSeen(`id${i}`);
+    expect(await s.hasSeenLink("abc")).toBe(false);
+    expect(await s.hasSeenLink("id19")).toBe(true);
+    expect(await s.hasSeenLink("id0")).toBe(true);
+    // Settings are untouched.
+    expect(await s.getSettings()).toEqual({ haptics: true });
+  });
+
+  it("knows whether the app has run before", async () => {
+    const s = await openStorage(dbName());
+    expect(await s.firstRun()).toBe(true);
+    expect(await s.firstRun()).toBe(false);
+  });
+});
+
+describe("settings and pending leaves", () => {
+  it("defaults to haptics on", async () => {
+    const s = await openStorage(dbName());
+    expect(await s.getSettings()).toEqual({ haptics: true });
     await s.putSettings({
-      mode: "toggle",
       haptics: false,
       deviceName: "Jonathans iPhone",
       target: "x",
     });
     expect(await s.getSettings()).toEqual({
-      mode: "toggle",
       haptics: false,
       deviceName: "Jonathans iPhone",
       target: "x",
     });
+  });
+
+  it("forgets the old hold-or-tap setting (PHONE-26: tap or hold is no longer a setting)", async () => {
+    const s = await openStorage(dbName());
+    await s.putSettings({ mode: "toggle", haptics: true } as never);
+    expect(await s.getSettings()).toEqual({ haptics: true });
   });
 
   it("remembers a leave that could not be sent", async () => {

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { commands, type PairingView } from "@/bindings";
 import { formatClock, secondsLeft } from "../lib/helpers";
 import { useNow, useTauriEvent } from "../lib/hooks";
+import { askForNotifications } from "../lib/system";
 import { useWtSettings } from "../lib/wtStore";
 import { Button, Status } from "./controls";
 
@@ -42,6 +43,9 @@ export function PairingCode() {
 
   useEffect(() => {
     void start();
+    // Text from the phone arrives with a notification (DESK-56): ask now,
+    // where the reason is plain (run 2 has no notifications step).
+    void askForNotifications();
     return () => {
       generation.current++;
       // Closing the window cancels the code (spec 5.3 step 1).

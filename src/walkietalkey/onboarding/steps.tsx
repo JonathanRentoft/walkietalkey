@@ -1,44 +1,50 @@
-// The eight onboarding steps (DESK-10..17).
+// The onboarding steps (spec 6.2, DESK-10..17, run 2 "plug and play"):
+// Velkommen, Mikrofon, Tilgængelighed (Mac), Prøv det, Telefon, Klar. Each
+// permission step has one button; the app notices the grant by itself and
+// moves on, with no restart and nothing to find in System Settings.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LogoIntro, LogoLoader, Notice, ShinyButton } from "@walkietalkey/ui";
+import {
+  AppIcon,
+  Keycap,
+  LogoIntro,
+  LogoLoader,
+  ShinyButton,
+} from "@walkietalkey/ui";
 import { commands } from "@/bindings";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { isCopilotBinding, keyParts, type WtPlatform } from "../lib/helpers";
+import type { WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import {
   hasPermission,
-  notificationPermission,
   openSettingsPage,
-  pasteKey,
-  requestNotificationPermission,
+  repairAccessibilityAndOpenPane,
   requestPermission,
-  restartApp,
   windowsMicrophoneAllowed,
 } from "../lib/system";
-import { useWtStore } from "../lib/wtStore";
 import type { PillEndEvent } from "../lib/types";
+import { rememberAccessGranted } from "../ui/accessNotice";
 import { Button, Status } from "../ui/controls";
-import { DICTATION_BINDING, KeyPicker, useKeyLabel } from "../ui/keys";
+import { GlobeFix } from "../ui/globeFix";
+import { DICTATION_BINDING, KeyCaps, KeyPicker, useKeyName } from "../ui/keys";
 import { PairingCode } from "../ui/pairing";
 import { useModelSetup } from "./modelSetup";
+
+/** Key names are written as on the keyboard and not translated. */
+const ESC = "Esc";
+/** The product name is never translated. */
+const APP_NAME = "WalkieTalkey";
+
+/** How often a permission step looks for the grant. */
+export const PERMISSION_POLL_MS = 1000;
+/** How long "granted" shows before the step moves on by itself. */
+export const ADVANCE_DELAY_MS = 900;
 
 function StepTitle(props: { children: ReactNode }) {
   return (
     <h1 className="wt-onb-title" tabIndex={-1}>
       {props.children}
     </h1>
-  );
-}
-
-function Block(props: { title?: string; children: ReactNode }) {
-  return (
-    <div className="wt-onb-block">
-      {props.title ? (
-        <h2 className="wt-onb-block-title">{props.title}</h2>
-      ) : null}
-      {props.children}
-    </div>
   );
 }
 
@@ -56,7 +62,7 @@ function usePermission(check: () => Promise<boolean>, active = true) {
       if (!stop) setGranted(g);
     };
     void tick();
-    const id = setInterval(tick, 1500);
+    const id = setInterval(tick, PERMISSION_POLL_MS);
     return () => {
       stop = true;
       clearInterval(id);
@@ -65,13 +71,39 @@ function usePermission(check: () => Promise<boolean>, active = true) {
   return [granted, setGranted] as const;
 }
 
+/** Moves on once a permission turns granted while the step is shown. A
+ *  step that was already granted when it opened (the user went back) stays. */
+function useAdvanceOnGrant(granted: boolean | null, onGranted: () => void) {
+  const first = useRef<boolean | null>(null);
+  const next = useRef(onGranted);
+  next.current = onGranted;
+  useEffect(() => {
+    if (granted === null) return;
+    if (first.current === null) {
+      first.current = granted;
+      return;
+    }
+    if (!granted || first.current) return;
+    const id = setTimeout(() => next.current(), ADVANCE_DELAY_MS);
+    return () => clearTimeout(id);
+  }, [granted]);
+}
+
+function useBinding(platform: WtPlatform): string {
+  return (
+    useSettingsStore(
+      (s) => s.settings?.bindings?.[DICTATION_BINDING]?.current_binding,
+    ) ?? (platform === "macos" ? "fn" : "ctrl_right")
+  );
+}
+
 /* ------------------------------------------------------ 1. Velkommen */
 
 export function WelcomeStep(props: { onStart: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="wt-onb-welcome">
-      <LogoIntro size={64} title="WalkieTalkey" />
+      <LogoIntro size={72} title="WalkieTalkey" />
       <h1 className="wt-onb-hero" tabIndex={-1}>
         {t("wt.onboarding.welcome.title")}
       </h1>
@@ -82,407 +114,355 @@ export function WelcomeStep(props: { onStart: () => void }) {
   );
 }
 
-/* ------------------------------------------------- 2. Hent talemodel */
+/* ------------------------------------------------------- 2. Mikrofon */
 
-export function ModelStep(props: { onNext: () => void }) {
-  const { t } = useTranslation();
-  const s = useModelSetup();
-  const offer = s.verdict?.offer_fast_model && !s.offerAnswered;
-  return (
-    <>
-      <StepTitle>{t("wt.onboarding.model.title")}</StepTitle>
-      <p className="wt-onb-lead">{t("wt.onboarding.model.lead")}</p>
-      <div className="wt-onb-model">
-        {s.phase === "downloading" ? (
-          <>
-            <LogoLoader
-              variant="fyld"
-              size={72}
-              progress={s.progress}
-              label={t("wt.model.downloading")}
-            />
-            <Status>
-              {t("wt.model.downloading")} {Math.round(s.progress * 100)} %
-            </Status>
-            <p className="wt-note">{t("wt.onboarding.model.continueNote")}</p>
-          </>
-        ) : null}
-        {s.phase === "preparing" || s.phase === "idle" ? (
-          <>
-            <LogoLoader
-              variant="smelt"
-              size={56}
-              label={t("wt.model.preparing")}
-            />
-            <Status tone="muted">{t("wt.model.preparing")}</Status>
-          </>
-        ) : null}
-        {s.phase === "ready" ? (
-          <Status tone="ok">{t("wt.model.ready")}</Status>
-        ) : null}
-        {s.phase === "failed" ? (
-          <>
-            <Status tone="warn">{t("wt.model.downloadFailed")}</Status>
-            <p className="wt-note">{t("wt.onboarding.model.importNote")}</p>
-            <div className="wt-onb-actions">
-              <Button onClick={() => void s.retry()}>
-                {t("wt.common.retry")}
-              </Button>
-            </div>
-          </>
-        ) : null}
-        {s.importError ? (
-          <Status tone="warn">{t("wt.model.importFailed")}</Status>
-        ) : null}
-      </div>
-
-      {offer && s.verdict?.reason ? (
-        <Block title={t("wt.onboarding.model.fastTitle")}>
-          <p>{s.verdict.reason}</p>
-          <div className="wt-onb-actions">
-            <Button variant="primary" onClick={() => void s.useFastModel()}>
-              {t("wt.onboarding.model.useFast")}
-            </Button>
-            <Button onClick={s.keepEdda}>
-              {t("wt.onboarding.model.keepEdda")}
-            </Button>
-          </div>
-        </Block>
-      ) : null}
-
-      <div className="wt-onb-actions wt-onb-actions--end">
-        {s.phase !== "ready" ? (
-          <Button variant="quiet" onClick={() => void s.importFile()}>
-            {t("wt.model.importFile")}
-          </Button>
-        ) : null}
-        <Button variant="primary" onClick={props.onNext}>
-          {t("wt.onboarding.model.continue")}
-        </Button>
-      </div>
-    </>
-  );
-}
-
-/* ------------------------------------------------------- 3. Mikrofon */
-
-export function MicrophoneStep(props: { platform: WtPlatform }) {
+export function MicrophoneStep(props: {
+  platform: WtPlatform;
+  onGranted: () => void;
+}) {
   const { t } = useTranslation();
   const mac = props.platform === "macos";
   const [granted, setGranted] = usePermission(() =>
     mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
   );
   const [asked, setAsked] = useState(false);
-  const ask = async () => {
-    setAsked(true);
-    setGranted(await requestPermission("microphone"));
-    void useSettingsStore.getState().refreshAudioDevices();
+  useAdvanceOnGrant(granted, props.onGranted);
+
+  // One button: the first press shows macOS's own question; if macOS has
+  // been answered before, it opens the exact pane instead.
+  const allow = async () => {
+    if (!mac) {
+      await commands.openMicrophonePrivacySettings().catch(() => {});
+      return;
+    }
+    if (!asked) {
+      setAsked(true);
+      setGranted(await requestPermission("microphone"));
+      void useSettingsStore.getState().refreshAudioDevices();
+    } else {
+      await openSettingsPage("microphone");
+    }
   };
+
   return (
     <>
       <StepTitle>{t("wt.onboarding.microphone.title")}</StepTitle>
       <p className="wt-onb-lead">{t("wt.onboarding.microphone.lead")}</p>
-      <p>{t("wt.onboarding.microphone.why")}</p>
+      <p className="wt-onb-text">{t("wt.onboarding.microphone.why")}</p>
       {granted ? (
-        <Status tone="ok">{t("wt.onboarding.microphone.granted")}</Status>
-      ) : mac ? (
-        <>
-          <p className="wt-note">{t("wt.onboarding.microphone.promptNote")}</p>
-          <div className="wt-onb-actions">
-            <Button variant="primary" onClick={() => void ask()}>
-              {t("wt.onboarding.microphone.allow")}
-            </Button>
-          </div>
-          {asked && granted === false ? (
-            <>
-              <Status tone="warn">
-                {t("wt.onboarding.microphone.deniedMac")}
-              </Status>
-              <Button onClick={() => void openSettingsPage("microphone")}>
-                {t("wt.onboarding.microphone.openSettings")}
-              </Button>
-            </>
-          ) : null}
-        </>
+        <Status tone="ok" className="wt-onb-granted">
+          {t("wt.onboarding.microphone.granted")}
+        </Status>
       ) : granted === false ? (
-        <>
-          <Status tone="warn">
-            {t("wt.onboarding.microphone.deniedWindows")}
-          </Status>
-          <Button
-            onClick={() =>
-              void commands.openMicrophonePrivacySettings().catch(() => {})
-            }
-          >
-            {t("wt.onboarding.microphone.openSettings")}
-          </Button>
-        </>
-      ) : null}
-    </>
-  );
-}
-
-/* ---------------------------------------------------------- 4. Tasten */
-
-/** The key's name in a sentence: "fn", "Ctrl", "Copilot-tasten", ... */
-export function useKeyName(platform: WtPlatform): string {
-  const { t } = useTranslation();
-  const binding =
-    useSettingsStore(
-      (s) => s.settings?.bindings?.[DICTATION_BINDING]?.current_binding,
-    ) ?? (platform === "macos" ? "fn" : "ctrl_right");
-  const label = useKeyLabel(platform);
-  if (isCopilotBinding(binding)) return t("wt.keys.copilot");
-  const parts = keyParts(binding);
-  if (parts.length === 1 && /^ctrl(_left|_right)?$/.test(parts[0]))
-    return "Ctrl";
-  return parts.map(label).join(" + ");
-}
-
-function KeyCheck(props: { platform: WtPlatform }) {
-  const { t } = useTranslation();
-  const [worked, setWorked] = useState(false);
-  const [down, setDown] = useState(false);
-  useTauriEvent<boolean>("wt-key-state", (d) => {
-    setDown(!!d);
-    if (d) setWorked(true);
-  });
-  return (
-    <Block title={t("wt.onboarding.key.tryTitle")}>
-      <p>
-        {t("wt.onboarding.key.tryText", { key: useKeyName(props.platform) })}
-      </p>
-      <KeyPicker platform={props.platform} showLive />
-      <p className="wt-visually-hidden" aria-live="polite">
-        {down ? t("wt.onboarding.key.down") : ""}
-      </p>
-      {worked ? (
-        <Status tone="ok">{t("wt.onboarding.key.works")}</Status>
-      ) : null}
-    </Block>
-  );
-}
-
-export function KeyStep(props: { platform: WtPlatform }) {
-  const { t } = useTranslation();
-  const mac = props.platform === "macos";
-  const [monitoring] = usePermission(
-    () => hasPermission("inputMonitoring"),
-    mac,
-  );
-  const updateWt = useWtStore((s) => s.update);
-
-  // The key listener starts here, so the live check works before the end of
-  // onboarding (Handy starts it after its own onboarding).
-  useEffect(() => {
-    void commands.initializeShortcuts().catch(() => {});
-  }, []);
-
-  const openMonitoring = async () => {
-    await requestPermission("inputMonitoring");
-    await openSettingsPage("inputMonitoring");
-  };
-
-  const restart = async () => {
-    await updateWt({ onboarding_resume_step: "key" });
-    await restartApp();
-  };
-
-  if (!mac) {
-    return (
-      <>
-        <StepTitle>{t("wt.onboarding.key.title")}</StepTitle>
-        <p className="wt-onb-lead">{t("wt.onboarding.key.leadWindows")}</p>
-        <p>{t("wt.onboarding.key.copilotNote")}</p>
-        <KeyCheck platform={props.platform} />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <StepTitle>{t("wt.onboarding.key.title")}</StepTitle>
-      <p className="wt-onb-lead">{t("wt.onboarding.key.leadMac")}</p>
-      <Block title={t("wt.onboarding.key.monitoringTitle")}>
-        <p>{t("wt.onboarding.key.monitoringWhy")}</p>
-        {monitoring ? (
-          <Status tone="ok">{t("wt.onboarding.key.monitoringOn")}</Status>
-        ) : (
-          <div className="wt-onb-actions">
-            <Button variant="primary" onClick={() => void openMonitoring()}>
-              {t("wt.onboarding.key.openMonitoring")}
-            </Button>
-          </div>
-        )}
-      </Block>
-      <Block title={t("wt.onboarding.key.globeTitle")}>
-        <p>{t("wt.onboarding.key.globeWhy")}</p>
         <div className="wt-onb-actions">
-          <Button onClick={() => void openSettingsPage("keyboard")}>
-            {t("wt.onboarding.key.openKeyboard")}
-          </Button>
-        </div>
-      </Block>
-      <Block title={t("wt.onboarding.key.restartTitle")}>
-        <p>{t("wt.onboarding.key.restartWhy")}</p>
-        <div className="wt-onb-actions">
-          <Button onClick={() => void restart()}>
-            {t("wt.onboarding.key.restart")}
-          </Button>
-        </div>
-      </Block>
-      <KeyCheck platform={props.platform} />
-    </>
-  );
-}
-
-/* ----------------------------------------------- 5. Indsæt automatisk */
-
-export function PasteStep(props: { platform: WtPlatform; onSkip: () => void }) {
-  const { t } = useTranslation();
-  const [granted, setGranted] = usePermission(() =>
-    hasPermission("accessibility"),
-  );
-  const ask = async () => {
-    const ok = await requestPermission("accessibility");
-    setGranted(ok);
-    if (ok) void commands.initializeEnigo().catch(() => {});
-  };
-  return (
-    <>
-      <StepTitle>{t("wt.onboarding.paste.title")}</StepTitle>
-      <p className="wt-onb-lead">{t("wt.onboarding.paste.lead")}</p>
-      <p>{t("wt.onboarding.paste.why", { key: pasteKey(props.platform) })}</p>
-      {granted ? (
-        <Status tone="ok">{t("wt.onboarding.paste.granted")}</Status>
-      ) : (
-        <div className="wt-onb-actions">
-          <Button variant="primary" onClick={() => void ask()}>
-            {t("wt.onboarding.paste.allow")}
-          </Button>
-          <Button onClick={props.onSkip}>{t("wt.common.skip")}</Button>
-        </div>
-      )}
-    </>
-  );
-}
-
-/* --------------------------------------------------- 6. Notifikationer */
-
-export function NotificationsStep(props: {
-  platform: WtPlatform;
-  onSkip: () => void;
-}) {
-  const { t } = useTranslation();
-  const [state, setState] = useState<string | null>(null);
-  useEffect(() => {
-    void notificationPermission().then(setState);
-  }, []);
-  const ask = async () => {
-    const ok = await requestNotificationPermission();
-    setState(ok ? "granted" : "denied");
-  };
-  return (
-    <>
-      <StepTitle>{t("wt.onboarding.notifications.title")}</StepTitle>
-      <p className="wt-onb-lead">{t("wt.onboarding.notifications.lead")}</p>
-      <div className="wt-notice-preview" aria-hidden>
-        <Notice
-          show
-          platform={props.platform === "windows" ? "windows" : "mac"}
-          title={t("wt.notify.textReady")}
-          preview={t("wt.onboarding.notifications.example")}
-          when={t("wt.notify.now")}
-          pasteKey={pasteKey(props.platform)}
-        />
-      </div>
-      {state === "granted" ? (
-        <Status tone="ok">{t("wt.onboarding.notifications.granted")}</Status>
-      ) : (
-        <>
-          <div className="wt-onb-actions">
-            <Button variant="primary" onClick={() => void ask()}>
-              {t("wt.onboarding.notifications.allow")}
-            </Button>
-            <Button onClick={props.onSkip}>{t("wt.common.skip")}</Button>
-          </div>
-          {state === "denied" ? (
-            <>
-              <Status tone="warn">
-                {t("wt.onboarding.notifications.denied")}
-              </Status>
-              {props.platform === "macos" ? (
-                <Button onClick={() => void openSettingsPage("notifications")}>
-                  {t("wt.onboarding.notifications.openSettings")}
-                </Button>
-              ) : null}
-            </>
+          {!mac ? (
+            <p className="wt-onb-text">
+              {t("wt.onboarding.microphone.deniedWindows")}
+            </p>
           ) : null}
-        </>
-      )}
+          <Button variant="primary" onClick={() => void allow()}>
+            {!mac
+              ? t("wt.onboarding.microphone.openSettingsWindows")
+              : asked
+                ? t("wt.onboarding.microphone.openSettings")
+                : t("wt.onboarding.microphone.allow")}
+          </Button>
+          {asked ? (
+            <p className="wt-onb-hint">{t("wt.onboarding.waitingHint")}</p>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }
 
-/* ---------------------------------------------------------- 7. Telefon */
+/* ------------------------------------------------- 3. Tilgængelighed */
 
-export function PhoneStep(props: { onSkip: () => void }) {
+/** What the user will see in System Settings: the app with its switch. */
+function SwitchPreview(props: { on: boolean }) {
+  return (
+    <div
+      className={
+        props.on ? "wt-onb-preview wt-onb-preview--on" : "wt-onb-preview"
+      }
+      aria-hidden
+    >
+      <AppIcon size={28} />
+      <span className="wt-onb-preview-name">{APP_NAME}</span>
+      <span className="wt-onb-preview-switch">
+        <span />
+      </span>
+    </div>
+  );
+}
+
+export function AccessibilityStep(props: { onGranted: () => void }) {
   const { t } = useTranslation();
-  const [show, setShow] = useState(false);
+  const [granted] = usePermission(() => hasPermission("accessibility"));
+  const [opened, setOpened] = useState(false);
+  useAdvanceOnGrant(granted, props.onGranted);
+  useEffect(() => {
+    if (!granted) return;
+    // Pasting works as soon as it is granted.
+    void commands.initializeEnigo().catch(() => {});
+    // A later loss of the grant is noticed (ui/accessNotice.tsx).
+    rememberAccessGranted();
+  }, [granted]);
+
+  // DESK-13: repairs a stale entry first (a reinstalled build can show the
+  // switch on while macOS does not trust the app), then opens the pane.
+  const open = async () => {
+    setOpened(true);
+    await repairAccessibilityAndOpenPane();
+  };
+
   return (
     <>
-      <StepTitle>{t("wt.onboarding.phone.title")}</StepTitle>
-      <p className="wt-onb-lead">{t("wt.onboarding.phone.lead")}</p>
-      <p>{t("wt.onboarding.phone.why")}</p>
-      {show ? (
-        <PairingCode />
-      ) : (
-        <>
-          <p className="wt-note">{t("wt.pairing.noScreenShare")}</p>
-          <div className="wt-onb-actions">
-            <Button variant="primary" onClick={() => setShow(true)}>
-              {t("wt.onboarding.phone.show")}
-            </Button>
-            <Button onClick={props.onSkip}>{t("wt.common.skip")}</Button>
-          </div>
-        </>
-      )}
+      <StepTitle>{t("wt.onboarding.accessibility.title")}</StepTitle>
+      <p className="wt-onb-lead">{t("wt.onboarding.accessibility.lead")}</p>
+      <p className="wt-onb-text">{t("wt.onboarding.accessibility.why")}</p>
+      <SwitchPreview on={!!granted} />
+      {granted ? (
+        <Status tone="ok" className="wt-onb-granted">
+          {t("wt.onboarding.accessibility.granted")}
+        </Status>
+      ) : granted === false ? (
+        <div className="wt-onb-actions">
+          <Button variant="primary" onClick={() => void open()}>
+            {t("wt.onboarding.accessibility.open")}
+          </Button>
+          {opened ? (
+            <p className="wt-onb-hint">{t("wt.onboarding.waitingHint")}</p>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }
 
-/* ---------------------------------------------------------- 8. Prøv det */
+/* ---------------------------------------------------------- 4. Prøv det */
+
+/** Whether the backend's key listener runs (DESK-13, DESK-17). The backend
+ *  sends `wt-key-listener` when it starts or fails, usually at startup before
+ *  this window exists, so the step asks once when it opens and then follows
+ *  the event. An event that arrives first wins over the answer. */
+function useKeyListener(): boolean | null {
+  const [running, setRunning] = useState<boolean | null>(null);
+  const heard = useRef(false);
+  useEffect(() => {
+    let stop = false;
+    void commands
+      .wtKeyListenerStatus()
+      .then((s) => {
+        if (!stop && !heard.current && s) setRunning(!!s.running);
+      })
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, []);
+  useTauriEvent<{ running: boolean }>("wt-key-listener", (e) => {
+    heard.current = true;
+    setRunning(!!e?.running);
+  });
+  return running;
+}
 
 export function TryStep(props: { platform: WtPlatform }) {
   const { t } = useTranslation();
   const key = useKeyName(props.platform);
+  const binding = useBinding(props.platform);
+  const phase = useModelSetup((s) => s.phase);
+  const progress = useModelSetup((s) => s.progress);
   const [end, setEnd] = useState<PillEndEvent | null>(null);
+  const [down, setDown] = useState(false);
+  const listener = useKeyListener();
   const field = useRef<HTMLTextAreaElement>(null);
+  const windows = props.platform === "windows";
   useEffect(() => {
     field.current?.focus();
-    void commands.initializeShortcuts().catch(() => {});
+    // The paste helper; the key listener is the backend's own (it starts
+    // once Accessibility is granted and reports wt-key-listener).
     void commands.initializeEnigo().catch(() => {});
   }, []);
   useTauriEvent<PillEndEvent>("wt-pill-end", setEnd);
+  useTauriEvent<boolean>("wt-key-state", (d) => {
+    setDown(!!d);
+    if (d) setEnd(null);
+  });
+  const modelReady = phase === "ready";
+
   return (
     <>
       <StepTitle>{t("wt.onboarding.try.title")}</StepTitle>
       <p className="wt-onb-lead">{t("wt.onboarding.try.lead", { key })}</p>
-      <label className="wt-row-title" htmlFor="wt-try-field">
-        {t("wt.onboarding.try.fieldLabel")}
-      </label>
-      <textarea
-        id="wt-try-field"
-        ref={field}
-        className="wt-input wt-try-field"
-        rows={4}
-      />
+      <p className="wt-onb-text">{t("wt.onboarding.try.tap", { key })}</p>
+      {windows ? (
+        <p className="wt-onb-text">{t("wt.onboarding.try.otherKeyWindows")}</p>
+      ) : null}
+      <div className="wt-try">
+        {windows ? (
+          // DESK-21: many new laptops have a Copilot key instead of Right
+          // Ctrl, so the key is chosen here (the picker of Indstillinger ›
+          // Tast). Afterwards focus goes back to the field for the test.
+          <div className="wt-try-key wt-try-key--picker">
+            <KeyPicker
+              platform={props.platform}
+              showLive
+              onChanged={() => field.current?.focus()}
+            />
+          </div>
+        ) : (
+          <div className="wt-try-key" aria-hidden>
+            <KeyCaps
+              binding={binding}
+              platform={props.platform}
+              pressed={down}
+              size={64}
+            />
+          </div>
+        )}
+        <div className="wt-try-main">
+          <label className="wt-row-title" htmlFor="wt-try-field">
+            {t("wt.onboarding.try.fieldLabel")}
+          </label>
+          <textarea
+            id="wt-try-field"
+            ref={field}
+            data-autofocus
+            className="wt-input wt-try-field"
+            rows={3}
+          />
+        </div>
+      </div>
+      <p className="wt-visually-hidden" aria-live="polite">
+        {down ? t("wt.key.down") : ""}
+      </p>
+      {!modelReady && phase !== "idle" ? (
+        <div className="wt-onb-wait" role="status">
+          {phase === "downloading" ? (
+            <LogoLoader
+              variant="fyld"
+              size={28}
+              progress={progress}
+              label={t("wt.model.downloading")}
+            />
+          ) : null}
+          <span>
+            {phase === "failed"
+              ? t("wt.model.downloadFailed")
+              : t("wt.onboarding.try.modelWaiting")}
+          </span>
+          {phase === "downloading" ? (
+            <span className="wt-model-pct">{Math.round(progress * 100)} %</span>
+          ) : null}
+        </div>
+      ) : null}
       {end?.state === "clipboard" ? (
         <Status>{t("wt.notify.pressToPaste", { key: end.shortcut })}</Status>
       ) : end?.state === "no_speech" ? (
         <Status tone="warn">{t("wt.pill.noSpeech")}</Status>
       ) : end ? (
         <Status tone="ok">{t("wt.onboarding.try.done")}</Status>
+      ) : null}
+      {listener === false && props.platform === "macos" ? (
+        <div className="wt-onb-actions">
+          <Status tone="warn">{t("wt.onboarding.try.keyNotRunning")}</Status>
+          <Button onClick={() => void repairAccessibilityAndOpenPane()}>
+            {t("wt.onboarding.accessibility.open")}
+          </Button>
+        </div>
+      ) : null}
+      <GlobeFix platform={props.platform} variant="block" />
+    </>
+  );
+}
+
+/* ---------------------------------------------------------- 5. Telefon */
+
+export function PhoneStep(props: { onShown: () => void }) {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  const reveal = () => {
+    setShow(true);
+    props.onShown();
+  };
+  return (
+    <>
+      <StepTitle>{t("wt.onboarding.phone.title")}</StepTitle>
+      <p className="wt-onb-lead">{t("wt.onboarding.phone.lead")}</p>
+      <p className="wt-onb-text">{t("wt.onboarding.phone.why")}</p>
+      {show ? (
+        <PairingCode />
+      ) : (
+        <div className="wt-onb-actions">
+          <Button variant="primary" onClick={reveal}>
+            {t("wt.onboarding.phone.show")}
+          </Button>
+          <p className="wt-onb-hint">{t("wt.pairing.noScreenShare")}</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------- 6. Klar */
+
+export function DoneStep(props: { platform: WtPlatform }) {
+  const { t } = useTranslation();
+  const key = useKeyName(props.platform);
+  const binding = useBinding(props.platform);
+  const s = useModelSetup();
+  const offer = s.verdict?.offer_fast_model && !s.offerAnswered;
+  return (
+    <>
+      <StepTitle>{t("wt.onboarding.done.title")}</StepTitle>
+      <p className="wt-onb-lead">{t("wt.onboarding.done.lead", { key })}</p>
+      <ul className="wt-tips">
+        <li>
+          <span className="wt-tips-key" aria-hidden>
+            <KeyCaps binding={binding} platform={props.platform} size={40} />
+          </span>
+          <span>{t("wt.onboarding.done.tipHold")}</span>
+        </li>
+        <li>
+          <span className="wt-tips-key" aria-hidden>
+            <KeyCaps binding={binding} platform={props.platform} size={40} />
+          </span>
+          <span>{t("wt.onboarding.done.tipTap")}</span>
+        </li>
+        <li>
+          <span className="wt-tips-key" aria-hidden>
+            <Keycap size={40} wide>
+              {ESC}
+            </Keycap>
+          </span>
+          <span>
+            <span className="wt-visually-hidden">{`${ESC} `}</span>
+            {t("wt.onboarding.done.tipEsc")}
+          </span>
+        </li>
+      </ul>
+      <p className="wt-onb-text">
+        {props.platform === "windows"
+          ? t("wt.onboarding.done.whereWindows")
+          : t("wt.onboarding.done.whereMac")}
+      </p>
+      {offer && s.verdict?.reason ? (
+        <div className="wt-onb-block">
+          <h2 className="wt-onb-block-title">
+            {t("wt.onboarding.done.fastTitle")}
+          </h2>
+          <p>{s.verdict.reason}</p>
+          <div className="wt-onb-actions">
+            <Button variant="primary" onClick={() => void s.useFastModel()}>
+              {t("wt.onboarding.done.useFast")}
+            </Button>
+            <Button onClick={s.keepEdda}>
+              {t("wt.onboarding.done.keepEdda")}
+            </Button>
+          </div>
+        </div>
       ) : null}
     </>
   );

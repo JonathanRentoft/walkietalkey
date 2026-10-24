@@ -28,6 +28,12 @@ class FakeRecorder implements RecorderLike {
   prime(): void {
     this.calls.push("prime");
   }
+  async warm(): Promise<void> {
+    this.calls.push("warm");
+  }
+  cool(): void {
+    this.calls.push("cool");
+  }
   async start(onBlock: (b: Uint8Array, level: number) => void): Promise<void> {
     this.calls.push("start");
     this.onBlock = onBlock;
@@ -72,11 +78,11 @@ async function setup(opts: { paired: boolean; haptics?: boolean }) {
       lastUsedAt: 1,
     });
   }
-  if (opts.haptics === false)
-    await storage.putSettings({ mode: "hold", haptics: false });
+  if (opts.haptics === false) await storage.putSettings({ haptics: false });
   const recorder = new FakeRecorder();
   const haptics: string[] = [];
   const wake: string[] = [];
+  const clock = { t: 1_000_000 };
   const c = new PhoneController({
     storage,
     platform: { os: "ios", standalone: true, shell: true, device: "iPhone" },
@@ -88,10 +94,11 @@ async function setup(opts: { paired: boolean; haptics?: boolean }) {
       visible: () => undefined,
     },
     WebSocketImpl: NeverSocket as unknown as WebSocketCtor,
+    now: () => clock.t,
   });
   await c.init();
   made.push({ c, s: storage });
-  return { c, recorder, haptics, wake };
+  return { c, recorder, haptics, wake, clock };
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
@@ -114,14 +121,14 @@ describe("Start diktering from the iOS shell (controller)", () => {
     expect(haptics).toEqual([]);
   });
 
-  it("starts a tap-style recording with the start haptic; a tap on the button sends it", async () => {
+  it("starts a hands-free recording with the start haptic; a tap on the button sends it", async () => {
     const { c, recorder, haptics, wake } = await setup({ paired: true });
     expect(c.shellStart()).toBe(true);
     const m = c.getSnapshot().machine;
     expect(m.phase).toBe("rec");
-    expect(m.latched).toBe(true);
+    expect(m.handsFree).toBe(true);
     await tick();
-    expect(recorder.calls).toEqual(["prime", "start"]);
+    expect(recorder.calls).toEqual(["warm", "prime", "start"]);
     expect(haptics).toEqual(["start"]);
     expect(wake).toEqual(["on"]);
     // A second Start diktering while recording changes nothing.
@@ -154,9 +161,50 @@ describe("Start diktering from the iOS shell (controller)", () => {
   });
 });
 
+describe("tap or hold (PHONE-26)", () => {
+  it("a quick tap goes hands-free; the next tap sends", async () => {
+    const { c, recorder, clock } = await setup({ paired: true });
+    c.down();
+    clock.t += 300;
+    c.up();
+    await tick();
+    expect(c.getSnapshot().machine.phase).toBe("rec");
+    expect(c.getSnapshot().machine.handsFree).toBe(true);
+    expect(recorder.calls).not.toContain("stop");
+    clock.t += 5000;
+    c.down();
+    clock.t += 100;
+    c.up();
+    await tick();
+    expect(c.getSnapshot().machine.phase).toBe("send");
+    expect(recorder.calls).toContain("stop");
+  });
+
+  it("a hold sends on release", async () => {
+    const { c, recorder, clock } = await setup({ paired: true });
+    c.down();
+    clock.t += 500;
+    c.up();
+    await tick();
+    expect(c.getSnapshot().machine.phase).toBe("send");
+    expect(recorder.calls).toContain("stop");
+  });
+
+  it("an interrupted press (pointercancel) sends, even within 0.5 s; never hands-free", async () => {
+    const { c, recorder, clock } = await setup({ paired: true });
+    c.down();
+    clock.t += 120;
+    c.interrupted();
+    await tick();
+    expect(c.getSnapshot().machine.phase).toBe("send");
+    expect(c.getSnapshot().machine.handsFree).toBe(false);
+    expect(recorder.calls).toContain("stop");
+  });
+});
+
 describe("the level meter follows the microphone (PHONE-21)", () => {
   it("keeps the level of the latest 200 ms block while recording, 0 otherwise", async () => {
-    const { c, recorder } = await setup({ paired: true });
+    const { c, recorder, clock } = await setup({ paired: true });
     expect(c.getSnapshot().level).toBe(0);
     c.down();
     await tick();
@@ -166,6 +214,7 @@ describe("the level meter follows the microphone (PHONE-21)", () => {
     expect(c.getSnapshot().level).toBe(0);
     recorder.onBlock!(new Uint8Array(6400), 10 ** (-12 / 20));
     expect(c.getSnapshot().level).toBeCloseTo(1, 6);
+    clock.t += 1000;
     c.up();
     await tick();
     expect(c.getSnapshot().machine.phase).not.toBe("rec");

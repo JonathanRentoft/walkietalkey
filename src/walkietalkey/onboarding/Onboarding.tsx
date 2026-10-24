@@ -1,26 +1,29 @@
-// First run (spec 6.2): one window, one step at a time. Every permission
-// prompt is preceded by a Danish explanation.
+// First run (spec 6.2, run 2 "plug and play"): one window, one step at a
+// time. The speech model downloads in the background from the first launch
+// and shows as one calm line under the steps; it never blocks a step.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GradientBackground, LogoLoader } from "@walkietalkey/ui";
+import { GradientBackground } from "@walkietalkey/ui";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { useModelStore } from "@/stores/modelStore";
 import {
-  nextStep,
+  forwardStep,
+  ONBOARDING_DONE,
   onboardingSteps,
   previousStep,
   type OnboardingStepId,
   type WtPlatform,
 } from "../lib/helpers";
+import { useTauriEvent } from "../lib/hooks";
+import { hasPermission, windowsMicrophoneAllowed } from "../lib/system";
+import { useColorScheme } from "../lib/theme";
 import { useWtStore, useWtSettings } from "../lib/wtStore";
 import { Button } from "../ui/controls";
+import { ModelStatusLine } from "../ui/modelStatus";
 import { useModelSetup } from "./modelSetup";
 import {
-  KeyStep,
+  AccessibilityStep,
+  DoneStep,
   MicrophoneStep,
-  ModelStep,
-  NotificationsStep,
-  PasteStep,
   PhoneStep,
   TryStep,
   WelcomeStep,
@@ -34,6 +37,7 @@ export function Onboarding(props: {
   const { t } = useTranslation();
   const wt = useWtSettings();
   const updateWt = useWtStore((s) => s.update);
+  const mac = props.platform === "macos";
   const steps = useMemo(
     () =>
       onboardingSteps(props.platform, {
@@ -42,14 +46,17 @@ export function Onboarding(props: {
     [props.platform, wt?.allow_phone_pairing],
   );
   const [step, setStep] = useState<OnboardingStepId>(props.initialStep);
+  const [phoneShown, setPhoneShown] = useState(false);
+  const [phonePaired, setPhonePaired] = useState(false);
   const heading = useRef<HTMLDivElement>(null);
-  const setupStarted = useModelSetup((s) => s.phase !== "idle");
-  const startSetup = useModelSetup((s) => s.start);
+  const scheme = useColorScheme();
 
-  // Once past the welcome, the model download runs whatever step is shown.
+  // The backend starts the download at the first launch; this follows it
+  // (and starts it only if nothing did).
   useEffect(() => {
-    if (step !== "welcome" && !setupStarted) void startSetup();
-  }, [step, setupStarted, startSetup]);
+    void useModelSetup.getState().watch({ onboarding: true });
+  }, []);
+  useTauriEvent("wt-phone-joined", () => setPhonePaired(true));
 
   const go = async (to: OnboardingStepId | null) => {
     if (!to) return;
@@ -58,60 +65,99 @@ export function Onboarding(props: {
     await updateWt({ onboarding_resume_step: to });
   };
 
-  // Move focus to the new step for keyboard and screen reader users.
+  /** The next step, past permissions that are already granted. */
+  const forward = async () => {
+    const [microphone, accessibility] = await Promise.all([
+      mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
+      mac ? hasPermission("accessibility") : Promise.resolve(true),
+    ]);
+    await go(forwardStep(steps, step, { microphone, accessibility }));
+  };
+
+  // Move focus to the new step for keyboard and screen reader users, or to
+  // the field a step asks for (Prøv det: the text is pasted where focus is).
   useEffect(() => {
-    heading.current?.querySelector<HTMLElement>("h1")?.focus();
+    const box = heading.current;
+    (
+      box?.querySelector<HTMLElement>("[data-autofocus]") ??
+      box?.querySelector<HTMLElement>("h1")
+    )?.focus();
   }, [step]);
 
   const finish = async () => {
     // DESK-97: start at login, on by default after onboarding.
     await useSettingsStore.getState().updateSetting("autostart_enabled", true);
-    const selected = useModelStore.getState().currentModel;
-    const ready = useModelSetup.getState().phase === "ready";
-    // Without a model yet, a restart comes back to the download.
-    await updateWt({
-      onboarding_resume_step: ready || selected ? null : "model",
-    });
+    // Finished, whether or not the model is in place yet: the download goes
+    // on in the background and the pill says when it is not ready.
+    await updateWt({ onboarding_resume_step: ONBOARDING_DONE });
     props.onDone();
   };
 
-  const next = () => void go(nextStep(steps, step));
   const back = previousStep(steps, step);
   const index = steps.indexOf(step);
 
   let content;
   switch (step) {
     case "welcome":
-      content = <WelcomeStep onStart={next} />;
-      break;
-    case "model":
-      content = <ModelStep onNext={next} />;
+      content = <WelcomeStep onStart={() => void forward()} />;
       break;
     case "microphone":
-      content = <MicrophoneStep platform={props.platform} />;
+      content = (
+        <MicrophoneStep
+          platform={props.platform}
+          onGranted={() => void forward()}
+        />
+      );
       break;
-    case "key":
-      content = <KeyStep platform={props.platform} />;
-      break;
-    case "paste":
-      content = <PasteStep platform={props.platform} onSkip={next} />;
-      break;
-    case "notifications":
-      content = <NotificationsStep platform={props.platform} onSkip={next} />;
-      break;
-    case "phone":
-      content = <PhoneStep onSkip={next} />;
+    case "accessibility":
+      content = <AccessibilityStep onGranted={() => void forward()} />;
       break;
     case "try":
       content = <TryStep platform={props.platform} />;
       break;
+    case "phone":
+      content = <PhoneStep onShown={() => setPhoneShown(true)} />;
+      break;
+    case "done":
+      content = <DoneStep platform={props.platform} />;
+      break;
   }
 
-  const showFooter = step !== "welcome";
+  let action;
+  if (step === "done") {
+    action = (
+      <Button variant="primary" onClick={() => void finish()}>
+        {t("wt.onboarding.finish")}
+      </Button>
+    );
+  } else if (step === "phone" && !phoneShown && !phonePaired) {
+    action = (
+      <Button onClick={() => void forward()}>{t("wt.common.skip")}</Button>
+    );
+  } else {
+    const permission = step === "microphone" || step === "accessibility";
+    action = (
+      <Button
+        variant={permission ? "secondary" : "primary"}
+        onClick={() => void forward()}
+      >
+        {t("wt.common.next")}
+      </Button>
+    );
+  }
+
+  const welcome = step === "welcome";
   return (
-    <GradientBackground palette="morgengry" className="wt-onb-bg" noise={0.6}>
-      <main className="wt-onb" aria-label={t("wt.onboarding.label")}>
-        {step !== "welcome" ? (
+    <GradientBackground
+      palette={scheme === "dark" ? "nat" : "morgengry"}
+      className="wt-onb-bg"
+      noise={0.6}
+    >
+      <main
+        className={welcome ? "wt-onb wt-onb--welcome" : "wt-onb"}
+        aria-label={t("wt.onboarding.label")}
+      >
+        {!welcome ? (
           <ol
             className="wt-onb-progress"
             aria-label={t("wt.onboarding.progress", {
@@ -130,64 +176,30 @@ export function Onboarding(props: {
             ))}
           </ol>
         ) : null}
-        <div className="wt-onb-card" ref={heading} key={step}>
+        <div
+          className={
+            welcome ? "wt-onb-card wt-onb-card--welcome" : "wt-onb-card"
+          }
+          ref={heading}
+          key={step}
+          data-step={step}
+        >
           {content}
         </div>
-        {showFooter ? (
+        {!welcome ? (
           <footer className="wt-onb-footer">
             <div>
-              {back ? (
+              {back && back !== "welcome" ? (
                 <Button variant="quiet" onClick={() => void go(back)}>
                   {t("wt.common.back")}
                 </Button>
               ) : null}
             </div>
-            <DownloadStatus hidden={step === "model"} />
-            <div>
-              {step === "try" ? (
-                <Button variant="primary" onClick={() => void finish()}>
-                  {t("wt.onboarding.finish")}
-                </Button>
-              ) : step === "model" ? null : (
-                <Button variant="primary" onClick={next}>
-                  {t("wt.common.next")}
-                </Button>
-              )}
-            </div>
+            <ModelStatusLine className="wt-onb-model" />
+            <div>{action}</div>
           </footer>
         ) : null}
       </main>
     </GradientBackground>
-  );
-}
-
-/** The model download, shown small on the steps after step 2. */
-function DownloadStatus(props: { hidden: boolean }) {
-  const { t } = useTranslation();
-  const phase = useModelSetup((s) => s.phase);
-  const progress = useModelSetup((s) => s.progress);
-  if (props.hidden || phase === "idle") return <div />;
-  return (
-    <div className="wt-onb-download" role="status" aria-live="polite">
-      {phase === "downloading" ? (
-        <>
-          <LogoLoader
-            variant="fyld"
-            size={18}
-            progress={progress}
-            label={t("wt.model.downloading")}
-          />
-          <span>
-            {t("wt.model.downloading")} {Math.round(progress * 100)} %
-          </span>
-        </>
-      ) : phase === "ready" ? (
-        <span>{t("wt.model.ready")}</span>
-      ) : phase === "failed" ? (
-        <span>{t("wt.model.downloadFailed")}</span>
-      ) : (
-        <span>{t("wt.model.preparing")}</span>
-      )}
-    </div>
   );
 }

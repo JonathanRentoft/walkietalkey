@@ -1,6 +1,12 @@
 /**
- * The main screen's recording state machine (PHONE-20 to PHONE-26), as a pure function from
+ * The main screen's recording state machine (PHONE-20 to PHONE-29), as a pure function from
  * (state, event) to (state, effects). The controller performs the effects.
+ *
+ * Tap or hold (PHONE-26): a recording starts the moment the button goes down. Released within
+ * 0.5 s it goes hands-free and keeps recording until the next tap (sends), "Annullér" or the
+ * 5 minute limit; held longer it is push-to-talk and the release sends. Sliding off the button
+ * while a finger is on it shows "Slip for at annullere", and letting go there cancels. A press the
+ * system interrupts (pointercancel) ends like a release that is never a tap: it sends.
  */
 import type { ResultReason } from "@walkietalkey/protocol";
 
@@ -17,11 +23,11 @@ export type Phase =
   | "no_speech"
   | "mic_denied";
 
-export type Mode = "hold" | "toggle";
+/** PHONE-26: a press released sooner than this is a tap (hands-free); longer is a hold. */
+export const TAP_MS = 500;
 
 export interface MachineState {
   phase: Phase;
-  mode: Mode;
   /** The session the screen is about (the current or the last recording). */
   sessionId: string | null;
   recStartedAt: number | null;
@@ -32,18 +38,22 @@ export interface MachineState {
   /** What "Detaljer" explains (a result reason, a relay error code or mic:<name>). */
   detail: string | null;
   /**
-   * The recording goes on without a finger on the button: started by a tap (tap mode) or by the
+   * Hands-free: the recording goes on without a finger on the button, started by a tap or by the
    * iOS shell's "Start diktering". The next tap on the button sends it; sliding off during that
    * tap, or the cancel control, cancels it.
    */
-  latched: boolean;
-  /** A latched recording's stopping tap is under way (its finger is down). */
+  handsFree: boolean;
+  /** A hands-free recording's stopping tap is under way (its finger is down). */
   armed: boolean;
 }
 
 export type MachineEvent =
   | { type: "down"; sessionId: string; at: number }
-  | { type: "up" }
+  /**
+   * The finger came up. `interrupted`: the system took the touch away (pointercancel, for example
+   * an iOS gesture or a call); that ends the press like a release but is never a tap.
+   */
+  | { type: "up"; at: number; interrupted?: boolean }
   | { type: "slide"; inside: boolean }
   | { type: "max_duration" }
   | { type: "empty"; sessionId: string }
@@ -55,13 +65,14 @@ export type MachineEvent =
   | { type: "timeout"; sessionId: string }
   | { type: "retry" }
   | { type: "relay_error"; code: string }
-  | { type: "mode"; mode: Mode }
   | { type: "retarget"; peerOnline: boolean; connected: boolean }
   | { type: "foreground" }
   /** The iOS shell's "Start diktering" (App Intent, Action button, Control Center). */
   | { type: "shell_start"; sessionId: string; at: number }
-  /** The cancel control shown during a latched recording. */
-  | { type: "cancel" };
+  /** The cancel control shown during a hands-free recording. */
+  | { type: "cancel" }
+  /** The page went to the background (or is being closed). */
+  | { type: "hidden" };
 
 export type Effect =
   | { type: "start_capture"; sessionId: string }
@@ -79,19 +90,17 @@ export interface Transition {
 }
 
 export function initialMachine(opts: {
-  mode: Mode;
   peerOnline: boolean;
   connected: boolean;
 }): MachineState {
   return {
     phase: "idle",
-    mode: opts.mode,
     sessionId: null,
     recStartedAt: null,
     peerOnline: opts.peerOnline,
     connected: opts.connected,
     detail: null,
-    latched: false,
+    handsFree: false,
     armed: false,
   };
 }
@@ -114,7 +123,7 @@ function waiting(s: MachineState): Phase {
 function start(
   s: MachineState,
   e: { sessionId: string; at: number },
-  latched: boolean,
+  handsFree: boolean,
 ): Transition {
   return {
     state: {
@@ -123,7 +132,7 @@ function start(
       sessionId: e.sessionId,
       recStartedAt: e.at,
       detail: null,
-      latched,
+      handsFree,
       armed: false,
     },
     effects: [
@@ -141,7 +150,7 @@ function finish(s: MachineState): Transition {
       ...s,
       phase: waiting(s),
       recStartedAt: null,
-      latched: false,
+      handsFree: false,
       armed: false,
     },
     effects: [
@@ -160,7 +169,7 @@ function cancel(s: MachineState): Transition {
       phase: "idle",
       sessionId: null,
       recStartedAt: null,
-      latched: false,
+      handsFree: false,
       armed: false,
     },
     effects: [
@@ -176,27 +185,39 @@ const same = (s: MachineState): Transition => ({ state: s, effects: [] });
 export function transition(s: MachineState, e: MachineEvent): Transition {
   switch (e.type) {
     case "down":
-      // A latched recording's next tap arms the stop; it happens on release (or cancels, slid off).
+      // A hands-free recording's next tap arms the stop; it happens on release (or cancels, slid off).
       if (RECORDING.has(s.phase))
-        return s.latched && !s.armed ? same({ ...s, armed: true }) : same(s);
-      return start(s, e, s.mode === "toggle");
+        return s.handsFree && !s.armed ? same({ ...s, armed: true }) : same(s);
+      return start(s, e, false);
     case "shell_start":
       if (RECORDING.has(s.phase)) return same(s);
       return start(s, e, true);
     case "up":
-      // The release of the tap that started a latched recording changes nothing.
-      if (s.latched && !s.armed) return same(s);
-      if (s.phase === "rec") return finish(s);
+      // No finger is on the button (Start diktering): nothing to release.
+      if (s.handsFree && !s.armed) return same(s);
       if (s.phase === "cancel") return cancel(s);
-      return same(s);
+      if (s.phase !== "rec") return same(s);
+      // A tap: hands-free from here on. An interrupted press is no tap: it sends what was said
+      // instead of recording on silently (PHONE-26).
+      if (
+        !s.handsFree &&
+        !e.interrupted &&
+        e.at - (s.recStartedAt ?? e.at) < TAP_MS
+      )
+        return same({ ...s, handsFree: true });
+      return finish(s);
     case "slide":
-      if (s.latched && !s.armed) return same(s);
+      if (s.handsFree && !s.armed) return same(s);
       if (s.phase === "rec" && !e.inside)
         return same({ ...s, phase: "cancel" });
       if (s.phase === "cancel" && e.inside) return same({ ...s, phase: "rec" });
       return same(s);
     case "cancel":
       return RECORDING.has(s.phase) ? cancel(s) : same(s);
+    case "hidden":
+      // Gone to the background: send what was said; a finger that had slid off meant cancel.
+      if (s.phase === "cancel") return cancel(s);
+      return s.phase === "rec" ? finish(s) : same(s);
     case "max_duration":
       return RECORDING.has(s.phase) ? finish(s) : same(s);
     case "empty":
@@ -212,7 +233,7 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
           ...s,
           phase,
           recStartedAt: null,
-          latched: false,
+          handsFree: false,
           armed: false,
           detail: e.type === "mic_error" ? `mic:${e.detail}` : null,
         },
@@ -259,8 +280,6 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
     case "relay_error":
       if (e.code !== "buffer_full" || !WAITING.has(s.phase)) return same(s);
       return same({ ...s, phase: "error", detail: e.code });
-    case "mode":
-      return same({ ...s, mode: e.mode });
     case "retarget":
       if (RECORDING.has(s.phase)) return same(s);
       return same({

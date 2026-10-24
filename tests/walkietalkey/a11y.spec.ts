@@ -79,9 +79,7 @@ test.describe("accessibility", () => {
     const start = page.getByRole("button", { name: "Kom i gang" });
     await start.focus();
     await page.keyboard.press("Enter");
-    await expect(
-      page.getByRole("heading", { name: "Hent talemodel" }),
-    ).toBeFocused();
+    await expect(page.getByRole("heading", { name: "Mikrofon" })).toBeFocused();
     expect(await unnamedControls(page)).toEqual([]);
   });
 

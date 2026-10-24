@@ -43,7 +43,7 @@ const SECTIONS: [string, string[]][] = [
       "Sprog",
     ],
   ],
-  ["Tast", ["Tast", "Tilstand", "Test"]],
+  ["Tast", ["Tast", "Test"]],
   ["Tekst", ["Indsæt automatisk", "Tegnsætning", "Del med mine andre enheder"]],
   ["Ordliste", ["Ord", "Erstatninger", "Udviklerord", "Importér og eksportér"]],
   ["Ryd op med AI", ["Tilstand", "Udbyder", "Vis hvad der blev sendt"]],
@@ -66,6 +66,7 @@ const SECTIONS: [string, string[]][] = [
   [
     "Avanceret",
     [
+      "Tastens tilstand",
       "Relæ-adresse",
       "Manuel installation af modeller",
       "Fejlsøgning",
@@ -465,6 +466,124 @@ test.describe("settings", () => {
     await expect(
       page.getByRole("button", { name: "Genstart nu" }),
     ).toBeVisible();
+  });
+
+  test("Tast says tap or hold, and the single modes live under Avanceret (DESK-22)", async ({
+    page,
+  }) => {
+    await openApp(page);
+    await section(page, "Tast");
+    await expect(
+      page.getByText(
+        "Hold fn for at tale, eller tryk for at tale uden at holde. Tryk igen for at stoppe.",
+      ),
+    ).toBeVisible();
+    // No separate hold/tap choice in the main settings any more.
+    await expect(page.getByRole("radio")).toHaveCount(0);
+
+    await section(page, "Avanceret");
+    await expect(
+      page.getByRole("radio", { name: /Hold eller tryk/ }),
+    ).toBeChecked();
+    await page.getByText("Kun hold", { exact: true }).click();
+    await expect
+      .poll(async () => (await mockState(page)).app.shortcut_activation)
+      .toBe("push_to_talk");
+    await section(page, "Tast");
+    await expect(
+      page.getByText("Hold fn nede, mens du taler. Slip for at stoppe."),
+    ).toBeVisible();
+  });
+
+  test("Tast offers Ret det for mig only when the Globe key needs it", async ({
+    page,
+  }) => {
+    await openApp(page, {
+      globeKey: { fn_is_key: true, usage: 2, needs_fix: true },
+    });
+    await section(page, "Tast");
+    const fix = page.getByTestId("globe-fix");
+    await expect(fix).toContainText(
+      "Når du trykker på fn, åbner din Mac også emoji og symboler.",
+    );
+    await fix.getByRole("button", { name: "Ret det for mig" }).click();
+    await expect(
+      page.getByText("Ordnet. Nu starter fn kun WalkieTalkey."),
+    ).toBeVisible();
+    expect(await calls(page, "wt_globe_key_fix")).toHaveLength(1);
+  });
+
+  test("Tast has no Ret det for mig when the Globe key is fine, nor on Windows", async ({
+    page,
+  }) => {
+    await openApp(page);
+    await section(page, "Tast");
+    await expect
+      .poll(async () => (await calls(page, "wt_globe_key_status")).length)
+      .toBeGreaterThan(0);
+    await expect(page.getByTestId("globe-fix")).toHaveCount(0);
+  });
+
+  test("the Accessibility grant is gone: one neutral notice, one button, gone once the key works (DESK-13)", async ({
+    page,
+  }) => {
+    await openApp(page, { permissions: { accessibility: false } });
+    await emit(page, "wt-accessibility-lost", true);
+    const notice = page.getByRole("alert").filter({
+      hasText: "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+    });
+    await expect(notice).toBeVisible();
+    // The user may have switched it off on purpose: no blame on macOS.
+    await expect(notice).not.toContainText(/glemt|opdatering/);
+    await notice.getByRole("button", { name: "Giv adgang igen" }).click();
+    await expect
+      .poll(async () => (await calls(page, "wt_accessibility_repair")).length)
+      .toBe(1);
+    await expect
+      .poll(async () =>
+        (await calls(page, "plugin:opener|open_url")).map((c) => c.args.url),
+      )
+      .toContain(
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+      );
+    await emit(page, "wt-key-listener", { running: true });
+    await expect(notice).toHaveCount(0);
+  });
+
+  test("a grant seen before and gone now shows the notice without the event", async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("wt.accessibilitySeen", "1"),
+    );
+    await openApp(page, { permissions: { accessibility: false } });
+    await expect(
+      page.getByText(
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+      ),
+    ).toBeVisible();
+    // Granted again in System Settings: the notice goes by itself.
+    await page.evaluate(
+      () =>
+        ((window as any).__WT_MOCK__.state.permissions.accessibility = true),
+    );
+    await expect(
+      page.getByText(
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+      ),
+    ).toHaveCount(0, { timeout: 5000 });
+  });
+
+  test("a user who never granted Accessibility gets no 'forgot' notice", async ({
+    page,
+  }) => {
+    await openApp(page, { permissions: { accessibility: false } });
+    await page.waitForTimeout(500);
+    await expect(
+      page.getByText(
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+      ),
+    ).toHaveCount(0);
   });
 
   test("everything is reachable by keyboard with a visible focus ring", async ({

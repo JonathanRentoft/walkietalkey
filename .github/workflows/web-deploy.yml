@@ -56,15 +56,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # The newest published release, stable or pre-release: beta users get both.
-          TAG=$(gh release list --limit 20 --json tagName,isDraft --jq '[.[] | select(.isDraft | not)][0].tagName' || true)
+          # App releases only (v*): the models release (models-v1) has no latest.json.
+          TAG=$(gh release list --limit 20 --json tagName,isDraft --jq '[.[] | select((.isDraft | not) and (.tagName | startswith("v")))][0].tagName' || true)
           if [ -n "$TAG" ] && [ "$TAG" != "null" ]; then
             gh release download "$TAG" --pattern latest.json --output site/public/updates/beta.json --clobber || true
           fi
       - name: Website
         if: steps.token.outputs.skip != 'true'
         working-directory: site
-        run: bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-site --branch main
+        # pages.dev (v1 links) and walkietalkey.com (Workers static assets), plus the www redirect.
+        run: |
+          bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-site --branch main
+          bunx wrangler deploy --config wrangler.domain.jsonc
+          bunx wrangler deploy --config www/wrangler.jsonc
       - name: Phone app
         if: steps.token.outputs.skip != 'true'
         working-directory: phone
-        run: bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-app --branch main
+        # pages.dev (v1 pairing codes) and app.walkietalkey.com (Workers static assets).
+        run: |
+          bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-app --branch main
+          bunx wrangler deploy --config wrangler.domain.jsonc

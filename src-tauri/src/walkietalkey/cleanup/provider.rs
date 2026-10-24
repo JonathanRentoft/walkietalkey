@@ -275,7 +275,9 @@ impl Provider for AppleProvider {
     ) -> BoxFuture<'a, Result<String, String>> {
         let (system, user) = (system.to_string(), user.to_string());
         Box::pin(async move {
-            #[cfg(target_os = "macos")]
+            // Handy's Apple Intelligence bridge exists on Apple Silicon only
+            // (`lib.rs`); an Intel Mac build has no such module.
+            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
             {
                 tauri::async_runtime::spawn_blocking(move || {
                     if !crate::apple_intelligence::check_apple_intelligence_availability() {
@@ -286,10 +288,10 @@ impl Provider for AppleProvider {
                 .await
                 .map_err(|e| e.to_string())?
             }
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
             {
                 let _ = (system, user);
-                Err("Apple Intelligence is only on macOS".to_string())
+                Err("Apple Intelligence is only on Macs with Apple silicon".to_string())
             }
         })
     }

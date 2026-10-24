@@ -8,6 +8,7 @@ import "./styles.css";
 import { commands } from "@/bindings";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
+  onboardingFinished,
   resumeStep,
   onboardingSteps,
   type OnboardingStepId,
@@ -15,9 +16,14 @@ import {
 import { currentPlatform } from "./lib/system";
 import { useWtStore } from "./lib/wtStore";
 import { Onboarding } from "./onboarding/Onboarding";
+import { useModelSetup } from "./onboarding/modelSetup";
 import { MainWindow } from "./MainWindow";
 import { GlobalDialogs } from "./GlobalDialogs";
 import { useHandyToasts } from "./lib/handyToasts";
+import { followSystemTheme } from "./lib/theme";
+import { useAccessLostEvents } from "./ui/accessNotice";
+
+followSystemTheme();
 
 type Mode =
   | { kind: "loading" }
@@ -28,6 +34,7 @@ export default function WalkieTalkeyApp() {
   const platform = currentPlatform();
   const [mode, setMode] = useState<Mode>({ kind: "loading" });
   useHandyToasts();
+  useAccessLostEvents();
 
   useEffect(() => {
     let cancelled = false;
@@ -44,9 +51,11 @@ export default function WalkieTalkeyApp() {
       const steps = onboardingSteps(platform, {
         phonePairing: view?.settings.allow_phone_pairing ?? true,
       });
-      const resume = resumeStep(view?.settings.onboarding_resume_step, steps);
+      const saved = view?.settings.onboarding_resume_step;
+      const resume = resumeStep(saved, steps);
       if (resume) setMode({ kind: "onboarding", step: resume });
-      else if (!completed) setMode({ kind: "onboarding", step: "welcome" });
+      else if (!completed && !onboardingFinished(saved))
+        setMode({ kind: "onboarding", step: "welcome" });
       else setMode({ kind: "main" });
     })();
     return () => {
@@ -55,8 +64,12 @@ export default function WalkieTalkeyApp() {
   }, [platform]);
 
   // Handy starts its keyboard and paste helpers once onboarding is done.
+  // (Onboarding itself never starts the key listener early: the backend
+  // starts it once Accessibility is granted, run 2 Phase 1.)
   useEffect(() => {
     if (mode.kind !== "main") return;
+    // A download that outlived onboarding still shows its progress.
+    void useModelSetup.getState().watch();
     void Promise.all([
       commands.initializeEnigo(),
       commands.initializeShortcuts(),

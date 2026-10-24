@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement privately through GitHub: open a [private security advisory](https://github.com/JonathanRentoft/walkietalkey/security/advisories/new) and start its title with "Code of conduct". Only you and the maintainers can see it. Once the project's domain is set up, reports can instead go by email to kontakt@walkietalkey.com; until then, do not use that address. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement privately by email to kontakt@walkietalkey.com, or through GitHub: open a [private security advisory](https://github.com/JonathanRentoft/walkietalkey/security/advisories/new) and start its title with "Code of conduct". Only you and the maintainers can see it. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 

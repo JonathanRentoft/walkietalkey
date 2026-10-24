@@ -808,6 +808,11 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,
             walkietalkey::commands::wt_request_notification_permission,
+            walkietalkey::commands::wt_globe_key_status,
+            walkietalkey::commands::wt_globe_key_fix,
+            walkietalkey::commands::wt_key_listener_status,
+            walkietalkey::commands::wt_accessibility_lost,
+            walkietalkey::commands::wt_accessibility_repair,
             commands::check_apple_intelligence_available,
             commands::initialize_enigo,
             commands::initialize_shortcuts,
@@ -1004,6 +1009,10 @@ pub fn run(cli_args: CliArgs) {
                 managers::transcription::report_compute_devices(&transcription_manager);
                 app_handle.manage(model_manager);
                 app_handle.manage(transcription_manager);
+                // WalkieTalkey: the pipeline reads our settings (Udviklerord,
+                // punctuation) through the app handle; nothing else of ours
+                // starts here (no relay, updater or downloads).
+                walkietalkey::set_app_handle(&app_handle);
 
                 let handle = app_handle.clone();
                 let args = cli_args.clone();
@@ -1030,8 +1039,10 @@ pub fn run(cli_args: CliArgs) {
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                     .title("WalkieTalkey")
-                    .inner_size(680.0, 570.0)
-                    .min_inner_size(680.0, 570.0)
+                    // WalkieTalkey: readable at arm's length on a 16-inch
+                    // MacBook (run 2, Phase 4; Handy: 680x570).
+                    .inner_size(1040.0, 720.0)
+                    .min_inner_size(900.0, 640.0)
                     .resizable(true)
                     .maximizable(true)
                     .visible(false);
@@ -1100,6 +1111,10 @@ pub fn run(cli_args: CliArgs) {
             // silently blocks keyed shortcuts, warns the user, and activates
             // the Carbon fallback. See secure_input.rs and issue #1578.
             secure_input::init(&app_handle);
+
+            // WalkieTalkey (DESK-13, DESK-20): the key listener starts by
+            // itself, now or the moment Accessibility is granted.
+            walkietalkey::key_listener::start(&app_handle);
 
             // Populate the overlay-enabled cache from initial settings so the
             // audio path (overlay::emit_levels, called ~24 Hz during recording)

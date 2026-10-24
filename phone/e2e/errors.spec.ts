@@ -1,5 +1,5 @@
 import {
-  chip,
+  statusName,
   expect,
   hold,
   label,
@@ -110,7 +110,7 @@ test.describe("errors (PHONE-14, PHONE-25, PHONE-30)", () => {
     await expect(label(page)).toHaveText(
       "WalkieTalkey skal bruge mikrofonen. Slå den til i indstillingerne.",
     );
-    await expect(chip(page)).toHaveText("Testcomputer");
+    await expect(statusName(page)).toHaveText("Testcomputer");
   });
 
   test("no result in 10 minutes: Nåede ikke frem, and Prøv igen resends from memory", async ({

@@ -14,10 +14,15 @@ MacBook Pro (Apple M1 Pro, 32 GB, macOS 26.6).
 | Whisper large-v3-turbo (OpenAI, Handy's GGUF) | Baseline for comparison, "Andre modeller" (DESK-34) | transcribe.cpp 0.4                 | Handy's catalog file                                      | MIT                                                        | Unchanged from Handy                                                                                                                         |
 
 Every file the app downloads or bundles is listed with size and SHA-256 in
-[`models/manifest.json`](../models/manifest.json) (DESK-32), with a path below
-`https://huggingface.co/walkietalkey/`. A company's `ModelBaseUrl` (Appendix B)
-replaces Hugging Face: the app fetches each file from `<ModelBaseUrl>/<file name>`
-(one flat folder, the same file names and bytes), and checks its SHA-256.
+[`models/manifest.json`](../models/manifest.json) (DESK-32). They are the assets
+of the GitHub release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1), one flat folder with the model cards
+(`<model>-README.md`), the licence files (prefixed `<model>-`, because a release
+cannot hold folders; the app puts them back in `LICENSES/`) and `SHA256SUMS`.
+`models/release.sh` stages and publishes it. A company's `ModelBaseUrl`
+(Appendix B) replaces it: the app fetches each file from
+`<ModelBaseUrl>/<file name>` (one flat folder, the same file names and bytes),
+and checks its SHA-256. Run 2: the owner chose GitHub over Hugging Face; the FT
+Speech question (decision 18.7) only concerns companies' use and stays open.
 
 ## Decode Edda with timestamps off
 
@@ -356,8 +361,8 @@ License" to every recipient), and the FT Speech statement with its two
 Folketinget licences (the statement says the data "must always be accompanied
 by this LICENSE statement and the two Folketing licenses"; RyeAI ships the
 statement with the model). `models/ekko-v1-tiny/convert.sh` copies RyeAI's
-bundle next to the converted file, and `models/upload.sh` uploads it with the
-model card.
+bundle next to the converted file, and `models/release.sh` publishes it with
+the model card.
 
 **Restrictions.**
 
@@ -465,7 +470,7 @@ models/speed/run.sh "$WORK"                         # raw speed, Metal and CPU
 WT_EKKO_PNC_DIR="$WORK/models-final/ekko-pnc" \
   cargo test -p ekko-pnc --manifest-path crates/ekko-pnc/Cargo.toml
 python3 models/tools/check_manifest.py --dir "$WORK/models-final"
-models/upload.sh --dry-run --dir "$WORK/models-final"   # the real upload is not run
+models/release.sh --dry-run --dir "$WORK/models-final"  # --yes-publish made models-v1
 ```
 
 Re-running both conversions gave byte-identical files (same SHA-256 for

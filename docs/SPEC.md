@@ -122,7 +122,7 @@ If WalkieTalkey ever gets a hosted admin console for companies, that console (no
 ### 5.3 Pairing flow
 
 1. On the computer: Indstillinger › Telefon › "Par en telefon". If the computer has no room yet, it creates one first; the room id is bound to the computer's signing key (RELAY-03). The app creates `a` and `s` (32 random bytes each), registers SHA-256(`a`) with the relay with a 10-minute expiry, and shows a QR code with a countdown. Closing the window cancels the code (`cancel_admission`).
-2. On the phone: open the WalkieTalkey app, tap "Par med en computer", scan the QR inside the app. (On Android and in the iOS app, scanning with the normal camera also opens the app directly. On an iPhone without the iOS app, the camera opens Safari, whose storage is separate from the home-screen app, so that page never joins and says "Åbn WalkieTalkey fra hjemmeskærmen og scan koden der.")
+2. On the phone: open the WalkieTalkey app, tap "Par med en computer", scan the QR inside the app. (On Android and in the iOS app, scanning with the normal camera also opens the app directly. On an iPhone without the iOS app, the camera opens Safari, whose storage is separate from the home-screen app, so that page never joins and never creates keys. Run 2: it keeps the pairing link in its address bar and links a manifest without `start_url`, so the app added to the home screen from there starts with the link and pairs on its first launch with one tap; the secrets are single-use and expire after 10 minutes, so a stale copy is harmless. If iOS drops the link, the home-screen app's first launch opens the scanner by itself. Only a real iPhone can confirm which of the two happens on a given iOS version.)
 3. The QR holds a URL whose secret part is after `#`, so browsers never send it to any server: `https://app.walkietalkey.com/p#<base64url(JSON)>` (or the company's `PhoneAppUrl`) with `{"v":1,"r":roomId,"a":admission,"s":secret,"e":computerAgreementPublicKey,"u":relayUrl,"n":computerName,"o":"mac"}` (`o` is `mac` or `win`, so the phone says ⌘V or Ctrl+V). The page removes the fragment from the address bar and history (`history.replaceState`) as soon as it has read it.
 4. The phone creates its key pairs (if it has none), computes the pair keys (section 9.3), and sends `join` to the relay with `a`, its two public keys, and a MAC over those keys made with a key derived from `s`.
 5. The relay checks SHA-256(`a`) against the stored hash, deletes it (single use), adds the phone's signing key to the room, and forwards the phone's public keys and MAC to the computer.
@@ -158,7 +158,7 @@ Handy (MIT licence, Tauri v2) already does push-to-talk, local speech models (Wh
 | DESK-03 | Danish is the default UI language. English strings stay in the codebase for later. |
 | DESK-04 | Features from Handy that we keep but hide behind "Avanceret": manual model install, debug mode, paste delays, CLI flags. |
 | DESK-05 | Changes are kept in our own modules where possible (for example `src-tauri/src/relay/`, `src-tauri/src/pipeline/da/`), so upstream merges stay small. |
-| DESK-06 | From M1, development builds on the Mac are signed with an Apple Development certificate. macOS ties permission grants (Input Monitoring, Accessibility, Microphone) to the app's signature, and ad-hoc signed builds lose them on every rebuild. |
+| DESK-06 | Local Mac builds are signed with one self-signed code-signing identity, "WalkieTalkey Local" (`scripts/walkietalkey/build-local-mac.sh`, BUILD.md), until an Apple Development certificate exists. macOS ties permission grants (Accessibility, Microphone) to the app's signature, and ad-hoc signed builds lose them on every rebuild; a signature from one certificate keeps the designated requirement the same. CI release builds stay ad-hoc until the Apple Developer ID (decision 18.1 done, enrolment open); after such an update the app detects the dropped Accessibility grant and offers to repair it (DESK-13). |
 
 ### 6.2 First run (onboarding)
 
@@ -166,14 +166,15 @@ A single window, one step at a time, using the design system (LogoIntro on the f
 
 | Step | What happens | Must |
 |---|---|---|
+| (Talemodel) | No step of its own (run 2): the speech model (DESK-31) downloads in the background from the very first launch, from our GitHub release, shown as one calm progress line under every step and in the sidebar, never blocking. "Importér modelfil" is under Avanceret. | DESK-11 |
 | 1. Velkommen | "Dansk tale til tekst. Gratis, og det kører på din egen computer." Button "Kom i gang". | DESK-10 |
-| 2. Hent talemodel | Picks the right model for the hardware (DESK-31) and downloads it with a progress bar. The rest of onboarding can continue while it downloads. | DESK-11 |
-| 3. Mikrofon | Explains why, then triggers the OS prompt. | DESK-12 |
-| 4. Tasten | Mac: asks for Input Monitoring ("Inputovervågning"), which macOS requires before an app may see when `fn` is held, and explains that macOS must be told to leave the 🌐 key alone (System Settings › Keyboard › "Press 🌐 key to" › "Do Nothing"). Offers to open both settings pages. macOS usually only applies Input Monitoring after a restart, so the app restarts itself and resumes at this step. Windows: picks Right Ctrl by default. Many newer laptops have a Copilot key instead of Right Ctrl (it arrives as Win+Shift+F23), so the step checks which keys exist and lets the user press the key they want. Includes a live "Prøv at holde tasten" check. | DESK-13 |
-| 5. Indsæt automatisk | Mac: asks for Accessibility permission, explained as "så teksten kan sættes ind, hvor du skriver". Skippable: without it, text goes to the clipboard with a notification. | DESK-14 |
-| 6. Notifikationer | Asks for notification permission (needed for phone dictations). | DESK-15 |
-| 7. Telefon | "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Shown from M2, when the relay exists. | DESK-16 |
-| 8. Prøv det | A text field: "Hold fn nede og sig: Hej, det her er min første diktering." Shows the result. | DESK-17 |
+| 2. Mikrofon | Explains why, then one button: macOS's own question first, then the exact System Settings pane. The step notices the grant by itself and moves on. On Windows it is skipped when the microphone is already allowed. | DESK-12 |
+| 3. Tilgængelighed (Mac only) | "Så teksten kan sættes ind, hvor du skriver". One button opens Privacy & Security › Accessibility; the step notices the grant within about a second and moves on, with no restart. Accessibility is the only permission for the key and for pasting; Input Monitoring is never asked for (run 2: the v1 step "Tasten" with Input Monitoring, the 🌐 instructions and the restart is gone). Windows has no such step; the key is Right Ctrl, or the key chosen in Prøv det. | DESK-13, DESK-14 |
+| 4. Prøv det | A text field: tap or hold the key and say "Hej, det her er min første diktering." Shows the result, and says so if the key is not running yet (it asks the backend when the step opens). If the Globe key still has an action of its own, one sentence and the button "Ret det for mig" (DESK-20). On Windows the step offers the key picker, for example the Copilot key (Win+Shift+F23) on laptops without Right Ctrl (DESK-21). | DESK-17 |
+| 5. Telefon | Optional: "Vil du også kunne tale ind i telefonen?" Shows the pairing QR (section 5.3) or "Spring over". Showing the code also asks for notification permission (DESK-15). | DESK-16 |
+| 6. Klar | Three tips (hold, tap, Esc). "Færdig" turns on start at login and marks onboarding finished. | DESK-10 |
+
+If Accessibility was granted before but is gone now (an update with a new ad-hoc signature, or switched off), the app opens its main window with one neutral notice, "WalkieTalkey har ikke længere adgang til Tilgængelighed.", and the button "Giv adgang igen". Every Accessibility button (this notice, the Tilgængelighed step, Prøv det's warning) first resets the app's own entry and shows macOS's dialog, then opens the pane, so a stale entry that looks switched on never leaves the user waiting; the key starts by itself once access is back (DESK-13).
 
 Acceptance: a new user on a clean Mac goes from first launch to a working dictation without reading any docs, and every permission prompt is preceded by a Danish explanation.
 
@@ -181,13 +182,13 @@ Acceptance: a new user on a clean Mac goes from first launch to a working dictat
 
 | ID | Requirement |
 |---|---|
-| DESK-20 | Default trigger on macOS is `fn` (the 🌐 key) on Apple keyboards, in hold mode. Handy marks Globe support as in progress upstream; if it is not merged, we implement it with a `CGEventTap` on `flagsChanged`. |
+| DESK-20 | Default trigger on macOS is `fn` (🌐) alone, tap or hold (DESK-22). WalkieTalkey's own active `CGEventTap` at the head of the HID event stream drives it, with Accessibility as the only permission (no Input Monitoring). It swallows fn-only events and the Globe key's follow-up event (keycode 0xB3), and passes fn combined with other keys through. macOS fires the Globe key's own action (for example Change Input Source) upstream of every event tap (run 2, Phase 0), so while `fn` is the key the app offers one button, "Ret det for mig", that sets the Globe key to Do Nothing (`com.apple.HIToolbox AppleFnUsageType` 0; applies at once, no logout), remembers the previous value and restores it when `fn` stops being the key. The user never has to change System Settings. |
 | DESK-21 | Default trigger on Windows is Right Ctrl, hold mode. Any key or combination can be chosen. Third-party keyboards do not send `fn`, so the Mac settings also offer other keys. |
-| DESK-22 | Modes: hold to talk (default) and tap to start, tap to stop. |
-| DESK-23 | Recording starts within 100 ms of the key going down, so the first word is never cut. The start sound and the pill only appear once the key has been held for 300 ms (DESK-26), so quick taps and `fn` shortcuts stay silent. Sounds are on by default and can be turned off. |
+| DESK-22 | Tap or hold (run 2; replaces "hold to talk or tap to start"). Recording starts the moment the key goes down. Released within 0.5 s, the dictation is hands-free: it records until the next tap (stop and transcribe), Esc (cancel, DESK-25) or the 5-minute limit (DESK-24), and the pill shows a lock and "Tryk igen for at stoppe". Held longer, it is push-to-talk and stops on release. Settings also offer hold only and tap only. |
+| DESK-23 | Recording starts within 100 ms of the key going down, so the first word is never cut. The start sound and the pill appear once the key has been held for 300 ms, or at once when a tap makes the dictation hands-free, so `fn` shortcuts stay silent. Sounds are on by default and can be turned off. |
 | DESK-24 | Maximum 5 minutes per dictation. At 4:45 the pill shows a countdown. At 5:00 it stops and transcribes what it has. |
 | DESK-25 | Esc while recording cancels without output. |
-| DESK-26 | Holding the key for less than 300 ms is ignored (accidental taps). If any other key is pressed while `fn` is down (fn+Delete, fn+arrows, fn+F-keys), the dictation is cancelled silently, because `fn` is also a modifier. |
+| DESK-26 | If any other key is pressed while `fn` is down (fn+Delete, fn+arrows, fn+F-keys), the dictation is cancelled silently, because `fn` is also a modifier. Modifiers alone (Shift for DESK-80) do not cancel, and typing during a hands-free dictation does not cancel it. A quick tap is no longer ignored (it starts a hands-free dictation, DESK-22); in the hold-only setting a hold under 300 ms is dropped silently. |
 | DESK-27 | One transcription at a time, in the order the recordings end. A phone dictation that arrives during a key dictation waits; its notification follows the key dictation's paste. |
 
 ### 6.4 The pipeline
@@ -225,8 +226,8 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | DESK-29 | M0 converts Edda to GGUF with transcribe.cpp's `scripts/convert-whisper.py`, quantises it to Q8_0 with `transcribe-quantize`, and checks it against the Transformers reference the way transcribe.cpp validates its own Whisper models (`dump_reference_whisper_transformers.py`), plus the same text as the original on 10 real clips, before anything is published. Stock Handy loads the result from its custom models folder, so M0 needs no app code. |
 | DESK-30 | Default model: **Edda v0.2** (Whisper large-v3-turbo fine-tuned on about 2,600 hours of Danish, 809M parameters, Apache-2.0, Alexandra Institute). We publish it as GGUF for transcribe.cpp, `Q8_0` (about 890 MB) by default. Smaller quantisations save download size but not time: in transcribe.cpp's own measurements Q4_K_M is as fast as Q8_0. About 1,690 of the training hours are FTSpeech (parliament) with lower-case, unpunctuated transcripts, so some output arrives without punctuation and DESK-41 will run often. Whether the FTSpeech terms limit use of the weights is an open question for M0 (section 11). |
 | DESK-31 | Model choice by measured speed: after the download, the app transcribes a bundled 10-second Danish clip. If Edda needs 1.5 s or less (Apple Silicon and most recent GPUs), Edda is the default. If it needs more (older or CPU-only Windows machines), the app offers the fast model (DESK-35) and says why in one sentence. The user can always switch. |
-| DESK-32 | Models download from our Hugging Face organisation, or from the company's own server if `ModelBaseUrl` is set (many companies block huggingface.co). Every file is checked against a SHA-256 from `models/manifest.json` shipped inside the app. Downloads resume after interruption. A failed check deletes the file and retries once, then shows an error. |
-| DESK-33 | Model cards on Hugging Face state the original, the licence (Apache-2.0), what we changed (conversion, quantisation) and the dataset terms (the CoRal terms forbid speech synthesis and biometric identification; dictation is fine). |
+| DESK-32 | Models download from the assets of our GitHub release `models-v1` (run 2; was our Hugging Face organisation), or from the company's own server if `ModelBaseUrl` is set. Every file is checked against a SHA-256 from `models/manifest.json` shipped inside the app. Downloads resume after interruption. A failed check deletes the file and retries once, then shows an error. |
+| DESK-33 | Model cards, published with the models in the GitHub release (`<model>-README.md`), state the original, the licence (Apache-2.0), what we changed (conversion, quantisation) and the dataset terms (the CoRal terms forbid speech synthesis and biometric identification; dictation is fine). |
 | DESK-34 | Handy's other models (Whisper, Parakeet) remain under "Andre modeller". |
 | DESK-35 | **Fast model** for slower PCs: Ekko v1 tiny (RyeAI; 110M parameters; FastConformer RNN-T fine-tuned from NVIDIA's `parakeet-rnnt-110m-da-dk`). Mean WER 12.1 on the Danish ASR leaderboard against Edda's 8.6, at 60 to 75 times real time on CPU alone. Evaluated in M0 on the ThinkPad. Before it ships: read its layered licence (NVIDIA Open Model License for the base model, CC BY 4.0 for RyeAI's changes, the CoRal terms, and its FTSpeech note), and convert the `.nemo` checkpoint with transcribe.cpp's `convert-parakeet.py` (transcribe.cpp already runs Parakeet RNN-T models). Its output has no punctuation, so DESK-41 always runs. |
 
@@ -244,10 +245,10 @@ Everything except speech recognition and the optional cleanup call takes a fract
 
 | ID | Requirement |
 |---|---|
-| DESK-55 | The DictationPill floats at the bottom centre during key dictations: Lytter (with level meter and time) → Renskriver → Indsat or Tekst klar til at indsætte. It hides 1.5 s after the end. Position and "Vis aldrig" are settings. |
+| DESK-55 | The DictationPill floats at the bottom centre during key and phone dictations: about 220×56 px and growing with its text (inside a 480×120 overlay window, so its glow is never clipped), glass, with the mark, a live waveform from the microphone level (or the phone's audio) and the time. Lytter (hands-free: a lock and "Tryk igen for at stoppe") → Renskriver → Indsat or Tekst klar til at indsætte, with the countdown from 4:45 (DESK-24). It hides 1.5 s after the end. Position and "Vis aldrig" are settings. |
 | DESK-56 | Phone dictations show a system notification: title "Tekst klar til at indsætte", body the first 80 characters, or "Tryk ⌘V for at indsætte" when "Vis teksten i notifikationen" is off (for shared screens and meetings). |
 | DESK-57 | Clicking the notification opens the history with that item selected. Implementation note: Tauri v2's notification plugin only handles actions and clicks on mobile, so this needs a small native module (a `UNUserNotificationCenter` delegate on macOS, a toast activation handler on Windows). Windows toasts only show the app's own name and icon for the installed app. |
-| DESK-58 | While a phone recording streams in, the menu bar icon shows that it is listening. Optionally (setting) the pill appears too. |
+| DESK-58 | While a phone recording streams in, the menu bar icon pulses and the pill shows (run 2: on by default, not while paused; a setting turns it off), its waveform following the phone's audio. A phone dictation that goes silent for 15 s lets go of the pill and the pulse (its audio is kept; a resend after a reconnect continues it), is dropped after 15 silent minutes, and is answered "too long" past 5:30 of audio. |
 
 ### 6.8 Receiving from the phone
 
@@ -264,7 +265,7 @@ Everything except speech recognition and the optional cleanup call takes a fract
 | ID | Requirement |
 |---|---|
 | DESK-66 | Indstillinger › Ordliste has two lists. **Ord**: names and terms to spell right (fed to the model's vocabulary field, about 150 tokens max, most recent first, because Whisper's 223-token prompt budget is shared with the context from the previous chunk, DESK-46). **Erstatninger**: "når jeg siger X, skriv Y" (applied after recognition, whole words, case-insensitive match, keeps the replacement's casing). |
-| DESK-67 | An optional built-in pack "Udviklerord" (pull request, deploy, standup, merge, commit, frontend, backend and similar) helps mixed Danish and English. |
+| DESK-67 | A built-in pack "Udviklerord" (pull request, deploy, standup, merge, commit, frontend, backend and similar, 30 terms) helps mixed Danish and English. On by default (run 2). It reaches Whisper models through transcribe.cpp's vocabulary field as a "Glossary:" prompt (73 Whisper tokens; with the longest chunk context 164 of the 223). Measured on the owner's sentences (run 2, Phase 2): Mac WER 11.8 % to 9.2 % with it, English terms unchanged (3 of 8); adding the inflected forms that failed did not help, so English words inside Danish speech need a code-switched fine-tune (run 3). The "Glossary:" prompt can tip Edda into fragments in other scripts on code-switched speech ("Husk atали til grief"), so a Danish chunk decoded with a vocabulary that shows letters outside the Latin script is decoded again without it, and any such letters left are removed from Danish text (`pipeline::da::script`). |
 | DESK-68 | Lists can be imported and exported as plain text, one entry per line, and can be set by the company (Appendix B). |
 
 ### 6.10 AI cleanup (optional)
@@ -360,21 +361,21 @@ Om: version, licenser og kreditering (Handy, transcribe.cpp, Edda, Ekko PnC, ONN
 
 | ID | Requirement |
 |---|---|
-| PHONE-10 | First screen when not paired: "Par med en computer" with a short explanation and a button that opens the camera to scan the QR (QR decoding in JavaScript, no server). |
+| PHONE-10 | First screen when not paired: "Par med en computer" with a short explanation and a button that opens the camera to scan the QR (QR decoding in JavaScript, no server). A home-screen app's first launch without a pairing link opens the scanner by itself (run 2). |
 | PHONE-11 | On Android, and in the iOS shell, scanning the QR with the normal camera opens the app and pairs directly. |
-| PHONE-12 | The phone asks for a name for itself, prefilled ("iPhone"), which is sent encrypted to the computer. |
+| PHONE-12 | The phone asks for a name for itself, prefilled from the computer's owner when the computer's name has one ("Jonathans MacBook Pro" gives "Jonathans iPhone"), else the kind of phone ("iPhone"), which is sent encrypted to the computer. |
 | PHONE-13 | Keys are stored as non-extractable WebCrypto keys in IndexedDB, in both the PWA and the iOS app (PHONE-03). One TypeScript implementation of the protocol serves both. |
 | PHONE-14 | If the relay answers 4404 (room not found) or 4401 (not a member) for a room, the phone shows "Parringen med <computer> er fjernet. Par igen for at bruge den." and drops that room and its keys. |
-| PHONE-15 | The pairing page reads the fragment, then removes it with `history.replaceState`, so the secrets do not linger in browser history or history sync. |
+| PHONE-15 | The pairing page reads the fragment, then removes it with `history.replaceState`, so the secrets do not linger in browser history or history sync. Exception (run 2): an iPhone Safari tab keeps the link in its address bar, so the home-screen app added from it starts with the link (5.3 step 2); it never joins. A home-screen app remembers SHA-256(`a`) of the links it has handled (paired, cancelled or expired), never the secrets, so launching from the same start URL later is normal. |
 
 ### 7.3 Main screen
 
-Exactly as the design system's `PhoneApp` component: brand, the target computer as a chip, the big hold button, the label, the lock line "Krypteret fra telefon til computer".
+As the design system's `PhoneApp` component: brand, the big button, the label, the lock line "Krypteret fra telefon til computer". Run 2: the target computer is one quiet status line at the very top (a small dot and "Forbundet til {computer}", "Forbinder til {computer}", "Ikke forbundet til {computer}" or "{computer} er ikke online", low contrast, wrapping, safe-area aware) instead of a chip; tapping it picks a computer and opens the settings. Text is never below 16 px.
 
 | ID | State | Label | Must |
 |---|---|---|---|
 | PHONE-20 | idle | "Hold for at tale" | M2 |
-| PHONE-21 | rec | "Slip for at sende", red dot and time, level meter, glowing ring | M2 |
+| PHONE-21 | rec | "Slip for at sende" while a finger is on the button; hands-free shows a lock and "Tryk igen for at stoppe" with "Annullér". Red dot and time, level meter, glowing ring; the glow is never clipped (only the full screen clips it; run 2 fixed the PhoneApp box's `overflow: hidden`, which cut it on home-screen screens wider than its proportions) | M2 |
 | PHONE-22 | send | "Sender til <computer>" | M2 |
 | PHONE-23 | ready | "Klar på <computer>" and "Tryk ⌘V for at indsætte" ("Tryk Ctrl+V for at indsætte" when the QR said `o: win`) | M2 |
 | PHONE-24 | offline | "<computer> er ikke online. Optagelsen venter i 10 minutter." The phone keeps the recording in memory until it gets a result. If none arrives within 10 minutes: "Nåede ikke frem til <computer>." with "Prøv igen" (resends from memory while the app is open). | M2 |
@@ -382,19 +383,19 @@ Exactly as the design system's `PhoneApp` component: brand, the target computer 
 
 | ID | Requirement |
 |---|---|
-| PHONE-26 | Hold to talk is the default. Sliding the finger off the button shows "Slip for at annullere", and letting go there cancels (`audio_cancel`). Setting "Tryk for at starte og stoppe" for one-handed use. |
+| PHONE-26 | Tap or hold (run 2; replaces hold to talk with the "Tryk for at starte og stoppe" setting). Recording starts at button-down. Released within 0.5 s it is hands-free until the next tap (sends), "Annullér", the 5-minute limit, or the app going to the background (sends). Held longer it is push-to-talk and the release sends. Sliding the finger off the button while it is down shows "Slip for at annullere", and letting go there cancels (`audio_cancel`). A press the system interrupts (`pointercancel`) ends like a release and is never a tap: it sends, or cancels if the finger had slid off. There is no setting. |
 | PHONE-27 | Haptic tick on start and stop where the platform allows (Android vibration API, iOS shell native haptics). |
 | PHONE-28 | The screen stays awake while recording (Screen Wake Lock API where available). |
-| PHONE-29 | Maximum 5 minutes per recording, with a countdown from 4:45. |
+| PHONE-29 | Maximum 5 minutes per recording, also hands-free, with a countdown from 4:45. |
 
 ### 7.4 Recording and streaming
 
 | ID | Requirement |
 |---|---|
-| PHONE-30 | Audio is captured with `getUserMedia` and an AudioWorklet, downsampled to 16 kHz mono, 16-bit PCM, in 200 ms frames. |
+| PHONE-30 | Audio is captured with `getUserMedia` (channelCount 1; echoCancellation, noiseSuppression and autoGainControl off, so speech recognition gets the raw microphone instead of the call-processing chain) and an AudioWorklet, downsampled to 16 kHz mono, 16-bit PCM, in 200 ms frames. While the app is visible and paired the microphone stays open and keeps the last 300 ms in memory as the start of the next dictation, so the first word is never lost (run 2, Phase 0: v1 opened the microphone at button-down and lost first words); it closes when the page is hidden, after 3 idle minutes, or when no computer is paired. The 300 ms are measured on the clock: at button-down only audio captured in the last 300 ms is used, and audio from before an interruption is never sent. |
 | PHONE-31 | Each frame is encrypted (section 9) and sent while the user is still talking, so the computer has nearly all the audio the moment the button is released. Every audio payload carries the session id and its chunk index (Appendix C.2). |
 | PHONE-32 | The phone keeps every chunk of the open session in memory until the computer's result arrives. After a reconnect it resends the whole session, packing up to 10 chunks (2 s of audio) per frame and sending at most 25 frames per second, so it stays under the relay's limit (RELAY-11). The computer drops duplicates by chunk index. |
-| PHONE-33 | The phone never stores audio on disk. |
+| PHONE-33 | The phone never stores audio on disk. Between dictations it keeps at most the last 300 ms in memory, overwritten all the time, and sends nothing unless a dictation is made. |
 | PHONE-34 | Data use is about 32 kB per second of speech (about 2 MB per minute). Opus compression is a later optimisation, not v1. |
 | PHONE-35 | The hold button uses pointer events with pointer capture, blocks the long-press menu and text selection, and resumes the AudioContext on the first touch (browsers only start audio after a user gesture). |
 
@@ -407,7 +408,7 @@ Exactly as the design system's `PhoneApp` component: brand, the target computer 
 
 ### 7.6 Phone settings
 
-Parrede computere (navn, Fjern, which sends `leave`), Par med en computer, hold eller tryk, haptik, om og licenser.
+Parrede computere (navn, Fjern, which sends `leave`), Par med en computer, haptik, om og licenser. (Run 2: "hold eller tryk" is gone; the button does both, PHONE-26.)
 
 ---
 
@@ -552,10 +553,10 @@ offset  size  field
 | ID | Requirement |
 |---|---|
 | SITE-01 | Astro with React islands, static output, hosted on Cloudflare Pages (free plan, commercial use allowed). Components ported to TSX in `packages/ui` from the design system bundle. |
-| SITE-02 | Pages: Forside (exactly `ForsideKomplet` from the design system), Hent (detects Mac or Windows, links to the latest GitHub release), Sådan virker det, Privatliv (privacy policy, section 12), Open source, Virksomheder, Sikkerhed (architecture in plain Danish and how to report a vulnerability), Varemærke, Spørgsmål. |
-| SITE-03 | `app.walkietalkey.com` serves the phone app (same Pages project or a second one), built from `phone/` by CI. The build is plain static files, so a company can host its own copy (`PhoneAppUrl`, PRIV-03). |
+| SITE-02 | Pages: Forside (exactly `ForsideKomplet` from the design system), Hent, Sådan virker det, Privatliv (privacy policy, section 12), Open source, Virksomheder, Sikkerhed (architecture in plain Danish and how to report a vulnerability), Varemærke, Spørgsmål. Hent detects Mac, Windows or a phone before the first paint and shows that visitor's download first and largest: direct links to the newest release's stable assets `releases/latest/download/WalkieTalkey-mac.dmg` (universal) and `WalkieTalkey-windows.exe`, the other platform as a small link, both visible without JavaScript. Phones get the phone app first and are told to install the computer app. The page has the phone app link and a QR code for it (inline SVG, rendered at build time). While the builds are unsigned it gives honest first-open steps (Mac: Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel; Windows: Edge's download warning › Behold › Vis mere › Behold alligevel, then Flere oplysninger › Kør alligevel), and it links to all releases. |
+| SITE-03 | `app.walkietalkey.com` serves the phone app, built from `phone/`. The build is plain static files, so a company can host its own copy (`PhoneAppUrl`, PRIV-03). walkietalkey.com and app.walkietalkey.com are Workers static assets on Workers custom domains, from the same builds as the Pages projects (run 2: Pages custom domains need a DNS record wrangler cannot write). The website links only to walkietalkey.com and its subdomains, never to the pages.dev or workers.dev deployments, which stay up for pairings made with v1. |
 | SITE-04 | No cookies and no analytics of any kind, so "Ingen sporing" is true for the website too. No cookie banner is needed. |
-| SITE-05 | Contact for companies is an email address on the domain (`kontakt@walkietalkey.com`) forwarded to the owner with Cloudflare Email Routing (free). No contact form, so no form data to store. |
+| SITE-05 | The contact for everyone (companies, privacy and trademark questions) is `kontakt@walkietalkey.com`, forwarded to the owner with Cloudflare Email Routing (free; live since run 2). No contact form, so no form data to store. Vulnerabilities go through GitHub's private vulnerability reporting (SECURITY.md); open questions may also go to GitHub Discussions. |
 | SITE-06 | Lighthouse 95+ on performance and accessibility on mobile. Only one WebGL surface per page. Every animation respects reduced motion. |
 | SITE-07 | Open Graph image and favicon from the design system assets. |
 | SITE-08 | `/updates/beta.json` (DESK-112) is published by the release workflow. |
@@ -591,7 +592,7 @@ A CI check fails the build if a dependency with an unknown or non-permissive lic
 | IP addresses, connection times | Cloudflare, as processor for the relay operator | Cloudflare's standard retention | the relay operator |
 | Website visits and phone app files | Cloudflare Pages (or the company's `PhoneAppUrl`) | Cloudflare's standard logs; no analytics | the site operator |
 | Update checks | GitHub (release files and update manifests) | GitHub's retention | GitHub: IP address and app version |
-| Model downloads | Hugging Face, or the company's `ModelBaseUrl` | their retention | Hugging Face: IP address |
+| Model downloads | GitHub releases, or the company's `ModelBaseUrl` | their retention | GitHub: IP address |
 | Shared word list | the company's `VocabularySource` server | the company's rules | the company |
 
 ### 12.2 Requirements
@@ -633,8 +634,8 @@ This section explains how running the project works in practice, step by step.
 
 | File | Content |
 |---|---|
-| `LICENSE` | Apache License 2.0, full text, copyright "2026 <copyright holder> and the WalkieTalkey contributors", where the holder is the owner's full name or Navigent.io ApS (decision 18.1) |
-| `NOTICE` | "WalkieTalkey. Copyright 2026 <copyright holder>". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
+| `LICENSE` | Apache License 2.0, full text, copyright "2026 Navigent.io ApS and the WalkieTalkey contributors" (decision 18.1: Navigent.io ApS, CVR 46285395) |
+| `NOTICE` | "WalkieTalkey. Copyright 2026 Navigent.io ApS and the WalkieTalkey contributors". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
 | `licenses/Handy-MIT.txt` | Handy's MIT licence, unchanged |
 | `TRADEMARKS.md` | The name WalkieTalkey and the logo are not covered by the code licence. Forks must use another name and logo. Saying "based on WalkieTalkey" is fine |
 
@@ -674,7 +675,7 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | OSS-21 | Release workflow: build macOS (arm64 and x64, universal if feasible) and Windows x64; sign and notarize the Mac app (Developer ID); sign the Windows installer (route decided in section 18); create the GitHub Release with assets, Tauri updater signatures and `latest.json`; publish release notes from `CHANGELOG.md`. |
 | OSS-22 | The relay deploys only on release tags `relay-vX.Y.Z`, not on every merge, because a deploy restarts every Durable Object and drops all sockets (RELAY-09). `wrangler deploy` with the Cloudflare API token as a secret, after the relay tests pass. The protocol version only changes with a new `/vN/` path, so old apps keep working. |
 | OSS-23 | Site deploys from `main` through Cloudflare Pages. |
-| OSS-24 | Models are uploaded once per version to Hugging Face, and the manifest with SHA-256 sums is committed. |
+| OSS-24 | Models are published once per version as the assets of a GitHub release (`models-v1`, made by `models/release.sh`), and the manifest with SHA-256 sums is committed. |
 | OSS-25 | Later: Homebrew cask and winget manifests. |
 | OSS-26 | `deploy/` holds the managed-settings templates (DESK-102): ADMX/ADML for Windows Group Policy and Intune, and a sample `.mobileconfig` for macOS. |
 
@@ -729,19 +730,19 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 | Apple Developer Program | 99 USD per year | Signing and notarizing the Mac app, the iOS app (one membership covers both) |
 | Domain walkietalkey.com | about 10 USD per year at cost through Cloudflare Registrar | Website, relay, email |
 | Cloudflare (Pages, Workers, Durable Objects, Email Routing) | Workers Paid 5 USD per month for the public relay from launch (8.5, decision 18.6); Pages and Email Routing free | Relay, website, email forwarding |
-| GitHub, Hugging Face | 0 | Code, releases, model hosting |
+| GitHub | 0 | Code, releases, model hosting |
 | Windows signing | 0 with SignPath Foundation if accepted for open source; about 10 USD per month with Azure Artifact Signing (available to organisations in the EU, so through a company, not as a private person in Denmark); 150 to 300 USD per year for an OV certificate | Avoiding Windows SmartScreen warnings. No option gives instant trust; reputation builds over releases |
 | AI cleanup | 0 for us; users bring their own key or use on-device options | |
 
 ## 18. Decisions for the owner
 
-1. **Who runs the public relay and website**: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
+1. **Who runs the public relay and website**: decided (run 2): **Navigent.io ApS** (CVR 46285395), the copyright holder in LICENSE and NOTICE and the operator on the privacy page. Was: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
 2. **Windows signing**: apply to SignPath Foundation first (free), with Azure Artifact Signing through a company as the fallback. Unsigned beta builds until then.
 3. **GitHub home**: organisation `walkietalkey` (recommended) or your personal account.
 4. **iPhone**: build the iOS shell in M3 (recommended, because of PHONE-02), or live with the permission prompt in the PWA.
 5. **History default**: 14 days (proposed).
 6. **Public relay on Workers Paid from launch**: 5 USD per month (recommended), or the free tier with the risk that the relay stops for everyone until midnight UTC on a busy day (8.5).
-7. **Edda's training data**: ask the Alexandra Institute whether the FTSpeech terms limit use of the weights (section 11) before M0 picks the default model.
+7. **Edda's training data**: ask the Alexandra Institute whether the FTSpeech terms limit use of the weights (section 11) before M0 picks the default model. Run 2: the owner chose to publish the converted models as assets of the GitHub release `models-v1` (not Hugging Face); the open question only concerns companies' use and stays open.
 
 ---
 
@@ -749,7 +750,7 @@ New files we write are Apache-2.0. Files inherited from Handy remain available u
 
 Use these strings exactly. Sentence case, no exclamation marks, no emoji.
 
-**Pill**: Hold fn for at tale · Lytter · Renskriver · Indsat · Tekst klar til at indsætte · Hørte ikke noget · Brugte teksten uden oprydning · Talemodellen er ikke klar endnu · Kunne ikke hente talemodellen. Prøv igen.
+**Pill**: Hold fn for at tale · Lytter · Tryk igen for at stoppe (hands-free, run 2) · Renskriver · Indsat · Tekst klar til at indsætte · Hørte ikke noget · Brugte teksten uden oprydning · Talemodellen er ikke klar endnu · Kunne ikke hente talemodellen. Prøv igen.
 
 **Notifications**: Tekst klar til at indsætte · Tryk ⌘V for at indsætte · Tryk Ctrl+V for at indsætte · Ny telefon parret: {navn}. Var det dig? · en telefon uden navn · Opdatering klar. Genstart for at installere · Genstart nu · Ingen forbindelse til telefonen. Prøver igen.
 
@@ -760,6 +761,8 @@ Use these strings exactly. Sentence case, no exclamation marks, no emoji.
 **AI cleanup**: Ryd op med AI · Fra · Når der er noget at rette · Altid · Kun når jeg holder Shift med · Hold talemodellen indlæst
 
 **Cleanup consent**: Teksten (ikke lyden) sendes til {udbyder}, hver gang du dikterer. · Slå til · Annullér
+
+**Key (run 2, from the owner's brief)**: Ret det for mig
 
 **Managed**: Styret af din organisation
 
@@ -773,7 +776,7 @@ macOS domain `com.walkietalkey.app`; Windows `HKLM\SOFTWARE\Policies\WalkieTalke
 |---|---|---|---|
 | `RelayUrl` | string | `wss://relay.walkietalkey.com` | Own relay |
 | `PhoneAppUrl` | string | `https://app.walkietalkey.com` | Own copy of the phone app; used in the pairing QR |
-| `ModelBaseUrl` | string | our Hugging Face organisation | Own model server with the same file names and SHA-256 sums |
+| `ModelBaseUrl` | string | our GitHub release `models-v1` | Own model server with the same file names and SHA-256 sums |
 | `AllowPhonePairing` | bool | true | Turn off the phone feature |
 | `CleanupMode` | `off`, `when-needed`, `always`, `shift` | `off` | AI cleanup mode (DESK-80) |
 | `CleanupProvider` | `apple`, `openai`, `anthropic`, `groq`, `cerebras`, `openrouter`, `custom` | | Forces a provider |

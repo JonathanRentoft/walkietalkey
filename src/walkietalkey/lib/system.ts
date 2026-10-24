@@ -1,15 +1,12 @@
-// The operating system around the app: platform, permissions, System
-// Settings pages, restarting. Every call fails soft, so a missing plugin or
-// permission never breaks a screen.
+// The operating system around the app: platform, permissions and System
+// Settings pages. Every call fails soft, so a missing plugin or permission
+// never breaks a screen.
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { relaunch } from "@tauri-apps/plugin-process";
 import {
   checkAccessibilityPermission,
-  checkInputMonitoringPermission,
   checkMicrophonePermission,
   requestAccessibilityPermission,
-  requestInputMonitoringPermission,
   requestMicrophonePermission,
 } from "tauri-plugin-macos-permissions-api";
 import { commands } from "@/bindings";
@@ -29,10 +26,9 @@ export function pasteKey(platform: WtPlatform): string {
   return platform === "macos" ? "⌘V" : "Ctrl+V";
 }
 
-/** System Settings pages (macOS 13 and newer understand these URLs). */
+/** System Settings pages (macOS 13 and newer understand these URLs). Run 2
+ *  asks for no Input Monitoring: Accessibility covers the key. */
 export const SETTINGS_PAGES = {
-  inputMonitoring:
-    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
   accessibility:
     "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
   microphone:
@@ -58,17 +54,15 @@ export async function openLink(url: string) {
   }
 }
 
-export type MacPermission = "microphone" | "accessibility" | "inputMonitoring";
+export type MacPermission = "microphone" | "accessibility";
 
 const CHECKS: Record<MacPermission, () => Promise<boolean>> = {
   microphone: checkMicrophonePermission,
   accessibility: checkAccessibilityPermission,
-  inputMonitoring: checkInputMonitoringPermission,
 };
 const REQUESTS: Record<MacPermission, () => Promise<unknown>> = {
   microphone: requestMicrophonePermission,
   accessibility: requestAccessibilityPermission,
-  inputMonitoring: requestInputMonitoringPermission,
 };
 
 export async function hasPermission(p: MacPermission): Promise<boolean> {
@@ -86,6 +80,29 @@ export async function requestPermission(p: MacPermission): Promise<boolean> {
     console.warn(`Permission request failed (${p}):`, e);
   }
   return hasPermission(p);
+}
+
+/** Tilgængelighed (run 2): one button. Asking first puts WalkieTalkey in
+ *  the list, so the pane that opens has its switch ready; the app notices
+ *  the grant by itself (usePermission). */
+export async function openAccessibilityPane() {
+  await requestPermission("accessibility");
+  await openSettingsPage("accessibility");
+}
+
+/** Every Accessibility button (DESK-13): an ad-hoc build that was rebuilt or
+ *  reinstalled can show WalkieTalkey switched on in System Settings while
+ *  macOS does not trust it, and that switch then does nothing. The backend
+ *  resets only WalkieTalkey's own entry and shows macOS's dialog (a no-op
+ *  when the app is trusted), so the pane that opens has a switch that works. */
+export async function repairAccessibilityAndOpenPane() {
+  try {
+    await commands.wtAccessibilityRepair();
+    await openSettingsPage("accessibility");
+  } catch {
+    // A backend without the repair: the pane alone.
+    await openAccessibilityPane();
+  }
 }
 
 /** Windows: whether the privacy settings let desktop apps use the microphone. */
@@ -127,10 +144,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
-export async function restartApp() {
-  try {
-    await relaunch();
-  } catch (e) {
-    console.error("Could not restart:", e);
-  }
+/** Phone dictations arrive with a notification (DESK-15, DESK-56). Run 2 asks
+ *  when the user pairs a phone, where the reason is plain, instead of in a
+ *  step of its own. */
+let notificationsAsked: Promise<void> | null = null;
+export function askForNotifications(): Promise<void> {
+  notificationsAsked ??= (async () => {
+    if ((await notificationPermission()) === "not_determined")
+      await requestNotificationPermission();
+  })();
+  return notificationsAsked;
 }

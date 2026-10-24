@@ -1051,6 +1051,11 @@ impl TranscriptionManager {
         };
         // WalkieTalkey (DESK-41): punctuation before filler removal (6.4).
         outcome.text = crate::walkietalkey::punctuation::apply(&self.app_handle, outcome.text);
+        // WalkieTalkey (run 2): Danish never needs letters from other scripts;
+        // whatever the chunk guard could not decode away is removed.
+        if outcome.setup.run_options.language.as_deref() == Some("da") {
+            outcome.text = crate::pipeline::da::script::strip_foreign_letters(&outcome.text);
+        }
         let settings = get_settings(&self.app_handle);
         let final_result = finish_text(outcome, &settings);
 

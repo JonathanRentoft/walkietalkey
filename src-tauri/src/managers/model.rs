@@ -1774,15 +1774,16 @@ impl ModelManager {
             disarmed: false,
         };
 
-        // WalkieTalkey (DESK-32): a company's own model server replaces
-        // Hugging Face entirely (many companies block huggingface.co). The
-        // file is checked against the compiled-in SHA-256; a failed check
-        // deletes it and retries once, then reports the error.
+        // WalkieTalkey (DESK-32, DESK-102): our own models come from our
+        // release on GitHub, and a company's own model server replaces every
+        // source (many companies block huggingface.co). The file is checked
+        // against the compiled-in SHA-256; a failed check deletes it and
+        // retries once, then reports the error.
         let model_base_url = crate::walkietalkey::store::get(&self.app_handle).model_base_url;
         if let Some(mirror) =
-            crate::walkietalkey::models::company_mirror(model_base_url.as_deref(), &model_id)
+            crate::walkietalkey::models::direct_source(model_base_url.as_deref(), &model_id)
         {
-            info!("Downloading {} from the company model server", model_id);
+            info!("Downloading {} from {}", model_id, mirror.url);
             let mut last_error = None;
             for _ in 0..2 {
                 match self
@@ -1799,8 +1800,8 @@ impl ModelManager {
                     Ok(false) => return Ok(()),
                     Err(e) => {
                         warn!(
-                            "Company model server download failed for {}: {:?}",
-                            model_id, e
+                            "Download failed for {} from {}: {:?}",
+                            model_id, mirror.url, e
                         );
                         last_error = Some(e);
                     }
@@ -2068,6 +2069,16 @@ impl ModelManager {
     }
 
     pub async fn download_model(&self, model_id: &str) -> Result<()> {
+        // WalkieTalkey (DESK-11): the default model starts downloading at the
+        // first launch; a second request for the same model joins that
+        // download instead of writing the same partial file twice.
+        let Some(_slot) = crate::walkietalkey::models::begin_download(model_id) else {
+            return crate::walkietalkey::models::wait_for_download(model_id, || {
+                self.get_model_info(model_id)
+                    .is_some_and(|m| m.is_downloaded)
+            })
+            .await;
+        };
         let model_info = {
             let models = self.available_models.lock().unwrap();
             models.get(model_id).cloned()

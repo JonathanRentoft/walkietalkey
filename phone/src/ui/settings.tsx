@@ -2,7 +2,6 @@
 import { useState, type ReactNode } from "react";
 import { ShinyButton } from "@walkietalkey/ui";
 import type { ComputerView, Notice, Snapshot } from "../core/controller";
-import type { Mode } from "../core/machine";
 import { T, fill } from "../lib/strings";
 
 declare const __APP_VERSION__: string;
@@ -12,7 +11,6 @@ export function SettingsScreen(props: {
   onBack: () => void;
   onPair: () => void;
   onRemove: (roomId: string) => Promise<void>;
-  onMode: (mode: Mode) => void;
   onHaptics: (on: boolean) => void;
 }) {
   const { snap } = props;
@@ -91,32 +89,6 @@ export function SettingsScreen(props: {
           ))}
         </ul>
         <ShinyButton onClick={props.onPair}>{T.pairTitle}</ShinyButton>
-      </section>
-
-      <section aria-labelledby="wt-s-mode">
-        <h2 id="wt-s-mode">{T.holdOrTap}</h2>
-        <div
-          className="wt-choices"
-          role="radiogroup"
-          aria-labelledby="wt-s-mode"
-        >
-          {(
-            [
-              ["hold", T.holdToTalk],
-              ["toggle", T.tapToToggle],
-            ] as const
-          ).map(([mode, label]) => (
-            <label key={mode} className="wt-choice">
-              <input
-                type="radio"
-                name="wt-mode"
-                checked={snap.settings.mode === mode}
-                onChange={() => props.onMode(mode)}
-              />
-              <span>{label}</span>
-            </label>
-          ))}
-        </div>
       </section>
 
       <section aria-labelledby="wt-s-haptics">

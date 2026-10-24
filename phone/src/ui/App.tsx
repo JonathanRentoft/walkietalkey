@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { PairingPayload } from "@walkietalkey/protocol";
 import type { PhoneController } from "../core/controller";
+import { suggestPhoneName } from "../lib/pairingLink";
 import type { Platform } from "../lib/platform";
 import { T } from "../lib/strings";
 import { MainScreen } from "./MainScreen";
@@ -35,6 +36,10 @@ export interface AppProps {
   allowInsecureLocalhost: boolean;
   /** A pairing link the app was opened with, or that arrived later (iOS shell, hashchange). */
   link: { payload: PairingPayload | null; invalid: boolean; seq: number };
+  /** The home-screen app's first launch without a link: open the scanner at once (Phase 5). */
+  scanOnStart?: boolean;
+  /** A pairing link is done with: paired, cancelled, or refused as expired or full (Phase 5). */
+  onLinkHandled?: (payload: PairingPayload) => void;
 }
 
 export function App({
@@ -42,12 +47,16 @@ export function App({
   platform,
   allowInsecureLocalhost,
   link,
+  scanOnStart = false,
+  onLinkHandled,
 }: AppProps) {
   const snap = useSyncExternalStore(
     controller.subscribe,
     controller.getSnapshot,
   );
-  const [view, setView] = useState<View>({ name: "home" });
+  const [view, setView] = useState<View>(
+    scanOnStart ? { name: "scan" } : { name: "home" },
+  );
   const [sheet, setSheet] = useState<"picker" | "details" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -61,7 +70,7 @@ export function App({
     }
   }, [link, controller]);
 
-  // The iOS shell's "Start diktering": back to the main screen and record as in tap mode. Ignored
+  // The iOS shell's "Start diktering": back to the main screen and record hands-free. Ignored
   // while pairing (scanner, name) and when not paired (the controller checks that).
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -108,16 +117,31 @@ export function App({
       <NameScreen
         key={view.payload.n + view.payload.a.join(",")}
         payload={view.payload}
-        defaultName={snap.settings.deviceName ?? platform.device}
+        defaultName={
+          snap.settings.deviceName ??
+          suggestPhoneName(view.payload.n, platform.device)
+        }
         pairing={snap.pairing}
         onPair={async (name) => {
-          if (await controller.pair(view.payload, name)) home();
+          const p = view.payload;
+          if (await controller.pair(p, name)) {
+            onLinkHandled?.(p);
+            home();
+            return;
+          }
+          const r = controller.getSnapshot().pairing;
+          if (
+            r.state === "error" &&
+            (r.kind === "expired" || r.kind === "full")
+          )
+            onLinkHandled?.(p);
         }}
         onRescan={() => {
           controller.clearPairingError();
           setView({ name: "scan" });
         }}
         onCancel={() => {
+          onLinkHandled?.(view.payload);
           controller.clearPairingError();
           home();
         }}
@@ -130,7 +154,6 @@ export function App({
         onBack={home}
         onPair={() => setView({ name: "pair" })}
         onRemove={(roomId) => controller.removeRoom(roomId)}
-        onMode={(mode) => controller.setMode(mode)}
         onHaptics={(on) => controller.setHaptics(on)}
       />
     );

@@ -19,8 +19,9 @@ tags:
 
 # Ekko v1 Tiny, GGUF for transcribe.cpp
 
-DRAFT (spec DESK-33). Not uploaded: like Edda it was trained on FT Speech, so
-publishing waits on the owner's decision about those terms (decision 18.7).
+Published as assets of the WalkieTalkey release
+[`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1) (spec DESK-33). Like Edda it was trained on FT Speech;
+whether those terms limit companies' use stays open (decision 18.7).
 
 **Ekko v1 Tiny** by RyeAI, a 110M-parameter Danish FastConformer RNN-T,
 converted to GGUF for [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp)
@@ -99,4 +100,13 @@ CPU: 0.09 s for 10 s of speech, 0.35 s for 35 s.
 Ekko v1 Tiny by RyeAI, derived from NVIDIA's parakeet-rnnt-110m-da-dk.
 Licensed by NVIDIA Corporation under the NVIDIA Open Model License. Converted
 with transcribe.cpp (MIT). GGUF conversion and quantisation by the WalkieTalkey
-project.
+project (Navigent.io ApS).
+
+## Download
+
+Release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1): `ekko-v1-tiny-Q8_0.gguf`, with this card as
+`ekko-v1-tiny-README.md` and the licence files as
+`ekko-v1-tiny-MODEL_LICENSE.md`, `ekko-v1-tiny-NOTICE`,
+`ekko-v1-tiny-NVIDIA-OPEN-MODEL-LICENSE.pdf`, `ekko-v1-tiny-CC-BY-4.0.txt`,
+`ekko-v1-tiny-CORAL-LICENSE` and `ekko-v1-tiny-FTSPEECH-LICENSE.md`;
+`SHA256SUMS` lists every file.

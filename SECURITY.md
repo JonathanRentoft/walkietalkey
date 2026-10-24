@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report vulnerabilities privately through GitHub's **Report a vulnerability** button on the [Security tab](https://github.com/JonathanRentoft/walkietalkey/security/advisories/new). Never in a public issue or discussion.
+Report vulnerabilities privately through GitHub's **Report a vulnerability** button on the [Security tab](https://github.com/JonathanRentoft/walkietalkey/security/advisories/new), or by email to kontakt@walkietalkey.com if you cannot use GitHub. Never in a public issue or discussion.
 
 We answer within 7 days, keep you informed while we fix it, and credit you in the release notes unless you prefer otherwise.
 

@@ -247,24 +247,55 @@ export function NameScreen(props: {
   );
 }
 
-/** PHONE-04: in a Safari tab on iOS, install first. A pairing link opened here never joins (spec 5.3). */
-export function InstallScreen(props: { fromLink: boolean }) {
+/**
+ * PHONE-04: in a Safari tab on iOS, install first. A pairing link opened here never joins
+ * (spec 5.3); it stays in the address bar, so the home-screen app pairs on its first launch
+ * (run 2, Phase 5). `computer` is the name from a valid link.
+ */
+export function InstallScreen(props: {
+  computer: string | null;
+  fromLink: boolean;
+}) {
+  const { computer } = props;
+  // An invalid link: as before, scan in the home-screen app.
+  if (props.fromLink && !computer)
+    return (
+      <main className="wt-screen">
+        <Brand />
+        <section className="wt-screen-body">
+          <h1 aria-live="polite">{T.openFromHome}</h1>
+          <p>{T.installTitle}</p>
+          <ol className="wt-steps">
+            {T.installSteps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
+        </section>
+      </main>
+    );
+  const steps = computer
+    ? [...T.installSteps.slice(0, 2), fill(T.installOpenPairs, { computer })]
+    : T.installSteps;
   return (
     <main className="wt-screen">
       <Brand />
       <section className="wt-screen-body">
-        {props.fromLink ? (
-          <h1 aria-live="polite">{T.openFromHome}</h1>
-        ) : (
-          <h1>{T.installTitle}</h1>
-        )}
-        {props.fromLink ? <p>{T.installTitle}</p> : null}
+        <h1>{T.installTitle}</h1>
         <ol className="wt-steps">
-          {T.installSteps.map((s) => (
+          {steps.map((s) => (
             <li key={s}>{s}</li>
           ))}
         </ol>
-        <p>{T.installWhy}</p>
+        {computer ? (
+          <>
+            <p>{T.installInTime}</p>
+            <p>
+              {T.installAlready} {T.openFromHome}
+            </p>
+          </>
+        ) : (
+          <p>{T.installWhy}</p>
+        )}
       </section>
     </main>
   );

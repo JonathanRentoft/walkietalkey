@@ -7,9 +7,39 @@ import {
 } from "@walkietalkey/protocol";
 import {
   cleanAppUrl,
+  pairingLinkId,
   parseScanned,
+  peekPairingFragment,
+  suggestPhoneName,
   takePairingFragment,
 } from "../src/lib/pairingLink";
+
+describe("the phone's name, prefilled (PHONE-12, Phase 5)", () => {
+  it("takes the owner from the computer's name", () => {
+    expect(suggestPhoneName("Jonathans MacBook Pro", "iPhone")).toBe(
+      "Jonathans iPhone",
+    );
+    expect(suggestPhoneName("Mettes iMac", "iPhone")).toBe("Mettes iPhone");
+    expect(suggestPhoneName("Jonathan’s MacBook Air", "iPhone")).toBe(
+      "Jonathan’s iPhone",
+    );
+    expect(suggestPhoneName("Ida's Mac mini", "Android")).toBe("Ida's Android");
+    expect(suggestPhoneName("Anne-Maries MacBook", "iPhone")).toBe(
+      "Anne-Maries iPhone",
+    );
+  });
+
+  it("falls back to the kind of phone", () => {
+    for (const n of [
+      "MacBook Pro",
+      "Kontor-PC",
+      "DESKTOP-4F2K9QX",
+      "",
+      "s Mac",
+    ])
+      expect(suggestPhoneName(n, "iPhone")).toBe("iPhone");
+  });
+});
 
 let payload: PairingPayload;
 
@@ -107,6 +137,28 @@ describe("pairing link (PHONE-11, PHONE-15)", () => {
     expect(() =>
       parseScanned("https://example.com/not-a-pairing-code"),
     ).toThrow();
+  });
+
+  it("the Safari tab on an iPhone reads the link but leaves it in the address bar (Phase 5)", () => {
+    const url = encodePairingUrl("https://app.walkietalkey.com", payload);
+    const r = peekPairingFragment({ href: url });
+    expect(r.kind).toBe("pairing");
+    if (r.kind === "pairing") expect(r.payload.n).toBe("Jonathans MacBook");
+    expect(peekPairingFragment({ href: "https://x.dk/" }).kind).toBe("none");
+    expect(peekPairingFragment({ href: "https://x.dk/p#bm90" }).kind).toBe(
+      "invalid",
+    );
+  });
+
+  it("knows a link again by the hash of its single-use secret, never the secret itself", async () => {
+    const id = await pairingLinkId(payload);
+    expect(id).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await pairingLinkId(payload)).toBe(id);
+    expect(await pairingLinkId({ ...payload, a: randomBytes(32) })).not.toBe(
+      id,
+    );
+    const b64 = (u: Uint8Array) => Buffer.from(u).toString("base64url");
+    expect(id).not.toContain(b64(payload.a).slice(0, 12));
   });
 
   it("refuses ws:// relays unless debugging against localhost (SEC-06)", () => {

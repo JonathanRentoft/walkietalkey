@@ -737,74 +737,51 @@
         "title": "Dansk tale til tekst. Gratis, og det kører på din egen computer.",
         "start": "Kom i gang"
       },
-      "model": {
-        "title": "Hent talemodel",
-        "lead": "WalkieTalkey henter Edda, en dansk talemodel på cirka 890 MB. Talen bliver til tekst på din egen computer.",
-        "continueNote": "Du kan fortsætte, mens den hentes.",
-        "continue": "Fortsæt",
-        "importNote": "Har du allerede modelfilen, kan du vælge den med Importér modelfil.",
-        "fastTitle": "En hurtigere model",
-        "useFast": "Brug Ekko v1 Tiny",
-        "keepEdda": "Behold Edda"
+      "phone": {
+        "title": "Telefon",
+        "lead": "Vil du også kunne tale ind i telefonen?",
+        "why": "Tal ind i telefonens app, og teksten kommer frem på denne computer. Krypteret fra telefon til computer.",
+        "show": "Vis koden"
       },
       "microphone": {
         "title": "Mikrofon",
         "lead": "WalkieTalkey skal bruge mikrofonen for at høre dig",
-        "why": "WalkieTalkey optager, mens du holder tasten nede. Talen bliver til tekst på din egen computer.",
-        "promptNote": "macOS spørger dig nu, om WalkieTalkey må bruge mikrofonen. Vælg Tillad.",
+        "why": "Den lytter kun, mens du taler til den, og talen bliver til tekst på din egen computer.",
         "allow": "Giv adgang til mikrofonen",
         "granted": "Mikrofonen er klar",
-        "deniedMac": "WalkieTalkey har ikke adgang til mikrofonen. Slå den til i Systemindstillinger under Anonymitet og sikkerhed, Mikrofon.",
-        "deniedWindows": "Windows giver ikke apps adgang til mikrofonen. Slå den til under Indstillinger, Privatliv og sikkerhed, Mikrofon.",
-        "openSettings": "Åbn indstillinger for mikrofon"
+        "openSettings": "Åbn Systemindstillinger",
+        "deniedWindows": "Windows giver ikke apps adgang til mikrofonen.",
+        "openSettingsWindows": "Åbn indstillinger for mikrofon"
       },
-      "key": {
-        "title": "Tasten",
-        "leadMac": "Hold fn nede og tal",
-        "leadWindows": "Hold højre Ctrl nede og tal",
-        "copilotNote": "Mange nye bærbare har en Copilot-tast i stedet for højre Ctrl. Vil du bruge den eller en anden tast, så vælg Vælg en anden tast, og tryk på tasten.",
-        "monitoringTitle": "Inputovervågning",
-        "monitoringWhy": "macOS skal give WalkieTalkey adgang til Inputovervågning, før appen kan se, at du holder fn nede. Slå WalkieTalkey til på listen, der åbner.",
-        "openMonitoring": "Åbn Inputovervågning",
-        "monitoringOn": "Inputovervågning er slået til",
-        "globeTitle": "Globustasten",
-        "globeWhy": "macOS bruger også fn-tasten (globustasten) til sine egne funktioner. Åbn Tastatur, og sæt Tryk på globustasten til Gør ingenting.",
-        "openKeyboard": "Åbn Tastatur",
-        "restartTitle": "Genstart",
-        "restartWhy": "macOS giver som regel først adgangen, når appen er startet igen. WalkieTalkey genstarter og fortsætter her.",
-        "restart": "Genstart WalkieTalkey",
-        "tryTitle": "Prøv at holde tasten",
-        "tryText": "Hold {{key}} nede et øjeblik.",
-        "down": "Tasten er nede",
-        "works": "Det virker"
-      },
-      "paste": {
-        "title": "Indsæt automatisk",
+      "waitingHint": "Slå WalkieTalkey til. Så går vi videre af os selv.",
+      "accessibility": {
+        "title": "Tilgængelighed",
         "lead": "Så teksten kan sættes ind, hvor du skriver",
-        "why": "macOS spørger, om WalkieTalkey må bruge Tilgængelighed. Det skal til, for at teksten kan sættes ind. Uden det lægges teksten på udklipsholderen, og du indsætter den selv med {{key}}.",
-        "allow": "Giv adgang",
-        "granted": "Indsæt automatisk er slået til"
-      },
-      "notifications": {
-        "title": "Notifikationer",
-        "lead": "Når du dikterer fra telefonen, lægges teksten på udklipsholderen, og en notifikation fortæller, at den er klar.",
-        "example": "Husk at købe mælk på vej hjem",
-        "allow": "Slå notifikationer til",
-        "granted": "Notifikationer er slået til",
-        "denied": "Notifikationer er ikke slået til. Du kan slå dem til i systemets indstillinger.",
-        "openSettings": "Åbn Notifikationer"
-      },
-      "phone": {
-        "title": "Telefon",
-        "lead": "Vil du også kunne tale ind i telefonen?",
-        "why": "Hold knappen i telefonens app, tal, og slip. Teksten kommer frem på denne computer. Krypteret fra telefon til computer.",
-        "show": "Vis koden"
+        "why": "Den samme tilladelse lader WalkieTalkey se, når du holder fn nede. Det er den eneste, tasten skal bruge.",
+        "open": "Åbn Systemindstillinger",
+        "granted": "Tilgængelighed er slået til"
       },
       "try": {
         "title": "Prøv det",
         "lead": "Hold {{key}} nede og sig: Hej, det her er min første diktering.",
-        "fieldLabel": "Skriv her, eller hold tasten og tal",
-        "done": "Det virker. Du er klar."
+        "tap": "Du kan også trykke på {{key}} én gang, tale, og trykke igen, når du er færdig.",
+        "fieldLabel": "Teksten kommer her",
+        "done": "Det virker. Du er klar.",
+        "modelWaiting": "Talemodellen hentes stadig. Du kan prøve, så snart den er klar.",
+        "keyNotRunning": "WalkieTalkey kan ikke se tasten endnu.",
+        "otherKeyWindows": "Mange nye bærbare har en Copilot-tast i stedet for højre Ctrl. Vil du bruge den eller en anden tast, så tryk på Vælg en anden tast og derefter på tasten."
+      },
+      "done": {
+        "title": "Klar",
+        "lead": "Hold {{key}} for at tale, eller tryk for at tale uden at holde.",
+        "whereMac": "Du finder WalkieTalkey i menulinjen øverst på skærmen.",
+        "whereWindows": "Du finder WalkieTalkey i proceslinjen nederst på skærmen.",
+        "tipHold": "Hold nede, mens du taler. Slip, og teksten bliver sat ind.",
+        "tipTap": "Tryk én gang for at tale uden at holde. Tryk igen for at stoppe.",
+        "tipEsc": "Stopper uden at skrive noget.",
+        "fastTitle": "En hurtigere model",
+        "useFast": "Brug Ekko v1 Tiny",
+        "keepEdda": "Behold Edda"
       }
     },
     "model": {
@@ -863,7 +840,8 @@
       "raw": "Brugte teksten uden oprydning",
       "notReady": "Talemodellen er ikke klar endnu",
       "error": "Kunne ikke hente talemodellen. Prøv igen.",
-      "countdown": "{{seconds}} sekunder tilbage"
+      "countdown": "{{seconds}} sekunder tilbage",
+      "handsFree": "Tryk igen for at stoppe"
     },
     "nav": {
       "label": "Indstillinger",
@@ -895,25 +873,30 @@
       "pillTop": "Øverst",
       "pillNever": "Vis aldrig",
       "pillForPhone": "Vis pillen for dikteringer fra telefonen",
-      "pillForPhoneDesc": "Ikonet viser altid, når telefonen sender lyd.",
+      "pillForPhoneDesc": "Pillen viser det samme, som når du bruger tasten.",
       "notificationsGroup": "Notifikationer",
       "showText": "Vis teksten i notifikationen",
       "showTextDesc": "Slå fra, når du deler din skærm eller holder møde. Så står der kun, hvordan du indsætter teksten.",
       "preview": "Sådan ser notifikationen ud:",
       "language": "Sprog",
-      "languageDesc": "Sproget i WalkieTalkeys vinduer. Talemodellen er dansk."
+      "languageDesc": "Sproget i WalkieTalkeys vinduer. Talemodellen er dansk.",
+      "previewExample": "Husk at købe mælk på vej hjem",
+      "notificationsOff": "Notifikationer er ikke slået til, så du ser ikke, når tekst fra telefonen er klar.",
+      "notificationsAllow": "Slå notifikationer til",
+      "notificationsOpen": "Åbn Notifikationer"
     },
     "key": {
       "key": "Tast",
-      "keyDescMac": "Hold tasten nede, mens du taler. Tastaturer, der ikke er fra Apple, sender ofte ikke fn, så vælg en anden tast her.",
-      "keyDescWindows": "Hold tasten nede, mens du taler. Har din computer en Copilot-tast, kan du vælge den her.",
-      "mode": "Tilstand",
-      "hold": "Hold for at tale",
-      "holdDesc": "Optager, mens du holder tasten nede.",
-      "tap": "Tryk for at starte og stoppe",
-      "tapDesc": "Tryk én gang for at starte og én gang til for at stoppe.",
+      "keyDescMac": "Tastaturer, der ikke er fra Apple, sender ofte ikke fn. Så kan du vælge en anden tast her.",
+      "keyDescWindows": "Har din computer en Copilot-tast, kan du vælge den her.",
       "test": "Test",
-      "testDesc": "Hold tasten nede. Tasten herunder bliver trykket ned, når WalkieTalkey ser den."
+      "testDesc": "Tryk på tasten, eller hold den nede. Tasten herunder bliver trykket ned, når WalkieTalkey ser den.",
+      "how": "Sådan bruger du tasten",
+      "howHoldOrTap": "Hold {{key}} for at tale, eller tryk for at tale uden at holde. Tryk igen for at stoppe.",
+      "howHold": "Hold {{key}} nede, mens du taler. Slip for at stoppe.",
+      "howTap": "Tryk på {{key}} for at tale, og tryk igen for at stoppe.",
+      "works": "Det virker",
+      "down": "Tasten er nede"
     },
     "text": {
       "output": "Når du dikterer med tasten",
@@ -928,7 +911,8 @@
       "never": "Aldrig",
       "share": "Del med mine andre enheder",
       "shareDescMac": "Når den er slået fra, lægges teksten kun på denne Macs udklipsholder, så Universal Clipboard ikke sender den til dine andre Apple-enheder.",
-      "shareDescWindows": "Når den er slået fra, kommer teksten ikke i Windows' udklipsholderhistorik og ikke i udklipsholderen i skyen."
+      "shareDescWindows": "Når den er slået fra, kommer teksten ikke i Windows' udklipsholderhistorik og ikke i udklipsholderen i skyen.",
+      "allow": "Giv adgang"
     },
     "vocabulary": {
       "words": "Ord",
@@ -999,7 +983,7 @@
       "openHistory": "Åbn historikken"
     },
     "phone": {
-      "intro": "Hold knappen i telefonens app, tal, og slip. Teksten lægges på udklipsholderen på denne computer. Krypteret fra telefon til computer.",
+      "intro": "Hold knappen i telefonens app og tal, eller tryk for at tale uden at holde. Teksten lægges på udklipsholderen på denne computer. Krypteret fra telefon til computer.",
       "paired": "Parrede telefoner",
       "none": "Ingen telefoner er parret endnu.",
       "noName": "en telefon uden navn",
@@ -1095,7 +1079,15 @@
         "debug": "Starter med fejlsøgning slået til.",
         "file": "Laver en lydfil om til tekst og skriver resultatet.",
         "listModels": "Viser de modeller, appen kender."
-      }
+      },
+      "keyMode": "Tastens tilstand",
+      "keyModeDesc": "Som standard virker tasten både, når du holder den, og når du trykker på den.",
+      "keyModeBoth": "Hold eller tryk",
+      "keyModeBothDesc": "Hold for at tale, eller tryk for at tale uden at holde.",
+      "keyModeHold": "Kun hold",
+      "keyModeHoldDesc": "Optager, mens du holder tasten nede.",
+      "keyModeTap": "Kun tryk",
+      "keyModeTapDesc": "Tryk én gang for at starte og én gang til for at stoppe."
     },
     "about": {
       "claims": "Talen bliver til tekst på din egen computer. Ingen konto. Ingen sporing.",
@@ -1156,6 +1148,29 @@
       "deleteAllConfirmTitle": "Slet al historik?",
       "deleteAllConfirm": "Alle dikteringer og al gemt lyd slettes fra denne computer. Det kan ikke fortrydes.",
       "storage": "Historikken ligger i appens mappe. Den er kun krypteret, hvis computerens disk er krypteret med FileVault eller BitLocker."
+    },
+    "globe": {
+      "title": "Globustasten",
+      "usage": {
+        "inputSource": "Når du trykker på fn, skifter din Mac også tastatursprog.",
+        "emoji": "Når du trykker på fn, åbner din Mac også emoji og symboler.",
+        "dictation": "Når du trykker på fn, starter din Mac også sin egen diktering.",
+        "other": "Når du trykker på fn, gør din Mac også noget andet."
+      },
+      "fix": "Ret det for mig",
+      "fixed": "Ordnet. Nu starter fn kun WalkieTalkey.",
+      "failed": "Det lykkedes ikke. Prøv igen."
+    },
+    "status": {
+      "label": "Status",
+      "ready": "Hold {{key}} for at tale",
+      "readySub": "eller tryk for at tale uden at holde",
+      "paused": "Sat på pause",
+      "pausedSub": "Tasten gør ingenting lige nu."
+    },
+    "access": {
+      "lost": "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+      "repair": "Giv adgang igen"
     }
   }
 }

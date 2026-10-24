@@ -225,7 +225,9 @@ jobs:
         run: bun install --cpu=arm64
 
       - name: rustup install target
-        if: ${{ inputs.target != '' && !contains(inputs.target, 'x86_64-unknown-linux-gnu') && !contains(inputs.target, 'aarch64-unknown-linux-gnu') && !contains(inputs.target, 'x86_64-pc-windows-msvc') }}
+        # universal-apple-darwin is not a rustup target: the toolchain step above already added
+        # both Mac targets, and Tauri builds each and joins them with lipo.
+        if: ${{ inputs.target != '' && inputs.target != 'universal-apple-darwin' && !contains(inputs.target, 'x86_64-unknown-linux-gnu') && !contains(inputs.target, 'aarch64-unknown-linux-gnu') && !contains(inputs.target, 'x86_64-pc-windows-msvc') }}
         run: rustup target add ${{ inputs.target }}
 
       - name: import Apple Developer Certificate

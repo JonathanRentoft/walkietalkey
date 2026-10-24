@@ -65,6 +65,21 @@ export function useKeyLabel(platform: WtPlatform) {
   );
 }
 
+/** The key's name in a sentence: "fn", "Ctrl", "Copilot-tasten", ... */
+export function useKeyName(platform: WtPlatform): string {
+  const { t } = useTranslation();
+  const binding =
+    useSettingsStore(
+      (s) => s.settings?.bindings?.[DICTATION_BINDING]?.current_binding,
+    ) ?? (platform === "macos" ? "fn" : "ctrl_right");
+  const label = useKeyLabel(platform);
+  if (isCopilotBinding(binding)) return t("wt.keys.copilot");
+  const parts = keyParts(binding);
+  if (parts.length === 1 && /^ctrl(_left|_right)?$/.test(parts[0]))
+    return "Ctrl";
+  return parts.map(label).join(" + ");
+}
+
 export function KeyCaps(props: {
   binding: string;
   platform: WtPlatform;
@@ -204,7 +219,12 @@ export function KeyPicker(props: {
       <div className="wt-keypicker-caps" aria-live="polite">
         {recording ? (
           live ? (
-            <KeyCaps binding={live} platform={props.platform} pressed />
+            <KeyCaps
+              binding={live}
+              platform={props.platform}
+              pressed
+              size={56}
+            />
           ) : (
             <span className="wt-keypicker-prompt">{t("wt.keys.pressNow")}</span>
           )
@@ -213,6 +233,7 @@ export function KeyPicker(props: {
             binding={current}
             platform={props.platform}
             pressed={pressed}
+            size={56}
           />
         )}
       </div>

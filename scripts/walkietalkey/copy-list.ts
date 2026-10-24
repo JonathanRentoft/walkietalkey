@@ -85,9 +85,16 @@ out of date.
 
 Also for the owner:
 
-- TODO(copy): macOS System Settings labels quoted in onboarding step 4
-  ("Inputovervågning", "Tastatur", "Tryk på globustasten", "Gør ingenting")
-  and step 3 ("Anonymitet og sikkerhed") must match the Danish macOS UI.
+- TODO(copy): macOS names quoted on the screens ("Systemindstillinger",
+  "Tilgængelighed", "menulinjen", "Globustasten") must match the Danish
+  macOS UI. Run 2 quotes no settings paths: every permission step has one
+  button that opens the exact pane.
+- TODO(copy): "Tryk igen for at stoppe" (the pill while recording
+  hands-free) and "Ret det for mig" come from the run 2 brief, not from
+  Appendix A; "Giv adgang igen" from the lead, and the neutral "WalkieTalkey
+  har ikke længere adgang til Tilgængelighed." from the run 2 review (the
+  user may have switched access off on purpose), replacing spec 6.2's "macOS
+  har glemt WalkieTalkeys adgang efter opdateringen.".
 - TODO(copy): strings written by the backend and shown as they come: the
   DESK-31 speed reason (src-tauri/src/walkietalkey/speed.rs), "en telefon
   uden navn", and the notification titles (notify.rs).

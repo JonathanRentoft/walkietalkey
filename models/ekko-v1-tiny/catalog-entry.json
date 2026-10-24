@@ -2,14 +2,14 @@
   "_comment": [
     "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
     "Accuracy: WER on FLEURS da_dk test (930 clips), Q8_0, language da, timestamps auto, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
-    "Replace `revision` with the commit models/upload.sh prints; description_da is draft UI copy."
+    "Files download from the GitHub release models-v1 (models/release.sh); description_da is draft UI copy."
   ],
   "model": {
     "id": "ekko-v1-tiny",
     "name": "Ekko v1 Tiny",
     "description": "Fast Danish model for computers without a GPU. No punctuation of its own",
     "repository": "walkietalkey/ekko-v1-tiny-gguf",
-    "revision": "REPLACE-WITH-COMMIT-FROM-models/upload.sh",
+    "revision": "models-v1",
     "previousRevisions": [],
     "license": "other",
     "family": "parakeet",

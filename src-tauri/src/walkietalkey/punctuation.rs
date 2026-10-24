@@ -5,13 +5,17 @@
 //! (not downloaded yet), or on an Intel Mac, the text passes unchanged.
 //!
 //! The files are fetched at start when they are missing (DESK-32: resumed,
-//! checked against SHA-256): from the company's `ModelBaseUrl` when set,
-//! else from RyeAI's own Hugging Face repository at the pinned revision (our
-//! copy there is byte for byte the same, and our organisation's repository
-//! does not exist yet). Their licence files come along.
+//! checked against SHA-256, a failed check retried once): from our GitHub
+//! release `models-v1` (byte for byte RyeAI's files at the revision the
+//! reference tool pins), or from the company's `ModelBaseUrl` when set
+//! (DESK-102). Their licence files come along. Release asset names cannot
+//! hold a `/`, so there the licence files are flat with an `ekko-pnc-`
+//! prefix (`ekko-pnc-CC-BY-4.0.txt`); a company server keeps the paths
+//! (`LICENSES/CC-BY-4.0.txt`). Locally they always land at their paths.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+#[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
 use std::time::Instant;
 
 use log::{info, warn};
@@ -136,16 +140,41 @@ pub const LICENCE_FILES: [PncFile; 6] = [
     },
 ];
 
-/// RyeAI's repository at the revision the reference tool pins.
-pub const RYEAI_BASE: &str =
-    "https://huggingface.co/RyeAI/ekko-pnc/resolve/d3129544e4e0155093e192cac58a9e69a4dea1ff";
+/// Where the files come from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Source {
+    /// Our release: flat asset names.
+    Release(String),
+    /// A company's server (Appendix B `ModelBaseUrl`): the files' paths.
+    Company(String),
+}
 
-/// Where the files come from: the company's server (same file names, Appendix
-/// B `ModelBaseUrl`), or RyeAI's repository.
-pub fn source_base(model_base_url: Option<&str>) -> String {
+impl Source {
+    /// The URL of the file at local path `name` here.
+    pub fn url(&self, name: &str) -> String {
+        match self {
+            Source::Release(base) => format!("{base}/{}", release_asset_name(name)),
+            Source::Company(base) => format!("{base}/{name}"),
+        }
+    }
+}
+
+/// A file's asset name in our release: a licence file in a folder gets
+/// `ekko-pnc-` and its base name, the rest keep their names.
+pub fn release_asset_name(name: &str) -> String {
+    let is_runtime = RUNTIME_FILES.iter().any(|f| f.name == name);
+    if is_runtime {
+        return name.to_string();
+    }
+    let base = name.rsplit('/').next().unwrap_or(name);
+    format!("ekko-pnc-{base}")
+}
+
+/// The company's server when `ModelBaseUrl` is set, else our release.
+pub fn source(model_base_url: Option<&str>) -> Source {
     match model_base_url.map(|b| b.trim_end_matches('/')) {
-        Some(base) if !base.is_empty() => base.to_string(),
-        _ => RYEAI_BASE.to_string(),
+        Some(base) if !base.is_empty() => Source::Company(base.to_string()),
+        _ => Source::Release(super::models::MODEL_RELEASE_BASE.to_string()),
     }
 }
 
@@ -217,11 +246,11 @@ pub fn download(app: &AppHandle) {
     if matches!(*STATUS.lock().unwrap(), Some(PncStatus::Downloading)) {
         return;
     }
-    let base = source_base(super::store::get(app).model_base_url.as_deref());
+    let from = source(super::store::get(app).model_base_url.as_deref());
     set_status(app, PncStatus::Downloading);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        match fetch_all(&base, &dir).await {
+        match fetch_all(&from, &dir).await {
             Ok(()) => {
                 info!("Ekko PnC is ready in {}", dir.display());
                 set_status(&app, PncStatus::Ready);
@@ -239,19 +268,33 @@ pub fn download(app: &AppHandle) {
     });
 }
 
-async fn fetch_all(base: &str, dir: &Path) -> anyhow::Result<()> {
+async fn fetch_all(from: &Source, dir: &Path) -> anyhow::Result<()> {
+    // Licence files first, so the model never arrives without them.
+    let files: Vec<(&'static str, &'static str)> = LICENCE_FILES
+        .iter()
+        .chain(RUNTIME_FILES.iter())
+        .map(|f| (f.name, f.sha256))
+        .collect();
+    fetch_files(from, dir, files).await
+}
+
+/// Fetches `(local path, sha256)` files into `dir`.
+async fn fetch_files<'a>(
+    from: &Source,
+    dir: &Path,
+    files: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> anyhow::Result<()> {
     let client = reqwest::Client::builder()
         .user_agent("WalkieTalkey/0.1 (+https://github.com/JonathanRentoft/walkietalkey)")
         .build()?;
-    // Licence files first, so the model never arrives without them.
-    for file in LICENCE_FILES.iter().chain(RUNTIME_FILES.iter()) {
-        fetch(
-            &client,
-            &format!("{base}/{}", file.name),
-            &dir.join(file.name),
-            file.sha256,
-        )
-        .await?;
+    for (name, sha256) in files {
+        let url = from.url(name);
+        let dest = dir.join(name);
+        // DESK-32: a failed check deletes the file and retries once.
+        if let Err(first) = fetch(&client, &url, &dest, sha256).await {
+            warn!("{name} did not arrive ({first}); trying once more");
+            fetch(&client, &url, &dest, sha256).await?;
+        }
     }
     Ok(())
 }
@@ -345,13 +388,78 @@ mod download_tests {
     }
 
     #[test]
-    fn a_company_server_replaces_ryeai() {
-        assert_eq!(source_base(None), RYEAI_BASE);
-        assert_eq!(source_base(Some("")), RYEAI_BASE);
+    fn our_release_has_flat_names_and_a_company_server_the_paths() {
+        // DESK-32 (release models-v1), DESK-102 (ModelBaseUrl).
+        let release = source(None);
+        assert_eq!(source(Some("")), release);
+        let licence = &LICENCE_FILES[2];
+        assert_eq!(licence.name, "LICENSES/CC-BY-4.0.txt");
         assert_eq!(
-            source_base(Some("https://modeller.firma.dk/wt/")),
-            "https://modeller.firma.dk/wt"
+            release.url(licence.name),
+            "https://github.com/JonathanRentoft/walkietalkey/releases/download/models-v1/ekko-pnc-CC-BY-4.0.txt"
         );
+        assert_eq!(
+            release.url(RUNTIME_FILES[0].name),
+            "https://github.com/JonathanRentoft/walkietalkey/releases/download/models-v1/pnc.int8.onnx"
+        );
+        let company = source(Some("https://modeller.firma.dk/wt/"));
+        assert_eq!(
+            company.url(licence.name),
+            "https://modeller.firma.dk/wt/LICENSES/CC-BY-4.0.txt"
+        );
+        assert_eq!(
+            company.url(RUNTIME_FILES[1].name),
+            "https://modeller.firma.dk/wt/tokenizer.json"
+        );
+        let names: Vec<String> = LICENCE_FILES
+            .iter()
+            .map(|f| release_asset_name(f.name))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "ekko-pnc-MODEL_LICENSE.md",
+                "ekko-pnc-NOTICE",
+                "ekko-pnc-CC-BY-4.0.txt",
+                "ekko-pnc-CC0-1.0.txt",
+                "ekko-pnc-CORAL-LICENSE",
+                "ekko-pnc-FTSPEECH-LICENSE.md",
+            ]
+        );
+        for f in &RUNTIME_FILES {
+            assert!(!release.url(f.name).contains("huggingface"));
+        }
+    }
+
+    #[test]
+    fn the_release_names_and_sums_match_the_manifest() {
+        // DESK-32: what models/manifest.json says release models-v1 holds.
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../models/manifest.json")).unwrap();
+        assert_eq!(
+            manifest["baseUrl"].as_str().unwrap().trim_end_matches('/'),
+            super::super::models::MODEL_RELEASE_BASE
+        );
+        let pnc = manifest["models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["id"] == "ekko-pnc")
+            .unwrap();
+        for f in &LICENCE_FILES {
+            let asset = &pnc["licenseAssets"][f.name];
+            assert_eq!(asset["asset"], release_asset_name(f.name), "{}", f.name);
+            assert_eq!(asset["sha256"], f.sha256, "{}", f.name);
+        }
+        for f in &RUNTIME_FILES {
+            let entry = pnc["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|e| e["name"] == f.name)
+                .unwrap();
+            assert_eq!(entry["path"], release_asset_name(f.name), "{}", f.name);
+        }
     }
 
     #[test]
@@ -364,14 +472,180 @@ mod download_tests {
         assert!(files_present(dir.path()));
     }
 
-    /// Downloads the real files from RyeAI (network): `cargo test --lib
-    /// download_tests::real -- --ignored`.
+    /// The release answers like GitHub: a 302 to its storage host, which
+    /// serves the bytes and honours Range requests. A fake server, never the
+    /// network.
+    mod fake_release {
+        use std::collections::HashMap;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::{Arc, Mutex};
+
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        pub struct Server {
+            pub base: String,
+            pub requests: Arc<Mutex<Vec<String>>>,
+            pub corrupt_once: Arc<Mutex<Option<String>>>,
+            pub served: Arc<AtomicUsize>,
+        }
+
+        /// Serves `files` (asset name -> bytes) at `/download/<name>` via a
+        /// redirect to `/storage/<name>`.
+        pub async fn start(files: HashMap<String, Vec<u8>>) -> Server {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let corrupt_once: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+            let served = Arc::new(AtomicUsize::new(0));
+            let files = Arc::new(files);
+            let (r, c, n) = (requests.clone(), corrupt_once.clone(), served.clone());
+            tokio::spawn(async move {
+                loop {
+                    let Ok((mut sock, _)) = listener.accept().await else {
+                        return;
+                    };
+                    let (files, r, c, n) = (files.clone(), r.clone(), c.clone(), n.clone());
+                    tokio::spawn(async move {
+                        let mut head = Vec::new();
+                        let mut byte = [0u8; 1];
+                        while !head.ends_with(b"\r\n\r\n") {
+                            if sock.read_exact(&mut byte).await.is_err() {
+                                return;
+                            }
+                            head.push(byte[0]);
+                        }
+                        let head = String::from_utf8_lossy(&head).to_string();
+                        let path = head.split_whitespace().nth(1).unwrap_or("").to_string();
+                        let range = head
+                            .lines()
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("range: bytes=")
+                                    .map(str::to_string)
+                            })
+                            .and_then(|r| r.trim_end_matches('-').trim().parse::<usize>().ok());
+                        r.lock().unwrap().push(format!("{path} {range:?}"));
+                        let response = if let Some(name) = path.strip_prefix("/download/") {
+                            format!(
+                                "HTTP/1.1 302 Found\r\nLocation: /storage/{name}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                            )
+                            .into_bytes()
+                        } else if let Some(body) = path
+                            .strip_prefix("/storage/")
+                            .and_then(|name| files.get(name).map(|b| (name.to_string(), b.clone())))
+                        {
+                            let (name, mut bytes) = body;
+                            let mut corrupt = c.lock().unwrap();
+                            if corrupt.as_deref() == Some(name.as_str()) {
+                                *corrupt = None;
+                                bytes = vec![b'x'; bytes.len()];
+                            }
+                            n.fetch_add(1, Ordering::SeqCst);
+                            match range {
+                                Some(start) if start < bytes.len() => {
+                                    let part = &bytes[start..];
+                                    let mut out = format!(
+                                        "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes {start}-{}/{}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                        bytes.len() - 1,
+                                        bytes.len(),
+                                        part.len()
+                                    )
+                                    .into_bytes();
+                                    out.extend_from_slice(part);
+                                    out
+                                }
+                                _ => {
+                                    let mut out = format!(
+                                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                        bytes.len()
+                                    )
+                                    .into_bytes();
+                                    out.extend_from_slice(&bytes);
+                                    out
+                                }
+                            }
+                        } else {
+                            b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec()
+                        };
+                        let _ = sock.write_all(&response).await;
+                        let _ = sock.shutdown().await;
+                    });
+                }
+            });
+            Server {
+                base: format!("http://{addr}/download"),
+                requests,
+                corrupt_once,
+                served,
+            }
+        }
+    }
+
+    fn sha(bytes: &[u8]) -> String {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(bytes))
+    }
+
     #[test]
-    #[ignore]
-    fn real_download_from_ryeai() {
-        let dir = tempfile::tempdir().unwrap();
-        tauri::async_runtime::block_on(fetch_all(RYEAI_BASE, dir.path())).unwrap();
-        assert!(files_present(dir.path()));
-        assert!(dir.path().join("LICENSES/CORAL-LICENSE").is_file());
+    fn a_file_follows_the_redirect_and_resumes_a_partial_download() {
+        tauri::async_runtime::block_on(async {
+            let bytes: Vec<u8> = (0..50_000u32).map(|i| (i % 251) as u8).collect();
+            let files = [("pnc.int8.onnx".to_string(), bytes.clone())].into();
+            let server = fake_release::start(files).await;
+            let dir = tempfile::tempdir().unwrap();
+            let dest = dir.path().join("pnc.int8.onnx");
+            // An earlier attempt stopped after 20,000 bytes.
+            std::fs::write(dest.with_extension("part"), &bytes[..20_000]).unwrap();
+            let client = reqwest::Client::new();
+            fetch(
+                &client,
+                &format!("{}/pnc.int8.onnx", server.base),
+                &dest,
+                &sha(&bytes),
+            )
+            .await
+            .unwrap();
+            assert_eq!(std::fs::read(&dest).unwrap(), bytes);
+            let requests = server.requests.lock().unwrap().clone();
+            assert_eq!(
+                requests,
+                vec![
+                    "/download/pnc.int8.onnx Some(20000)".to_string(),
+                    "/storage/pnc.int8.onnx Some(20000)".to_string(),
+                ],
+                "the Range survives GitHub's redirect"
+            );
+        });
+    }
+
+    #[test]
+    fn every_file_lands_at_its_path_and_a_bad_one_is_retried_once() {
+        tauri::async_runtime::block_on(async {
+            // Stand-in bytes: the fake release serves what the test expects.
+            let mut files = std::collections::HashMap::new();
+            let mut expected = Vec::new();
+            for f in LICENCE_FILES.iter().chain(RUNTIME_FILES.iter()) {
+                let bytes = format!("contents of {}", f.name).into_bytes();
+                expected.push((f.name, sha(&bytes)));
+                files.insert(release_asset_name(f.name), bytes);
+            }
+            let server = fake_release::start(files).await;
+            *server.corrupt_once.lock().unwrap() = Some("tokenizer.json".to_string());
+            let dir = tempfile::tempdir().unwrap();
+            let from = Source::Release(server.base.clone());
+            fetch_files(
+                &from,
+                dir.path(),
+                expected.iter().map(|(name, hash)| (*name, hash.as_str())),
+            )
+            .await
+            .unwrap();
+            assert!(files_present(dir.path()));
+            assert!(dir.path().join("LICENSES/CORAL-LICENSE").is_file());
+            assert!(dir.path().join("MODEL_LICENSE.md").is_file());
+            // 9 files, one of them twice.
+            assert_eq!(server.served.load(std::sync::atomic::Ordering::SeqCst), 10);
+        });
     }
 }

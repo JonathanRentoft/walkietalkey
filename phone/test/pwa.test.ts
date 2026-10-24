@@ -11,7 +11,13 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { nestedPairingPage, pwa } from "../pwa";
+import {
+  IOS_MANIFEST,
+  IOS_MANIFEST_FILE,
+  MANIFEST,
+  nestedPairingPage,
+  pwa,
+} from "../pwa";
 
 const INDEX = `<!doctype html>
 <html lang="da">
@@ -144,6 +150,27 @@ describe("the build step (PHONE-01)", () => {
       "./favicon.svg",
       "./icons/icon-192.png",
     ]);
+  });
+});
+
+describe("the manifest an iPhone adds to its home screen (Phase 5)", () => {
+  it("is the same app without start_url, so the start URL is the page's own URL with the pairing link", () => {
+    const { start_url, ...rest } = MANIFEST;
+    expect(start_url).toBe("./");
+    expect(IOS_MANIFEST).toEqual(rest);
+    expect("start_url" in IOS_MANIFEST).toBe(false);
+    expect(IOS_MANIFEST.id).toBe("./");
+    expect(IOS_MANIFEST_FILE).toBe("manifest-ios.webmanifest");
+  });
+
+  it("_headers serves it as a manifest that is never cached", () => {
+    const headers = readFileSync(
+      join(resolve(__dirname, "../public"), "_headers"),
+      "utf8",
+    );
+    expect(headers).toMatch(
+      /^\/manifest-ios\.webmanifest\n {2}Content-Type: application\/manifest\+json\n {2}Cache-Control: no-cache$/m,
+    );
   });
 });
 

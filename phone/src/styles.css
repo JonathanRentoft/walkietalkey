@@ -47,25 +47,191 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* The glow is never clipped (run 2, owner finding 5). PhoneApp's box keeps the design's
+     27.4 x 59.2 proportions, so on a screen that is relatively wider (an iPhone home-screen app
+     below its status bar: 393 x 793) it is narrower than the screen, and its `overflow: hidden`
+     cut the recording glow off in straight edges about 13 px inside the screen's sides. Only the
+     stage, which is the screen itself, clips. */
+  overflow: visible;
 }
 
-/* A long computer name ("Jonathans MacBook Pro") ends in an ellipsis instead of leaving the screen. */
+/* The halo paints only inside its own box, so no compositing can cut it at the box's square
+   bounds: a conic gradient faded by a radial mask (the same soft edge as the design's 1.6em blur
+   of a 10.1em disc, drawn into a 30em box) instead of `filter: blur()`, whose blur reaches
+   outside the element. It turns with a compositor-only `rotate` instead of repainting a custom
+   property every frame; the colours only depend on the angle, so it looks the same. */
+.wt-stage .wt-app-halo,
+.wt-stage .wt-app--rec .wt-app-halo {
+  inset: -7.5em;
+  filter: none;
+  background: conic-gradient(
+    var(--platin),
+    var(--sand),
+    var(--rav),
+    var(--perle),
+    var(--platin)
+  );
+  -webkit-mask-image: var(--wt-halo-mask);
+  mask-image: var(--wt-halo-mask);
+  --wt-halo-mask: radial-gradient(
+    closest-side,
+    #000 44%,
+    rgb(0 0 0 / 0.977) 46%,
+    rgb(0 0 0 / 0.96) 48.7%,
+    rgb(0 0 0 / 0.933) 51.3%,
+    rgb(0 0 0 / 0.894) 54%,
+    rgb(0 0 0 / 0.841) 56.7%,
+    rgb(0 0 0 / 0.773) 59.3%,
+    rgb(0 0 0 / 0.691) 62%,
+    rgb(0 0 0 / 0.599) 64.7%,
+    rgb(0 0 0 / 0.5) 67.3%,
+    rgb(0 0 0 / 0.401) 70%,
+    rgb(0 0 0 / 0.309) 72.7%,
+    rgb(0 0 0 / 0.227) 75.3%,
+    rgb(0 0 0 / 0.159) 78%,
+    rgb(0 0 0 / 0.106) 80.7%,
+    rgb(0 0 0 / 0.067) 83.3%,
+    rgb(0 0 0 / 0.04) 86%,
+    rgb(0 0 0 / 0.023) 88.7%,
+    rgb(0 0 0 / 0.012) 91.3%,
+    rgb(0 0 0 / 0.006) 94%,
+    rgb(0 0 0 / 0.003) 96.7%,
+    #0000 100%
+  );
+  /* At rest the disc is 8.9em (the design's inset -1.4em), recording 10.1em (-2.6em). */
+  scale: 0.881;
+  animation: wt-turn 6s linear infinite;
+  transition:
+    opacity 0.5s var(--ease-flow),
+    scale 0.5s var(--ease-flow);
+}
+.wt-stage .wt-app--rec .wt-app-halo {
+  scale: 1;
+  animation-duration: 2.4s;
+}
+.wt-stage .wt-app-ring {
+  background: conic-gradient(
+    var(--perle),
+    var(--platin-dyb),
+    var(--sand),
+    var(--rav-dyb),
+    var(--platin),
+    var(--perle)
+  );
+  animation: wt-turn 8s linear infinite;
+}
+@keyframes wt-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-stage .wt-app-halo,
+  .wt-stage .wt-app-ring {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* The connection status (run 2, Phase 4): one quiet line at the very top, below the notch or the
+   Dynamic Island, instead of PhoneApp's chip, which cut a long name off in a pill. A small dot and
+   ink-muted text, no surface of its own; a long name wraps instead of ending in an ellipsis. The
+   whole strip is the tap target (PHONE-41). */
 .wt-stage .wt-app-dev {
-  display: block;
-  max-width: 10.2em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
 }
-.wt-stage .wt-app-dev i {
+.wt-stage .wt-app-head {
+  justify-content: center;
+}
+.wt-status {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: max(12px, env(safe-area-inset-top)) 16px 10px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+  font: 500 16px/1.4 var(--font-sans);
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-status-text {
+  display: block;
+  max-width: 34em;
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wt-status-dot {
   display: inline-block;
-  vertical-align: 0.1em;
-  margin-right: 0.5em;
+  width: 7px;
+  height: 7px;
+  margin-right: 9px;
+  border-radius: 50%;
+  vertical-align: 0.14em;
+  background: var(--perle-dyb);
+  transition: background-color var(--duration-base) var(--ease-flow);
+}
+.wt-status--online .wt-status-dot {
+  background: var(--rav-dyb);
+}
+.wt-status-more {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: -0.12em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+.wt-status:focus-visible {
+  outline: none;
+}
+.wt-status:focus-visible .wt-status-text {
+  box-shadow: var(--focus-ring);
 }
 
-/* The computer is not online: the chip's dot goes quiet. */
-.wt-stage--away .wt-app-dev i {
-  background: var(--perle-dyb);
+/* Readable everywhere (run 2, Phase 4): PhoneApp is laid out in em to fit the screen, so on a
+   short screen its em gets small; no text goes below 16 px. */
+.wt-stage .wt-app-brand {
+  font-size: max(16px, 1.45em);
+}
+.wt-stage .wt-app-time {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-label--long > span:last-child {
+  font-size: max(16px, 1.4em);
+}
+.wt-stage .wt-app-sub > span {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-foot > span {
+  font-size: max(16px, 1.15em);
+}
+
+/* PHONE-26: hands-free shows a lock before "Tryk igen for at stoppe" (the design system's lock). */
+.wt-stage--handsfree .wt-app-label > span:last-child::before {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.35em;
+  vertical-align: -0.04em;
+  background: currentColor;
+  -webkit-mask: var(--wt-lock) center / contain no-repeat;
+  mask: var(--wt-lock) center / contain no-repeat;
+  --wt-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z'/%3E%3C/svg%3E");
 }
 
 /* Appendix D: LogoLoader `ekko` on the button while sending. */
@@ -99,7 +265,7 @@ body {
   pointer-events: none;
 }
 .wt-stage-countdown > span {
-  font: 500 1.3em/1.3 var(--font-sans);
+  font: 500 max(16px, 1.3em) / 1.3 var(--font-sans);
   color: var(--signal-rec);
 }
 
@@ -113,7 +279,7 @@ body {
   justify-content: center;
 }
 .wt-stage-cancel-btn {
-  font-size: 1.2em;
+  font-size: max(16px, 1.2em);
   background: var(--surface-300);
   color: var(--ink);
   box-shadow: inset 0 0 0 0.08em var(--line);
@@ -197,6 +363,12 @@ body {
   justify-content: center;
 }
 
+/* ShinyButton is 15 px by default; nothing here is below 16 px (run 2, Phase 4). */
+.wt-screen .wt-shiny,
+.wt-scan .wt-shiny {
+  font-size: 16px;
+}
+
 .wt-steps {
   margin: 0;
   padding-left: 1.4em;
@@ -212,7 +384,7 @@ body {
   background: none;
   padding: var(--space-3) var(--space-4);
   font: var(--type-label);
-  font-size: 15px;
+  font-size: 16px;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -223,7 +395,7 @@ body {
 }
 
 .wt-muted {
-  font: var(--type-caption) !important;
+  font: 400 16px/1.5 var(--font-sans) !important;
   color: var(--ink-muted);
 }
 
@@ -231,6 +403,7 @@ body {
   display: grid;
   gap: var(--space-2);
   font: var(--type-label);
+  font-size: 16px;
   color: var(--ink-muted);
 }
 .wt-field input {
@@ -347,7 +520,7 @@ body {
   overflow-wrap: anywhere;
 }
 .wt-list-main span {
-  font: var(--type-caption);
+  font: var(--type-body);
   color: var(--ink-muted);
   display: inline-flex;
   align-items: center;
@@ -381,13 +554,14 @@ body {
 }
 
 .wt-pill-btn {
-  height: 40px;
-  padding: 0 18px;
+  height: 44px;
+  padding: 0 20px;
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--surface-300);
   color: var(--ink);
   font: var(--type-label);
+  font-size: 16px;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px var(--line);
 }
@@ -496,7 +670,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: var(--type-caption);
+  font: var(--type-body);
   color: var(--ink-muted);
 }
 .wt-pick--on {

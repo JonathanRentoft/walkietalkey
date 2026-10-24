@@ -35,3 +35,7 @@ phone/e2e/.tmp
 packages/ui/src/styles/tokens.css
 packages/ui/src/tokens.ts
 relay/worker-configuration.d.ts
+
+# Licence texts are kept byte-exact (they travel with the models and the app).
+licenses/
+models/*/licenses/

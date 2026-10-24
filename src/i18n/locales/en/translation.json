@@ -737,74 +737,51 @@
         "title": "Danish speech to text. Free, and it runs on your own computer.",
         "start": "Get started"
       },
-      "model": {
-        "title": "Get the speech model",
-        "lead": "WalkieTalkey downloads Edda, a Danish speech model of about 890 MB. Speech becomes text on your own computer.",
-        "continueNote": "You can go on while it downloads.",
-        "continue": "Continue",
-        "importNote": "If you already have the model file, choose it with Import model file.",
-        "fastTitle": "A faster model",
-        "useFast": "Use Ekko v1 Tiny",
-        "keepEdda": "Keep Edda"
+      "phone": {
+        "title": "Phone",
+        "lead": "Do you also want to talk into your phone?",
+        "why": "Talk into the phone app, and the text appears on this computer. Encrypted from phone to computer.",
+        "show": "Show the code"
       },
       "microphone": {
         "title": "Microphone",
         "lead": "WalkieTalkey needs the microphone to hear you",
-        "why": "WalkieTalkey records while you hold the key. Speech becomes text on your own computer.",
-        "promptNote": "macOS will now ask whether WalkieTalkey may use the microphone. Choose Allow.",
+        "why": "It only listens while you talk to it, and speech becomes text on your own computer.",
         "allow": "Allow the microphone",
         "granted": "The microphone is ready",
-        "deniedMac": "WalkieTalkey has no access to the microphone. Turn it on in System Settings under Privacy & Security, Microphone.",
-        "deniedWindows": "Windows does not let apps use the microphone. Turn it on under Settings, Privacy & security, Microphone.",
-        "openSettings": "Open microphone settings"
+        "openSettings": "Open System Settings",
+        "deniedWindows": "Windows does not let apps use the microphone.",
+        "openSettingsWindows": "Open microphone settings"
       },
-      "key": {
-        "title": "The key",
-        "leadMac": "Hold fn and talk",
-        "leadWindows": "Hold Right Ctrl and talk",
-        "copilotNote": "Many new laptops have a Copilot key instead of Right Ctrl. To use it or another key, choose Choose another key and press the key.",
-        "monitoringTitle": "Input Monitoring",
-        "monitoringWhy": "macOS must give WalkieTalkey Input Monitoring before the app can see that you hold fn. Turn WalkieTalkey on in the list that opens.",
-        "openMonitoring": "Open Input Monitoring",
-        "monitoringOn": "Input Monitoring is on",
-        "globeTitle": "The globe key",
-        "globeWhy": "macOS also uses the fn key (the globe key) for its own functions. Open Keyboard and set Press globe key to Do Nothing.",
-        "openKeyboard": "Open Keyboard",
-        "restartTitle": "Restart",
-        "restartWhy": "macOS usually applies the access only after the app has started again. WalkieTalkey restarts and continues here.",
-        "restart": "Restart WalkieTalkey",
-        "tryTitle": "Try holding the key",
-        "tryText": "Hold {{key}} for a moment.",
-        "down": "The key is down",
-        "works": "It works"
-      },
-      "paste": {
-        "title": "Paste automatically",
-        "lead": "So the text can go where you type",
-        "why": "macOS asks whether WalkieTalkey may use Accessibility. It is needed to paste the text. Without it, the text goes to the clipboard and you paste it yourself with {{key}}.",
-        "allow": "Allow",
-        "granted": "Paste automatically is on"
-      },
-      "notifications": {
-        "title": "Notifications",
-        "lead": "When you dictate from the phone, the text goes to the clipboard and a notification says it is ready.",
-        "example": "Remember to buy milk on the way home",
-        "allow": "Turn on notifications",
-        "granted": "Notifications are on",
-        "denied": "Notifications are not on. You can turn them on in the system settings.",
-        "openSettings": "Open Notifications"
-      },
-      "phone": {
-        "title": "Phone",
-        "lead": "Do you also want to talk into your phone?",
-        "why": "Hold the button in the phone app, talk, and let go. The text appears on this computer. Encrypted from phone to computer.",
-        "show": "Show the code"
+      "waitingHint": "Turn on WalkieTalkey. We carry on by ourselves.",
+      "accessibility": {
+        "title": "Accessibility",
+        "lead": "So the text can be pasted where you type",
+        "why": "The same permission lets WalkieTalkey see when you hold fn. It is the only one the key needs.",
+        "open": "Open System Settings",
+        "granted": "Accessibility is on"
       },
       "try": {
         "title": "Try it",
         "lead": "Hold {{key}} and say: Hi, this is my first dictation.",
-        "fieldLabel": "Type here, or hold the key and talk",
-        "done": "It works. You are ready."
+        "tap": "You can also tap {{key}} once, talk, and tap again when you are done.",
+        "fieldLabel": "The text appears here",
+        "done": "It works. You are ready.",
+        "modelWaiting": "The speech model is still downloading. You can try as soon as it is ready.",
+        "keyNotRunning": "WalkieTalkey cannot see the key yet.",
+        "otherKeyWindows": "Many new laptops have a Copilot key instead of Right Ctrl. To use it or another key, press Choose another key and then the key."
+      },
+      "done": {
+        "title": "Ready",
+        "lead": "Hold {{key}} to talk, or tap to talk without holding.",
+        "whereMac": "You find WalkieTalkey in the menu bar at the top of the screen.",
+        "whereWindows": "You find WalkieTalkey in the taskbar at the bottom of the screen.",
+        "tipHold": "Hold while you talk. Release, and the text is pasted.",
+        "tipTap": "Tap once to talk without holding. Tap again to stop.",
+        "tipEsc": "Stops without writing anything.",
+        "fastTitle": "A faster model",
+        "useFast": "Use Ekko v1 Tiny",
+        "keepEdda": "Keep Edda"
       }
     },
     "model": {
@@ -863,7 +840,8 @@
       "raw": "Used the text without cleanup",
       "notReady": "The speech model is not ready yet",
       "error": "Could not download the speech model. Try again.",
-      "countdown": "{{seconds}} seconds left"
+      "countdown": "{{seconds}} seconds left",
+      "handsFree": "Tap again to stop"
     },
     "nav": {
       "label": "Settings",
@@ -895,25 +873,30 @@
       "pillTop": "Top",
       "pillNever": "Never show",
       "pillForPhone": "Show the pill for phone dictations",
-      "pillForPhoneDesc": "The icon always shows when the phone is sending audio.",
+      "pillForPhoneDesc": "The pill shows the same as when you use the key.",
       "notificationsGroup": "Notifications",
       "showText": "Show the text in the notification",
       "showTextDesc": "Turn off while sharing your screen or in meetings. The notification then only says how to paste.",
       "preview": "This is how the notification looks:",
       "language": "Language",
-      "languageDesc": "The language of WalkieTalkey's windows. The speech model is Danish."
+      "languageDesc": "The language of WalkieTalkey's windows. The speech model is Danish.",
+      "previewExample": "Remember to buy milk on the way home",
+      "notificationsOff": "Notifications are off, so you will not see when text from the phone is ready.",
+      "notificationsAllow": "Turn on notifications",
+      "notificationsOpen": "Open Notifications"
     },
     "key": {
       "key": "Key",
-      "keyDescMac": "Hold the key while you talk. Keyboards not made by Apple often do not send fn, so choose another key here.",
-      "keyDescWindows": "Hold the key while you talk. If your computer has a Copilot key, you can choose it here.",
-      "mode": "Mode",
-      "hold": "Hold to talk",
-      "holdDesc": "Records while you hold the key.",
-      "tap": "Tap to start and stop",
-      "tapDesc": "Tap once to start and once more to stop.",
+      "keyDescMac": "Keyboards not made by Apple often do not send fn. Then you can choose another key here.",
+      "keyDescWindows": "If your computer has a Copilot key, you can choose it here.",
       "test": "Test",
-      "testDesc": "Hold the key. The key below goes down when WalkieTalkey sees it."
+      "testDesc": "Tap the key or hold it. The key below goes down when WalkieTalkey sees it.",
+      "how": "How to use the key",
+      "howHoldOrTap": "Hold {{key}} to talk, or tap to talk without holding. Tap again to stop.",
+      "howHold": "Hold {{key}} while you talk. Release to stop.",
+      "howTap": "Tap {{key}} to talk, and tap again to stop.",
+      "works": "It works",
+      "down": "The key is down"
     },
     "text": {
       "output": "When you dictate with the key",
@@ -928,7 +911,8 @@
       "never": "Never",
       "share": "Share with my other devices",
       "shareDescMac": "When off, the text only goes to this Mac's clipboard, so Universal Clipboard does not send it to your other Apple devices.",
-      "shareDescWindows": "When off, the text stays out of Windows clipboard history and the cloud clipboard."
+      "shareDescWindows": "When off, the text stays out of Windows clipboard history and the cloud clipboard.",
+      "allow": "Allow"
     },
     "vocabulary": {
       "words": "Words",
@@ -999,7 +983,7 @@
       "openHistory": "Open the history"
     },
     "phone": {
-      "intro": "Hold the button in the phone app, talk, and let go. The text goes to the clipboard on this computer. Encrypted from phone to computer.",
+      "intro": "Hold the button in the phone app and talk, or tap to talk without holding. The text goes to the clipboard on this computer. Encrypted from phone to computer.",
       "paired": "Paired phones",
       "none": "No phones are paired yet.",
       "noName": "a phone without a name",
@@ -1095,7 +1079,15 @@
         "debug": "Starts with debugging on.",
         "file": "Turns an audio file into text and prints the result.",
         "listModels": "Lists the models the app knows."
-      }
+      },
+      "keyMode": "Key mode",
+      "keyModeDesc": "By default the key works both when you hold it and when you tap it.",
+      "keyModeBoth": "Hold or tap",
+      "keyModeBothDesc": "Hold to talk, or tap to talk without holding.",
+      "keyModeHold": "Hold only",
+      "keyModeHoldDesc": "Records while you hold the key.",
+      "keyModeTap": "Tap only",
+      "keyModeTapDesc": "Tap once to start and once more to stop."
     },
     "about": {
       "claims": "Speech becomes text on your own computer. No account. No tracking.",
@@ -1156,6 +1148,29 @@
       "deleteAllConfirmTitle": "Delete all history?",
       "deleteAllConfirm": "Every dictation and all kept audio are deleted from this computer. This cannot be undone.",
       "storage": "The history is kept in the app's folder. It is only encrypted if the computer's disk is encrypted with FileVault or BitLocker."
+    },
+    "globe": {
+      "title": "The Globe key",
+      "usage": {
+        "inputSource": "When you tap fn, your Mac also switches keyboard language.",
+        "emoji": "When you tap fn, your Mac also opens emoji and symbols.",
+        "dictation": "When you tap fn, your Mac also starts its own dictation.",
+        "other": "When you tap fn, your Mac also does something else."
+      },
+      "fix": "Fix it for me",
+      "fixed": "Done. Now fn only starts WalkieTalkey.",
+      "failed": "That did not work. Try again."
+    },
+    "status": {
+      "label": "Status",
+      "ready": "Hold {{key}} to talk",
+      "readySub": "or tap to talk without holding",
+      "paused": "Paused",
+      "pausedSub": "The key does nothing right now."
+    },
+    "access": {
+      "lost": "WalkieTalkey no longer has Accessibility access.",
+      "repair": "Allow again"
     }
   }
 }

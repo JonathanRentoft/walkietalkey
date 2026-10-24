@@ -16,8 +16,9 @@ tags:
 
 # Edda v0.2, GGUF for transcribe.cpp
 
-DRAFT (spec DESK-33). Not uploaded: publishing waits on the owner's decision
-about the FT Speech terms (see "Training data terms" below).
+Published as assets of the WalkieTalkey release
+[`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1) (spec DESK-33). WalkieTalkey downloads it from there
+and checks its SHA-256.
 
 Danish speech recognition model **Edda v0.2** by the Alexandra Institute,
 converted to GGUF for [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp)
@@ -144,8 +145,8 @@ a model trained on them:
   (sharing allowed; no editing, no building on the productions). The FT Speech
   paper describes the corpus as "freely available for research purposes only".
   **Whether these terms limit use of weights trained on it is an open
-  question**, recorded as the owner's decision 18.7 in WalkieTalkey's
-  `docs/MODELS.md`. These files are not published until it is answered.
+  question for companies' use**, recorded as decision 18.7 in WalkieTalkey's
+  `docs/MODELS.md`. It stays open; personal use of these files is not affected.
 - **NST Danish** (CC0 1.0), **Common Voice** (CC0 1.0) and **FLEURS**
   (CC BY 4.0, Google): no restriction on the trained model.
 
@@ -154,4 +155,12 @@ a model trained on them:
 Edda v0.2 by the Alexandra Institute (CoRal project), released by Danish
 Foundation Models under Apache-2.0. Based on OpenAI's Whisper large-v3-turbo
 (MIT). Converted with transcribe.cpp (MIT). GGUF conversion and quantisation by
-the WalkieTalkey project.
+the WalkieTalkey project (Navigent.io ApS).
+
+## Download
+
+Release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1): `edda-v0.2-Q8_0.gguf`, with this card as
+`edda-v0.2-README.md` and the licence files as `edda-v0.2-LICENSE`
+(Apache-2.0), `edda-v0.2-NOTICE`, `edda-v0.2-Whisper-MIT.txt`,
+`edda-v0.2-CORAL-LICENSE` and `edda-v0.2-FTSPEECH-LICENSE.md`; `SHA256SUMS`
+lists every file.

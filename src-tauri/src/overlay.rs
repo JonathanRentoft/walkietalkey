@@ -46,13 +46,17 @@ tauri_panel! {
 // Compact overlay (Minimal / transcribing / processing): the 40h pill animates
 // width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
 // the window must fit the widest state plus a little slack.
-// WalkieTalkey: the DictationPill and its halo need 320x64 (Handy: 256x50).
-const OVERLAY_WIDTH: f64 = 320.0;
-const OVERLAY_HEIGHT: f64 = 64.0;
+// WalkieTalkey (DESK-55): the DictationPill is 56 high and grows from about
+// 220 to 416 wide with its text; its halo and shadow reach 32 px beyond it, so
+// the window leaves 32 px on every side and nothing is clipped (Handy: 256x50).
+// The pill is centred in the window (src/walkietalkey/pill/pill.css).
+const OVERLAY_WIDTH: f64 = 480.0;
+const OVERLAY_HEIGHT: f64 = 120.0;
 
-// Actual is 394x118, just a little extra
-const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
+// WalkieTalkey: phone dictations stream into the same pill, so the window
+// keeps one size (Handy's live-text card was 400x120).
+const OVERLAY_STREAM_WIDTH: f64 = OVERLAY_WIDTH;
+const OVERLAY_STREAM_HEIGHT: f64 = OVERLAY_HEIGHT;
 
 /// Overlay window size (logical) for a given UI state.
 fn overlay_dimensions(state: &str) -> (f64, f64) {
@@ -64,15 +68,18 @@ fn overlay_dimensions(state: &str) -> (f64, f64) {
 }
 
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
-const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
+// WalkieTalkey: crate-visible so the phone waveform paces above it (relay/levels.rs).
+pub(crate) const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
 
+// WalkieTalkey: the window's 32 px margin around the pill is subtracted on the
+// Mac, so the pill itself sits where Handy's did (Handy: 46 and 15).
 #[cfg(target_os = "macos")]
-const OVERLAY_TOP_OFFSET: f64 = 46.0;
+const OVERLAY_TOP_OFFSET: f64 = 24.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_TOP_OFFSET: f64 = 4.0;
 
 #[cfg(target_os = "macos")]
-const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
+const OVERLAY_BOTTOM_OFFSET: f64 = 0.0;
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
@@ -825,7 +832,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (3600, 2004, 480, 96)
+            (3480, 1920, 720, 180)
         );
         assert_eq!(
             windows_overlay_bounds(
@@ -837,7 +844,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
             ),
-            (3600, 6, 480, 96)
+            (3480, 6, 720, 180)
         );
     }
 
@@ -854,7 +861,7 @@ mod tests {
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (-1530, 1040, 500, 150)
+            (-1580, 1040, 600, 150)
         );
     }
 
@@ -873,8 +880,8 @@ mod tests {
             OVERLAY_STREAM_HEIGHT,
             OverlayPosition::Bottom,
         );
-        // 400x120 logical at 1.25 DPI x 1.1 text, still centered horizontally.
-        assert_eq!((x, y, width, height), (-1555, 1025, 550, 165));
+        // 480x120 logical at 1.25 DPI x 1.1 text, still centered horizontally.
+        assert_eq!((x, y, width, height), (-1610, 1025, 660, 165));
         // Bottom edge unchanged from the 1.0 case above (1040 + 150).
         assert_eq!(y + height, 1190);
 
