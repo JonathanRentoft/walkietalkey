@@ -1,5 +1,6 @@
 import {
   APP_URL,
+  closeScannerIfOpen,
   expect,
   holdButton,
   label,
@@ -83,9 +84,8 @@ test.describe("iOS shell hooks", () => {
   }) => {
     await preparePage(page, browserName);
     await page.goto("/?start=1");
-    await expect(
-      page.getByRole("heading", { name: "Par med en computer" }),
-    ).toBeVisible();
+    // A fresh home-screen app opens the scanner first (Phase 5): pairing is what it needs.
+    await closeScannerIfOpen(page);
     await page.evaluate(() =>
       window.dispatchEvent(new CustomEvent("wt-shell-start")),
     );

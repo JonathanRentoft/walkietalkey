@@ -168,6 +168,28 @@ describe("frame counters (spec 9.4)", () => {
   });
 });
 
+describe("the home-screen app's first launch (Phase 5)", () => {
+  it("remembers the pairing links it has seen, so a start URL that keeps one pairs once", async () => {
+    const s = await openStorage(dbName());
+    expect(await s.hasSeenLink("abc")).toBe(false);
+    await s.markLinkSeen("abc");
+    expect(await s.hasSeenLink("abc")).toBe(true);
+    // Only the newest 20 are kept.
+    for (let i = 0; i < 20; i++) await s.markLinkSeen(`id${i}`);
+    expect(await s.hasSeenLink("abc")).toBe(false);
+    expect(await s.hasSeenLink("id19")).toBe(true);
+    expect(await s.hasSeenLink("id0")).toBe(true);
+    // Settings are untouched.
+    expect(await s.getSettings()).toEqual({ haptics: true });
+  });
+
+  it("knows whether the app has run before", async () => {
+    const s = await openStorage(dbName());
+    expect(await s.firstRun()).toBe(true);
+    expect(await s.firstRun()).toBe(false);
+  });
+});
+
 describe("settings and pending leaves", () => {
   it("defaults to haptics on", async () => {
     const s = await openStorage(dbName());

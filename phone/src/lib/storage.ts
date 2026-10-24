@@ -53,6 +53,11 @@ export interface PendingLeave {
 
 const DEFAULT_SETTINGS: Settings = { haptics: true };
 
+/** Keys next to "settings" in the settings store. */
+const SEEN_LINKS_KEY = "seenLinks";
+const SEEN_LINKS_MAX = 20;
+const RAN_KEY = "ran";
+
 function req<T>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     r.onsuccess = () => resolve(r.result);
@@ -208,6 +213,36 @@ export class PhoneStorage implements CounterStore {
     await this.write("settings", (tx) =>
       tx.objectStore("settings").put(settings, "settings"),
     );
+  }
+
+  /**
+   * Run 2, Phase 5: the pairing links the app has handled, by pairingLinkId (a hash, never the
+   * secrets). A home-screen app is started with the same URL every time; a link it has seen is
+   * not offered again.
+   */
+  async hasSeenLink(id: string): Promise<boolean> {
+    return (
+      (await this.get<string[]>("settings", SEEN_LINKS_KEY)) ?? []
+    ).includes(id);
+  }
+
+  async markLinkSeen(id: string): Promise<void> {
+    const seen = ((await this.get<string[]>("settings", SEEN_LINKS_KEY)) ?? [])
+      .filter((x) => x !== id)
+      .concat(id)
+      .slice(-SEEN_LINKS_MAX);
+    await this.write("settings", (tx) =>
+      tx.objectStore("settings").put(seen, SEEN_LINKS_KEY),
+    );
+  }
+
+  /** True the first time it is asked on this device (this app's storage), false ever after. */
+  async firstRun(): Promise<boolean> {
+    if (await this.get<boolean>("settings", RAN_KEY)) return false;
+    await this.write("settings", (tx) =>
+      tx.objectStore("settings").put(true, RAN_KEY),
+    );
+    return true;
   }
 
   async addPendingLeave(p: PendingLeave): Promise<void> {

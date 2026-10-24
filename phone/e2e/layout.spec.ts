@@ -2,6 +2,7 @@
 import { devices, type Page } from "@playwright/test";
 import {
   APP_URL,
+  closeScannerIfOpen,
   expect,
   hold,
   label,
@@ -109,9 +110,9 @@ test.describe("text is at least 16 px on every screen (Phase 4)", () => {
   }) => {
     await preparePage(page, browserName);
     await page.goto("/");
-    await expect(
-      page.getByRole("heading", { name: "Par med en computer" }),
-    ).toBeVisible();
+    if (await page.locator(".wt-scan").isVisible())
+      expect(await smallTexts(page), "scanner").toEqual([]);
+    await closeScannerIfOpen(page);
     expect(await smallTexts(page), "pair").toEqual([]);
 
     const computer = await newComputer("MacBook");

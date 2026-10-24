@@ -103,6 +103,19 @@ export async function hold(page: Page, ms: number): Promise<void> {
   await p.release();
 }
 
+/**
+ * The unpaired app's first screen (PHONE-10). A home-screen app's first launch opens the scanner
+ * by itself (run 2, Phase 5); this closes it.
+ */
+export async function closeScannerIfOpen(page: Page): Promise<void> {
+  const heading = page.getByRole("heading", { name: "Par med en computer" });
+  const scan = page.locator(".wt-scan");
+  await expect(heading.or(scan)).toBeVisible();
+  if (await scan.isVisible())
+    await page.getByRole("button", { name: "Annullér" }).click();
+  await expect(heading).toBeVisible();
+}
+
 /** A quick tap on the big button (released well within 0.5 s): hands-free. */
 export async function tap(page: Page): Promise<void> {
   const c = await center(page);

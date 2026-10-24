@@ -27,9 +27,9 @@ test.describe("pairing (PHONE-10..15)", () => {
     // PHONE-15: the secrets are gone from the address bar (and so from history) at once.
     expect(page.url()).toBe(`${APP_URL}/`);
     expect(await page.evaluate(() => location.hash)).toBe("");
-    // PHONE-12: prefilled with the phone's kind.
+    // PHONE-12: prefilled, with the owner from the computer's name (Phase 5).
     await expect(page.getByLabel("Telefonens navn")).toHaveValue(
-      browserName === "webkit" ? "iPhone" : "Android",
+      browserName === "webkit" ? "Jonathans iPhone" : "Jonathans Android",
     );
     await page.getByLabel("Telefonens navn").fill("Testtelefon");
     await page.getByRole("button", { name: "Par telefonen" }).click();
@@ -105,13 +105,16 @@ test.describe("pairing (PHONE-10..15)", () => {
     const url = await computer.pairingUrl("https://app.walkietalkey.com");
     await preparePage(page, browserName, { qr: qrConfig(url) });
     await page.goto("/");
-    // PHONE-10: the first screen when not paired.
-    await expect(
-      page.getByRole("heading", { name: "Par med en computer" }),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Scan koden på din computer" })
-      .click();
+    // The home-screen app (WebKit here) opens the scanner by itself on its first launch (Phase 5);
+    // in a browser tab the first screen is PHONE-10's "Par med en computer".
+    if (browserName !== "webkit") {
+      await expect(
+        page.getByRole("heading", { name: "Par med en computer" }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Scan koden på din computer" })
+        .click();
+    }
     await expect(
       page.getByRole("heading", { name: "Hvad hedder telefonen?" }),
     ).toBeVisible({ timeout: 20_000 });
@@ -159,7 +162,7 @@ test.describe("pairing (PHONE-10..15)", () => {
   });
 });
 
-test.describe("iPhone in a Safari tab (PHONE-04)", () => {
+test.describe("iPhone in a Safari tab (PHONE-04) and the home-screen app (Phase 5)", () => {
   test("asks to install, and a pairing link never joins", async ({
     browser,
     newComputer,
@@ -182,10 +185,19 @@ test.describe("iPhone in a Safari tab (PHONE-04)", () => {
     await page.goto(url);
     await expect(
       page.getByRole("heading", {
-        name: "Åbn WalkieTalkey fra hjemmeskærmen og scan koden der.",
+        name: "Føj WalkieTalkey til hjemmeskærmen for at bruge den",
       }),
     ).toBeVisible();
-    expect(page.url()).toBe(`${APP_URL}/`);
+    await expect(
+      page.getByText(
+        "Åbn WalkieTalkey fra hjemmeskærmen. Den parrer med Testcomputer med det samme.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Åbn WalkieTalkey fra hjemmeskærmen og scan koden der."),
+    ).toBeVisible();
+    // The link stays in the address bar for the home-screen app.
+    expect(page.url()).toBe(url);
     await page.waitForTimeout(1500);
     expect(computer.phones.size).toBe(0);
     expect(computer.log.some((l) => l.startsWith("joined"))).toBe(false);
@@ -194,6 +206,124 @@ test.describe("iPhone in a Safari tab (PHONE-04)", () => {
       ((await indexedDB.databases?.()) ?? []).map((d) => d.name),
     );
     expect(dbs).not.toContain("walkietalkey");
+    // Another code is scanned while the tab is open: the page follows the new link.
+    const other = await newComputer("Kontor-PC", "win");
+    const second = await other.pairingUrl(APP_URL);
+    await page.evaluate((u) => (location.href = u), second);
+    await expect(page).toHaveURL(second);
+    await expect(
+      page.getByText("Den parrer med Kontor-PC med det samme."),
+    ).toBeVisible();
+    // An invalid link is removed and says to scan in the app, as before.
+    await page.goto(`${APP_URL}/`);
+    await page.goto(`${APP_URL}/p#bm90LWEtY29kZQ`);
+    await expect(
+      page.getByRole("heading", {
+        name: "Åbn WalkieTalkey fra hjemmeskærmen og scan koden der.",
+      }),
+    ).toBeVisible();
+    expect(page.url()).toBe(`${APP_URL}/`);
     await context.close();
+  });
+
+  test("added to the home screen from the link, the app pairs on its first launch without a second scan, once", async ({
+    browser,
+    browserName,
+    newComputer,
+  }) => {
+    const { defaultBrowserType: _engine, ...iphone } = devices["iPhone 15"];
+    const computer = await newComputer("Jonathans MacBook");
+    const url = await computer.pairingUrl(APP_URL);
+
+    // Scanned with the camera: Safari opens the link in a tab.
+    const tabContext = await browser.newContext({
+      ...iphone,
+      baseURL: APP_URL,
+    });
+    const tab = await tabContext.newPage();
+    await tab.goto(url);
+    await expect(
+      tab.getByText("Den parrer med Jonathans MacBook med det samme."),
+    ).toBeVisible();
+    // "Føj til hjemmeskærm" saves the page's URL: the manifest it links has no start_url.
+    const manifest = await tab.evaluate(
+      () =>
+        document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!.href,
+    );
+    expect(manifest).toBe(`${APP_URL}/manifest-ios.webmanifest`);
+    const m = await (await tab.request.get(manifest)).json();
+    expect(m.start_url).toBeUndefined();
+    expect(m).toMatchObject({ id: "./", scope: "./", display: "standalone" });
+    const startUrl = tab.url();
+    expect(startUrl).toBe(url);
+    await tabContext.close();
+    expect(computer.phones.size).toBe(0);
+
+    // The home-screen app: its own storage, started at that URL.
+    const appContext = await browser.newContext({
+      ...iphone,
+      baseURL: APP_URL,
+    });
+    const app = await appContext.newPage();
+    await preparePage(app, browserName, { standalone: true });
+    await app.goto(startUrl);
+    await expect(
+      app.getByRole("heading", { name: "Hvad hedder telefonen?" }),
+    ).toBeVisible();
+    expect(app.url()).toBe(`${APP_URL}/`);
+    // PHONE-12: prefilled from the computer's name.
+    await expect(app.getByLabel("Telefonens navn")).toHaveValue(
+      "Jonathans iPhone",
+    );
+    await app.getByRole("button", { name: "Par telefonen" }).click();
+    await expect(statusName(app)).toHaveText("Jonathans MacBook");
+    expect((await computer.waitPhone()).name).toBe("Jonathans iPhone");
+
+    // Every later launch starts at the same URL: the used link is ignored, no error, no join.
+    await app.goto(startUrl);
+    await expect(holdButton(app)).toBeVisible();
+    await expect(statusName(app)).toHaveText("Jonathans MacBook");
+    await app.waitForTimeout(1000);
+    await expect(
+      app.getByRole("heading", { name: "Hvad hedder telefonen?" }),
+    ).toHaveCount(0);
+    expect(computer.log.filter((l) => l.startsWith("joined")).length).toBe(1);
+    await appContext.close();
+  });
+
+  test("if iOS drops the link, the first launch opens the scanner by itself, and only the first", async ({
+    page,
+    browserName,
+  }) => {
+    await preparePage(page, browserName, { standalone: true });
+    await page.goto("/");
+    await expect(page.locator(".wt-scan")).toBeVisible();
+    await page.getByRole("button", { name: "Annullér" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Par med en computer" }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Par med en computer" }),
+    ).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(page.locator(".wt-scan")).toHaveCount(0);
+  });
+
+  test("a browser tab (Android) shows the first screen, not the scanner", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "webkit",
+      "the WebKit project is the home-screen app",
+    );
+    await preparePage(page, browserName);
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "Par med en computer" }),
+    ).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(page.locator(".wt-scan")).toHaveCount(0);
   });
 });

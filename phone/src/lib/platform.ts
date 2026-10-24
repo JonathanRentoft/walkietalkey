@@ -23,6 +23,12 @@ export interface Platform {
   device: "iPhone" | "iPad" | "Android" | "Telefon";
 }
 
+/**
+ * Run 2, Phase 5: the manifest a Safari tab on an iPhone links to: the app's manifest without
+ * `start_url`, so the home-screen app starts at the URL of the page it was added from (pwa.ts).
+ */
+export const IOS_MANIFEST_FILE = "manifest-ios.webmanifest";
+
 /** The shell may also add this to WKWebView's applicationNameForUserAgent. */
 export const SHELL_UA_MARKER = "WalkieTalkeyIOS";
 

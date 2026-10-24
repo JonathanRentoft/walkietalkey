@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { PairingPayload } from "@walkietalkey/protocol";
 import type { PhoneController } from "../core/controller";
+import { suggestPhoneName } from "../lib/pairingLink";
 import type { Platform } from "../lib/platform";
 import { T } from "../lib/strings";
 import { MainScreen } from "./MainScreen";
@@ -35,6 +36,8 @@ export interface AppProps {
   allowInsecureLocalhost: boolean;
   /** A pairing link the app was opened with, or that arrived later (iOS shell, hashchange). */
   link: { payload: PairingPayload | null; invalid: boolean; seq: number };
+  /** The home-screen app's first launch without a link: open the scanner at once (Phase 5). */
+  scanOnStart?: boolean;
 }
 
 export function App({
@@ -42,12 +45,15 @@ export function App({
   platform,
   allowInsecureLocalhost,
   link,
+  scanOnStart = false,
 }: AppProps) {
   const snap = useSyncExternalStore(
     controller.subscribe,
     controller.getSnapshot,
   );
-  const [view, setView] = useState<View>({ name: "home" });
+  const [view, setView] = useState<View>(
+    scanOnStart ? { name: "scan" } : { name: "home" },
+  );
   const [sheet, setSheet] = useState<"picker" | "details" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -108,7 +114,10 @@ export function App({
       <NameScreen
         key={view.payload.n + view.payload.a.join(",")}
         payload={view.payload}
-        defaultName={snap.settings.deviceName ?? platform.device}
+        defaultName={
+          snap.settings.deviceName ??
+          suggestPhoneName(view.payload.n, platform.device)
+        }
         pairing={snap.pairing}
         onPair={async (name) => {
           if (await controller.pair(view.payload, name)) home();

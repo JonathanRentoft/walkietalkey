@@ -2,6 +2,7 @@ import { bestCorrelation, bytesToInt16, rms } from "./audio";
 import { ScriptedComputer } from "./computer";
 import {
   RELAY_PORT,
+  closeScannerIfOpen,
   statusName,
   expect,
   hold,
@@ -321,9 +322,7 @@ test.describe("the raw, warm microphone (PHONE-30, PHONE-33)", () => {
   }) => {
     await preparePage(page, browserName);
     await page.goto("/");
-    await expect(
-      page.getByRole("heading", { name: "Par med en computer" }),
-    ).toBeVisible();
+    await closeScannerIfOpen(page);
     await page.waitForTimeout(500);
     expect((await mics(page)).opened).toBe(0);
   });

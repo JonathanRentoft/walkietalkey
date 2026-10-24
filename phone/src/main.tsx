@@ -8,8 +8,19 @@ import type { PairingPayload } from "@walkietalkey/protocol";
 import { Recorder } from "./audio/recorder";
 import { PhoneController } from "./core/controller";
 import { ScreenWake, haptic } from "./lib/device";
-import { parseScanned, takePairingFragment } from "./lib/pairingLink";
-import { detectPlatform, isIosSafariTab, readEnv } from "./lib/platform";
+import {
+  cleanAppUrl,
+  pairingLinkId,
+  parseScanned,
+  peekPairingFragment,
+  takePairingFragment,
+} from "./lib/pairingLink";
+import {
+  IOS_MANIFEST_FILE,
+  detectPlatform,
+  isIosSafariTab,
+  readEnv,
+} from "./lib/platform";
 import { PhoneStorage } from "./lib/storage";
 import { T } from "./lib/strings";
 import { App, SHELL_START_EVENT } from "./ui/App";
@@ -41,6 +52,15 @@ function applyTheme(): void {
   mq?.addEventListener?.("change", set);
 }
 
+/**
+ * Run 2, Phase 5: in a Safari tab on an iPhone, link the manifest without start_url, so "Føj til
+ * hjemmeskærm" makes the home-screen app start at this page's URL, pairing link included.
+ */
+function linkIosManifest(): void {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (link) link.href = new URL(IOS_MANIFEST_FILE, link.href).href;
+}
+
 function registerServiceWorker(): void {
   if (import.meta.env.DEV || !("serviceWorker" in navigator)) return;
   // Never in the iOS shell (walkietalkey://localhost/): only http(s), and plain http only locally.
@@ -63,16 +83,33 @@ async function main(): Promise<void> {
     u.searchParams.delete("start");
     history.replaceState(null, "", u.href);
   }
-  // PHONE-15: read the pairing fragment and remove it from the address bar and history at once.
-  const first = takePairingFragment(location, history, policy);
   const root: Root = createRoot(document.getElementById("root")!);
 
   if (isIosSafariTab(platform)) {
-    // PHONE-04 and spec 5.3 step 2: a Safari tab never pairs and never creates keys.
-    root.render(<InstallScreen fromLink={first.kind !== "none"} />);
+    // PHONE-04 and spec 5.3 step 2: a Safari tab never pairs and never creates keys. Run 2,
+    // Phase 5: a valid pairing link stays in the address bar, and the manifest has no start_url,
+    // so the home-screen app added from here starts with the link and pairs on its first launch.
+    // The secrets in it are single-use and expire after 10 minutes.
+    const show = () => {
+      const peek = peekPairingFragment(location, policy);
+      if (peek.kind === "invalid")
+        history.replaceState(null, "", cleanAppUrl(location.href));
+      root.render(
+        <InstallScreen
+          computer={peek.kind === "pairing" ? peek.payload.n : null}
+          fromLink={peek.kind !== "none"}
+        />,
+      );
+    };
+    linkIosManifest();
+    show();
+    // Another code scanned while this tab is open only changes the fragment.
+    window.addEventListener("hashchange", show);
     registerServiceWorker();
     return;
   }
+  // PHONE-15: read the pairing fragment and remove it from the address bar and history at once.
+  const first = takePairingFragment(location, history, policy);
   if (
     !window.isSecureContext ||
     !globalThis.crypto?.subtle ||
@@ -83,6 +120,19 @@ async function main(): Promise<void> {
   }
 
   const storage = await PhoneStorage.open();
+  // Phase 5: a home-screen app starts with the same URL every time; its pairing link pairs once.
+  let firstPayload = first.kind === "pairing" ? first.payload : null;
+  if (firstPayload) {
+    const id = await pairingLinkId(firstPayload);
+    if (await storage.hasSeenLink(id)) firstPayload = null;
+    else await storage.markLinkSeen(id);
+  }
+  // Phase 5: if iOS dropped the link, the home-screen app's first launch opens the scanner itself.
+  const scanOnStart =
+    (await storage.firstRun()) &&
+    platform.standalone &&
+    first.kind === "none" &&
+    (await storage.listRooms()).length === 0;
   const wake = new ScreenWake();
   const controller = new PhoneController({
     storage,
@@ -95,7 +145,7 @@ async function main(): Promise<void> {
   let seq = 0;
   let link: { payload: PairingPayload | null; invalid: boolean; seq: number } =
     {
-      payload: first.kind === "pairing" ? first.payload : null,
+      payload: firstPayload,
       invalid: first.kind === "invalid",
       seq: 0,
     };
@@ -107,6 +157,7 @@ async function main(): Promise<void> {
           platform={platform}
           allowInsecureLocalhost={!!policy.allowInsecureLocalhost}
           link={link}
+          scanOnStart={scanOnStart}
         />
       </StrictMode>,
     );

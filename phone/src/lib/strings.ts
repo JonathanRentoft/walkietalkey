@@ -40,6 +40,11 @@ export const T = {
     "Vælg Føj til hjemmeskærm, og tryk Tilføj.",
     "Åbn WalkieTalkey fra hjemmeskærmen.",
   ],
+  // TODO(copy): Phase 5, opened from a pairing link in a Safari tab: the home-screen app pairs itself
+  installOpenPairs:
+    "Åbn WalkieTalkey fra hjemmeskærmen. Den parrer med {computer} med det samme.",
+  installInTime: "Koden på computeren virker i 10 minutter.",
+  installAlready: "Har du allerede WalkieTalkey på hjemmeskærmen?",
   // TODO(copy): why a Safari tab is not enough (PHONE-04)
   installWhy:
     "Appen på hjemmeskærmen gemmer parringen sikkert. En fane i Safari kan glemme den.",
