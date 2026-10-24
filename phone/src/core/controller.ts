@@ -40,6 +40,7 @@ import {
   type PresenceAnswer,
 } from "./presence";
 import { Pacer } from "./resend";
+import { dayNumber, daysAway, isStale, supersededRooms } from "./stale";
 import {
   SessionStreamer,
   isOpen,
@@ -72,6 +73,15 @@ export interface ComputerView {
   deviceName: string;
   connected: boolean;
   online: boolean;
+  /** The day the relay last saw the computer (RELAY-02); null when unknown. */
+  lastSeenDay: number | null;
+  /** Whole days since then; null when unknown. */
+  daysAway: number | null;
+  /**
+   * Run 5: away for days, so maybe reset, reinstalled or with a new identity: the screen offers
+   * "Par igen" while it still waits for the computer (PHONE-24, core/stale.ts).
+   */
+  stale: boolean;
 }
 
 export interface Notice {
@@ -157,6 +167,11 @@ export class PhoneController {
   private loaded = false;
   private snapshot: Snapshot;
   private readonly listeners = new Set<() => void>();
+  /**
+   * Admissions this phone has sent a join with in this session (in memory only). Only a retry of
+   * one of them may fall back to authenticating as a member (link.ts `memberFallback`, run 5).
+   */
+  private readonly joinAttempts = new Set<string>();
   private choosing = false;
   private chooseAgain = false;
   /** The page is visible (not in the background). */
@@ -186,17 +201,26 @@ export class PhoneController {
   getSnapshot = (): Snapshot => this.snapshot;
 
   private buildSnapshot(): Snapshot {
+    const today = dayNumber(this.now());
     return {
       loaded: this.loaded,
       rooms: [...this.rooms.values()]
-        .map((r) => ({
-          roomId: r.record.roomId,
-          name: r.record.computerName,
-          os: r.record.os,
-          deviceName: r.record.deviceName,
-          connected: r.link.connected,
-          online: r.link.connected && r.link.peerOnline,
-        }))
+        .map((r) => {
+          const view = {
+            connected: r.link.connected,
+            online: r.link.connected && r.link.peerOnline,
+            lastSeenDay: r.link.ownerLastSeenDay,
+          };
+          return {
+            roomId: r.record.roomId,
+            name: r.record.computerName,
+            os: r.record.os,
+            deviceName: r.record.deviceName,
+            ...view,
+            daysAway: daysAway(view.lastSeenDay, today),
+            stale: isStale(view, today),
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name, "da")),
       target: this.target,
       machine: this.machine,
@@ -254,6 +278,7 @@ export class PhoneController {
       store: this.deps.storage,
       WebSocketImpl: this.deps.WebSocketImpl,
       backoffMs: this.deps.backoffMs,
+      now: this.now,
       onEvent: (e) => this.linkEvent(record.roomId, e),
     });
     const entry: RoomEntry = {
@@ -792,9 +817,15 @@ export class PhoneController {
     const device =
       this.device ?? (await this.deps.storage.loadOrCreateDeviceKeys());
     this.device = device;
+    // Run 5: the "ok lost" fallback only where it can be true, never for an old code of a room
+    // this phone is already in (it would replace working keys).
+    const attempt = b64uEncode(p.a);
+    const memberFallback =
+      !this.rooms.has(b64uEncode(p.r)) || this.joinAttempts.has(attempt);
+    this.joinAttempts.add(attempt);
     let h;
     try {
-      h = await joinRoom(this.WS, p, device);
+      h = await joinRoom(this.WS, p, device, undefined, memberFallback);
     } catch (e) {
       const kind = e instanceof JoinError ? e.kind : "error";
       this.pairing = {
@@ -862,6 +893,17 @@ export class PhoneController {
     this.pairing = { state: "idle" };
     this.setTarget(roomId);
     this.activity();
+    // Run 5: the same computer under an old identity (reset, reinstalled, v0.2.0) is replaced:
+    // its old room would wait for an owner that never comes back.
+    // A link without an outcome yet counts as online: it is kept.
+    const views = [...this.rooms.values()].map((r) => ({
+      roomId: r.record.roomId,
+      computerName: r.record.computerName,
+      os: r.record.os,
+      online: !r.link.settled || (r.link.connected && r.link.peerOnline),
+    }));
+    for (const gone of supersededRooms(views, record))
+      void this.removeRoom(gone);
     return true;
   }
 

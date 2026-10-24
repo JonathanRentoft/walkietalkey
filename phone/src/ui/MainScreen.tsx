@@ -19,6 +19,7 @@ import {
 import { T, fill } from "../lib/strings";
 import {
   countdownSeconds,
+  offerPairAgain,
   splitName,
   statusLine,
   viewState,
@@ -29,6 +30,8 @@ interface Props {
   snap: Snapshot;
   onPicker: () => void;
   onDetails: () => void;
+  /** Run 5: pair this computer again (a pairing whose computer may be gone). */
+  onPairAgain: () => void;
 }
 
 /** Inside the button, with some slack: a finger that drifts a little does not cancel (PHONE-26). */
@@ -77,7 +80,13 @@ function StatusLine(props: {
   );
 }
 
-export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
+export function MainScreen({
+  controller,
+  snap,
+  onPicker,
+  onDetails,
+  onPairAgain,
+}: Props) {
   const target =
     snap.rooms.find((r) => r.roomId === snap.target) ?? snap.rooms[0];
   const m = snap.machine;
@@ -188,6 +197,19 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
               onClick={() => controller.cancel()}
             >
               {T.cancel}
+            </button>
+          </div>
+        ) : null}
+        {target && offerPairAgain(m, target) ? (
+          // Run 5: a pairing whose computer may never come back (core/stale.ts).
+          <div className="wt-stage-repair">
+            <p>{fill(T.repairHint, { computer: target.name })}</p>
+            <button
+              type="button"
+              className="wt-app-action wt-stage-repair-btn"
+              onClick={onPairAgain}
+            >
+              {T.pairAgain}
             </button>
           </div>
         ) : null}

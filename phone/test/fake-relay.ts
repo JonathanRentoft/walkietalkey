@@ -39,6 +39,8 @@ export class FakeComputer {
   readonly sessions = new Map<string, ComputerSession>();
   /** The relay counts the computer as online (sent in `ok` and `peer`). */
   online = true;
+  /** The day the relay last saw the computer, in `ok` (RELAY-02; run 5's stale pairings). */
+  lastSeenDay = 0;
   /** Frames for the computer are lost (its socket at the relay still looks live). */
   deaf = false;
   /** Answer to presence_query; null = no answer. */
@@ -260,6 +262,12 @@ export class FakeSocket {
     }
     if (data === PING_MESSAGE) return this.text(PONG_MESSAGE);
     const msg = parseControlMessage(data);
+    if (msg.t === "join") {
+      // No admissions here: every join is refused like a used or expired code.
+      this.control({ t: "error", code: "admission_invalid", msg: "" });
+      this.later(() => this.drop(4401));
+      return;
+    }
     if (msg.t === "auth") {
       this.relay.phoneId = msg.id;
       const c = this.computer;
@@ -268,7 +276,12 @@ export class FakeSocket {
         role: "phone",
         members: [
           { id: msg.id, role: "phone", online: true, lastSeenDay: 0 },
-          { id: c.id, role: "owner", online: c.online, lastSeenDay: 0 },
+          {
+            id: c.id,
+            role: "owner",
+            online: c.online,
+            lastSeenDay: c.lastSeenDay,
+          },
         ],
       });
     }

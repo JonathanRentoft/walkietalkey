@@ -98,6 +98,12 @@ export const T = {
   statusAway: "{computer} er ikke online",
   statusConnecting: "Forbinder til {computer}",
   statusLost: "Ikke forbundet til {computer}",
+  // TODO(copy): run 5, a computer the relay has not seen for days (maybe reset or reinstalled)
+  statusGone: "{computer} har ikke været online i {days} dage",
+  // TODO(copy): run 5, offered when a pairing may be stale (spec 5.4)
+  pairAgain: "Par igen",
+  repairHint:
+    "Er {computer} nulstillet eller installeret igen? Så skal telefonen parres igen.",
   // TODO(copy): what the status line does when tapped (screen readers)
   statusPick: "Vælg computer og indstillinger",
   // TODO(copy): the 5 minute limit (PHONE-29)

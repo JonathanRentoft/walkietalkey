@@ -8,6 +8,7 @@ import {
 import { COUNTDOWN_FROM_MS, MAX_RECORDING_MS } from "../src/core/controller";
 import {
   countdownSeconds,
+  offerPairAgain,
   splitName,
   statusLine,
   viewState,
@@ -15,13 +16,16 @@ import {
 import { T } from "../src/lib/strings";
 
 describe("the status line at the top (run 2, Phase 4)", () => {
-  const room = (online: boolean, connected: boolean) => ({
+  const room = (online: boolean, connected: boolean, daysAway = 0) => ({
     roomId: "r",
     name: "Jonathans MacBook Pro",
     os: "mac" as const,
     deviceName: "iPhone",
     online,
     connected,
+    lastSeenDay: 20_000 - daysAway,
+    daysAway,
+    stale: !online && connected && daysAway >= 2,
   });
 
   it("names the computer the text goes to, and how it is connected", () => {
@@ -41,6 +45,17 @@ describe("the status line at the top (run 2, Phase 4)", () => {
       kind: "lost",
       text: "Ikke forbundet til {computer}",
     });
+  });
+
+  it("run 5: a computer away for days says for how long", () => {
+    expect(statusLine(room(false, true, 3), false)).toEqual({
+      kind: "away",
+      text: "{computer} har ikke været online i 3 dage",
+    });
+    // Away for a night: the usual line (PHONE-24).
+    expect(statusLine(room(false, true, 1), false).text).toBe(
+      "{computer} er ikke online",
+    );
   });
 
   it("splits around the name, so the name can be marked up", () => {
@@ -148,5 +163,23 @@ describe("5 minute limit (PHONE-29)", () => {
     expect(countdownSeconds(301_000, MAX_RECORDING_MS, COUNTDOWN_FROM_MS)).toBe(
       0,
     );
+  });
+});
+
+describe("Par igen on the main screen (run 5)", () => {
+  const target = (stale: boolean) => ({ stale });
+  it("after a dictation that never arrived", () => {
+    expect(offerPairAgain(m("failed"), target(false))).toBe(true);
+  });
+  it("while the computer has been away for days, but not while recording or sending", () => {
+    expect(offerPairAgain(m("idle"), target(true))).toBe(true);
+    expect(offerPairAgain(m("offline"), target(true))).toBe(true);
+    expect(offerPairAgain(m("rec"), target(true))).toBe(false);
+    expect(offerPairAgain(m("send"), target(true))).toBe(false);
+  });
+  it("never for a computer that is only asleep (PHONE-24)", () => {
+    expect(offerPairAgain(m("idle"), target(false))).toBe(false);
+    expect(offerPairAgain(m("offline"), target(false))).toBe(false);
+    expect(offerPairAgain(m("ready"), target(false))).toBe(false);
   });
 });

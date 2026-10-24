@@ -175,6 +175,10 @@ export function App({
         snap={snap}
         onPicker={() => setSheet("picker")}
         onDetails={() => setSheet("details")}
+        onPairAgain={() => {
+          setSheet(null);
+          setView({ name: "pair" });
+        }}
       />
     );
   }

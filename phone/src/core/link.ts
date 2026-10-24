@@ -24,6 +24,7 @@ import {
   type PairKeys,
   type PairingPayload,
 } from "@walkietalkey/protocol";
+import { dayNumber } from "./stale";
 import type { StreamLink } from "./streamer";
 
 export type WebSocketCtor = new (url: string) => WebSocket;
@@ -156,12 +157,22 @@ export class JoinError extends Error {
   }
 }
 
-/** spec 5.3 step 4: join with `a`, both public keys and the join MAC. */
+/**
+ * spec 5.3 step 4: join with `a`, both public keys and the join MAC.
+ *
+ * `memberFallback`: when the relay refuses the admission (used or expired), try to authenticate
+ * as a member instead (PROTOCOL.md 7.3: the join may have succeeded with its `ok` lost). Run 5:
+ * the caller allows it only when that can be the case, a retry of this same code or a room the
+ * phone has no pairing with yet. An old code of a room the phone is already in would otherwise
+ * "succeed" here and replace its working pair keys with ones the computer never derived, so
+ * every later dictation would wait for a result that never comes.
+ */
 export async function joinRoom(
   WS: WebSocketCtor,
   p: PairingPayload,
   device: DeviceKeys,
   timeoutMs = 15_000,
+  memberFallback = true,
 ): Promise<Handshake> {
   try {
     return await handshake(
@@ -188,6 +199,8 @@ export async function joinRoom(
     );
   } catch (e) {
     if (!(e instanceof HandshakeError)) throw new JoinError("error", String(e));
+    if (e.code === CloseCode.NotAuthorised && !memberFallback)
+      throw new JoinError("expired", e.relayCode ?? "admission_invalid");
     if (e.code === CloseCode.NotAuthorised) {
       // PROTOCOL.md 7.3: the join may have succeeded with its `ok` lost; a member can authenticate.
       try {
@@ -240,6 +253,8 @@ export interface LinkOptions {
   backoffMs?: number[];
   pingIntervalMs?: number;
   pongTimeoutMs?: number;
+  /** The clock (tests). */
+  now?: () => number;
 }
 
 const DEFAULT_BACKOFF = [1000, 2000, 5000, 10_000, 30_000];
@@ -255,6 +270,12 @@ export class RoomLink implements StreamLink {
   connId = 0;
   connected = false;
   peerOnline = false;
+  /**
+   * The day (since 1970-01-01 UTC, RELAY-02) the relay last saw the computer: from `ok`, and
+   * today whenever it is online. Null before the first authentication. Run 5: a computer gone for
+   * days may have been reset or reinstalled, so the phone offers "Par igen" (core/stale.ts).
+   */
+  ownerLastSeenDay: number | null = null;
   removed = false;
   /**
    * The latest connection check has an outcome: an authentication, a failed attempt, or a pong.
@@ -401,6 +422,9 @@ export class RoomLink implements StreamLink {
       h.members.find((m) => m.id === this.computerId) ??
       h.members.find((m) => m.role === "owner");
     this.peerOnline = !!owner?.online;
+    this.ownerLastSeenDay = this.peerOnline
+      ? dayNumber(this.opts.now?.() ?? Date.now())
+      : (owner?.lastSeenDay ?? null);
     ws.onmessage = (ev: MessageEvent) =>
       this.incoming(ws, ev.data as string | ArrayBuffer);
     ws.onclose = (ev: CloseEvent) => this.closed(ws, ev.code);
@@ -439,6 +463,8 @@ export class RoomLink implements StreamLink {
     } else if (msg.t === "peer") {
       if (msg.id !== this.computerId) return;
       this.peerOnline = msg.online;
+      if (msg.online)
+        this.ownerLastSeenDay = dayNumber(this.opts.now?.() ?? Date.now());
       this.emit({ type: "peer", online: msg.online, announced: true });
     } else if (msg.t === "error") {
       this.emit({ type: "relay_error", code: msg.code });

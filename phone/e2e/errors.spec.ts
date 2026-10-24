@@ -57,7 +57,8 @@ test.describe("errors (PHONE-14, PHONE-25, PHONE-30)", () => {
     await expect(page.getByRole("alertdialog")).toContainText(
       "Parringen med Gammel Mac er fjernet. Par igen for at bruge den.",
     );
-    await page.getByRole("button", { name: "Par med en computer" }).click();
+    // Run 5: one button, "Par igen", straight to pairing.
+    await page.getByRole("button", { name: "Par igen" }).click();
     await expect(
       page.getByRole("button", { name: "Scan koden på din computer" }),
     ).toBeVisible();
