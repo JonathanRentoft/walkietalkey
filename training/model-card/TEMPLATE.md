@@ -2,7 +2,7 @@
 license: apache-2.0
 language:
   - da
-base_model: {{base_repo}}
+base_model: "{{base_repo}}"
 base_model_relation: finetune
 pipeline_tag: automatic-speech-recognition
 tags:
@@ -28,14 +28,14 @@ shared drive.
 
 ## The file
 
-|                 |                                                         |
-| --------------- | ------------------------------------------------------- |
-| File            | `{{file_name}}`                                         |
-| Model id in app | `{{model_id}}`                                          |
-| Size            | {{size_bytes}} bytes                                    |
-| SHA-256         | `{{sha256}}`                                            |
-| Format          | GGUF, Q8_0, transcribe.cpp {{transcribe_cpp_version}}   |
-| Made            | {{created}}                                             |
+|                 |                                                       |
+| --------------- | ----------------------------------------------------- |
+| File            | `{{file_name}}`                                       |
+| Model id in app | `{{model_id}}`                                        |
+| Size            | {{size_bytes}} bytes                                  |
+| SHA-256         | `{{sha256}}`                                          |
+| Format          | GGUF, Q8_0, transcribe.cpp {{transcribe_cpp_version}} |
+| Made            | {{created}}                                           |
 
 Decode it like Edda: language forced to Danish, segment timestamps off
 (`transcribe-cli -m {{file_name}} -l da --timestamps none clip.wav`). The app

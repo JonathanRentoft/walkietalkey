@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 import fake_tcpp
 from conftest import takes_config, write_takes
@@ -72,6 +73,14 @@ def test_the_model_card_credits_edda_and_whisper_and_carries_the_terms():
     assert "never uploaded" in card
     with pytest.raises(export.ExportError, match="unknown field"):
         export.render_card("{{nope}}", {})
+
+
+def test_the_model_card_front_matter_names_the_base_model():
+    # Prettier formats the template; unquoted, {{base_repo}} would become "{ { base_repo } }".
+    fields = card_fields() | {"base_repo": paths.EDDA_REPO}
+    card = export.render_card(paths.MODEL_CARD_TEMPLATE.read_text(encoding="utf-8"), fields)
+    front = yaml.safe_load(card.split("---")[1])
+    assert front["base_model"] == paths.EDDA_REPO and front["license"] == "apache-2.0"
 
 
 def test_the_converter_wrapper_registers_the_name_and_runs_upstream_unchanged(tmp_path):
