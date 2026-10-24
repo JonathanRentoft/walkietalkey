@@ -1,7 +1,7 @@
 import { devices } from "@playwright/test";
 import {
   APP_URL,
-  chip,
+  statusName,
   expect,
   holdButton,
   label,
@@ -35,7 +35,7 @@ test.describe("pairing (PHONE-10..15)", () => {
     await page.getByRole("button", { name: "Par telefonen" }).click();
 
     await expect(holdButton(page)).toBeVisible();
-    await expect(chip(page)).toHaveText("Jonathans MacBook");
+    await expect(statusName(page)).toHaveText("Jonathans MacBook");
     await expect(label(page)).toHaveText("Hold for at tale");
     await expect(
       page.getByText("Krypteret fra telefon til computer"),
@@ -46,7 +46,7 @@ test.describe("pairing (PHONE-10..15)", () => {
 
     // PHONE-13: the pairing survives a restart, and the private keys are not extractable.
     await page.reload();
-    await expect(chip(page)).toHaveText("Jonathans MacBook");
+    await expect(statusName(page)).toHaveText("Jonathans MacBook");
     const keys = await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const r = indexedDB.open("walkietalkey");
@@ -117,7 +117,7 @@ test.describe("pairing (PHONE-10..15)", () => {
     ).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Navnet vises på Kontor-PC")).toBeVisible();
     await page.getByRole("button", { name: "Par telefonen" }).click();
-    await expect(chip(page)).toHaveText("Kontor-PC");
+    await expect(statusName(page)).toHaveText("Kontor-PC");
     expect((await computer.waitPhone()).name).toBe(
       browserName === "webkit" ? "iPhone" : "Android",
     );

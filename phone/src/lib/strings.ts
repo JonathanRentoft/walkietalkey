@@ -88,6 +88,13 @@ export const T = {
   sourceCode: "Kildekode",
   // TODO(copy): hands-free (PHONE-26), wording from the run 2 brief; shown with a lock
   tapAgainToStop: "Tryk igen for at stoppe",
+  // TODO(copy): the status line at the top of the main screen (run 2, Phase 4)
+  statusOnline: "Forbundet til {computer}",
+  statusAway: "{computer} er ikke online",
+  statusConnecting: "Forbinder til {computer}",
+  statusLost: "Ikke forbundet til {computer}",
+  // TODO(copy): what the status line does when tapped (screen readers)
+  statusPick: "Vælg computer og indstillinger",
   // TODO(copy): the 5 minute limit (PHONE-29)
   countdown: "Optagelsen stopper om {seconds} sekunder",
   // TODO(copy): "Detaljer" texts (PHONE-25)

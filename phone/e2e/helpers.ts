@@ -55,7 +55,8 @@ export const holdButton = (page: Page) => page.locator("button.wt-hold");
 export const label = (page: Page) =>
   page.locator(".wt-app-label > span:last-child");
 export const sub = (page: Page) => page.locator(".wt-app-sub");
-export const chip = (page: Page) => page.locator(".wt-app-dev");
+/** The target computer's name in the status line at the top; tapping it opens the picker. */
+export const statusName = (page: Page) => page.locator(".wt-status-name");
 
 /** Pairs through the link the computer shows (the app opened from the QR's URL, PHONE-11). */
 export async function pairByLink(
@@ -71,7 +72,7 @@ export async function pairByLink(
   if (opts.name) await page.getByLabel("Telefonens navn").fill(opts.name);
   await page.getByRole("button", { name: "Par telefonen" }).click();
   await expect(holdButton(page)).toBeVisible();
-  await expect(chip(page)).toHaveText(computer.name);
+  await expect(statusName(page)).toHaveText(computer.name);
   const phone = await computer.waitPhone();
   await expect(label(page)).toHaveText("Hold for at tale");
   return phone;

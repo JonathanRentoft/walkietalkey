@@ -3,7 +3,7 @@
    Pairs the deployed app with a scripted computer on the live relay, records, and cleans up. */
 import { ScriptedComputer } from "./computer";
 import {
-  chip,
+  statusName,
   expect,
   hold,
   holdButton,
@@ -33,7 +33,7 @@ test("live: the deployed app pairs and streams through the live relay", async ({
     expect(page.url()).toBe(`${APP}/`);
     await page.getByRole("button", { name: "Par telefonen" }).click();
     await expect(holdButton(page)).toBeVisible();
-    await expect(chip(page)).toHaveText("Live testcomputer");
+    await expect(statusName(page)).toHaveText("Live testcomputer");
     await computer.waitPhone();
     await hold(page, 1500);
     const s = await computer.waitEnded(20_000);

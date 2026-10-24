@@ -2,7 +2,7 @@ import { bestCorrelation, bytesToInt16, rms } from "./audio";
 import { ScriptedComputer } from "./computer";
 import {
   RELAY_PORT,
-  chip,
+  statusName,
   expect,
   hold,
   label,
@@ -131,7 +131,7 @@ test.describe("tap or hold (PHONE-26, PHONE-29)", () => {
     await preparePage(page, browserName);
     await pairByLink(page, computer);
     // There is no hold-or-tap setting any more.
-    await chip(page).click();
+    await statusName(page).click();
     await page.getByRole("button", { name: "Indstillinger" }).click();
     await expect(page.getByText("Tryk for at starte og stoppe")).toHaveCount(0);
     await page.getByRole("button", { name: "Tilbage" }).click();

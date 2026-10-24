@@ -1,4 +1,7 @@
-/** The main screen (spec 7.3): exactly the design system's PhoneApp, driven by the controller. */
+/**
+ * The main screen (spec 7.3): the design system's PhoneApp, driven by the controller, with the
+ * connection status as one quiet line at the very top instead of PhoneApp's chip (run 2, Phase 4).
+ */
 import {
   useEffect,
   useRef,
@@ -9,11 +12,17 @@ import { LogoLoader, PhoneApp } from "@walkietalkey/ui";
 import {
   COUNTDOWN_FROM_MS,
   MAX_RECORDING_MS,
+  type ComputerView,
   type PhoneController,
   type Snapshot,
 } from "../core/controller";
 import { T, fill } from "../lib/strings";
-import { countdownSeconds, viewState } from "./viewState";
+import {
+  countdownSeconds,
+  splitName,
+  statusLine,
+  viewState,
+} from "./viewState";
 
 interface Props {
   controller: PhoneController;
@@ -28,6 +37,44 @@ function inside(e: ReactPointerEvent<HTMLButtonElement>): boolean {
   const dx = e.clientX - (r.left + r.width / 2);
   const dy = e.clientY - (r.top + r.height / 2);
   return Math.hypot(dx, dy) <= (r.width / 2) * 1.3;
+}
+
+/**
+ * Which computer the text goes to and how it is connected: a small dot and a line of quiet text,
+ * no pill, wrapping instead of cutting a long name off. Tapping it picks another computer or opens
+ * the settings (PHONE-41).
+ */
+function StatusLine(props: {
+  target: ComputerView;
+  noConnection: boolean;
+  onClick: () => void;
+}) {
+  const { kind, text } = statusLine(props.target, props.noConnection);
+  const [before, after] = splitName(text);
+  return (
+    <button
+      type="button"
+      className={`wt-status wt-status--${kind}`}
+      onClick={props.onClick}
+      aria-haspopup="dialog"
+      aria-description={T.statusPick}
+    >
+      <span className="wt-status-text">
+        <i className="wt-status-dot" aria-hidden />
+        {before}
+        <span className="wt-status-name">{props.target.name}</span>
+        {after}
+        <svg
+          className="wt-status-more"
+          viewBox="0 0 16 16"
+          aria-hidden
+          focusable="false"
+        >
+          <path d="M4.5 6.5 8 10l3.5-3.5" />
+        </svg>
+      </span>
+    </button>
+  );
 }
 
 export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
@@ -70,6 +117,13 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
       }
       data-phase={m.phase}
     >
+      {target ? (
+        <StatusLine
+          target={target}
+          noConnection={snap.noConnection}
+          onClick={onPicker}
+        />
+      ) : null}
       <div className="wt-stage-inner">
         <PhoneApp
           state={view.state}

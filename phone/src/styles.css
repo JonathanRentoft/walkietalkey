@@ -133,23 +133,106 @@ body {
   }
 }
 
-/* A long computer name ("Jonathans MacBook Pro") ends in an ellipsis instead of leaving the screen. */
+/* The connection status (run 2, Phase 4): one quiet line at the very top, below the notch or the
+   Dynamic Island, instead of PhoneApp's chip, which cut a long name off in a pill. A small dot and
+   ink-muted text, no surface of its own; a long name wraps instead of ending in an ellipsis. The
+   whole strip is the tap target (PHONE-41). */
 .wt-stage .wt-app-dev {
-  display: block;
-  max-width: 10.2em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
 }
-.wt-stage .wt-app-dev i {
+.wt-stage .wt-app-head {
+  justify-content: center;
+}
+.wt-status {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: max(12px, env(safe-area-inset-top)) 24px 10px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+  font: 500 16px/1.4 var(--font-sans);
+  letter-spacing: 0.005em;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-status-text {
+  display: block;
+  max-width: 34em;
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wt-status-dot {
   display: inline-block;
-  vertical-align: 0.1em;
-  margin-right: 0.5em;
+  width: 7px;
+  height: 7px;
+  margin-right: 9px;
+  border-radius: 50%;
+  vertical-align: 0.14em;
+  background: var(--perle-dyb);
+  transition: background-color var(--duration-base) var(--ease-flow);
+}
+.wt-status--online .wt-status-dot {
+  background: var(--rav-dyb);
+}
+.wt-status-more {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: -0.12em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+.wt-status:focus-visible {
+  outline: none;
+}
+.wt-status:focus-visible .wt-status-text {
+  box-shadow: var(--focus-ring);
 }
 
-/* The computer is not online: the chip's dot goes quiet. */
-.wt-stage--away .wt-app-dev i {
-  background: var(--perle-dyb);
+/* Readable everywhere (run 2, Phase 4): PhoneApp is laid out in em to fit the screen, so on a
+   short screen its em gets small; no text goes below 16 px. */
+.wt-stage .wt-app-brand {
+  font-size: max(16px, 1.45em);
+}
+.wt-stage .wt-app-time {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-label--long > span:last-child {
+  font-size: max(16px, 1.4em);
+}
+.wt-stage .wt-app-sub > span {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-foot > span {
+  font-size: max(16px, 1.15em);
+}
+
+/* PHONE-26: hands-free shows a lock before "Tryk igen for at stoppe" (the design system's lock). */
+.wt-stage--handsfree .wt-app-label > span:last-child::before {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.35em;
+  vertical-align: -0.04em;
+  background: currentColor;
+  -webkit-mask: var(--wt-lock) center / contain no-repeat;
+  mask: var(--wt-lock) center / contain no-repeat;
+  --wt-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z'/%3E%3C/svg%3E");
 }
 
 /* Appendix D: LogoLoader `ekko` on the button while sending. */
@@ -183,7 +266,7 @@ body {
   pointer-events: none;
 }
 .wt-stage-countdown > span {
-  font: 500 1.3em/1.3 var(--font-sans);
+  font: 500 max(16px, 1.3em) / 1.3 var(--font-sans);
   color: var(--signal-rec);
 }
 
@@ -197,7 +280,7 @@ body {
   justify-content: center;
 }
 .wt-stage-cancel-btn {
-  font-size: 1.2em;
+  font-size: max(16px, 1.2em);
   background: var(--surface-300);
   color: var(--ink);
   box-shadow: inset 0 0 0 0.08em var(--line);
@@ -281,6 +364,12 @@ body {
   justify-content: center;
 }
 
+/* ShinyButton is 15 px by default; nothing here is below 16 px (run 2, Phase 4). */
+.wt-screen .wt-shiny,
+.wt-scan .wt-shiny {
+  font-size: 16px;
+}
+
 .wt-steps {
   margin: 0;
   padding-left: 1.4em;
@@ -296,7 +385,7 @@ body {
   background: none;
   padding: var(--space-3) var(--space-4);
   font: var(--type-label);
-  font-size: 15px;
+  font-size: 16px;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -307,7 +396,7 @@ body {
 }
 
 .wt-muted {
-  font: var(--type-caption) !important;
+  font: 400 16px/1.5 var(--font-sans) !important;
   color: var(--ink-muted);
 }
 
@@ -315,6 +404,7 @@ body {
   display: grid;
   gap: var(--space-2);
   font: var(--type-label);
+  font-size: 16px;
   color: var(--ink-muted);
 }
 .wt-field input {
@@ -431,7 +521,7 @@ body {
   overflow-wrap: anywhere;
 }
 .wt-list-main span {
-  font: var(--type-caption);
+  font: var(--type-body);
   color: var(--ink-muted);
   display: inline-flex;
   align-items: center;
@@ -465,13 +555,14 @@ body {
 }
 
 .wt-pill-btn {
-  height: 40px;
-  padding: 0 18px;
+  height: 44px;
+  padding: 0 20px;
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--surface-300);
   color: var(--ink);
   font: var(--type-label);
+  font-size: 16px;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px var(--line);
 }
@@ -580,7 +671,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: var(--type-caption);
+  font: var(--type-body);
   color: var(--ink-muted);
 }
 .wt-pick--on {

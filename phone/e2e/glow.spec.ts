@@ -147,7 +147,7 @@ test.describe("the glow around the button is never clipped (Phase 4)", () => {
       const style = await page.addStyleTag({ content: css });
       await page.waitForTimeout(200);
       const r = await measureGlow(page);
-      await style.evaluate((el) => el.remove());
+      await style.evaluate((el) => (el as Element).remove());
       return r;
     };
     // v1 on an iPhone home-screen app: PhoneApp's box, narrower than the screen, clipped.

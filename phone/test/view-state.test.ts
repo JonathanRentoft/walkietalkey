@@ -6,8 +6,54 @@ import {
   type Phase,
 } from "../src/core/machine";
 import { COUNTDOWN_FROM_MS, MAX_RECORDING_MS } from "../src/core/controller";
-import { countdownSeconds, viewState } from "../src/ui/viewState";
+import {
+  countdownSeconds,
+  splitName,
+  statusLine,
+  viewState,
+} from "../src/ui/viewState";
 import { T } from "../src/lib/strings";
+
+describe("the status line at the top (run 2, Phase 4)", () => {
+  const room = (online: boolean, connected: boolean) => ({
+    roomId: "r",
+    name: "Jonathans MacBook Pro",
+    os: "mac" as const,
+    deviceName: "iPhone",
+    online,
+    connected,
+  });
+
+  it("names the computer the text goes to, and how it is connected", () => {
+    expect(statusLine(room(true, true), false)).toEqual({
+      kind: "online",
+      text: "Forbundet til {computer}",
+    });
+    expect(statusLine(room(false, true), false)).toEqual({
+      kind: "away",
+      text: "{computer} er ikke online",
+    });
+    expect(statusLine(room(false, false), false)).toEqual({
+      kind: "connecting",
+      text: "Forbinder til {computer}",
+    });
+    expect(statusLine(room(false, false), true)).toEqual({
+      kind: "lost",
+      text: "Ikke forbundet til {computer}",
+    });
+  });
+
+  it("splits around the name, so the name can be marked up", () => {
+    expect(splitName("Forbundet til {computer}")).toEqual([
+      "Forbundet til ",
+      "",
+    ]);
+    expect(splitName("{computer} er ikke online")).toEqual([
+      "",
+      " er ikke online",
+    ]);
+  });
+});
 
 const m = (phase: Phase): MachineState => ({
   ...initialMachine({ peerOnline: true, connected: true }),
