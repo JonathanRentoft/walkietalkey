@@ -1,0 +1,63 @@
+# Variant of first-frozen-encoder.yaml that also adapts the top 4 of the
+# encoder's 32 layers. If the decoder alone cannot hear an English term (the
+# features for "deploye" never look like the word), adapting the top of the
+# encoder lets the features change too. It costs more per step (those 4 layers
+# run every step; the 28 frozen layers below them are cached once) and puts
+# plain Danish more at risk, so watch the FLEURS WER in `wt-train eval`.
+# Only the knobs that differ from first-frozen-encoder.yaml are explained here.
+
+name: top4-encoder
+
+base_model:
+  repo: danish-foundation-models/edda-v0.2
+  revision: 698f8d04b5970f963d31c4079c05a76fa7f4f5bb
+
+data:
+  recordings: null
+  sentences: null
+  spelling: null
+  validation_fraction: 0.1
+  test_fraction: 0.1
+  # Same seed as the first experiment: the same sentences are held out, so the
+  # two experiments are scored on the same test split.
+  seed: 1
+
+rehearsal:
+  share: 0.3
+  validation_share: 0.3
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  decoder: [self_attn, cross_attn, ffn]
+  projections: [q_proj, k_proj, v_proj, out_proj]
+  # Adapt encoder layers 28 to 31 as well; layers 0 to 27 stay frozen and cached.
+  encoder_top_layers: 4
+  # Both the attention and the feed-forward block of those encoder layers.
+  encoder: [self_attn, ffn]
+
+training:
+  # Lower than the decoder-only experiment: encoder changes reach every word.
+  learning_rate: 1e-4
+  warmup_fraction: 0.1
+  schedule: linear
+  epochs: 5
+  batch_size: 8
+  gradient_accumulation: 2
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  seed: 1
+  device: auto
+
+evaluation:
+  batch_size: 8
+  max_new_tokens: 440
+  baseline: true
+
+export:
+  slug: top4
+  # TODO(copy)
+  name: Edda finjusteret (encoder top 4)
+  verify_clips: 10
+  max_differing_clips: 1
