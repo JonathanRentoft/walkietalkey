@@ -316,6 +316,35 @@ mod tests {
     }
 
     #[test]
+    fn the_download_urls_are_the_manifests_release_assets() {
+        // DESK-32: baseUrl + path in models/manifest.json, for every model
+        // of ours in the catalog.
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../models/manifest.json")).unwrap();
+        let base = manifest["baseUrl"].as_str().unwrap();
+        let ours: Vec<_> = crate::catalog::file_hashes()
+            .into_iter()
+            .filter(|(id, _, _, _)| is_ours(id))
+            .collect();
+        assert_eq!(ours.len(), 2, "Edda and Ekko v1 Tiny");
+        for (id, filename, sha256, _) in ours {
+            let entry = manifest["models"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|m| m["files"].as_array().unwrap())
+                .find(|f| f["name"] == filename.as_str())
+                .unwrap_or_else(|| panic!("{filename} in the manifest"));
+            let source = direct_source(None, &id).unwrap();
+            assert_eq!(
+                source.url,
+                format!("{base}{}", entry["path"].as_str().unwrap())
+            );
+            assert_eq!(entry["sha256"], sha256.as_str());
+        }
+    }
+
+    #[test]
     fn one_download_per_model_at_a_time() {
         let id = "test/one-at-a-time.gguf";
         let slot = begin_download(id).expect("free");

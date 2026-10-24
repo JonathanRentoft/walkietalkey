@@ -431,6 +431,37 @@ mod download_tests {
     }
 
     #[test]
+    fn the_release_names_and_sums_match_the_manifest() {
+        // DESK-32: what models/manifest.json says release models-v1 holds.
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../models/manifest.json")).unwrap();
+        assert_eq!(
+            manifest["baseUrl"].as_str().unwrap().trim_end_matches('/'),
+            super::super::models::MODEL_RELEASE_BASE
+        );
+        let pnc = manifest["models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["id"] == "ekko-pnc")
+            .unwrap();
+        for f in &LICENCE_FILES {
+            let asset = &pnc["licenseAssets"][f.name];
+            assert_eq!(asset["asset"], release_asset_name(f.name), "{}", f.name);
+            assert_eq!(asset["sha256"], f.sha256, "{}", f.name);
+        }
+        for f in &RUNTIME_FILES {
+            let entry = pnc["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|e| e["name"] == f.name)
+                .unwrap();
+            assert_eq!(entry["path"], release_asset_name(f.name), "{}", f.name);
+        }
+    }
+
+    #[test]
     fn present_means_every_runtime_file() {
         let dir = tempfile::tempdir().unwrap();
         assert!(!files_present(dir.path()));
