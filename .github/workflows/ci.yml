@@ -1,0 +1,239 @@
+name: CI
+
+# Every pull request and every push to main (spec 15.2): lint, type checks,
+# unit tests, protocol vectors, relay and phone tests, desktop UI tests,
+# licence and advisory checks, and builds for macOS, Windows (unsigned
+# installer as an artifact), iOS (simulator) and the website.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    name: Lint, types and TypeScript tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # Astro (the website) needs a newer Node.js than the runner's default.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Lint (desktop UI)
+        run: bun run lint
+      - name: Formatting (Prettier)
+        run: bunx prettier --check .
+      - name: Types (desktop UI)
+        run: bunx tsc --noEmit
+      - name: Translations
+        run: bun run check:translations
+      - name: Desktop UI unit tests and the owner's copy list
+        run: bun run test:wt && bun run check:copy
+      - name: Handy's keyboard and model-language checks
+        run: bun run test:keyboard && bun run check:model-languages
+      - name: Model catalog in sync with its package
+        run: bun run check:catalog
+      - name: Protocol (TypeScript, shared test vectors)
+        working-directory: packages/protocol
+        run: bun run typecheck && bun run test
+      - name: Design system
+        working-directory: packages/ui
+        run: bun run typecheck && bun run check:tokens && bun run test
+      - name: Relay (Workers pool, storage writes counted)
+        working-directory: relay
+        run: bun run typecheck && bun run test
+      - name: Phone app (unit tests and build)
+        working-directory: phone
+        run: bun run typecheck && bun run test && bun run build
+      - name: Website (types, build, build checks)
+        working-directory: site
+        run: bun run typecheck && bun run build && bun run test:unit
+      - name: Desktop UI build
+        run: bun run build
+
+  browsers:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # Astro (the website) needs a newer Node.js than the runner's default.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium webkit
+      - name: Desktop UI (settings and onboarding)
+        run: bun run test:playwright
+      - name: Phone app (fake microphone against a local relay)
+        working-directory: phone
+        run: bun run test:e2e
+      - name: Website (every page, no cookies, no third parties)
+        working-directory: site
+        run: bun run build && bun run test:e2e
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-reports
+          path: |
+            playwright-report/
+            phone/playwright-report/
+            site/playwright-report/
+          retention-days: 7
+
+  rust:
+    name: Rust tests (protocol vectors, relay client, native, punctuation, desktop)
+    runs-on: macos-26
+    env:
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+            packages/protocol/rust -> target
+            crates/wt-relay-client -> target
+            crates/wt-native -> target
+            crates/ekko-pnc -> target
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Formatting (rustfmt)
+        run: |
+          for dir in src-tauri packages/protocol/rust crates/wt-relay-client crates/wt-native crates/ekko-pnc; do
+            (cd "$dir" && cargo fmt -- --check)
+          done
+      - name: Protocol (Rust, shared test vectors)
+        working-directory: packages/protocol/rust
+        run: cargo test
+      - name: Relay client
+        working-directory: crates/wt-relay-client
+        run: cargo test
+      - name: Relay client against a local relay (pairing, re-pairing, streaming, buffering)
+        run: bash crates/wt-relay-client/scripts/integration.sh
+      - name: Native platform layer
+        working-directory: crates/wt-native
+        run: cargo test
+      - name: Ekko PnC model files (Hugging Face, public)
+        run: bash models/ekko-pnc/download.sh "$RUNNER_TEMP/ekko-pnc"
+      - name: Ekko PnC (golden tests against the Python reference)
+        working-directory: crates/ekko-pnc
+        env:
+          WT_EKKO_PNC_DIR: ${{ runner.temp }}/ekko-pnc
+        run: cargo test
+      - name: Desktop frontend (embedded by Tauri)
+        run: bun run build
+      - name: Desktop app
+        working-directory: src-tauri
+        run: cargo test --lib
+
+  licences:
+    name: Licences and advisories
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: npm licences
+        run: bun scripts/walkietalkey/check-js-licenses.ts
+      - name: npm advisories
+        # Two advisories sit only in test, deploy and build tooling and have no fixed upstream release
+        # yet (run 2): undici <7.30.1 pinned by miniflare (wrangler, @cloudflare/vitest-plugin) and
+        # zod <4.6.6 pinned by @cloudflare/vitest-plugin. No app, the relay Worker or the site ships them.
+        run: bun audit --audit-level=high --ignore=GHSA-xjj6-f33q-929c --ignore=GHSA-mrhx-c7xc-m3w5
+      - name: cargo deny (desktop app)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
+          command: check
+      - name: cargo deny (crates)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: crates/wt-relay-client/Cargo.toml
+          command: check
+      - name: cargo deny (protocol)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: packages/protocol/rust/Cargo.toml
+          command: check
+      - name: cargo audit
+        run: |
+          cargo install cargo-audit --locked
+          # Accepted until Tauri moves on; the reasons are in deny.toml.
+          for dir in src-tauri crates/wt-relay-client crates/wt-native crates/ekko-pnc packages/protocol/rust; do
+            (cd "$dir" && cargo audit \
+              --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195 \
+              --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369 \
+              --ignore RUSTSEC-2026-0235 --ignore RUSTSEC-2024-0422 --ignore RUSTSEC-2026-0387)
+          done
+
+  # The same universal app (Apple Silicon and Intel) the release publishes as WalkieTalkey-mac.dmg.
+  build-macos:
+    name: macOS build (universal, unsigned)
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: macos-26
+      target: universal-apple-darwin
+      build-args: "--target universal-apple-darwin --bundles app,dmg"
+      upload-artifacts: true
+    secrets: inherit
+
+  build-windows:
+    name: Windows build (x64, unsigned installer)
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: windows-latest
+      target: x86_64-pc-windows-msvc
+      build-args: "--bundles nsis"
+      upload-artifacts: true
+    secrets: inherit
+
+  build-ios:
+    name: iOS app (simulator build)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile && brew install xcodegen
+      - name: Build the phone app into the iOS bundle
+        run: bash ios/scripts/bundle-phone.sh
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          xcodebuild -project WalkieTalkey.xcodeproj -scheme WalkieTalkey \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build

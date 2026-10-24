@@ -1,0 +1,9 @@
+{
+  "$schema": "../../relay/node_modules/wrangler/config-schema.json",
+  // www.walkietalkey.com redirects to walkietalkey.com. Deploy: `bun run --cwd site deploy:www`.
+  "name": "walkietalkey-www",
+  "main": "index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "www.walkietalkey.com", "custom_domain": true }],
+}

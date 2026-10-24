@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+bun.lock
+package-lock.json
+
+# Build outputs
+dist
+target
+*.bundle.*
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+
+# Generated files
+src/bindings.ts
+src-tauri/src/catalog/catalog.json
+
+# Misc
+.DS_Store
+*.log
+
+# WalkieTalkey
+_kit
+.claude
+docs/SPEC.md
+**/target
+
+# Generated: the phone build bundled into the iOS shell, the phone e2e build
+ios/Web
+phone/dist-e2e
+phone/e2e/.tmp
+
+# Generated: design tokens (gen:tokens, checked byte for byte) and the relay's Worker types (wrangler types)
+packages/ui/src/styles/tokens.css
+packages/ui/src/tokens.ts
+relay/worker-configuration.d.ts
+
+# Licence texts are kept byte-exact (they travel with the models and the app).
+licenses/
+models/*/licenses/

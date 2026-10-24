@@ -1,0 +1,17 @@
+Edda v0.2, GGUF for transcribe.cpp (edda-v0.2-Q8_0.gguf)
+
+Edda v0.2 by the Alexandra Institute (CoRal project), released by Danish
+Foundation Models under the Apache License 2.0 (LICENSE):
+https://huggingface.co/danish-foundation-models/edda-v0.2, revision
+698f8d04b5970f963d31c4079c05a76fa7f4f5bb.
+
+Based on OpenAI's Whisper large-v3-turbo, Copyright (c) 2022 OpenAI, under the
+MIT licence (Whisper-MIT.txt).
+
+Modifications: converted to GGUF and quantised to Q8_0 with transcribe.cpp
+0.4.0 by the WalkieTalkey project (Navigent.io ApS). The weights are otherwise
+unchanged.
+
+The use restrictions of the CoRal licence travel with the model
+(CORAL-LICENSE); the FT Speech statement is in FTSPEECH-LICENSE.md. See the
+model card (README.md) for the training data and its terms.

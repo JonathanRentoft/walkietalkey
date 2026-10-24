@@ -1,0 +1,205 @@
+// First run (spec 6.2, run 2 "plug and play"): one window, one step at a
+// time. The speech model downloads in the background from the first launch
+// and shows as one calm line under the steps; it never blocks a step.
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { GradientBackground } from "@walkietalkey/ui";
+import { useSettingsStore } from "@/stores/settingsStore";
+import {
+  forwardStep,
+  ONBOARDING_DONE,
+  onboardingSteps,
+  previousStep,
+  type OnboardingStepId,
+  type WtPlatform,
+} from "../lib/helpers";
+import { useTauriEvent } from "../lib/hooks";
+import { hasPermission, windowsMicrophoneAllowed } from "../lib/system";
+import { useColorScheme } from "../lib/theme";
+import { useWtStore, useWtSettings } from "../lib/wtStore";
+import { Button } from "../ui/controls";
+import { ModelStatusLine } from "../ui/modelStatus";
+import { useModelSetup } from "./modelSetup";
+import {
+  AccessibilityStep,
+  DoneStep,
+  MicrophoneStep,
+  PhoneStep,
+  TryStep,
+  WelcomeStep,
+} from "./steps";
+
+export function Onboarding(props: {
+  platform: WtPlatform;
+  initialStep: OnboardingStepId;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const wt = useWtSettings();
+  const updateWt = useWtStore((s) => s.update);
+  const mac = props.platform === "macos";
+  const steps = useMemo(
+    () =>
+      onboardingSteps(props.platform, {
+        phonePairing: wt?.allow_phone_pairing ?? true,
+      }),
+    [props.platform, wt?.allow_phone_pairing],
+  );
+  const [step, setStep] = useState<OnboardingStepId>(props.initialStep);
+  const [phoneShown, setPhoneShown] = useState(false);
+  const [phonePaired, setPhonePaired] = useState(false);
+  const heading = useRef<HTMLDivElement>(null);
+  const scheme = useColorScheme();
+
+  // The backend starts the download at the first launch; this follows it
+  // (and starts it only if nothing did).
+  useEffect(() => {
+    void useModelSetup.getState().watch({ onboarding: true });
+  }, []);
+  useTauriEvent("wt-phone-joined", () => setPhonePaired(true));
+
+  const go = async (to: OnboardingStepId | null) => {
+    if (!to) return;
+    setStep(to);
+    // Remembered so a restart resumes here (DESK-13).
+    await updateWt({ onboarding_resume_step: to });
+  };
+
+  /** The next step, past permissions that are already granted. */
+  const forward = async () => {
+    const [microphone, accessibility] = await Promise.all([
+      mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
+      mac ? hasPermission("accessibility") : Promise.resolve(true),
+    ]);
+    await go(forwardStep(steps, step, { microphone, accessibility }));
+  };
+
+  // Move focus to the new step for keyboard and screen reader users, or to
+  // the field a step asks for (Prøv det: the text is pasted where focus is).
+  useEffect(() => {
+    const box = heading.current;
+    (
+      box?.querySelector<HTMLElement>("[data-autofocus]") ??
+      box?.querySelector<HTMLElement>("h1")
+    )?.focus();
+  }, [step]);
+
+  const finish = async () => {
+    // DESK-97: start at login, on by default after onboarding.
+    await useSettingsStore.getState().updateSetting("autostart_enabled", true);
+    // Finished, whether or not the model is in place yet: the download goes
+    // on in the background and the pill says when it is not ready.
+    await updateWt({ onboarding_resume_step: ONBOARDING_DONE });
+    props.onDone();
+  };
+
+  const back = previousStep(steps, step);
+  const index = steps.indexOf(step);
+
+  let content;
+  switch (step) {
+    case "welcome":
+      content = <WelcomeStep onStart={() => void forward()} />;
+      break;
+    case "microphone":
+      content = (
+        <MicrophoneStep
+          platform={props.platform}
+          onGranted={() => void forward()}
+        />
+      );
+      break;
+    case "accessibility":
+      content = <AccessibilityStep onGranted={() => void forward()} />;
+      break;
+    case "try":
+      content = <TryStep platform={props.platform} />;
+      break;
+    case "phone":
+      content = <PhoneStep onShown={() => setPhoneShown(true)} />;
+      break;
+    case "done":
+      content = <DoneStep platform={props.platform} />;
+      break;
+  }
+
+  let action;
+  if (step === "done") {
+    action = (
+      <Button variant="primary" onClick={() => void finish()}>
+        {t("wt.onboarding.finish")}
+      </Button>
+    );
+  } else if (step === "phone" && !phoneShown && !phonePaired) {
+    action = (
+      <Button onClick={() => void forward()}>{t("wt.common.skip")}</Button>
+    );
+  } else {
+    const permission = step === "microphone" || step === "accessibility";
+    action = (
+      <Button
+        variant={permission ? "secondary" : "primary"}
+        onClick={() => void forward()}
+      >
+        {t("wt.common.next")}
+      </Button>
+    );
+  }
+
+  const welcome = step === "welcome";
+  return (
+    <GradientBackground
+      palette={scheme === "dark" ? "nat" : "morgengry"}
+      className="wt-onb-bg"
+      noise={0.6}
+    >
+      <main
+        className={welcome ? "wt-onb wt-onb--welcome" : "wt-onb"}
+        aria-label={t("wt.onboarding.label")}
+      >
+        {!welcome ? (
+          <ol
+            className="wt-onb-progress"
+            aria-label={t("wt.onboarding.progress", {
+              step: index + 1,
+              total: steps.length,
+            })}
+          >
+            {steps.map((s, i) => (
+              <li
+                key={s}
+                className={
+                  i <= index ? "wt-onb-dot wt-onb-dot--on" : "wt-onb-dot"
+                }
+                aria-current={s === step ? "step" : undefined}
+              />
+            ))}
+          </ol>
+        ) : null}
+        <div
+          className={
+            welcome ? "wt-onb-card wt-onb-card--welcome" : "wt-onb-card"
+          }
+          ref={heading}
+          key={step}
+          data-step={step}
+        >
+          {content}
+        </div>
+        {!welcome ? (
+          <footer className="wt-onb-footer">
+            <div>
+              {back && back !== "welcome" ? (
+                <Button variant="quiet" onClick={() => void go(back)}>
+                  {t("wt.common.back")}
+                </Button>
+              ) : null}
+            </div>
+            <ModelStatusLine className="wt-onb-model" />
+            <div>{action}</div>
+          </footer>
+        ) : null}
+      </main>
+    </GradientBackground>
+  );
+}

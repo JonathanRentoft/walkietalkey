@@ -1,0 +1,37 @@
+name: Relay deploy
+
+# The relay deploys only on relay-vX.Y.Z tags (OSS-22, RELAY-09): a deploy
+# restarts every Durable Object and drops every socket. Tests run first; the
+# deploy itself runs only when a CLOUDFLARE_API_TOKEN secret exists.
+
+on:
+  push:
+    tags: ["relay-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Relay tests
+        working-directory: relay
+        run: bun run typecheck && bun run test
+      - name: Deploy
+        working-directory: relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "No CLOUDFLARE_API_TOKEN secret: skipping the deploy (deploy with 'bunx wrangler deploy' from relay/)."
+            exit 0
+          fi
+          bunx wrangler deploy

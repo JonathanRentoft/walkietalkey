@@ -1,0 +1,78 @@
+name: Web deploy
+
+# The website (OSS-23, SITE-01) and the phone app (SITE-03) deploy from main
+# to Cloudflare Pages, built by CI from the public repo. Runs only when a
+# CLOUDFLARE_API_TOKEN secret exists.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "phone/**"
+      - "packages/ui/**"
+      - "packages/protocol/**"
+      - ".github/workflows/web-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Token present?
+        id: token
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "No CLOUDFLARE_API_TOKEN secret: nothing is deployed."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.token.outputs.skip != 'true'
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.skip != 'true'
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        if: steps.token.outputs.skip != 'true'
+        with:
+          bun-version: 1.4.4
+      - name: Install
+        if: steps.token.outputs.skip != 'true'
+        run: bun install --frozen-lockfile
+      - name: Keep the newest release's manifest for beta (DESK-112)
+        if: steps.token.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The newest published release, stable or pre-release: beta users get both.
+          # App releases only (v*): the models release (models-v1) has no latest.json.
+          TAG=$(gh release list --limit 20 --json tagName,isDraft --jq '[.[] | select((.isDraft | not) and (.tagName | startswith("v")))][0].tagName' || true)
+          if [ -n "$TAG" ] && [ "$TAG" != "null" ]; then
+            gh release download "$TAG" --pattern latest.json --output site/public/updates/beta.json --clobber || true
+          fi
+      - name: Website
+        if: steps.token.outputs.skip != 'true'
+        working-directory: site
+        # pages.dev (v1 links) and walkietalkey.com (Workers static assets), plus the www redirect.
+        run: |
+          bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-site --branch main
+          bunx wrangler deploy --config wrangler.domain.jsonc
+          bunx wrangler deploy --config www/wrangler.jsonc
+      - name: Phone app
+        if: steps.token.outputs.skip != 'true'
+        working-directory: phone
+        # pages.dev (v1 pairing codes) and app.walkietalkey.com (Workers static assets).
+        run: |
+          bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-app --branch main
+          bunx wrangler deploy --config wrangler.domain.jsonc

@@ -1,0 +1,26 @@
+{
+  "name": "@walkietalkey/relay",
+  "version": "0.1.0",
+  "description": "WalkieTalkey relay: Cloudflare Worker plus one SQLite-backed Durable Object per room.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "wrangler types >/dev/null && tsc --noEmit",
+    "types": "wrangler types",
+    "smoke": "bun scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@walkietalkey/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.7",
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.152.0"
+  }
+}

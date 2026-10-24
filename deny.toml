@@ -1,0 +1,80 @@
+# cargo-deny: licences, advisories and sources for every Rust crate in the
+# repository (spec section 11: a CI check fails the build when a dependency
+# with an unknown or non-permissive licence is added).
+# Run: cargo deny --manifest-path src-tauri/Cargo.toml check
+
+[graph]
+all-features = false
+
+[licenses]
+confidence-threshold = 0.9
+# Permissive licences, plus MPL-2.0 (file-level copyleft, compatible with
+# Apache-2.0 and only for unmodified dependency files) and CDLA-Permissive-2.0
+# (certificate data).
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "0BSD",
+  "BSL-1.0",
+  "CC0-1.0",
+  "Unlicense",
+  "Unicode-3.0",
+  "MPL-2.0",
+  "CDLA-Permissive-2.0",
+]
+
+[[licenses.clarify]]
+# Its Cargo.toml has no licence field; the repository ships MIT and Apache-2.0.
+crate = "tauri-nspanel"
+expression = "MIT OR Apache-2.0"
+license-files = [
+  { path = "LICENSE_MIT", hash = 0 },
+  { path = "LICENSE_APACHE-2.0", hash = 0 },
+]
+
+[advisories]
+# Unmaintained crates deep in Tauri's tree are reported, not fatal; real
+# vulnerabilities fail the build (cargo audit runs too).
+unmaintained = "workspace"
+yanked = "warn"
+# Accepted until Tauri moves on (re-check at every Handy sync):
+ignore = [
+  # gtk-layer-shell is Handy's Linux overlay; Linux is not a supported
+  # WalkieTalkey platform (spec 3.2).
+  { id = "RUSTSEC-2024-0422", reason = "Linux-only dependency from Handy; Linux is not supported" },
+  # quick-xml 0.38 through plist through tauri: parses only the app's own
+  # property lists, never input from others.
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml via tauri's plist; only the app's own plists are parsed" },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml via tauri's plist; only the app's own plists are parsed" },
+  # zip 4 through tauri-plugin-updater: update archives are only unpacked
+  # after their signature has been verified with our key (SEC-07).
+  { id = "RUSTSEC-2026-0367", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
+  { id = "RUSTSEC-2026-0368", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
+  { id = "RUSTSEC-2026-0369", reason = "zip via tauri-plugin-updater; archives are signature-verified before extraction" },
+  # crypto-bigint 0.5 under p256 0.13 (our protocol's P-256): timing variability in operations
+  # meant to be constant-time, published 2026-10-24, fixed only in crypto-bigint 0.7.6, which
+  # needs RustCrypto's next generation (p256 0.14, digest 0.11, aead 0.6): a protocol-wide
+  # upgrade checked against the shared test vectors, not a patch bump. Exposure: a few P-256
+  # operations per pairing or connection, only observable through network jitter.
+  { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5 via p256 0.13; the fix needs the p256 0.14 upgrade (planned); network-only exposure" },
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = [
+  "https://github.com/rustdesk-org/rdev",
+  "https://github.com/cjpais/hf-hub",
+  "https://github.com/cjpais/tao",
+  "https://github.com/ahkohd/tauri-nspanel",
+]

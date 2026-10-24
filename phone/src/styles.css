@@ -1,0 +1,701 @@
+/* The phone app's own layout, built only from the design system's tokens. The main screen is the
+   design system's PhoneApp unchanged; .wt-stage only scales it to the screen. */
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--surface-100);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* ---------------------------------------------------------------- main screen */
+
+/* PhoneApp is laid out in em on a 27.4em x 59.2em screen (the PhoneFrame's screen); 1em is set so
+   that it fills the phone's width, or its height in landscape. */
+.wt-stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface-100);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.wt-stage-inner {
+  position: relative;
+  height: 100%;
+  width: min(100%, calc(100vh * 27.4 / 59.2));
+  width: min(100%, calc(100dvh * 27.4 / 59.2));
+  font-size: min(calc(100vw / 27.4), calc(100vh / 59.2));
+  font-size: min(calc(100vw / 27.4), calc(100dvh / 59.2));
+}
+
+.wt-stage .wt-app {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  /* The glow is never clipped (run 2, owner finding 5). PhoneApp's box keeps the design's
+     27.4 x 59.2 proportions, so on a screen that is relatively wider (an iPhone home-screen app
+     below its status bar: 393 x 793) it is narrower than the screen, and its `overflow: hidden`
+     cut the recording glow off in straight edges about 13 px inside the screen's sides. Only the
+     stage, which is the screen itself, clips. */
+  overflow: visible;
+}
+
+/* The halo paints only inside its own box, so no compositing can cut it at the box's square
+   bounds: a conic gradient faded by a radial mask (the same soft edge as the design's 1.6em blur
+   of a 10.1em disc, drawn into a 30em box) instead of `filter: blur()`, whose blur reaches
+   outside the element. It turns with a compositor-only `rotate` instead of repainting a custom
+   property every frame; the colours only depend on the angle, so it looks the same. */
+.wt-stage .wt-app-halo,
+.wt-stage .wt-app--rec .wt-app-halo {
+  inset: -7.5em;
+  filter: none;
+  background: conic-gradient(
+    var(--platin),
+    var(--sand),
+    var(--rav),
+    var(--perle),
+    var(--platin)
+  );
+  -webkit-mask-image: var(--wt-halo-mask);
+  mask-image: var(--wt-halo-mask);
+  --wt-halo-mask: radial-gradient(
+    closest-side,
+    #000 44%,
+    rgb(0 0 0 / 0.977) 46%,
+    rgb(0 0 0 / 0.96) 48.7%,
+    rgb(0 0 0 / 0.933) 51.3%,
+    rgb(0 0 0 / 0.894) 54%,
+    rgb(0 0 0 / 0.841) 56.7%,
+    rgb(0 0 0 / 0.773) 59.3%,
+    rgb(0 0 0 / 0.691) 62%,
+    rgb(0 0 0 / 0.599) 64.7%,
+    rgb(0 0 0 / 0.5) 67.3%,
+    rgb(0 0 0 / 0.401) 70%,
+    rgb(0 0 0 / 0.309) 72.7%,
+    rgb(0 0 0 / 0.227) 75.3%,
+    rgb(0 0 0 / 0.159) 78%,
+    rgb(0 0 0 / 0.106) 80.7%,
+    rgb(0 0 0 / 0.067) 83.3%,
+    rgb(0 0 0 / 0.04) 86%,
+    rgb(0 0 0 / 0.023) 88.7%,
+    rgb(0 0 0 / 0.012) 91.3%,
+    rgb(0 0 0 / 0.006) 94%,
+    rgb(0 0 0 / 0.003) 96.7%,
+    #0000 100%
+  );
+  /* At rest the disc is 8.9em (the design's inset -1.4em), recording 10.1em (-2.6em). */
+  scale: 0.881;
+  animation: wt-turn 6s linear infinite;
+  transition:
+    opacity 0.5s var(--ease-flow),
+    scale 0.5s var(--ease-flow);
+}
+.wt-stage .wt-app--rec .wt-app-halo {
+  scale: 1;
+  animation-duration: 2.4s;
+}
+.wt-stage .wt-app-ring {
+  background: conic-gradient(
+    var(--perle),
+    var(--platin-dyb),
+    var(--sand),
+    var(--rav-dyb),
+    var(--platin),
+    var(--perle)
+  );
+  animation: wt-turn 8s linear infinite;
+}
+@keyframes wt-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-stage .wt-app-halo,
+  .wt-stage .wt-app-ring {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* The connection status (run 2, Phase 4): one quiet line at the very top, below the notch or the
+   Dynamic Island, instead of PhoneApp's chip, which cut a long name off in a pill. A small dot and
+   ink-muted text, no surface of its own; a long name wraps instead of ending in an ellipsis. The
+   whole strip is the tap target (PHONE-41). */
+.wt-stage .wt-app-dev {
+  display: none;
+}
+.wt-stage .wt-app-head {
+  justify-content: center;
+}
+.wt-status {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: max(12px, env(safe-area-inset-top)) 16px 10px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+  font: 500 16px/1.4 var(--font-sans);
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-status-text {
+  display: block;
+  max-width: 34em;
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wt-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 9px;
+  border-radius: 50%;
+  vertical-align: 0.14em;
+  background: var(--perle-dyb);
+  transition: background-color var(--duration-base) var(--ease-flow);
+}
+.wt-status--online .wt-status-dot {
+  background: var(--rav-dyb);
+}
+.wt-status-more {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: -0.12em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+.wt-status:focus-visible {
+  outline: none;
+}
+.wt-status:focus-visible .wt-status-text {
+  box-shadow: var(--focus-ring);
+}
+
+/* Readable everywhere (run 2, Phase 4): PhoneApp is laid out in em to fit the screen, so on a
+   short screen its em gets small; no text goes below 16 px. */
+.wt-stage .wt-app-brand {
+  font-size: max(16px, 1.45em);
+}
+.wt-stage .wt-app-time {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-label--long > span:last-child {
+  font-size: max(16px, 1.4em);
+}
+.wt-stage .wt-app-sub > span {
+  font-size: max(16px, 1.3em);
+}
+.wt-stage .wt-app-foot > span {
+  font-size: max(16px, 1.15em);
+}
+
+/* PHONE-26: hands-free shows a lock before "Tryk igen for at stoppe" (the design system's lock). */
+.wt-stage--handsfree .wt-app-label > span:last-child::before {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.35em;
+  vertical-align: -0.04em;
+  background: currentColor;
+  -webkit-mask: var(--wt-lock) center / contain no-repeat;
+  mask: var(--wt-lock) center / contain no-repeat;
+  --wt-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z'/%3E%3C/svg%3E");
+}
+
+/* Appendix D: LogoLoader `ekko` on the button while sending. */
+.wt-stage-ekko {
+  position: absolute;
+  left: 50%;
+  top: 25.5em;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  color: var(--on-night);
+}
+.wt-stage-ekko .wt-loader {
+  width: 8.4em !important;
+  height: auto !important;
+}
+.wt-stage-ekko .wt-loader > svg {
+  width: 100%;
+  height: auto;
+}
+.wt-stage--sending .wt-app-face > svg {
+  opacity: 0;
+}
+
+/* PHONE-29: the last 15 seconds. */
+.wt-stage-countdown {
+  position: absolute;
+  left: 1em;
+  right: 1em;
+  top: 43.4em;
+  text-align: center;
+  pointer-events: none;
+}
+.wt-stage-countdown > span {
+  font: 500 max(16px, 1.3em) / 1.3 var(--font-sans);
+  color: var(--signal-rec);
+}
+
+/* The cancel control of a recording that ends with a tap (tap mode, Start diktering). */
+.wt-stage-cancel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 46.6em;
+  display: flex;
+  justify-content: center;
+}
+.wt-stage-cancel-btn {
+  font-size: max(16px, 1.2em);
+  background: var(--surface-300);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.08em var(--line);
+}
+
+/* ---------------------------------------------------------------- other screens */
+
+.wt-screen {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) 24px
+    max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  background: var(--surface-100);
+  color: var(--ink);
+}
+
+.wt-screen--center {
+  align-items: center;
+  justify-content: center;
+}
+
+.wt-screen-brand {
+  padding-top: var(--space-4);
+}
+
+.wt-screen-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.wt-screen h1 {
+  margin: 0;
+  font: var(--type-title);
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.wt-screen h2 {
+  margin: 0;
+  font: var(--type-heading);
+  font-size: 18px;
+}
+
+.wt-screen p {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink-muted);
+  text-wrap: pretty;
+}
+
+.wt-screen-status {
+  text-align: center;
+}
+
+.wt-screen-alert {
+  color: var(--ink) !important;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.wt-screen-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.wt-screen-actions .wt-shiny {
+  justify-content: center;
+}
+
+/* ShinyButton is 15 px by default; nothing here is below 16 px (run 2, Phase 4). */
+.wt-screen .wt-shiny,
+.wt-scan .wt-shiny {
+  font-size: 16px;
+}
+
+.wt-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  font: var(--type-body);
+  color: var(--ink);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wt-link {
+  align-self: center;
+  border: 0;
+  background: none;
+  padding: var(--space-3) var(--space-4);
+  font: var(--type-label);
+  font-size: 16px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.wt-link:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.wt-muted {
+  font: 400 16px/1.5 var(--font-sans) !important;
+  color: var(--ink-muted);
+}
+
+.wt-field {
+  display: grid;
+  gap: var(--space-2);
+  font: var(--type-label);
+  font-size: 16px;
+  color: var(--ink-muted);
+}
+.wt-field input {
+  font: var(--type-body-lg);
+  color: var(--ink);
+  background: var(--surface-200);
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+  padding: 14px 16px;
+  outline: none;
+}
+.wt-field input:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--line-control),
+    var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------- scanner */
+
+.wt-scan {
+  position: fixed;
+  inset: 0;
+  background: var(--night);
+  color: var(--on-night);
+  overflow: hidden;
+}
+.wt-scan-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wt-scan-frame {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(70vw, 340px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 0 0 100vmax #0e0d0c99,
+    inset 0 0 0 2px #ffffffcc;
+}
+.wt-scan-text {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: calc(44% + min(35vw, 170px) + 24px);
+  text-align: center;
+}
+.wt-scan-text p {
+  margin: 0;
+  font: var(--type-body-lg);
+}
+.wt-scan-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(32px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.wt-settings {
+  justify-content: flex-start;
+  gap: var(--space-8);
+}
+.wt-settings section {
+  display: grid;
+  gap: var(--space-3);
+}
+.wt-settings-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: calc(-1 * var(--space-4));
+}
+.wt-settings-head h1 {
+  font-size: 24px;
+}
+
+.wt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.wt-list-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.wt-list-main b {
+  font: var(--type-label);
+  font-size: 16px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.wt-list-main span {
+  font: var(--type-body);
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wt-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--perle-dyb);
+  display: inline-block;
+}
+.wt-dot--on {
+  background: var(--rav-dyb);
+}
+
+.wt-confirm {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-confirm p:first-child {
+  color: var(--ink);
+}
+.wt-confirm-actions,
+.wt-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.wt-pill-btn {
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-300);
+  color: var(--ink);
+  font: var(--type-label);
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.wt-pill-btn--ink {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-soft);
+}
+.wt-pill-btn--danger {
+  background: var(--signal-rec);
+  color: #ffffff;
+  box-shadow: none;
+}
+.wt-pill-btn:disabled {
+  opacity: 0.5;
+}
+.wt-pill-btn:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
+
+.wt-choices {
+  display: grid;
+  gap: var(--space-2);
+}
+.wt-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: var(--type-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+.wt-choice input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ink);
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- sheets */
+
+.wt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: #0e0d0c66;
+  animation: wt-fade var(--duration-base) var(--ease-flow);
+}
+.wt-sheet {
+  box-sizing: border-box;
+  width: min(100%, 480px);
+  max-height: 80dvh;
+  overflow: auto;
+  padding: var(--space-6) var(--space-6)
+    max(var(--space-6), env(safe-area-inset-bottom));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface-100);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  display: grid;
+  gap: var(--space-4);
+  animation: wt-rise var(--duration-slow) var(--ease-flow);
+}
+.wt-sheet h2 {
+  margin: 0;
+  font: var(--type-heading);
+}
+.wt-sheet p {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink-muted);
+}
+.wt-sheet .wt-sheet-lead {
+  font: var(--type-body-lg);
+  color: var(--ink);
+}
+.wt-pick {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+}
+.wt-pick b {
+  font-weight: 600;
+}
+.wt-pick span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--type-body);
+  color: var(--ink-muted);
+}
+.wt-pick--on {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.wt-pick:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes wt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes wt-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-sheet-backdrop,
+  .wt-sheet {
+    animation: none;
+  }
+}

@@ -1,0 +1,67 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+package-lock.json
+
+node_modules
+dist
+dist-ssr
+*.local
+*.local.*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.claude/
+
+/target/
+recording_*
+.crush/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+.direnv
+.envrc
+
+# Nix build output
+result
+
+# Python bytecode (scripts/)
+__pycache__/
+
+# WalkieTalkey: local kit and scratch work (never committed)
+_kit/
+walkietalkey-kit*.zip
+
+# Model weights are never committed (spec section 11)
+*.gguf
+!src-tauri/resources/models/silero-vad-v6.2-F32.gguf
+*.onnx
+*.nemo
+*.safetensors
+
+# Tooling caches
+.wrangler/
+.astro/
+.vitest-cache/
+src-tauri/tauri.ci.conf.json
+
+# The owner's local instructions for coding agents (not part of the repository)
+CLAUDE.local.md

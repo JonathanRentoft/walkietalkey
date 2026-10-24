@@ -1,0 +1,28 @@
+---
+/* The navigation of ForsideKomplet: lockup, four links and "Hent gratis". On narrow screens the links fold into a
+   menu (a <details>, so it works without JavaScript) that reaches every page. */
+import { Logo, ShinyButton } from "@walkietalkey/ui";
+import { FOOTER_NAV, HEADER_NAV, PAGES, type PageKey } from "../lib/site";
+
+interface Props {
+  current: PageKey;
+}
+const { current } = Astro.props;
+---
+<!-- TODO(copy): aria-label -->
+<nav class="nav" aria-label="Hovedmenu">
+  <a class="brand" href="/"><Logo variant="lockup" tone="ink" size={26} /></a>
+  <div class="links">
+    {HEADER_NAV.map((k) => <a href={PAGES[k].path} aria-current={k === current ? "page" : undefined}>{PAGES[k].nav}</a>)}
+  </div>
+  <div class="nav-end">
+    <details class="menu">
+      <!-- TODO(copy) -->
+      <summary>Menu</summary>
+      <ul>
+        {FOOTER_NAV.map((k) => <li><a href={PAGES[k].path} aria-current={k === current ? "page" : undefined}>{PAGES[k].nav}</a></li>)}
+      </ul>
+    </details>
+    <ShinyButton href={PAGES.hent.path} variant="ink" icon={false} style={{ height: "40px", padding: "0 18px", fontSize: "14px" }}>Hent gratis</ShinyButton>
+  </div>
+</nav>

@@ -1,0 +1,32 @@
+---
+/* SITE-02 Varemærke: spec 14.8 and TRADEMARKS.md (14.2). */
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { CONTACT_EMAIL, CONTACT_URL, LICENSE_URL, TRADEMARKS_URL } from "../lib/site";
+---
+<Base page="trademark">
+  <!-- TODO(copy): the whole page except the logo note, which is spec 14.8 verbatim -->
+  <PageHero current="trademark" eyebrow="Varemærke" title="Navnet og logoet" lead="Koden er fri. Navnet WalkieTalkey og logoet er ikke omfattet af kodelicensen." palette="flint" />
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <h2>Det må du</h2>
+      <ul>
+        <li>Bruge, ændre og dele koden efter <a href={LICENSE_URL}>Apache-2.0</a>.</li>
+        <li>Skrive om WalkieTalkey og vise logoet, når du omtaler projektet.</li>
+        <li>Skrive, at din egen app er baseret på WalkieTalkey.</li>
+      </ul>
+
+      <h2>Det må du ikke</h2>
+      <ul>
+        <li>Kalde din egen udgave WalkieTalkey eller bruge logoet til den. Laver du en fork, skal den have sit eget navn og sit eget logo.</li>
+        <li>Give indtryk af, at din app eller tjeneste er den officielle WalkieTalkey.</li>
+      </ul>
+
+      <h2>Logofilerne</h2>
+      <p>Logofilerne i projektet har en kort README, der siger:</p>
+      <p class="callout"><strong>Ikke omfattet af kodelicensen. Se TRADEMARKS.md.</strong></p>
+      <!-- TODO(copy): the contact by e-mail (SITE-05) -->
+      <p>Hele teksten står i <a href={TRADEMARKS_URL}>TRADEMARKS.md</a>. Er du i tvivl, så skriv til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>.</p>
+    </div>
+  </main>
+</Base>

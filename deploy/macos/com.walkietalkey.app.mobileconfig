@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>AllowCloudCleanup</key>
+			<true/>
+			<key>AllowPhonePairing</key>
+			<true/>
+			<key>AutoUpdate</key>
+			<true/>
+			<key>CleanupBaseUrl</key>
+			<string>https://example.openai.azure.com/openai/v1</string>
+			<key>CleanupMode</key>
+			<string>when-needed</string>
+			<key>CleanupModel</key>
+			<string>gpt-4o-mini</string>
+			<key>CleanupProvider</key>
+			<string>custom</string>
+			<key>HistoryRetentionDays</key>
+			<integer>14</integer>
+			<key>ModelBaseUrl</key>
+			<string>https://models.example.com/walkietalkey</string>
+			<key>OutputMode</key>
+			<string>paste</string>
+			<key>PayloadDisplayName</key>
+			<string>WalkieTalkey</string>
+			<key>PayloadIdentifier</key>
+			<string>com.example.walkietalkey.settings</string>
+			<key>PayloadType</key>
+			<string>com.walkietalkey.app</string>
+			<key>PayloadUUID</key>
+			<string>6f1c2a54-3c55-4d7e-9a1b-7d2f0e8b4c11</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PhoneAppUrl</key>
+			<string>https://diktat.example.com</string>
+			<key>RelayUrl</key>
+			<string>wss://relay.example.com</string>
+			<key>ShowTextInNotifications</key>
+			<true/>
+			<key>UpdateChannel</key>
+			<string>stable</string>
+			<key>VocabularySource</key>
+			<string>https://intranet.example.com/walkietalkey/ord.txt</string>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Sample WalkieTalkey settings. Remove the keys you do not want to manage; every key in this profile is locked in the app. CleanupApiKey is left out on purpose: profile values can be read by every local user.</string>
+	<key>PayloadDisplayName</key>
+	<string>WalkieTalkey (eksempel)</string>
+	<key>PayloadIdentifier</key>
+	<string>com.example.walkietalkey</string>
+	<key>PayloadOrganization</key>
+	<string>Example A/S</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>0b0a3f52-8d43-4a5e-bd9e-2c6f3d1a7e90</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

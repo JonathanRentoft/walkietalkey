@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Spørgsmål
+    url: https://github.com/JonathanRentoft/walkietalkey/discussions
+    about: Stil spørgsmål i Discussions, ikke som issues.
+  - name: Sikkerhedsfejl
+    url: https://github.com/JonathanRentoft/walkietalkey/security/advisories/new
+    about: Rapportér sårbarheder privat, aldrig i et offentligt issue.

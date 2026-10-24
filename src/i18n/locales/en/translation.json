@@ -1,0 +1,1176 @@
+{
+  "tray": {
+    "settings": "Settings...",
+    "checkUpdates": "Check for Updates...",
+    "copyLastTranscript": "Copy Last Transcript",
+    "unloadModel": "Unload Model",
+    "model": "Model",
+    "quit": "Quit",
+    "cancel": "Cancel",
+    "secureInputWarning": "⚠ Shortcuts blocked by Secure Input",
+    "recent": "Recent",
+    "pairPhone": "Pair a phone",
+    "pause": "Pause",
+    "resume": "Resume",
+    "restartNow": "Restart now",
+    "noRecent": "No dictations yet"
+  },
+  "sidebar": {
+    "general": "General",
+    "models": "Models",
+    "advanced": "Advanced",
+    "postProcessing": "Post Process",
+    "history": "History",
+    "debug": "Debug",
+    "about": "About"
+  },
+  "onboarding": {
+    "subtitle": "To get started, choose a transcription model",
+    "existingModelsTitle": "Compatible Models",
+    "downloadModelsTitle": "Available to Download",
+    "showAllModels": "Show all {{total}} models",
+    "showFewerModels": "Show fewer models",
+    "recommended": "Recommended",
+    "customModelDescription": "Not officially supported",
+    "migration": {
+      "title": "Your models need an update",
+      "description": "WalkieTalkey now uses a newer kind of model. Download the new version to keep transcribing. Old versions will be removed.",
+      "replaces": "Replaces {{name}}",
+      "oldFormat": "Old format",
+      "failed": "Download failed",
+      "retry": "Try again",
+      "chooseAnother": "Choose a different model",
+      "download": "Download models ({{size}})",
+      "continue": "Continue",
+      "timeRemaining": "{{time}} remaining"
+    },
+    "modelCard": {
+      "accuracy": "accuracy",
+      "speed": "speed"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Fast and fairly accurate."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "Good accuracy, medium speed"
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Balanced accuracy and speed."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "Good accuracy, but slow."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Optimized for Taiwanese Mandarin. Code-switching support."
+      }
+    },
+    "errors": {
+      "selectModel": "Failed to select model"
+    },
+    "permissions": {
+      "title": "Permissions Required",
+      "description": "WalkieTalkey needs a couple of permissions to work properly.",
+      "microphone": {
+        "title": "Microphone Access",
+        "description": "Required to hear your voice for transcription."
+      },
+      "accessibility": {
+        "title": "Accessibility Access",
+        "description": "Required to type transcribed text into your applications."
+      },
+      "grant": "Grant Permission",
+      "granted": "Granted",
+      "waiting": "Waiting...",
+      "allGranted": "All set!",
+      "errors": {
+        "checkFailed": "Failed to check permissions. Please try again.",
+        "requestFailed": "Failed to request permission. Please try again."
+      }
+    }
+  },
+  "modelSelector": {
+    "custom": "Custom",
+    "legacy": "Legacy",
+    "streaming": "Streaming",
+    "active": "Active",
+    "switching": "Switching...",
+    "noModelsAvailable": "No models available",
+    "verifying": "Verifying {{modelName}}...",
+    "verifyingGeneric": "Verifying...",
+    "downloading": "Downloading {{percentage}}%",
+    "downloadingMultiple": "Downloading {{count}} models...",
+    "modelReady": "Model Ready",
+    "loading": "Loading {{modelName}}...",
+    "loadingGeneric": "Loading...",
+    "modelError": "Model Error",
+    "modelUnloaded": "Model Unloaded",
+    "noModelDownloadRequired": "No Model - Download Required",
+    "deleteModel": "Delete {{modelName}}",
+    "downloadSpeed": "{{speed}} MB/s",
+    "cancel": "Cancel",
+    "cancelDownload": "Cancel download",
+    "capabilities": {
+      "languageSelection": "Supports multiple input languages",
+      "singleLanguage": "Supports this language only",
+      "languageCount": "{{total}} languages",
+      "languageOnly": "{{language}} only",
+      "translation": "Can translate to English",
+      "translate": "Translate",
+      "streaming": "Shows live transcription as you speak"
+    }
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "{{model}} Settings"
+    },
+    "general": {
+      "title": "General",
+      "shortcut": {
+        "title": "WalkieTalkey Shortcuts",
+        "description": "Configure keyboard shortcuts to trigger speech-to-text recording",
+        "loading": "Loading shortcuts...",
+        "none": "No shortcuts configured",
+        "notFound": "Shortcut not found",
+        "pressKeys": "Press keys...",
+        "bindings": {
+          "transcribe": {
+            "name": "Transcribe Shortcut",
+            "description": "The keyboard shortcut to record and transcribe your voice."
+          },
+          "cancel": {
+            "name": "Cancel Shortcut",
+            "description": "The keyboard shortcut to cancel the current recording."
+          },
+          "transcribe_with_post_process": {
+            "name": "Post-Processing Hotkey",
+            "description": "Optional: A dedicated hotkey that always applies AI post-processing to your transcription."
+          }
+        },
+        "errors": {
+          "restore": "Failed to restore original shortcut",
+          "set": "Failed to set shortcut: {{error}}",
+          "reset": "Failed to reset shortcut to original value"
+        }
+      },
+      "language": {
+        "title": "Language",
+        "description": "Select the language for speech recognition. Auto will automatically determine the language, while selecting a specific language can improve accuracy for that language.",
+        "searchPlaceholder": "Search languages...",
+        "noResults": "No languages found",
+        "auto": "Auto"
+      },
+      "shortcutActivation": {
+        "title": "Shortcut Behavior",
+        "description": "Choose how the transcribe shortcut starts and stops recording.",
+        "options": {
+          "holdOrToggle": "Auto",
+          "pushToTalk": "Hold",
+          "toggle": "Toggle"
+        },
+        "descriptions": {
+          "hold_or_toggle": "Hold to record or tap to toggle",
+          "push_to_talk": "Records while you hold the shortcut",
+          "toggle": "Tap the shortcut to start recording, tap again to stop"
+        }
+      }
+    },
+    "models": {
+      "title": "Transcription Models",
+      "description": "Select a transcription model or download additional models. Different models offer varying levels of accuracy and speed.",
+      "searchPlaceholder": "Search models by name…",
+      "yourModels": "Downloaded Models",
+      "availableModels": "Available to Download",
+      "deleteConfirm": "Are you sure you want to delete {{modelName}}? You will need to download it again to use it.",
+      "deleteActiveConfirm": "{{modelName}} is your active model. Deleting it will stop transcriptions until you select a new model. Are you sure?",
+      "deleteTitle": "Delete Model",
+      "retiredNotice": {
+        "title": "Old models no longer work with WalkieTalkey",
+        "description": "They're taking up {{size}} on your computer.",
+        "delete": "Delete models",
+        "deleted": "Deleted old models",
+        "deleteFailed": "Some old models couldn't be deleted. Check the log for details."
+      },
+      "filters": {
+        "allLanguages": "All Languages",
+        "streaming": "Filter models that support live streaming transcription",
+        "translation": "Filter models that support translation to English"
+      },
+      "rescan": {
+        "label": "Rescan",
+        "tooltip": "Rescan for models added to the models folder or Hugging Face cache outside WalkieTalkey"
+      },
+      "noModelsMatch": "No models match this filter."
+    },
+    "sound": {
+      "title": "Sound",
+      "microphone": {
+        "title": "Microphone",
+        "description": "Select your preferred microphone device",
+        "placeholder": "Select microphone...",
+        "loading": "Loading..."
+      },
+      "channel": {
+        "title": "Input Channel",
+        "description": "Select which input channel to record from. Use this if your audio interface has multiple inputs.",
+        "average": "Average all channels",
+        "channel": "Channel {{n}}"
+      },
+      "audioFeedback": {
+        "label": "Audio Feedback",
+        "description": "Play sound when recording starts and stops"
+      },
+      "outputDevice": {
+        "title": "Output Device",
+        "description": "Select your preferred audio output device for feedback sounds",
+        "placeholder": "Select output device...",
+        "loading": "Loading..."
+      },
+      "volume": {
+        "title": "Volume",
+        "description": "Adjust the volume of audio feedback sounds"
+      }
+    },
+    "advanced": {
+      "groups": {
+        "app": "App",
+        "output": "Output",
+        "transcription": "Transcription",
+        "history": "History",
+        "experimental": "Experimental"
+      },
+      "experimentalToggle": {
+        "label": "Experimental Features",
+        "description": "Enable experimental features that are still in development."
+      },
+      "lazyStreamClose": {
+        "label": "Keep Mic Open Between Transcriptions",
+        "description": "Keeps the microphone stream open for 30 seconds after recording stops, reducing latency for back-to-back transcriptions. May degrade Bluetooth audio quality while active."
+      },
+      "acceleration": {
+        "transcribe": {
+          "title": "Hardware Acceleration",
+          "description": "Choose the hardware used for transcription. Auto uses the GPU when available and falls back to the CPU."
+        },
+        "gpuDevice": {
+          "auto": "Auto"
+        }
+      },
+      "startHidden": {
+        "label": "Start Hidden",
+        "description": "Launch to system tray without opening the window."
+      },
+      "autostart": {
+        "label": "Launch on Startup",
+        "description": "Automatically start WalkieTalkey when you log in to your computer."
+      },
+      "showTrayIcon": {
+        "label": "Show Tray Icon",
+        "description": "Display the WalkieTalkey icon in the system tray."
+      },
+      "overlay": {
+        "style": {
+          "title": "Overlay",
+          "description": "Choose the recording overlay: None hides it, Minimal shows a compact pill, Live shows transcription in real time as you speak (streaming-capable models only — look for the Streaming badge in the model picker). On Linux 'None' is recommended.",
+          "options": {
+            "none": "None",
+            "minimal": "Minimal",
+            "live": "Live"
+          }
+        },
+        "position": {
+          "title": "Overlay Position",
+          "description": "Where the overlay appears on screen during recording and transcription.",
+          "options": {
+            "bottom": "Bottom",
+            "top": "Top"
+          }
+        }
+      },
+      "pasteMethod": {
+        "title": "Paste Method",
+        "description": "Choose how text is inserted. Direct: simulates typing via system input. None: skips paste, only updates history/clipboard.",
+        "options": {
+          "clipboard": "Clipboard ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Clipboard (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Clipboard (Shift+Insert)",
+          "direct": "Direct",
+          "none": "None",
+          "externalScript": "External Script"
+        },
+        "externalScriptPlaceholder": "/path/to/your/script.sh"
+      },
+      "typingTool": {
+        "title": "Typing Tool",
+        "description": "Choose which Linux typing tool to use for Direct paste method. Auto will automatically detect and use the best available tool for your system.",
+        "options": {
+          "auto": "Auto (Recommended)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Clipboard Handling",
+        "description": "Don't Modify Clipboard preserves your current clipboard contents after transcription. Copy to Clipboard leaves the transcription result in your clipboard after pasting.",
+        "options": {
+          "dontModify": "Don't Modify Clipboard",
+          "copyToClipboard": "Copy to Clipboard"
+        }
+      },
+      "autoSubmit": {
+        "title": "Auto Submit",
+        "description": "Automatically send the selected key combination after text insertion. Cmd+Enter applies on macOS, while Windows/Linux use Super+Enter.",
+        "options": {
+          "off": "Off",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "Translate to English",
+        "description": "Automatically translate speech from other languages to English during transcription."
+      },
+      "modelUnload": {
+        "title": "Unload Model",
+        "description": "Automatically free GPU/CPU memory when the model hasn't been used for the specified time",
+        "options": {
+          "never": "Never",
+          "immediately": "Immediately",
+          "min2": "After 2 minutes",
+          "min5": "After 5 minutes",
+          "min10": "After 10 minutes",
+          "min15": "After 15 minutes",
+          "hour1": "After 1 hour",
+          "sec15": "After 15 seconds (Debug)"
+        }
+      },
+      "customWords": {
+        "title": "Custom Words",
+        "description": "Help supported models recognize names and specialized terms. Fuzzy correction is currently limited to words using A–Z and numbers.",
+        "placeholder": "Add a word",
+        "add": "Add",
+        "remove": "Remove {{word}}",
+        "duplicate": "\"{{word}}\" already exists"
+      },
+      "voiceActivityDetection": {
+        "title": "Voice Activity Detection",
+        "description": "Filter silence from recordings. Streaming-capable models use a longer VAD tail; disabling VAD records raw audio."
+      },
+      "longFormChunking": {
+        "title": "Long Audio Chunking",
+        "description": "Splits long recordings at pauses before transcribing, which typically improves transcription performance."
+      },
+      "vadBackend": {
+        "title": "Voice Activity Backend",
+        "description": "Choose the detector used to filter silence. Earshot is experimental; switch back to Silero if speech is clipped or noise is retained.",
+        "options": {
+          "silero": "Silero",
+          "earshot": "Earshot"
+        }
+      },
+      "fillerWordRemoval": {
+        "title": "Remove Filler Words",
+        "description": "Removes common hesitation words from transcriptions. Turn off to keep them."
+      },
+      "chineseScript": {
+        "title": "Chinese Script",
+        "description": "Writes Mandarin and Cantonese transcriptions in Simplified or Traditional characters. Other languages are left unchanged.",
+        "options": {
+          "asTranscribed": "As Transcribed",
+          "simplified": "Simplified",
+          "traditional": "Traditional"
+        }
+      }
+    },
+    "postProcessing": {
+      "hotkey": {
+        "title": "Hotkey"
+      },
+      "api": {
+        "title": "API",
+        "provider": {
+          "title": "Provider",
+          "description": "Select an OpenAI-compatible or Anthropic-compatible provider."
+        },
+        "apiFormat": {
+          "title": "API Format",
+          "description": "Request format expected by your custom endpoint.",
+          "options": {
+            "openai": "OpenAI Compatible (Chat Completions)",
+            "anthropic": "Anthropic Messages"
+          }
+        },
+        "appleIntelligence": {
+          "unavailable": "Apple Intelligence is not available on this device. Requires an Apple Silicon Mac running macOS Tahoe (26.0) or later with Apple Intelligence enabled in System Settings."
+        },
+        "baseUrl": {
+          "title": "Base URL",
+          "description": "API base URL for the selected provider. Only the custom provider can be edited.",
+          "placeholder": "https://api.openai.com/v1",
+          "placeholderAnthropic": "https://api.anthropic.com/v1"
+        },
+        "apiKey": {
+          "title": "API Key",
+          "description": "API key for the selected provider.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Model",
+          "descriptionCustom": "Provide the model identifier expected by your custom endpoint.",
+          "descriptionDefault": "Choose a model exposed by the selected provider.",
+          "placeholderWithOptions": "Search or select a model",
+          "placeholderNoOptions": "Type a model name",
+          "refreshModels": "Refresh models"
+        }
+      },
+      "prompts": {
+        "title": "Prompt",
+        "selectedPrompt": {
+          "title": "Selected Prompt",
+          "description": "Select a template for refining transcriptions or create a new one. Use ${output} inside the prompt text to reference the captured transcript."
+        },
+        "noPrompts": "No prompts available",
+        "selectPrompt": "Select a prompt",
+        "createNew": "Create New Prompt",
+        "promptLabel": "Prompt Label",
+        "promptLabelPlaceholder": "Enter prompt name",
+        "promptInstructions": "Prompt Instructions",
+        "promptInstructionsPlaceholder": "Write the instructions to run after transcription. Example: Improve grammar and clarity for the following text: ${output}",
+        "promptTip": "Tip: Use <code>${output}</code> to insert the transcribed text in your prompt.",
+        "updatePrompt": "Update Prompt",
+        "deletePrompt": "Delete Prompt",
+        "createPrompt": "Create Prompt",
+        "cancel": "Cancel",
+        "selectToEdit": "Select a prompt above to view and edit its details.",
+        "createFirst": "Click 'Create New Prompt' above to create your first post-processing prompt."
+      }
+    },
+    "history": {
+      "title": "History",
+      "openFolder": "Open Recordings Folder",
+      "loading": "Loading history...",
+      "empty": "No transcriptions yet. Start recording to build your history!",
+      "copyToClipboard": "Copy transcription to clipboard",
+      "copyError": "Failed to copy transcription to clipboard.",
+      "save": "Save transcription",
+      "unsave": "Remove from saved",
+      "delete": "Delete entry",
+      "deleteError": "Failed to delete entry. Please try again.",
+      "retranscribe": "Re-transcribe",
+      "retranscribeError": "Failed to re-transcribe. Please try again.",
+      "transcribing": "Transcribing...",
+      "transcriptionFailed": "Transcription failed. You can re-transcribe using the retry icon."
+    },
+    "debug": {
+      "title": "Debug",
+      "logDirectory": {
+        "title": "Log Directory",
+        "description": "Location where log files are stored"
+      },
+      "logLevel": {
+        "title": "Log Level",
+        "description": "Set the verbosity of logging"
+      },
+      "liveLogs": {
+        "title": "Live Logs",
+        "description": "Stream application logs in real time to diagnose issues without opening the log file. Only logs emitted while this panel is open are shown; respects the Log Level setting above.",
+        "live": "Live",
+        "paused": "Paused",
+        "pause": "Pause",
+        "resume": "Resume",
+        "copied": "Copied",
+        "lineCount": "{{count}} lines",
+        "empty": "Waiting for logs… Entries appear here as the app emits them."
+      },
+      "updateChecks": {
+        "label": "Check for Updates",
+        "description": "Automatically check for new versions of WalkieTalkey",
+        "lockedDescription": "Disabled by system configuration (HANDY_DISABLE_UPDATER)"
+      },
+      "whatsNewPreview": {
+        "title": "Preview What's New",
+        "description": "Open the latest bundled release note without marking it as seen",
+        "button": "Preview",
+        "noNotes": "No bundled release notes found",
+        "error": "Failed to preview release notes"
+      },
+      "onboardingPreview": {
+        "title": "Preview Onboarding",
+        "description": "Preview onboarding screens without changing permissions, models, or completion state",
+        "permissionsButton": "Permissions",
+        "modelsButton": "Model Selection",
+        "exitButton": "Exit Preview"
+      },
+      "soundTheme": {
+        "label": "Sound Theme",
+        "description": "Choose a sound theme for recording start and stop feedback"
+      },
+      "wordCorrectionThreshold": {
+        "title": "Word Correction Threshold",
+        "description": "Sensitivity for custom word corrections"
+      },
+      "historyLimit": {
+        "title": "History Limit",
+        "description": "Maximum number of history entries to keep",
+        "entries": "entries"
+      },
+      "recordingRetention": {
+        "title": "Auto-Delete Recordings",
+        "description": "Automatically delete old recordings to save space",
+        "never": "Never",
+        "preserveLimit": "Keep latest {{count}}",
+        "days3": "After 3 days",
+        "weeks2": "After 2 weeks",
+        "months3": "After 3 months",
+        "placeholder": "Select retention period..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Always-On Microphone",
+        "description": "Keep microphone active for faster response"
+      },
+      "clamshellMicrophone": {
+        "title": "Clamshell Microphone",
+        "description": "Microphone to use when laptop lid is closed"
+      },
+      "postProcessingToggle": {
+        "label": "Post Processing",
+        "description": "Enable AI-powered text refinement after transcription"
+      },
+      "muteWhileRecording": {
+        "label": "Mute While Recording",
+        "description": "Mute system audio during recording"
+      },
+      "appendTrailingSpace": {
+        "label": "Append Trailing Space",
+        "description": "Add a space after pasted transcription"
+      },
+      "keyboardImplementation": {
+        "title": "Keyboard Implementation",
+        "description": "Choose the keyboard shortcut backend.",
+        "bindingsReset": "Keyboard shortcuts were incompatible and reset to defaults"
+      },
+      "paths": {
+        "appData": "App Data:",
+        "models": "Models:",
+        "settings": "Settings:"
+      },
+      "pasteDelay": {
+        "title": "Paste Delay (Before)",
+        "description": "Delay (in milliseconds) after copying text, before sending the paste keystroke. Increase if nothing gets pasted."
+      },
+      "pasteDelayAfter": {
+        "title": "Paste Delay (After)",
+        "description": "Delay (in milliseconds) after the paste keystroke, before restoring your previous clipboard. Increase if your old clipboard content is being pasted instead of the transcription."
+      },
+      "holdThreshold": {
+        "title": "Hold Threshold",
+        "description": "Auto mode only: how long (in milliseconds) the shortcut must be held before it counts as a hold instead of a tap. Lower if short holds keep leaving recording on; raise if deliberate taps get treated as holds."
+      },
+      "reliablePaste": {
+        "title": "Reliable Paste (Beta)",
+        "description": "Restore the clipboard only after the target app actually reads the transcription, instead of after a fixed delay. Intended to fix old clipboard content being pasted under system load. Requires a clipboard paste method; macOS and Windows only."
+      },
+      "recordingBuffer": {
+        "title": "Extra Recording Buffer",
+        "description": "Extra time (in milliseconds) to keep recording after you release the key, to capture trailing audio. 0 = no extra buffer."
+      },
+      "keyboardDiagnostic": {
+        "title": "Keyboard Diagnostic",
+        "description": "Checks whether keyboard events reach WalkieTalkey. Only event counts are recorded — never which keys you press.",
+        "run": "Run 10s diagnostic",
+        "running": "Listening… press your shortcut a few times (e.g. Option+Space)",
+        "secureInputLabel": "Secure Input",
+        "enabled": "enabled",
+        "disabled": "disabled",
+        "holder": "held by {{name}} (pid {{pid}})",
+        "holderUnknown": "no visible holder",
+        "keyDown": "Key down",
+        "keyUp": "Key up",
+        "flagsChanged": "Modifiers",
+        "mouse": "Mouse",
+        "verdictBlocked": "Secure Input is blocking key events — keyed shortcuts cannot work until it is resolved.",
+        "verdictSuspicious": "Modifier events arrived but no key events — something is suppressing keys even though Secure Input reports disabled. Please report this on GitHub.",
+        "verdictOk": "Key events are reaching WalkieTalkey normally.",
+        "verdictNoEvents": "No events captured — did you press any keys during the test?",
+        "failed": "Diagnostic failed: {{error}}"
+      }
+    },
+    "about": {
+      "title": "About",
+      "version": {
+        "title": "Version",
+        "description": "Current version of WalkieTalkey"
+      },
+      "whatsNewUpdates": {
+        "label": "Show What's New",
+        "description": "Show release notes after WalkieTalkey updates"
+      },
+      "appDataDirectory": {
+        "title": "App Data Directory",
+        "description": "Location where WalkieTalkey stores its data"
+      },
+      "sourceCode": {
+        "title": "Source Code",
+        "description": "View source code and contribute",
+        "button": "View on GitHub"
+      },
+      "supportDevelopment": {
+        "title": "Support Development",
+        "description": "Help us continue building WalkieTalkey",
+        "button": "Donate"
+      },
+      "acknowledgments": {
+        "title": "Acknowledgments",
+        "ggml": {
+          "title": "ggml",
+          "description": "High-performance tensor library for on-device machine learning inference",
+          "details": "WalkieTalkey's local speech-to-text is built on transcribe.cpp and ggml. Thanks to the amazing work by Georgi Gerganov and contributors."
+        }
+      }
+    }
+  },
+  "footer": {
+    "checkingUpdates": "Checking for updates...",
+    "updateAvailableShort": "Update available",
+    "upToDate": "Up to date",
+    "updateCheckingDisabled": "Update Checking Disabled",
+    "downloading": "Downloading... {{progress}}%",
+    "installing": "Installing...",
+    "preparing": "Preparing...",
+    "checkForUpdates": "Check for updates",
+    "portableUpdateTitle": "Manual update required",
+    "portableUpdateMessage": "Portable installs cannot be updated automatically. Download the installer for your system below, run it, and install to the same folder — your Data/ folder (settings, models, recordings) is kept in place.",
+    "portableUpdateButton": "Download installer",
+    "portableUpdateBrowseMessage": "Portable installs cannot be updated automatically. Download the latest version for your system from GitHub Releases and install it to the same folder — your Data/ folder (settings, models, recordings) is kept in place.",
+    "portableUpdateBrowseButton": "Open GitHub Releases"
+  },
+  "whatsNew": {
+    "title": "New in WalkieTalkey v{{version}}"
+  },
+  "common": {
+    "loading": "Loading...",
+    "delete": "Delete",
+    "back": "Back",
+    "close": "Close",
+    "open": "Open",
+    "copy": "Copy",
+    "clear": "Clear",
+    "noOptionsFound": "No options found",
+    "reset": "Reset"
+  },
+  "accessibility": {
+    "permissionsDescription": "WalkieTalkey needs accessibility permissions to type transcribed text.",
+    "openSettings": "Open System Settings"
+  },
+  "errors": {
+    "loadDirectory": "Error loading directory: {{error}}",
+    "micPermissionDeniedTitle": "Microphone Access Denied",
+    "micPermissionDenied": {
+      "generic": "Microphone access was denied by the operating system. Please grant microphone permission in your system settings.",
+      "windows": "Enable microphone access in Settings → Privacy & security → Microphone (including desktop app access).",
+      "macos": "Grant microphone access in System Settings → Privacy & Security → Microphone.",
+      "linux": "Grant microphone access in your system's sound or privacy settings."
+    },
+    "noInputDeviceTitle": "No Microphone Found",
+    "noInputDevice": "No audio input device was detected. Please connect a microphone or headset and try again.",
+    "recordingFailed": "Failed to start recording: {{error}}",
+    "modelLoadFailed": "Failed to load model: {{model}}",
+    "modelLoadFailedUnknown": "unknown model",
+    "pasteFailedTitle": "Failed to Paste Text",
+    "pasteFailed": "Text could not be pasted into the active application.",
+    "transcriptionFailedTitle": "Transcription Failed"
+  },
+  "appLanguage": {
+    "title": "Application Language",
+    "description": "Change the language of the WalkieTalkey interface"
+  },
+  "theme": {
+    "title": "Application Theme",
+    "description": "Choose whether WalkieTalkey follows your system theme or stays light or dark",
+    "options": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
+  },
+  "overlay": {
+    "transcribing": "Transcribing...",
+    "processing": "Processing...",
+    "loadingModel": "Loading model..."
+  },
+  "secureInput": {
+    "blockedWithCulprit_one": "{{name}} may be blocking 1 shortcut",
+    "blockedWithCulprit_other": "{{name}} may be blocking {{count}} shortcuts",
+    "blockedNoCulprit_one": "macOS is temporarily blocking 1 shortcut",
+    "blockedNoCulprit_other": "macOS is temporarily blocking {{count}} shortcuts",
+    "recorderBlockedWithCulprit": "{{name}} may be blocking shortcut changes",
+    "recorderBlockedNoCulprit": "macOS is temporarily blocking shortcut changes",
+    "learnMore": "How to fix",
+    "recorderBlocked": "Can't record shortcuts right now — macOS Secure Input is blocking key events. Resolve the Secure Input warning first.",
+    "dismiss": "Dismiss"
+  },
+  "wt": {
+    "managed": "Managed by your organisation",
+    "common": {
+      "back": "Back",
+      "next": "Next",
+      "skip": "Skip",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "close": "Close",
+      "save": "Save",
+      "remove": "Remove",
+      "yes": "Yes",
+      "copy": "Copy",
+      "delete": "Delete"
+    },
+    "onboarding": {
+      "label": "Get started with WalkieTalkey",
+      "progress": "Step {{step}} of {{total}}",
+      "finish": "Done",
+      "welcome": {
+        "title": "Danish speech to text. Free, and it runs on your own computer.",
+        "start": "Get started"
+      },
+      "phone": {
+        "title": "Phone",
+        "lead": "Do you also want to talk into your phone?",
+        "why": "Talk into the phone app, and the text appears on this computer. Encrypted from phone to computer.",
+        "show": "Show the code"
+      },
+      "microphone": {
+        "title": "Microphone",
+        "lead": "WalkieTalkey needs the microphone to hear you",
+        "why": "It only listens while you talk to it, and speech becomes text on your own computer.",
+        "allow": "Allow the microphone",
+        "granted": "The microphone is ready",
+        "openSettings": "Open System Settings",
+        "deniedWindows": "Windows does not let apps use the microphone.",
+        "openSettingsWindows": "Open microphone settings"
+      },
+      "waitingHint": "Turn on WalkieTalkey. We carry on by ourselves.",
+      "accessibility": {
+        "title": "Accessibility",
+        "lead": "So the text can be pasted where you type",
+        "why": "The same permission lets WalkieTalkey see when you hold fn. It is the only one the key needs.",
+        "open": "Open System Settings",
+        "granted": "Accessibility is on"
+      },
+      "try": {
+        "title": "Try it",
+        "lead": "Hold {{key}} and say: Hi, this is my first dictation.",
+        "tap": "You can also tap {{key}} once, talk, and tap again when you are done.",
+        "fieldLabel": "The text appears here",
+        "done": "It works. You are ready.",
+        "modelWaiting": "The speech model is still downloading. You can try as soon as it is ready.",
+        "keyNotRunning": "WalkieTalkey cannot see the key yet.",
+        "otherKeyWindows": "Many new laptops have a Copilot key instead of Right Ctrl. To use it or another key, press Choose another key and then the key."
+      },
+      "done": {
+        "title": "Ready",
+        "lead": "Hold {{key}} to talk, or tap to talk without holding.",
+        "whereMac": "You find WalkieTalkey in the menu bar at the top of the screen.",
+        "whereWindows": "You find WalkieTalkey in the taskbar at the bottom of the screen.",
+        "tipHold": "Hold while you talk. Release, and the text is pasted.",
+        "tipTap": "Tap once to talk without holding. Tap again to stop.",
+        "tipEsc": "Stops without writing anything.",
+        "fastTitle": "A faster model",
+        "useFast": "Use Ekko v1 Tiny",
+        "keepEdda": "Keep Edda"
+      }
+    },
+    "model": {
+      "downloading": "Downloading the Danish speech model",
+      "ready": "The speech model is ready",
+      "preparing": "Getting the speech model ready",
+      "downloadFailed": "Could not download the speech model. Try again.",
+      "importFile": "Import model file",
+      "importFailed": "The file is not a model WalkieTalkey knows. Choose the file you downloaded.",
+      "keepLoaded": {
+        "always": "Always",
+        "min15": "For 15 minutes",
+        "hour1": "For 1 hour"
+      }
+    },
+    "keys": {
+      "left": "Left {{key}}",
+      "right": "Right {{key}}",
+      "space": "Space",
+      "copilot": "Copilot key",
+      "pressNow": "Press the key you want to use",
+      "choose": "Choose another key",
+      "reset": "Use the default key",
+      "recordFailed": "Could not read the key. Try again."
+    },
+    "pairing": {
+      "title": "Pair a phone",
+      "qrLabel": "Code for pairing a phone",
+      "howTo": "Open WalkieTalkey on the phone, tap Pair with a computer, and scan the code.",
+      "validFor": "The code works for",
+      "timeLeft": "{{time}} left",
+      "loading": "Making a code",
+      "expired": "The code has expired.",
+      "newCode": "Make a new code",
+      "failed": "Could not make a code. Check the connection and try again.",
+      "noScreenShare": "Do not pair while you share your screen. The code works for 10 minutes, and anyone who sees it can use it.",
+      "getApp": "No app yet? Open {{url}} on the phone.",
+      "paired": "{{name}} is paired."
+    },
+    "notify": {
+      "textReady": "Text ready to paste",
+      "now": "now",
+      "pressToPaste": "Press {{key}} to paste",
+      "phoneJoined": "New phone paired: {{name}}. Was that you?",
+      "updateReady": "Update ready. Restart to install",
+      "restartNow": "Restart now"
+    },
+    "pill": {
+      "holdBefore": "Hold",
+      "holdAfter": "to talk",
+      "listening": "Listening",
+      "processing": "Writing",
+      "ready": "Text ready to paste",
+      "pasted": "Pasted",
+      "noSpeech": "Heard nothing",
+      "raw": "Used the text without cleanup",
+      "notReady": "The speech model is not ready yet",
+      "error": "Could not download the speech model. Try again.",
+      "countdown": "{{seconds}} seconds left",
+      "handsFree": "Tap again to stop"
+    },
+    "nav": {
+      "label": "Settings",
+      "history": "History",
+      "general": "General",
+      "key": "Key",
+      "text": "Text",
+      "vocabulary": "Vocabulary",
+      "cleanup": "Clean up with AI",
+      "phone": "Phone",
+      "model": "Model",
+      "updates": "Updates",
+      "advanced": "Advanced",
+      "about": "About"
+    },
+    "paused": {
+      "text": "WalkieTalkey is paused. The key does nothing, and the phone is told that the computer is paused.",
+      "resume": "Resume"
+    },
+    "general": {
+      "autostart": "Start at login",
+      "autostartDesc": "WalkieTalkey starts when you log in to the computer.",
+      "sounds": "Sounds",
+      "soundsDesc": "A short sound when recording starts and stops.",
+      "pillGroup": "The pill",
+      "pillPlace": "Pill position",
+      "pillPlaceDesc": "The pill shows that WalkieTalkey is listening and what happened to the text.",
+      "pillBottom": "Bottom",
+      "pillTop": "Top",
+      "pillNever": "Never show",
+      "pillForPhone": "Show the pill for phone dictations",
+      "pillForPhoneDesc": "The pill shows the same as when you use the key.",
+      "notificationsGroup": "Notifications",
+      "showText": "Show the text in the notification",
+      "showTextDesc": "Turn off while sharing your screen or in meetings. The notification then only says how to paste.",
+      "preview": "This is how the notification looks:",
+      "language": "Language",
+      "languageDesc": "The language of WalkieTalkey's windows. The speech model is Danish.",
+      "previewExample": "Remember to buy milk on the way home",
+      "notificationsOff": "Notifications are off, so you will not see when text from the phone is ready.",
+      "notificationsAllow": "Turn on notifications",
+      "notificationsOpen": "Open Notifications"
+    },
+    "key": {
+      "key": "Key",
+      "keyDescMac": "Keyboards not made by Apple often do not send fn. Then you can choose another key here.",
+      "keyDescWindows": "If your computer has a Copilot key, you can choose it here.",
+      "test": "Test",
+      "testDesc": "Tap the key or hold it. The key below goes down when WalkieTalkey sees it.",
+      "how": "How to use the key",
+      "howHoldOrTap": "Hold {{key}} to talk, or tap to talk without holding. Tap again to stop.",
+      "howHold": "Hold {{key}} while you talk. Release to stop.",
+      "howTap": "Tap {{key}} to talk, and tap again to stop.",
+      "works": "It works",
+      "down": "The key is down"
+    },
+    "text": {
+      "output": "When you dictate with the key",
+      "outputDesc": "With Clipboard only, the text goes to the clipboard and you paste it yourself with {{key}}.",
+      "paste": "Paste automatically",
+      "clipboard": "Clipboard only",
+      "noAccessibility": "WalkieTalkey has no Accessibility access, so the text goes to the clipboard.",
+      "punctuation": "Punctuation",
+      "punctuationDesc": "Automatic adds full stops and commas when the speech model has not set them.",
+      "automatic": "Automatic",
+      "always": "Always",
+      "never": "Never",
+      "share": "Share with my other devices",
+      "shareDescMac": "When off, the text only goes to this Mac's clipboard, so Universal Clipboard does not send it to your other Apple devices.",
+      "shareDescWindows": "When off, the text stays out of Windows clipboard history and the cloud clipboard.",
+      "allow": "Allow"
+    },
+    "vocabulary": {
+      "words": "Words",
+      "wordsDesc": "Names and terms that must be spelled right. The newest are on top and used first.",
+      "newWord": "New word",
+      "newWordPlaceholder": "For example a name",
+      "addWord": "Add word",
+      "noWords": "No words yet.",
+      "removeItem": "Remove {{item}}",
+      "companyList": "Your organisation's word list is used as well.",
+      "replacements": "Replacements",
+      "replacementsDesc": "When I say X, write Y. Whole words, ignoring case.",
+      "whenISay": "When I say",
+      "write": "Write",
+      "addReplacement": "Add replacement",
+      "replacementItem": "When I say {{from}}, write {{to}}",
+      "noReplacements": "No replacements yet.",
+      "developerWords": "Developer words",
+      "developerWordsDesc": "Words like pull request, deploy, standup, merge, commit, frontend and backend, for Danish with English terms.",
+      "importExport": "Import and export",
+      "importExportDesc": "Plain text files with one entry per line. Replacements are written as X => Y.",
+      "importWords": "Import words",
+      "exportWords": "Export words",
+      "importReplacements": "Import replacements",
+      "exportReplacements": "Export replacements",
+      "importedWords": "{{count}} words imported.",
+      "importedReplacements": "{{count}} replacements imported.",
+      "exported": "The file is saved.",
+      "copied": "The file could not be saved, so the list was copied to the clipboard.",
+      "exportFailed": "The list could not be saved."
+    },
+    "cleanup": {
+      "intro": "Optional. An AI corrects the text after speech has become text on your computer. Only the text is sent, not the audio.",
+      "mode": "Mode",
+      "off": "Off",
+      "whenNeeded": "When there is something to fix",
+      "whenNeededDesc": "Recommended once a provider is set up. Only dictations where you correct yourself or repeat something are sent.",
+      "always": "Always",
+      "shift": "Only when I also hold Shift",
+      "shiftDesc": "Hold Shift when you release the key.",
+      "provider": "Provider",
+      "chooseProvider": "Choose a provider",
+      "custom": "Other (OpenAI-compatible)",
+      "onlyLocal": "Your organisation only allows cleanup that runs on the computer.",
+      "appleUnavailable": "Apple Intelligence needs a Mac with Apple Silicon and macOS 26 or newer.",
+      "model": "Model",
+      "modelDesc": "The name of the model at the provider.",
+      "modelPlaceholder": "For example gpt-4.1-mini",
+      "endpoint": "Address (endpoint)",
+      "endpointDesc": "The address of an OpenAI-compatible service, for example Azure OpenAI, LM Studio or Ollama.",
+      "key": "API key",
+      "keyDesc": "Your own key. It is kept in the computer's keychain and only sent to the provider.",
+      "keyManaged": "Your organisation has set a key.",
+      "keyStored": "A key is stored",
+      "keyStoredPlaceholder": "Type a new key to change it",
+      "saveKey": "Save key",
+      "removeKey": "Remove key",
+      "keyFailed": "The key could not be saved.",
+      "consent": "The text (not the audio) is sent to {{provider}} every time you dictate.",
+      "sentWhenNeeded": "The text (not the audio) is sent to {{provider}} when there is something to fix.",
+      "staysApple": "The text stays on your computer. Apple Intelligence runs on your Mac.",
+      "staysLocal": "The text is sent to a service on your own computer.",
+      "turnOn": "Turn on",
+      "cancel": "Cancel",
+      "smallModels": "Small local models (under about 3 billion parameters) often ignore the instructions. Use Apple Intelligence on a Mac or a larger model.",
+      "showSent": "Show what was sent",
+      "showSentDesc": "The history shows the exact text, the provider and how long it took for every dictation that was sent.",
+      "openHistory": "Open the history"
+    },
+    "phone": {
+      "intro": "Hold the button in the phone app and talk, or tap to talk without holding. The text goes to the clipboard on this computer. Encrypted from phone to computer.",
+      "paired": "Paired phones",
+      "none": "No phones are paired yet.",
+      "noName": "a phone without a name",
+      "online": "Online",
+      "offline": "Not online",
+      "lastSeen": {
+        "today": "Last seen today",
+        "yesterday": "Last seen yesterday",
+        "date": "Last seen {{date}}"
+      },
+      "removeNamed": "Remove {{name}}",
+      "removeFailed": "The phone could not be removed. Try again.",
+      "removeFailedNamed": "{{name}} could not be removed. Try again.",
+      "pairTitle": "New phone",
+      "pairDesc": "Shows a code that you scan in the phone app.",
+      "connected": "Connected to the relay",
+      "disconnected": "No connection to the phone. Trying again.",
+      "joinedHelp": "If it was not you, choose Remove. The phone can then no longer send to this computer."
+    },
+    "modelSettings": {
+      "selected": "Selected model",
+      "none": "No model",
+      "keepLoaded": "Keep the speech model loaded",
+      "keepLoadedDesc": "With Always, the first dictation after a break is as fast as the rest. Choose a shorter time if the computer is short on memory.",
+      "redownloadTitle": "Download the model again",
+      "redownloadDesc": "Deletes the selected model and downloads it again, in case the file is broken.",
+      "redownload": "Download again",
+      "space": "Space used",
+      "spaceDesc": "The speech models on this computer.",
+      "others": "Other models",
+      "othersDesc": "Edda is made for Danish. Ekko v1 Tiny is faster on slow computers. The others are Handy's models.",
+      "noOthers": "No other models.",
+      "onDisk": "downloaded",
+      "use": "Use",
+      "useNamed": "Use {{name}}",
+      "deleteNamed": "Delete {{name}}",
+      "download": "Download",
+      "downloadNamed": "Download {{name}}",
+      "downloadingNamed": "Downloading {{name}}",
+      "punctuation": {
+        "title": "Punctuation (Ekko PnC)",
+        "desc": "Adds full stops and commas when the speech model does not. Runs on this computer.",
+        "ready": "Ready",
+        "missing": "Downloads when there is a connection",
+        "downloading": "Downloading the punctuation model",
+        "failed": "Could not download the punctuation model.",
+        "unsupported": "Not available on an Intel Mac",
+        "retry": "Try again"
+      }
+    },
+    "updates": {
+      "auto": "Automatic updates",
+      "autoDesc": "Checks for updates at start and every 6 hours and installs them when the app starts again.",
+      "channel": "Channel",
+      "channelDesc": "Beta gets new versions before everyone else.",
+      "stable": "Stable",
+      "beta": "Beta",
+      "check": "Check for updates",
+      "checking": "Checking for updates",
+      "upToDate": "You have the newest version",
+      "downloading": "Downloading version {{version}}",
+      "failed": "Could not check for updates. Try again later."
+    },
+    "advanced": {
+      "intro": "Settings most people never need.",
+      "network": "Relay address",
+      "relay": "Relay address",
+      "relayDesc": "The relay passes the encrypted audio from the phone on to the computer. Only change it if you run your own relay. Phones must be paired again afterwards.",
+      "phoneApp": "Phone app address",
+      "phoneAppDesc": "The address the pairing code points to.",
+      "manualModels": "Manual model installation",
+      "importDesc": "Choose a model file you have already downloaded. WalkieTalkey checks that it is a model it knows.",
+      "imported": "The model is installed.",
+      "dataFolder": "The app's folder",
+      "dataFolderDesc": "Models, history and settings are kept here.",
+      "openFolder": "Open the folder",
+      "modelServer": "Models are downloaded from",
+      "debugging": "Troubleshooting",
+      "debugMode": "Debug mode",
+      "debugModeDesc": "Shows extra settings and logs more details.",
+      "logs": "Log",
+      "logsDesc": "The log files are on your computer. Only share them if you want to.",
+      "openLogs": "Open the log folder",
+      "pasteDelays": "Paste delays",
+      "pasteDelaysDesc": "If the text sometimes is not pasted, a longer pause before and after can help.",
+      "cli": {
+        "title": "Command line",
+        "desc": "WalkieTalkey can be controlled from a terminal, for example from a shortcut in another program.",
+        "toggle": "Starts or stops a dictation.",
+        "cancel": "Cancels the dictation in progress.",
+        "startHidden": "Starts without showing the window.",
+        "noTray": "Starts without an icon in the menu bar.",
+        "debug": "Starts with debugging on.",
+        "file": "Turns an audio file into text and prints the result.",
+        "listModels": "Lists the models the app knows."
+      },
+      "keyMode": "Key mode",
+      "keyModeDesc": "By default the key works both when you hold it and when you tap it.",
+      "keyModeBoth": "Hold or tap",
+      "keyModeBothDesc": "Hold to talk, or tap to talk without holding.",
+      "keyModeHold": "Hold only",
+      "keyModeHoldDesc": "Records while you hold the key.",
+      "keyModeTap": "Tap only",
+      "keyModeTapDesc": "Tap once to start and once more to stop."
+    },
+    "about": {
+      "claims": "Speech becomes text on your own computer. No account. No tracking.",
+      "version": "Version",
+      "credits": "Licences and credits",
+      "credit": {
+        "walkietalkey": "Apache-2.0. Free for everyone, companies included.",
+        "handy": "WalkieTalkey builds on Handy by CJ Pais. MIT.",
+        "transcribe": "Runs the speech models on the computer, together with ggml. MIT.",
+        "edda": "Danish speech model from the Alexandra Institute, built on OpenAI Whisper large-v3-turbo. Apache-2.0.",
+        "ekkoPnc": "Punctuation from RyeAI. CC BY 4.0.",
+        "ekkoTiny": "Fast Danish speech model from RyeAI, built on NVIDIA Parakeet. NVIDIA Open Model License and CC BY 4.0.",
+        "onnx": "Runs the punctuation model. Microsoft, MIT.",
+        "silero": "Finds speech in the audio. Silero Team, MIT.",
+        "albert": "The typeface, by Andreas Rasmussen. SIL Open Font License 1.1."
+      },
+      "links": "Links",
+      "code": "Source code",
+      "codeDesc": "All the code is open on GitHub.",
+      "privacy": "Privacy",
+      "privacyDesc": "What data exists and where it is kept.",
+      "trademark": "Trademark",
+      "trademarkDesc": "The name and logo are not covered by the code licence.",
+      "open": "Open",
+      "openNamed": "Open {{name}}"
+    },
+    "history": {
+      "intro": "Your dictations on this computer.",
+      "search": "Search the history",
+      "sentOnly": "Only sent to AI",
+      "listLabel": "Dictations",
+      "fromKey": "Key",
+      "fromPhone": "From {{name}}",
+      "cleaned": "Cleaned up with AI",
+      "copied": "Copied",
+      "provider": "Provider",
+      "duration": "Time",
+      "sentText": "The text that was sent:",
+      "empty": "No dictations yet.",
+      "noMatches": "No dictations match the search.",
+      "loadFailed": "The history could not be loaded.",
+      "show": "Show",
+      "settings": "History settings",
+      "retention": "Keep",
+      "retentionDesc": "Older dictations are deleted at start and every hour.",
+      "keep": {
+        "dont_keep": "Do not keep",
+        "day": "1 day",
+        "two_weeks": "14 days",
+        "ninety_days": "90 days",
+        "forever": "Forever"
+      },
+      "keepAudio": "Keep audio for troubleshooting",
+      "keepAudioDesc": "Keeps the audio for at most 7 days. The audio stays on your computer.",
+      "deleteAllTitle": "All dictations",
+      "deleteAllDesc": "Deletes every dictation on this computer.",
+      "deleteAll": "Delete all history",
+      "deleteAllConfirmTitle": "Delete all history?",
+      "deleteAllConfirm": "Every dictation and all kept audio are deleted from this computer. This cannot be undone.",
+      "storage": "The history is kept in the app's folder. It is only encrypted if the computer's disk is encrypted with FileVault or BitLocker."
+    },
+    "globe": {
+      "title": "The Globe key",
+      "usage": {
+        "inputSource": "When you tap fn, your Mac also switches keyboard language.",
+        "emoji": "When you tap fn, your Mac also opens emoji and symbols.",
+        "dictation": "When you tap fn, your Mac also starts its own dictation.",
+        "other": "When you tap fn, your Mac also does something else."
+      },
+      "fix": "Fix it for me",
+      "fixed": "Done. Now fn only starts WalkieTalkey.",
+      "failed": "That did not work. Try again."
+    },
+    "status": {
+      "label": "Status",
+      "ready": "Hold {{key}} to talk",
+      "readySub": "or tap to talk without holding",
+      "paused": "Paused",
+      "pausedSub": "The key does nothing right now."
+    },
+    "access": {
+      "lost": "WalkieTalkey no longer has Accessibility access.",
+      "repair": "Allow again"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links for pairing (PHONE-11). Not referenced from project.yml yet: it needs a
+	     signing team. See ios/README.md for the one line to add. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.walkietalkey.com</string>
+		<string>applinks:walkietalkey-app.pages.dev</string>
+	</array>
+</dict>
+</plist>

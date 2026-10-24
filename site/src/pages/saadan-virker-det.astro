@@ -1,0 +1,63 @@
+---
+/* SITE-02 Sådan virker det: spec 4 (system overview), 5 (identity without accounts) and 6.4 (the pipeline) in plain
+   Danish. Run 2: the key works by tap or hold (DESK-22), and the iPhone pairs by scanning the computer's code and adding
+   the app to the home screen (spec 5.3, PHONE-04). */
+import PageHero from "../components/PageHero.astro";
+import Base from "../layouts/Base.astro";
+import { PAGES } from "../lib/site";
+---
+<Base page="how">
+  <!-- TODO(copy): the whole page -->
+  <PageHero current="how" eyebrow="Sådan virker det" title="Fra din stemme til tekst på din computer" lead="To veje ind, én computer. Talemodellen kører på din egen computer, og telefonen sender kun krypteret lyd." palette="flint" />
+  <main class="container page-body" id="indhold">
+    <div class="prose">
+      <h2>To måder at tale på</h2>
+      <h3>Med tasten</h3>
+      <p>Hold fn nede på en Mac (højre Ctrl på Windows, eller en tast du selv vælger), tal, og slip. Statuspillen viser Lytter, mens du taler, og Renskriver, når du slipper. Teksten sættes ind dér, hvor du skriver. Har du ikke givet appen lov til at indsætte, ligger teksten i udklipsholderen, og pillen siger Tekst klar til at indsætte.</p>
+      <!-- TODO(copy): tap or hold (run 2) -->
+      <p>Vil du ikke holde tasten nede, så tryk på den én gang, og tal frit. Tryk igen, når du er færdig. Esc stopper uden at skrive noget.</p>
+      <h3>Med telefonen</h3>
+      <!-- TODO(copy): the phone's tap or hold -->
+      <p>Hold den store knap i telefonappen, tal, og slip. Eller tryk én gang, tal frit, og tryk igen, når du er færdig. Lyden krypteres på telefonen og sendes gennem et relæ til din computer, mens du taler. Computeren gør talen til tekst, lægger den i udklipsholderen og viser en notifikation: Tekst klar til at indsætte. Telefonen siger Klar på din computer, og du sætter teksten ind med ⌘V eller Ctrl+V.</p>
+      <p>Teksten bliver kun på den computer, du dikterede til. Den sendes aldrig tilbage til telefonen.</p>
+
+      <h2>Sådan bliver tale til tekst</h2>
+      <p>Alt det her sker på din computer, i denne rækkefølge:</p>
+      <ol class="steps-list">
+        <li><strong>Optagelse.</strong> Lyden optages i den kvalitet, talemodellen bruger.</li>
+        <li><strong>Stilhed fjernes.</strong> Silero VAD skærer stilhed fra i starten og slutningen. Er der ingen tale, sker der ikke mere, og pillen siger Hørte ikke noget.</li>
+        <li><strong>Talegenkendelse.</strong> Edda, en dansk talemodel bygget på Whisper, gør talen til tekst. Det sker i bidder, mens du stadig taler, så der kun er et kort stykke tilbage, når du slipper.</li>
+        <li><strong>Tegnsætning.</strong> Mangler teksten punktummer og kommaer, sætter Ekko PnC dem.</li>
+        <li><strong>Fyldord.</strong> Øh, øhm og lignende fjernes.</li>
+        <li><strong>Din ordliste.</strong> Navne og fagord staves, som du har skrevet dem, og dine erstatninger bruges.</li>
+        <li><strong>AI-oprydning, hvis du har slået den til.</strong> Det er det eneste trin, der kan bruge internettet, og det er slået fra, indtil du selv vælger det.</li>
+        <li><strong>Indsæt.</strong> Teksten sættes ind, eller den lægges i udklipsholderen.</li>
+      </ol>
+
+      <h2>Hvorfor på din egen computer</h2>
+      <p>Talemodellen arbejder mange gange hurtigere, end man taler, så en almindelig bærbar kan klare det. En server ville koste penge hver time, kræve internet og betyde, at din tale forlod din computer. Derfor er der ingen server, der lytter med, og ingen regning, der skal betales af nogen.</p>
+
+      <h2>Ingen konto</h2>
+      <p>Der er intet login, ingen e-mail og ingen adgangskode. WalkieTalkey behøver ikke vide, hvem du er. Den skal kun vide, at din telefon må sende til din computer, og det klares ved at parre dem.</p>
+      <h3>Sådan parrer du</h3>
+      <!-- TODO(copy): the pairing of run 2 (scan with the camera, add to the home screen) -->
+      <ol class="steps-list">
+        <li>På computeren: Indstillinger › Telefon › Par en telefon. Computeren viser en kode, der gælder i 10 minutter og kun kan bruges én gang.</li>
+        <li>Scan koden med telefonens kamera.</li>
+        <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. Ellers åbner appen kameraet, og du scanner koden igen. På Android parrer den med det samme.</li>
+        <li>Computeren spørger: Ny telefon parret. Var det dig? Svar Ja, eller Fjern, hvis det ikke var dig.</li>
+      </ol>
+      <p>Hver telefon og computer får deres egen nøgle, som kun de to kender. Del ikke skærm, mens koden vises.</p>
+      <h3>Hvor længe en parring varer</h3>
+      <ul>
+        <li>Den varer, til nogen fjerner den. Der er ingen adgangskode, der skal fornyes.</li>
+        <li>Mister du telefonen, så tryk Fjern ud for den på computeren. Så kan den ikke sende mere, og dine andre telefoner virker som før.</li>
+        <li>En telefon, der ikke har været i brug i 90 dage, fjernes af sig selv.</li>
+        <li>Har du flere computere, parrer du telefonen med hver af dem. Teksten lander kun på den, du sender til.</li>
+      </ul>
+
+      <h2>Vil du vide mere</h2>
+      <p>Krypteringen og hvad den beskytter mod står under <a href={PAGES.security.path}>Sikkerhed</a>. Hvilke data der findes hvor, står under <a href={PAGES.privacy.path}>Privatliv</a>.</p>
+    </div>
+  </main>
+</Base>

@@ -1,0 +1,1176 @@
+{
+  "tray": {
+    "settings": "Indstillinger",
+    "checkUpdates": "Søg efter opdateringer",
+    "copyLastTranscript": "Kopiér seneste transskription",
+    "unloadModel": "Frigør model",
+    "model": "Model",
+    "quit": "Afslut",
+    "cancel": "Annuller",
+    "secureInputWarning": "⚠ Genveje blokeret af Secure Input",
+    "recent": "Seneste",
+    "pairPhone": "Par en telefon",
+    "pause": "Sæt på pause",
+    "resume": "Genoptag",
+    "restartNow": "Genstart nu",
+    "noRecent": "Ingen dikteringer endnu"
+  },
+  "sidebar": {
+    "general": "Generelt",
+    "models": "Modeller",
+    "advanced": "Avanceret",
+    "postProcessing": "Efterbehandling",
+    "history": "Historik",
+    "debug": "Fejlfinding",
+    "about": "Om"
+  },
+  "onboarding": {
+    "subtitle": "For at komme i gang skal du vælge en transskriptionsmodel",
+    "existingModelsTitle": "Kompatible modeller",
+    "downloadModelsTitle": "Tilgængelig til download",
+    "showAllModels": "Vis alle {{total}} modeller",
+    "showFewerModels": "Vis færre modeller",
+    "recommended": "Anbefalet",
+    "customModelDescription": "Ikke officielt understøttet",
+    "migration": {
+      "title": "Dine modeller skal opdateres",
+      "description": "WalkieTalkey bruger nu en nyere type model. Download den nye version for at fortsætte med at transskribere. Gamle versioner vil blive fjernet.",
+      "replaces": "Erstatter {{name}}",
+      "oldFormat": "Gammelt format",
+      "failed": "Download mislykkedes",
+      "retry": "Prøv igen",
+      "chooseAnother": "Vælg en anden model",
+      "download": "Download modeller ({{size}})",
+      "continue": "Fortsæt",
+      "timeRemaining": "{{time}} tilbage"
+    },
+    "modelCard": {
+      "accuracy": "nøjagtighed",
+      "speed": "hastighed"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Hurtig og ret nøjagtig."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "God nøjagtighed, middel hastighed"
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Afbalanceret nøjagtighed og hastighed."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "God nøjagtighed, men langsom."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Optimeret til taiwansk mandarin. Understøtter kodeskift."
+      }
+    },
+    "errors": {
+      "selectModel": "Kunne ikke vælge model"
+    },
+    "permissions": {
+      "title": "Tilladelser påkrævet",
+      "description": "WalkieTalkey har brug for et par tilladelser for at fungere korrekt.",
+      "microphone": {
+        "title": "Mikrofonadgang",
+        "description": "Påkrævet for at høre din stemme til transskription."
+      },
+      "accessibility": {
+        "title": "Tilgængelighedsadgang",
+        "description": "Påkrævet for at skrive den transskriberede tekst ind i dine programmer."
+      },
+      "grant": "Giv tilladelse",
+      "granted": "Givet",
+      "waiting": "Venter...",
+      "allGranted": "Alt er klar!",
+      "errors": {
+        "checkFailed": "Kunne ikke tjekke tilladelser. Prøv igen.",
+        "requestFailed": "Kunne ikke anmode om tilladelse. Prøv igen."
+      }
+    }
+  },
+  "modelSelector": {
+    "custom": "Brugerdefineret",
+    "legacy": "Forældet",
+    "streaming": "Streaming",
+    "active": "Aktiv",
+    "switching": "Skifter...",
+    "noModelsAvailable": "Ingen modeller tilgængelige",
+    "verifying": "Verificerer {{modelName}}...",
+    "verifyingGeneric": "Verificerer...",
+    "downloading": "Downloader {{percentage}}%",
+    "downloadingMultiple": "Downloader {{count}} modeller...",
+    "modelReady": "Model klar",
+    "loading": "Indlæser {{modelName}}...",
+    "loadingGeneric": "Indlæser...",
+    "modelError": "Modelfejl",
+    "modelUnloaded": "Model frigjort",
+    "noModelDownloadRequired": "Ingen model - download påkrævet",
+    "deleteModel": "Slet {{modelName}}",
+    "downloadSpeed": "{{speed}} MB/s",
+    "cancel": "Annuller",
+    "cancelDownload": "Annuller download",
+    "capabilities": {
+      "languageSelection": "Understøtter flere inputsprog",
+      "singleLanguage": "Understøtter kun dette sprog",
+      "languageCount": "{{total}} sprog",
+      "languageOnly": "Kun {{language}}",
+      "translation": "Kan oversætte til engelsk",
+      "translate": "Oversæt",
+      "streaming": "Viser live transskription, mens du taler"
+    }
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "{{model}}-indstillinger"
+    },
+    "general": {
+      "title": "Generelt",
+      "shortcut": {
+        "title": "WalkieTalkey-genveje",
+        "description": "Konfigurer tastaturgenveje til at udløse tale-til-tekst-optagelse",
+        "loading": "Indlæser genveje...",
+        "none": "Ingen genveje konfigureret",
+        "notFound": "Genvej ikke fundet",
+        "pressKeys": "Tryk på ønskede taster...",
+        "bindings": {
+          "transcribe": {
+            "name": "Transskriptionsgenvej",
+            "description": "Tastaturgenvejen til at optage og transskribere din stemme."
+          },
+          "cancel": {
+            "name": "Annulleringsgenvej",
+            "description": "Tastaturgenvejen til at annullere den aktuelle optagelse."
+          },
+          "transcribe_with_post_process": {
+            "name": "Genvej til efterbehandling",
+            "description": "Valgfrit: En dedikeret genvej, der altid anvender AI-efterbehandling på din transskription."
+          }
+        },
+        "errors": {
+          "restore": "Kunne ikke gendanne den oprindelige genvej",
+          "set": "Kunne ikke indstille genvej: {{error}}",
+          "reset": "Kunne ikke nulstille genvej til oprindelig indstilling"
+        }
+      },
+      "language": {
+        "title": "Sprog",
+        "description": "Vælg sproget til talegenkendelse. Auto tyder automatisk sproget, mens valg af et specifikt sprog kan forbedre nøjagtigheden for det pågældende sprog.",
+        "searchPlaceholder": "Søg efter sprog...",
+        "noResults": "Ingen sprog fundet",
+        "auto": "Automatisk"
+      },
+      "shortcutActivation": {
+        "title": "Genvejens adfærd",
+        "description": "Vælg, hvordan transskriptionsgenvejen starter og stopper optagelsen.",
+        "options": {
+          "holdOrToggle": "Automatisk",
+          "pushToTalk": "Hold",
+          "toggle": "Skift"
+        },
+        "descriptions": {
+          "hold_or_toggle": "Hold nede for at optage, eller tryk kort for at slå til/fra",
+          "push_to_talk": "Optager, mens du holder genvejen nede",
+          "toggle": "Tryk på genvejen for at starte optagelsen, tryk igen for at stoppe"
+        }
+      }
+    },
+    "models": {
+      "title": "Transskriptionsmodeller",
+      "description": "Vælg en transskriptionsmodel, eller download flere modeller. Forskellige modeller tilbyder varierende niveauer af nøjagtighed og hastighed.",
+      "searchPlaceholder": "Søg efter modeller ved navn…",
+      "yourModels": "Downloadede modeller",
+      "availableModels": "Tilgængelig til download",
+      "deleteConfirm": "Er du sikker på, at du vil slette {{modelName}}? Du skal downloade den igen for at bruge den.",
+      "deleteActiveConfirm": "{{modelName}} er din aktive model. Sletning af den vil stoppe transskriptioner, indtil du vælger en ny model. Er du sikker?",
+      "deleteTitle": "Slet model",
+      "retiredNotice": {
+        "title": "Gamle modeller virker ikke længere med WalkieTalkey",
+        "description": "De fylder {{size}} på din computer.",
+        "delete": "Slet modeller",
+        "deleted": "Gamle modeller er slettet",
+        "deleteFailed": "Nogle gamle modeller kunne ikke slettes. Se loggen for detaljer."
+      },
+      "filters": {
+        "allLanguages": "Alle sprog",
+        "streaming": "Filtrer modeller, der understøtter live transskription",
+        "translation": "Filtrer modeller, der understøtter oversættelse til engelsk"
+      },
+      "rescan": {
+        "label": "Søg igen",
+        "tooltip": "Søg igen efter modeller, der er tilføjet til modelmappen eller Hugging Face-cachen uden for WalkieTalkey"
+      },
+      "noModelsMatch": "Ingen modeller matcher dette filter."
+    },
+    "sound": {
+      "title": "Lyd",
+      "microphone": {
+        "title": "Mikrofon",
+        "description": "Vælg din foretrukne mikrofonenhed",
+        "placeholder": "Vælg mikrofon...",
+        "loading": "Indlæser..."
+      },
+      "channel": {
+        "title": "Inputkanal",
+        "description": "Vælg, hvilken inputkanal der skal optages fra. Brug dette, hvis din lydgrænseflade har flere indgange.",
+        "average": "Gennemsnit af alle kanaler",
+        "channel": "Kanal {{n}}"
+      },
+      "audioFeedback": {
+        "label": "Lydfeedback",
+        "description": "Afspil lyd, når optagelse starter og stopper"
+      },
+      "outputDevice": {
+        "title": "Outputenhed",
+        "description": "Vælg din foretrukne lydoutputenhed til feedbacklyde",
+        "placeholder": "Vælg outputenhed...",
+        "loading": "Indlæser..."
+      },
+      "volume": {
+        "title": "Lydstyrke",
+        "description": "Juster lydstyrken for lydfeedback"
+      }
+    },
+    "advanced": {
+      "groups": {
+        "app": "App",
+        "output": "Output",
+        "transcription": "Transskription",
+        "history": "Historik",
+        "experimental": "Eksperimentel"
+      },
+      "experimentalToggle": {
+        "label": "Eksperimentelle funktioner",
+        "description": "Aktivér eksperimentelle funktioner, der stadig er under udvikling."
+      },
+      "lazyStreamClose": {
+        "label": "Hold mikrofon åben mellem transskriptioner",
+        "description": "Holder mikrofonstrømmen åben i 30 sekunder, efter at optagelsen stopper, hvilket reducerer ventetid ved transskriptioner lige efter hinanden. Kan forringe Bluetooth-lydkvaliteten, mens den er aktiv."
+      },
+      "acceleration": {
+        "transcribe": {
+          "title": "Hardwareacceleration",
+          "description": "Vælg den hardware, der bruges til transskription. Automatisk bruger GPU'en, når den er tilgængelig, og falder ellers tilbage til CPU'en."
+        },
+        "gpuDevice": {
+          "auto": "Automatisk"
+        }
+      },
+      "startHidden": {
+        "label": "Start skjult",
+        "description": "Vis på meddelelsesområdet uden at åbne vinduet."
+      },
+      "autostart": {
+        "label": "Start ved opstart",
+        "description": "Start WalkieTalkey automatisk, når du logger ind på din computer."
+      },
+      "showTrayIcon": {
+        "label": "Vis proceslinjeikon",
+        "description": "Vis WalkieTalkey-ikonet i meddelelsesområdet."
+      },
+      "overlay": {
+        "style": {
+          "title": "Overlay",
+          "description": "Vælg optagelses-overlay: Ingen skjuler det, Minimal viser en kompakt pille, Live viser transskription i realtid, mens du taler (kun modeller med streaming-understøttelse, se efter Streaming-mærket i modelvælgeren). På Linux anbefales 'Ingen'.",
+          "options": {
+            "none": "Ingen",
+            "minimal": "Minimal",
+            "live": "Live"
+          }
+        },
+        "position": {
+          "title": "Overlay-placering",
+          "description": "Hvor overlayet vises på skærmen under optagelse og transskription.",
+          "options": {
+            "bottom": "Bund",
+            "top": "Top"
+          }
+        }
+      },
+      "pasteMethod": {
+        "title": "Indsætningsmetode",
+        "description": "Vælg, hvordan tekst indsættes. Direkte: simulerer tastetryk via systeminput. Ingen: springer indsætning over, opdaterer kun historik/udklipsholder.",
+        "options": {
+          "clipboard": "Udklipsholder ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Udklipsholder (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Udklipsholder (Shift+Insert)",
+          "direct": "Direkte",
+          "none": "Ingen",
+          "externalScript": "Eksternt script"
+        },
+        "externalScriptPlaceholder": "/sti/til/dit/script.sh"
+      },
+      "typingTool": {
+        "title": "Skriveværktøj",
+        "description": "Vælg hvilket Linux-skriveværktøj der skal bruges til Direkte indsætningsmetode. Auto registrerer og bruger automatisk det bedste tilgængelige værktøj til dit system.",
+        "options": {
+          "auto": "Auto (anbefalet)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Håndtering af udklipsholder",
+        "description": "Rør ikke ved udklipsholder bevarer dit nuværende udklipsholderindhold efter transskription. Kopiér til udklipsholder efterlader transskriptionsresultatet i din udklipsholder efter indsætning.",
+        "options": {
+          "dontModify": "Rør ikke ved udklipsholder",
+          "copyToClipboard": "Kopiér til udklipsholder"
+        }
+      },
+      "autoSubmit": {
+        "title": "Automatisk indsendelse",
+        "description": "Send automatisk den valgte tastekombination efter tekstindsættelse. Cmd+Enter gælder på macOS, mens Windows/Linux bruger Super+Enter.",
+        "options": {
+          "off": "Fra",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "Oversæt til engelsk",
+        "description": "Oversæt automatisk tale fra andre sprog til engelsk under transskription."
+      },
+      "modelUnload": {
+        "title": "Frigør model",
+        "description": "Frigør automatisk GPU-/CPU-hukommelse, når modellen ikke har været brugt i den angivne tid",
+        "options": {
+          "never": "Aldrig",
+          "immediately": "Med det samme",
+          "min2": "Efter 2 minutter",
+          "min5": "Efter 5 minutter",
+          "min10": "Efter 10 minutter",
+          "min15": "Efter 15 minutter",
+          "hour1": "Efter 1 time",
+          "sec15": "Efter 15 sekunder (fejlfinding)"
+        }
+      },
+      "customWords": {
+        "title": "Brugerdefinerede ord",
+        "description": "Hjælp understøttede modeller med at genkende navne og specialiserede udtryk. Fuzzy-korrektion er i øjeblikket begrænset til ord, der bruger A-Z og tal.",
+        "placeholder": "Tilføj et ord",
+        "add": "Tilføj",
+        "remove": "Fjern {{word}}",
+        "duplicate": "\"{{word}}\" findes allerede"
+      },
+      "voiceActivityDetection": {
+        "title": "Stemmeaktivitetsdetektion",
+        "description": "Filtrer stilhed fra optagelser. Streaming-modeller bruger en længere VAD-hale; deaktivering af VAD optager rå lyd."
+      },
+      "longFormChunking": {
+        "title": "Opdeling af lang lyd",
+        "description": "Deler lange optagelser ved pauser før transskribering, hvilket typisk forbedrer transskriptionen."
+      },
+      "vadBackend": {
+        "title": "Stemmedetektions-backend",
+        "description": "Vælg den detektor, der bruges til at filtrere stilhed. Earshot er eksperimentel; skift tilbage til Silero, hvis tale klippes eller støj bevares.",
+        "options": {
+          "silero": "Silero",
+          "earshot": "Earshot"
+        }
+      },
+      "fillerWordRemoval": {
+        "title": "Fjern fyldord",
+        "description": "Fjerner almindelige tøveord fra transskriptioner. Slå fra for at beholde dem."
+      },
+      "chineseScript": {
+        "title": "Kinesisk skrift",
+        "description": "Skriver mandarin- og kantonesisk-transskriptioner med forenklede eller traditionelle tegn. Andre sprog ændres ikke.",
+        "options": {
+          "asTranscribed": "Som transskriberet",
+          "simplified": "Forenklet",
+          "traditional": "Traditionel"
+        }
+      }
+    },
+    "postProcessing": {
+      "hotkey": {
+        "title": "Genvejstast"
+      },
+      "api": {
+        "title": "API",
+        "provider": {
+          "title": "Udbyder",
+          "description": "Vælg en OpenAI- eller Anthropic-kompatibel udbyder."
+        },
+        "apiFormat": {
+          "title": "API-format",
+          "description": "Det anmodningsformat, som det brugerdefinerede endpoint forventer.",
+          "options": {
+            "openai": "OpenAI-kompatibel (Chat Completions)",
+            "anthropic": "Anthropic Messages"
+          }
+        },
+        "appleIntelligence": {
+          "unavailable": "Apple Intelligence er ikke tilgængelig på denne enhed. Kræver en Apple Silicon Mac med macOS Tahoe (26.0) eller nyere med Apple Intelligence aktiveret i Systemindstillinger."
+        },
+        "baseUrl": {
+          "title": "Basis-URL",
+          "description": "API-basis-URL for den valgte udbyder. Kun den brugerdefinerede udbyder kan redigeres.",
+          "placeholder": "https://api.openai.com/v1",
+          "placeholderAnthropic": "https://api.anthropic.com/v1"
+        },
+        "apiKey": {
+          "title": "API-nøgle",
+          "description": "API-nøgle til den valgte udbyder.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Model",
+          "descriptionCustom": "Angiv den modelidentifikator, som det brugerdefinerede endpoint forventer.",
+          "descriptionDefault": "Vælg en model, der udbydes af den valgte udbyder.",
+          "placeholderWithOptions": "Søg eller vælg en model",
+          "placeholderNoOptions": "Skriv et modelnavn",
+          "refreshModels": "Opdater modeller"
+        }
+      },
+      "prompts": {
+        "title": "Prompt",
+        "selectedPrompt": {
+          "title": "Valgt prompt",
+          "description": "Vælg en skabelon til at forfine transskriptioner, eller opret en ny. Brug ${output} i promptteksten for at referere til den fangede transskription."
+        },
+        "noPrompts": "Ingen prompts tilgængelige",
+        "selectPrompt": "Vælg en prompt",
+        "createNew": "Opret ny prompt",
+        "promptLabel": "Promptnavn",
+        "promptLabelPlaceholder": "Indtast promptnavn",
+        "promptInstructions": "Promptinstruktioner",
+        "promptInstructionsPlaceholder": "Skriv de instruktioner, der skal køres efter transskription. Eksempel: Forbedr grammatik og klarhed for følgende tekst: ${output}",
+        "promptTip": "Tip: Brug <code>${output}</code> til at indsætte den transskriberede tekst i din prompt.",
+        "updatePrompt": "Opdater prompt",
+        "deletePrompt": "Slet prompt",
+        "createPrompt": "Opret prompt",
+        "cancel": "Annuller",
+        "selectToEdit": "Vælg en prompt ovenfor for at se og redigere dens detaljer.",
+        "createFirst": "Klik på 'Opret ny prompt' ovenfor for at oprette din første efterbehandlingsprompt."
+      }
+    },
+    "history": {
+      "title": "Historik",
+      "openFolder": "Åbn optagelsesmappe",
+      "loading": "Indlæser historik...",
+      "empty": "Ingen transskriptioner endnu. Start optagelse for at opbygge din historik!",
+      "copyToClipboard": "Kopiér transskription til udklipsholder",
+      "copyError": "Kunne ikke kopiere transskriptionen til udklipsholderen.",
+      "save": "Gem transskription",
+      "unsave": "Fjern fra gemte",
+      "delete": "Slet post",
+      "deleteError": "Kunne ikke slette posten. Prøv igen.",
+      "retranscribe": "Transskribér igen",
+      "retranscribeError": "Kunne ikke transskribere igen. Prøv igen.",
+      "transcribing": "Transskriberer...",
+      "transcriptionFailed": "Transskription mislykkedes. Du kan transskribere igen ved hjælp af genforsøgsikonet."
+    },
+    "debug": {
+      "title": "Fejlfinding",
+      "logDirectory": {
+        "title": "Logmappe",
+        "description": "Placering af logfiler"
+      },
+      "logLevel": {
+        "title": "Logniveau",
+        "description": "Detaljeringsgrad for logning"
+      },
+      "liveLogs": {
+        "title": "Live logs",
+        "description": "Stream applikationslogs i realtid for at diagnosticere problemer uden at åbne logfilen. Kun logs udsendt, mens dette panel er åbent, vises; respekterer indstillingen Logniveau ovenfor.",
+        "live": "Live",
+        "paused": "På pause",
+        "pause": "Pause",
+        "resume": "Genoptag",
+        "copied": "Kopieret",
+        "lineCount": "{{count}} linjer",
+        "empty": "Venter på logs… Poster vises her, når appen udsender dem."
+      },
+      "updateChecks": {
+        "label": "Tjek for opdateringer",
+        "description": "Tjek automatisk for nye versioner af WalkieTalkey",
+        "lockedDescription": "Deaktiveret af systemkonfiguration (HANDY_DISABLE_UPDATER)"
+      },
+      "whatsNewPreview": {
+        "title": "Forhåndsvisning af nyheder",
+        "description": "Åbn de seneste medfølgende udgivelsesnoter uden at markere dem som set",
+        "button": "Forhåndsvisning",
+        "noNotes": "Ingen medfølgende udgivelsesnoter fundet",
+        "error": "Kunne ikke forhåndsvise udgivelsesnoter"
+      },
+      "onboardingPreview": {
+        "title": "Forhåndsvis introduktion",
+        "description": "Forhåndsvis introduktionsskærmene uden at ændre tilladelser, modeller eller fuldførelsesstatus",
+        "permissionsButton": "Tilladelser",
+        "modelsButton": "Modelvalg",
+        "exitButton": "Afslut forhåndsvisning"
+      },
+      "soundTheme": {
+        "label": "Lydtema",
+        "description": "Vælg et lydtema til feedback ved start og stop af optagelse"
+      },
+      "wordCorrectionThreshold": {
+        "title": "Tærskel for ordkorrektion",
+        "description": "Følsomhed for brugerdefinerede ordkorrektioner"
+      },
+      "historyLimit": {
+        "title": "Historikgrænse",
+        "description": "Maksimalt antal historikposter, der skal beholdes",
+        "entries": "poster"
+      },
+      "recordingRetention": {
+        "title": "Automatisk sletning af optagelser",
+        "description": "Slet automatisk gamle optagelser for at spare plads",
+        "never": "Aldrig",
+        "preserveLimit": "Behold de seneste {{count}}",
+        "days3": "Efter 3 dage",
+        "weeks2": "Efter 2 uger",
+        "months3": "Efter 3 måneder",
+        "placeholder": "Vælg opbevaringsperiode..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Altid aktiv mikrofon",
+        "description": "Hold mikrofonen aktiv for hurtigere reaktion"
+      },
+      "clamshellMicrophone": {
+        "title": "Clamshell-mikrofon",
+        "description": "Mikrofon, der skal bruges, når den bærbares låg er lukket"
+      },
+      "postProcessingToggle": {
+        "label": "Efterbehandling",
+        "description": "Aktivér AI-drevet tekstforbedring efter transskription"
+      },
+      "muteWhileRecording": {
+        "label": "Mute under optagelse",
+        "description": "Sluk for systemlyd under optagelse"
+      },
+      "appendTrailingSpace": {
+        "label": "Tilføj efterfølgende mellemrum",
+        "description": "Tilføj et mellemrum efter indsat transskription"
+      },
+      "keyboardImplementation": {
+        "title": "Tastaturimplementering",
+        "description": "Vælg backend til tastaturgenveje.",
+        "bindingsReset": "Tastaturgenveje var inkompatible og blev nulstillet til standard"
+      },
+      "paths": {
+        "appData": "Appdata:",
+        "models": "Modeller:",
+        "settings": "Indstillinger:"
+      },
+      "pasteDelay": {
+        "title": "Forsinkelse af indsættelse (før)",
+        "description": "Forsinkelse (i millisekunder) efter kopiering af tekst, før tastetrykket for indsætning sendes. Øg, hvis intet bliver indsat."
+      },
+      "pasteDelayAfter": {
+        "title": "Forsinkelse af indsættelse (efter)",
+        "description": "Forsinkelse (i millisekunder) efter tastetrykket for indsætning, før din tidligere udklipsholder gendannes. Øg, hvis dit gamle udklipsholderindhold bliver indsat i stedet for transskriptionen."
+      },
+      "holdThreshold": {
+        "title": "Holdetærskel",
+        "description": "Kun i automatisk tilstand: hvor længe (i millisekunder) genvejen skal holdes nede, før det tæller som et hold i stedet for et tryk. Sænk værdien, hvis korte hold lader optagelsen køre videre; hæv den, hvis bevidste tryk behandles som hold."
+      },
+      "reliablePaste": {
+        "title": "Pålidelig indsættelse (Beta)",
+        "description": "Gendan først din udklipsholder, når målappen faktisk har læst transskriptionen, i stedet for efter en fast forsinkelse. Skal afhjælpe, at gammelt udklipsholderindhold indsættes, når systemet er belastet. Kræver en indsætningsmetode via udklipsholderen; kun macOS og Windows."
+      },
+      "recordingBuffer": {
+        "title": "Ekstra optagelsesbuffer",
+        "description": "Ekstra tid (i millisekunder) til at fortsætte optagelsen, efter du slipper tasten, for at fange efterfølgende lyd. 0 = ingen ekstra buffer."
+      },
+      "keyboardDiagnostic": {
+        "title": "Tastaturdiagnostik",
+        "description": "Kontrollerer, om tastaturhændelser når frem til WalkieTalkey. Kun antallet af hændelser registreres, aldrig hvilke taster du trykker på.",
+        "run": "Kør 10 s diagnostik",
+        "running": "Lytter… tryk på din genvej et par gange (f.eks. Option+Space)",
+        "secureInputLabel": "Secure Input",
+        "enabled": "aktiveret",
+        "disabled": "deaktiveret",
+        "holder": "holdes af {{name}} (pid {{pid}})",
+        "holderUnknown": "ingen synlig indehaver",
+        "keyDown": "Tast ned",
+        "keyUp": "Tast op",
+        "flagsChanged": "Modifikatorer",
+        "mouse": "Mus",
+        "verdictBlocked": "Secure Input blokerer tastehændelser, så genveje med en almindelig tast ikke kan fungere, før det er løst.",
+        "verdictSuspicious": "Der kom modifikatorhændelser, men ingen tastehændelser. Noget undertrykker taster, selvom Secure Input rapporteres som deaktiveret. Rapportér det gerne på GitHub.",
+        "verdictOk": "Tastehændelser når frem til WalkieTalkey som normalt.",
+        "verdictNoEvents": "Ingen hændelser registreret. Trykkede du på nogen taster under testen?",
+        "failed": "Diagnostik mislykkedes: {{error}}"
+      }
+    },
+    "about": {
+      "title": "Om",
+      "version": {
+        "title": "Version",
+        "description": "Nuværende version af WalkieTalkey"
+      },
+      "whatsNewUpdates": {
+        "label": "Vis nyheder",
+        "description": "Vis udgivelsesnoter, efter WalkieTalkey opdateres"
+      },
+      "appDataDirectory": {
+        "title": "Appdatamappe",
+        "description": "Placering, hvor WalkieTalkey gemmer sine data"
+      },
+      "sourceCode": {
+        "title": "Kildekode",
+        "description": "Se kildekode og bidrag",
+        "button": "Vis på GitHub"
+      },
+      "supportDevelopment": {
+        "title": "Støt udviklingen",
+        "description": "Hjælp os med at fortsætte udviklingen af WalkieTalkey",
+        "button": "Donér"
+      },
+      "acknowledgments": {
+        "title": "Anerkendelser",
+        "ggml": {
+          "title": "ggml",
+          "description": "Højtydende tensor-bibliotek til maskinlæringsinferens på enheden",
+          "details": "WalkieTalkeys lokale tale-til-tekst funktionalitet er bygget på transcribe.cpp og ggml. Tak for det fantastiske arbejde af Georgi Gerganov og bidragyderne."
+        }
+      }
+    }
+  },
+  "footer": {
+    "checkingUpdates": "Tjekker for opdateringer...",
+    "updateAvailableShort": "Opdatering tilgængelig",
+    "upToDate": "Opdateret",
+    "updateCheckingDisabled": "Tjek for opdateringer deaktiveret",
+    "downloading": "Downloader... {{progress}}%",
+    "installing": "Installerer...",
+    "preparing": "Forbereder...",
+    "checkForUpdates": "Tjek for opdateringer",
+    "portableUpdateTitle": "Manuel opdatering påkrævet",
+    "portableUpdateMessage": "Flytbare installationer kan ikke opdateres automatisk. Download installeren til dit system nedenfor, kør den, og installer i den samme mappe, din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
+    "portableUpdateButton": "Download installer",
+    "portableUpdateBrowseMessage": "Flytbare installationer kan ikke opdateres automatisk. Download den nyeste version til dit system fra GitHub Releases, og installer den i den samme mappe, din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
+    "portableUpdateBrowseButton": "Åbn GitHub Releases"
+  },
+  "whatsNew": {
+    "title": "Nyt i WalkieTalkey v{{version}}"
+  },
+  "common": {
+    "loading": "Indlæser...",
+    "delete": "Slet",
+    "back": "Tilbage",
+    "close": "Luk",
+    "open": "Åbn",
+    "copy": "Kopiér",
+    "clear": "Ryd",
+    "noOptionsFound": "Ingen muligheder fundet",
+    "reset": "Nulstil"
+  },
+  "accessibility": {
+    "permissionsDescription": "WalkieTalkey har brug for tilgængelighedstilladelser for at skrive den transskriberede tekst.",
+    "openSettings": "Åbn systemindstillinger"
+  },
+  "errors": {
+    "loadDirectory": "Fejl ved indlæsning af mappe: {{error}}",
+    "micPermissionDeniedTitle": "Mikrofonadgang nægtet",
+    "micPermissionDenied": {
+      "generic": "Mikrofonadgang blev nægtet af operativsystemet. Giv venligst mikrofontilladelse i dine systemindstillinger.",
+      "windows": "Aktivér mikrofonadgang under Indstillinger → Privatliv og sikkerhed → Mikrofon (inklusive adgang for skrivebordsapps).",
+      "macos": "Giv mikrofonadgang under Systemindstillinger → Privatliv og sikkerhed → Mikrofon.",
+      "linux": "Giv mikrofonadgang i dit systems lyd- eller privatlivsindstillinger."
+    },
+    "noInputDeviceTitle": "Ingen mikrofon fundet",
+    "noInputDevice": "Ingen lydinputenhed blev registreret. Tilslut en mikrofon eller et headset, og prøv igen.",
+    "recordingFailed": "Kunne ikke starte optagelse: {{error}}",
+    "modelLoadFailed": "Kunne ikke indlæse model: {{model}}",
+    "modelLoadFailedUnknown": "ukendt model",
+    "pasteFailedTitle": "Kunne ikke indsætte tekst",
+    "pasteFailed": "Teksten kunne ikke indsættes i det aktive program.",
+    "transcriptionFailedTitle": "Transskription mislykkedes"
+  },
+  "appLanguage": {
+    "title": "Applikationssprog",
+    "description": "Skift sproget for WalkieTalkey-grænsefladen"
+  },
+  "theme": {
+    "title": "Applikationstema",
+    "description": "Vælg om WalkieTalkey skal følge dit systemtema eller forblive lyst eller mørkt",
+    "options": {
+      "system": "System",
+      "light": "Lys",
+      "dark": "Mørk"
+    }
+  },
+  "overlay": {
+    "transcribing": "Transskriberer...",
+    "processing": "Behandler...",
+    "loadingModel": "Indlæser model..."
+  },
+  "secureInput": {
+    "blockedWithCulprit_one": "{{name}} blokerer muligvis 1 genvej",
+    "blockedWithCulprit_other": "{{name}} blokerer muligvis {{count}} genveje",
+    "blockedNoCulprit_one": "macOS blokerer midlertidigt 1 genvej",
+    "blockedNoCulprit_other": "macOS blokerer midlertidigt {{count}} genveje",
+    "recorderBlockedWithCulprit": "{{name}} blokerer muligvis ændringer af genveje",
+    "recorderBlockedNoCulprit": "macOS blokerer midlertidigt ændringer af genveje",
+    "learnMore": "Sådan løser du det",
+    "recorderBlocked": "Genveje kan ikke optages lige nu: macOS Secure Input blokerer tastehændelser. Løs advarslen om Secure Input først.",
+    "dismiss": "Afvis"
+  },
+  "wt": {
+    "managed": "Styret af din organisation",
+    "common": {
+      "back": "Tilbage",
+      "next": "Næste",
+      "skip": "Spring over",
+      "cancel": "Annullér",
+      "retry": "Prøv igen",
+      "close": "Luk",
+      "save": "Gem",
+      "remove": "Fjern",
+      "yes": "Ja",
+      "copy": "Kopiér",
+      "delete": "Slet"
+    },
+    "onboarding": {
+      "label": "Kom i gang med WalkieTalkey",
+      "progress": "Trin {{step}} af {{total}}",
+      "finish": "Færdig",
+      "welcome": {
+        "title": "Dansk tale til tekst. Gratis, og det kører på din egen computer.",
+        "start": "Kom i gang"
+      },
+      "phone": {
+        "title": "Telefon",
+        "lead": "Vil du også kunne tale ind i telefonen?",
+        "why": "Tal ind i telefonens app, og teksten kommer frem på denne computer. Krypteret fra telefon til computer.",
+        "show": "Vis koden"
+      },
+      "microphone": {
+        "title": "Mikrofon",
+        "lead": "WalkieTalkey skal bruge mikrofonen for at høre dig",
+        "why": "Den lytter kun, mens du taler til den, og talen bliver til tekst på din egen computer.",
+        "allow": "Giv adgang til mikrofonen",
+        "granted": "Mikrofonen er klar",
+        "openSettings": "Åbn Systemindstillinger",
+        "deniedWindows": "Windows giver ikke apps adgang til mikrofonen.",
+        "openSettingsWindows": "Åbn indstillinger for mikrofon"
+      },
+      "waitingHint": "Slå WalkieTalkey til. Så går vi videre af os selv.",
+      "accessibility": {
+        "title": "Tilgængelighed",
+        "lead": "Så teksten kan sættes ind, hvor du skriver",
+        "why": "Den samme tilladelse lader WalkieTalkey se, når du holder fn nede. Det er den eneste, tasten skal bruge.",
+        "open": "Åbn Systemindstillinger",
+        "granted": "Tilgængelighed er slået til"
+      },
+      "try": {
+        "title": "Prøv det",
+        "lead": "Hold {{key}} nede og sig: Hej, det her er min første diktering.",
+        "tap": "Du kan også trykke på {{key}} én gang, tale, og trykke igen, når du er færdig.",
+        "fieldLabel": "Teksten kommer her",
+        "done": "Det virker. Du er klar.",
+        "modelWaiting": "Talemodellen hentes stadig. Du kan prøve, så snart den er klar.",
+        "keyNotRunning": "WalkieTalkey kan ikke se tasten endnu.",
+        "otherKeyWindows": "Mange nye bærbare har en Copilot-tast i stedet for højre Ctrl. Vil du bruge den eller en anden tast, så tryk på Vælg en anden tast og derefter på tasten."
+      },
+      "done": {
+        "title": "Klar",
+        "lead": "Hold {{key}} for at tale, eller tryk for at tale uden at holde.",
+        "whereMac": "Du finder WalkieTalkey i menulinjen øverst på skærmen.",
+        "whereWindows": "Du finder WalkieTalkey i proceslinjen nederst på skærmen.",
+        "tipHold": "Hold nede, mens du taler. Slip, og teksten bliver sat ind.",
+        "tipTap": "Tryk én gang for at tale uden at holde. Tryk igen for at stoppe.",
+        "tipEsc": "Stopper uden at skrive noget.",
+        "fastTitle": "En hurtigere model",
+        "useFast": "Brug Ekko v1 Tiny",
+        "keepEdda": "Behold Edda"
+      }
+    },
+    "model": {
+      "downloading": "Henter dansk talemodel",
+      "ready": "Talemodellen er klar",
+      "preparing": "Gør talemodellen klar",
+      "downloadFailed": "Kunne ikke hente talemodellen. Prøv igen.",
+      "importFile": "Importér modelfil",
+      "importFailed": "Filen er ikke en model, WalkieTalkey kender. Vælg den fil, du har hentet.",
+      "keepLoaded": {
+        "always": "Altid",
+        "min15": "I 15 minutter",
+        "hour1": "I 1 time"
+      }
+    },
+    "keys": {
+      "left": "Venstre {{key}}",
+      "right": "Højre {{key}}",
+      "space": "Mellemrum",
+      "copilot": "Copilot-tasten",
+      "pressNow": "Tryk på den tast, du vil bruge",
+      "choose": "Vælg en anden tast",
+      "reset": "Brug standardtasten",
+      "recordFailed": "Kunne ikke læse tasten. Prøv igen."
+    },
+    "pairing": {
+      "title": "Par en telefon",
+      "qrLabel": "Kode til at parre en telefon",
+      "howTo": "Åbn WalkieTalkey på telefonen, tryk Par med en computer, og scan koden.",
+      "validFor": "Koden virker i",
+      "timeLeft": "{{time}} tilbage",
+      "loading": "Laver en kode",
+      "expired": "Koden er udløbet.",
+      "newCode": "Lav en ny kode",
+      "failed": "Kunne ikke lave en kode. Tjek forbindelsen, og prøv igen.",
+      "noScreenShare": "Par ikke, mens du deler din skærm. Koden virker i 10 minutter, og alle, der ser den, kan bruge den.",
+      "getApp": "Har du ikke appen? Åbn {{url}} på telefonen.",
+      "paired": "{{name}} er parret."
+    },
+    "notify": {
+      "textReady": "Tekst klar til at indsætte",
+      "now": "nu",
+      "pressToPaste": "Tryk {{key}} for at indsætte",
+      "phoneJoined": "Ny telefon parret: {{name}}. Var det dig?",
+      "updateReady": "Opdatering klar. Genstart for at installere",
+      "restartNow": "Genstart nu"
+    },
+    "pill": {
+      "holdBefore": "Hold",
+      "holdAfter": "for at tale",
+      "listening": "Lytter",
+      "processing": "Renskriver",
+      "ready": "Tekst klar til at indsætte",
+      "pasted": "Indsat",
+      "noSpeech": "Hørte ikke noget",
+      "raw": "Brugte teksten uden oprydning",
+      "notReady": "Talemodellen er ikke klar endnu",
+      "error": "Kunne ikke hente talemodellen. Prøv igen.",
+      "countdown": "{{seconds}} sekunder tilbage",
+      "handsFree": "Tryk igen for at stoppe"
+    },
+    "nav": {
+      "label": "Indstillinger",
+      "history": "Historik",
+      "general": "Generelt",
+      "key": "Tast",
+      "text": "Tekst",
+      "vocabulary": "Ordliste",
+      "cleanup": "Ryd op med AI",
+      "phone": "Telefon",
+      "model": "Model",
+      "updates": "Opdateringer",
+      "advanced": "Avanceret",
+      "about": "Om"
+    },
+    "paused": {
+      "text": "WalkieTalkey er sat på pause. Tasten gør ingenting, og telefonen får besked om, at computeren er sat på pause.",
+      "resume": "Genoptag"
+    },
+    "general": {
+      "autostart": "Start ved login",
+      "autostartDesc": "WalkieTalkey starter, når du logger ind på computeren.",
+      "sounds": "Lyde",
+      "soundsDesc": "En kort lyd, når optagelsen starter og stopper.",
+      "pillGroup": "Pillen",
+      "pillPlace": "Pillens placering",
+      "pillPlaceDesc": "Pillen viser, at WalkieTalkey lytter, og hvad der skete med teksten.",
+      "pillBottom": "Nederst",
+      "pillTop": "Øverst",
+      "pillNever": "Vis aldrig",
+      "pillForPhone": "Vis pillen for dikteringer fra telefonen",
+      "pillForPhoneDesc": "Pillen viser det samme, som når du bruger tasten.",
+      "notificationsGroup": "Notifikationer",
+      "showText": "Vis teksten i notifikationen",
+      "showTextDesc": "Slå fra, når du deler din skærm eller holder møde. Så står der kun, hvordan du indsætter teksten.",
+      "preview": "Sådan ser notifikationen ud:",
+      "language": "Sprog",
+      "languageDesc": "Sproget i WalkieTalkeys vinduer. Talemodellen er dansk.",
+      "previewExample": "Husk at købe mælk på vej hjem",
+      "notificationsOff": "Notifikationer er ikke slået til, så du ser ikke, når tekst fra telefonen er klar.",
+      "notificationsAllow": "Slå notifikationer til",
+      "notificationsOpen": "Åbn Notifikationer"
+    },
+    "key": {
+      "key": "Tast",
+      "keyDescMac": "Tastaturer, der ikke er fra Apple, sender ofte ikke fn. Så kan du vælge en anden tast her.",
+      "keyDescWindows": "Har din computer en Copilot-tast, kan du vælge den her.",
+      "test": "Test",
+      "testDesc": "Tryk på tasten, eller hold den nede. Tasten herunder bliver trykket ned, når WalkieTalkey ser den.",
+      "how": "Sådan bruger du tasten",
+      "howHoldOrTap": "Hold {{key}} for at tale, eller tryk for at tale uden at holde. Tryk igen for at stoppe.",
+      "howHold": "Hold {{key}} nede, mens du taler. Slip for at stoppe.",
+      "howTap": "Tryk på {{key}} for at tale, og tryk igen for at stoppe.",
+      "works": "Det virker",
+      "down": "Tasten er nede"
+    },
+    "text": {
+      "output": "Når du dikterer med tasten",
+      "outputDesc": "Med Kun udklipsholder lægges teksten på udklipsholderen, og du indsætter den selv med {{key}}.",
+      "paste": "Indsæt automatisk",
+      "clipboard": "Kun udklipsholder",
+      "noAccessibility": "WalkieTalkey har ikke adgang til Tilgængelighed, så teksten lægges på udklipsholderen.",
+      "punctuation": "Tegnsætning",
+      "punctuationDesc": "Automatisk tilføjer punktummer og kommaer, når talemodellen ikke selv har sat dem.",
+      "automatic": "Automatisk",
+      "always": "Altid",
+      "never": "Aldrig",
+      "share": "Del med mine andre enheder",
+      "shareDescMac": "Når den er slået fra, lægges teksten kun på denne Macs udklipsholder, så Universal Clipboard ikke sender den til dine andre Apple-enheder.",
+      "shareDescWindows": "Når den er slået fra, kommer teksten ikke i Windows' udklipsholderhistorik og ikke i udklipsholderen i skyen.",
+      "allow": "Giv adgang"
+    },
+    "vocabulary": {
+      "words": "Ord",
+      "wordsDesc": "Navne og fagord, som skal staves rigtigt. De nyeste står øverst og bruges først.",
+      "newWord": "Nyt ord",
+      "newWordPlaceholder": "For eksempel et navn",
+      "addWord": "Tilføj ord",
+      "noWords": "Ingen ord endnu.",
+      "removeItem": "Fjern {{item}}",
+      "companyList": "Ordlisten fra din organisation bruges også.",
+      "replacements": "Erstatninger",
+      "replacementsDesc": "Når jeg siger X, skriv Y. Hele ord, uanset store og små bogstaver.",
+      "whenISay": "Når jeg siger",
+      "write": "Skriv",
+      "addReplacement": "Tilføj erstatning",
+      "replacementItem": "Når jeg siger {{from}}, skriv {{to}}",
+      "noReplacements": "Ingen erstatninger endnu.",
+      "developerWords": "Udviklerord",
+      "developerWordsDesc": "Ord som pull request, deploy, standup, merge, commit, frontend og backend, til dansk med engelske fagord.",
+      "importExport": "Importér og eksportér",
+      "importExportDesc": "Almindelige tekstfiler med ét ord pr. linje. Erstatninger skrives som X => Y.",
+      "importWords": "Importér ord",
+      "exportWords": "Eksportér ord",
+      "importReplacements": "Importér erstatninger",
+      "exportReplacements": "Eksportér erstatninger",
+      "importedWords": "{{count}} ord importeret.",
+      "importedReplacements": "{{count}} erstatninger importeret.",
+      "exported": "Filen er gemt.",
+      "copied": "Filen kunne ikke gemmes, så listen er kopieret til udklipsholderen.",
+      "exportFailed": "Listen kunne ikke gemmes."
+    },
+    "cleanup": {
+      "intro": "Valgfrit. En AI retter teksten, efter talen er blevet til tekst på din computer. Kun teksten sendes, ikke lyden.",
+      "mode": "Tilstand",
+      "off": "Fra",
+      "whenNeeded": "Når der er noget at rette",
+      "whenNeededDesc": "Anbefalet, når en udbyder er sat op. Kun dikteringer, hvor du retter dig selv eller gentager noget, sendes.",
+      "always": "Altid",
+      "shift": "Kun når jeg holder Shift med",
+      "shiftDesc": "Hold Shift nede, når du slipper tasten.",
+      "provider": "Udbyder",
+      "chooseProvider": "Vælg en udbyder",
+      "custom": "Anden (OpenAI-kompatibel)",
+      "onlyLocal": "Din organisation tillader kun oprydning, der kører på computeren.",
+      "appleUnavailable": "Apple Intelligence kræver en Mac med Apple Silicon og macOS 26 eller nyere.",
+      "model": "Model",
+      "modelDesc": "Navnet på modellen hos udbyderen.",
+      "modelPlaceholder": "For eksempel gpt-4.1-mini",
+      "endpoint": "Adresse (endpoint)",
+      "endpointDesc": "Adressen på en OpenAI-kompatibel tjeneste, for eksempel Azure OpenAI, LM Studio eller Ollama.",
+      "key": "API-nøgle",
+      "keyDesc": "Din egen nøgle. Den gemmes i computerens nøglering og sendes kun til udbyderen.",
+      "keyManaged": "Din organisation har sat en nøgle.",
+      "keyStored": "Der er gemt en nøgle",
+      "keyStoredPlaceholder": "Skriv en ny nøgle for at skifte",
+      "saveKey": "Gem nøgle",
+      "removeKey": "Fjern nøgle",
+      "keyFailed": "Nøglen kunne ikke gemmes.",
+      "consent": "Teksten (ikke lyden) sendes til {{provider}}, hver gang du dikterer.",
+      "sentWhenNeeded": "Teksten (ikke lyden) sendes til {{provider}}, når der er noget at rette.",
+      "staysApple": "Teksten bliver på din computer. Apple Intelligence kører på din Mac.",
+      "staysLocal": "Teksten sendes til en tjeneste på din egen computer.",
+      "turnOn": "Slå til",
+      "cancel": "Annullér",
+      "smallModels": "Små lokale modeller (under cirka 3 milliarder parametre) følger ofte ikke instruktionerne. Brug Apple Intelligence på en Mac eller en større model.",
+      "showSent": "Vis hvad der blev sendt",
+      "showSentDesc": "Historikken viser den præcise tekst, udbyderen og hvor lang tid det tog for hver diktering, der blev sendt.",
+      "openHistory": "Åbn historikken"
+    },
+    "phone": {
+      "intro": "Hold knappen i telefonens app og tal, eller tryk for at tale uden at holde. Teksten lægges på udklipsholderen på denne computer. Krypteret fra telefon til computer.",
+      "paired": "Parrede telefoner",
+      "none": "Ingen telefoner er parret endnu.",
+      "noName": "en telefon uden navn",
+      "online": "Online",
+      "offline": "Ikke online",
+      "lastSeen": {
+        "today": "Sidst set i dag",
+        "yesterday": "Sidst set i går",
+        "date": "Sidst set {{date}}"
+      },
+      "removeNamed": "Fjern {{name}}",
+      "removeFailed": "Telefonen kunne ikke fjernes. Prøv igen.",
+      "removeFailedNamed": "{{name}} kunne ikke fjernes. Prøv igen.",
+      "pairTitle": "Ny telefon",
+      "pairDesc": "Viser en kode, som du scanner i telefonens app.",
+      "connected": "Forbundet til relæet",
+      "disconnected": "Ingen forbindelse til telefonen. Prøver igen.",
+      "joinedHelp": "Hvis det ikke var dig, så tryk Fjern. Telefonen kan så ikke sende mere til denne computer."
+    },
+    "modelSettings": {
+      "selected": "Valgt model",
+      "none": "Ingen model",
+      "keepLoaded": "Hold talemodellen indlæst",
+      "keepLoadedDesc": "Med Altid er den første diktering efter en pause lige så hurtig som resten. Vælg en kortere tid, hvis computeren mangler hukommelse.",
+      "redownloadTitle": "Hent modellen igen",
+      "redownloadDesc": "Sletter den valgte model og henter den igen, hvis filen er gået i stykker.",
+      "redownload": "Hent igen",
+      "space": "Plads brugt",
+      "spaceDesc": "De talemodeller, der ligger på computeren.",
+      "others": "Andre modeller",
+      "othersDesc": "Edda er lavet til dansk. Ekko v1 Tiny er hurtigere på langsomme computere. De andre er Handys modeller.",
+      "noOthers": "Ingen andre modeller.",
+      "onDisk": "hentet",
+      "use": "Brug",
+      "useNamed": "Brug {{name}}",
+      "deleteNamed": "Slet {{name}}",
+      "download": "Hent",
+      "downloadNamed": "Hent {{name}}",
+      "downloadingNamed": "Henter {{name}}",
+      "punctuation": {
+        "title": "Tegnsætning (Ekko PnC)",
+        "desc": "Sætter punktummer og kommaer, når talemodellen ikke selv gør det. Kører på computeren.",
+        "ready": "Klar",
+        "missing": "Hentes, når der er forbindelse",
+        "downloading": "Henter tegnsætningsmodellen",
+        "failed": "Kunne ikke hente tegnsætningsmodellen.",
+        "unsupported": "Ikke tilgængelig på en Mac med Intel-processor",
+        "retry": "Prøv igen"
+      }
+    },
+    "updates": {
+      "auto": "Automatiske opdateringer",
+      "autoDesc": "Søger efter opdateringer ved start og hver 6. time og installerer dem, når appen starter igen.",
+      "channel": "Kanal",
+      "channelDesc": "Beta får nye versioner før alle andre.",
+      "stable": "Stabil",
+      "beta": "Beta",
+      "check": "Søg efter opdateringer",
+      "checking": "Søger efter opdateringer",
+      "upToDate": "Du har den nyeste version",
+      "downloading": "Henter version {{version}}",
+      "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere."
+    },
+    "advanced": {
+      "intro": "Indstillinger, de fleste aldrig får brug for.",
+      "network": "Relæ-adresse",
+      "relay": "Relæ-adresse",
+      "relayDesc": "Relæet sender den krypterede lyd fra telefonen videre til computeren. Skift kun, hvis du har dit eget relæ. Telefoner skal parres igen bagefter.",
+      "phoneApp": "Telefon-appens adresse",
+      "phoneAppDesc": "Adressen, som koden til at parre en telefon peger på.",
+      "manualModels": "Manuel installation af modeller",
+      "importDesc": "Vælg en modelfil, du allerede har hentet. WalkieTalkey tjekker, at filen er en model, den kender.",
+      "imported": "Modellen er installeret.",
+      "dataFolder": "Appens mappe",
+      "dataFolderDesc": "Modeller, historik og indstillinger ligger her.",
+      "openFolder": "Åbn mappen",
+      "modelServer": "Modeller hentes fra",
+      "debugging": "Fejlsøgning",
+      "debugMode": "Fejlsøgningstilstand",
+      "debugModeDesc": "Viser ekstra indstillinger og logger flere detaljer.",
+      "logs": "Log",
+      "logsDesc": "Logfilerne ligger på din computer. Del dem kun, hvis du selv vil.",
+      "openLogs": "Åbn logmappen",
+      "pasteDelays": "Forsinkelser ved indsæt",
+      "pasteDelaysDesc": "Hvis teksten indimellem ikke bliver sat ind, kan en længere pause før og efter hjælpe.",
+      "cli": {
+        "title": "Kommandolinje",
+        "desc": "WalkieTalkey kan styres fra en terminal, for eksempel fra en genvej i et andet program.",
+        "toggle": "Starter eller stopper en diktering.",
+        "cancel": "Annullerer den diktering, der er i gang.",
+        "startHidden": "Starter uden at vise vinduet.",
+        "noTray": "Starter uden ikon i menulinjen.",
+        "debug": "Starter med fejlsøgning slået til.",
+        "file": "Laver en lydfil om til tekst og skriver resultatet.",
+        "listModels": "Viser de modeller, appen kender."
+      },
+      "keyMode": "Tastens tilstand",
+      "keyModeDesc": "Som standard virker tasten både, når du holder den, og når du trykker på den.",
+      "keyModeBoth": "Hold eller tryk",
+      "keyModeBothDesc": "Hold for at tale, eller tryk for at tale uden at holde.",
+      "keyModeHold": "Kun hold",
+      "keyModeHoldDesc": "Optager, mens du holder tasten nede.",
+      "keyModeTap": "Kun tryk",
+      "keyModeTapDesc": "Tryk én gang for at starte og én gang til for at stoppe."
+    },
+    "about": {
+      "claims": "Talen bliver til tekst på din egen computer. Ingen konto. Ingen sporing.",
+      "version": "Version",
+      "credits": "Licenser og kreditering",
+      "credit": {
+        "walkietalkey": "Apache-2.0. Gratis for alle, også virksomheder.",
+        "handy": "WalkieTalkey bygger på Handy af CJ Pais. MIT.",
+        "transcribe": "Kører talemodellerne på computeren, sammen med ggml. MIT.",
+        "edda": "Dansk talemodel fra Alexandra Instituttet, bygget på OpenAI Whisper large-v3-turbo. Apache-2.0.",
+        "ekkoPnc": "Tegnsætning fra RyeAI. CC BY 4.0.",
+        "ekkoTiny": "Hurtig dansk talemodel fra RyeAI, bygget på NVIDIA Parakeet. NVIDIA Open Model License og CC BY 4.0.",
+        "onnx": "Kører tegnsætningsmodellen. Microsoft, MIT.",
+        "silero": "Finder tale i lyden. Silero Team, MIT.",
+        "albert": "Skrifttypen, af Andreas Rasmussen. SIL Open Font License 1.1."
+      },
+      "links": "Links",
+      "code": "Kildekode",
+      "codeDesc": "Hele koden er åben på GitHub.",
+      "privacy": "Privatliv",
+      "privacyDesc": "Hvilke data der findes, og hvor de ligger.",
+      "trademark": "Varemærke",
+      "trademarkDesc": "Navnet og logoet er ikke omfattet af kodens licens.",
+      "open": "Åbn",
+      "openNamed": "Åbn {{name}}"
+    },
+    "history": {
+      "intro": "Dine dikteringer på denne computer.",
+      "search": "Søg i historikken",
+      "sentOnly": "Kun sendt til AI",
+      "listLabel": "Dikteringer",
+      "fromKey": "Tast",
+      "fromPhone": "Fra {{name}}",
+      "cleaned": "Ryddet op med AI",
+      "copied": "Kopieret",
+      "provider": "Udbyder",
+      "duration": "Tid",
+      "sentText": "Teksten, der blev sendt:",
+      "empty": "Ingen dikteringer endnu.",
+      "noMatches": "Ingen dikteringer passer på søgningen.",
+      "loadFailed": "Historikken kunne ikke hentes.",
+      "show": "Vis",
+      "settings": "Indstillinger for historik",
+      "retention": "Opbevaring",
+      "retentionDesc": "Ældre dikteringer slettes ved start og hver time.",
+      "keep": {
+        "dont_keep": "Gem ikke",
+        "day": "1 dag",
+        "two_weeks": "14 dage",
+        "ninety_days": "90 dage",
+        "forever": "Altid"
+      },
+      "keepAudio": "Gem lyd til fejlfinding",
+      "keepAudioDesc": "Gemmer lyden i højst 7 dage. Lyden bliver på din computer.",
+      "deleteAllTitle": "Alle dikteringer",
+      "deleteAllDesc": "Sletter alle dikteringer på denne computer.",
+      "deleteAll": "Slet al historik",
+      "deleteAllConfirmTitle": "Slet al historik?",
+      "deleteAllConfirm": "Alle dikteringer og al gemt lyd slettes fra denne computer. Det kan ikke fortrydes.",
+      "storage": "Historikken ligger i appens mappe. Den er kun krypteret, hvis computerens disk er krypteret med FileVault eller BitLocker."
+    },
+    "globe": {
+      "title": "Globustasten",
+      "usage": {
+        "inputSource": "Når du trykker på fn, skifter din Mac også tastatursprog.",
+        "emoji": "Når du trykker på fn, åbner din Mac også emoji og symboler.",
+        "dictation": "Når du trykker på fn, starter din Mac også sin egen diktering.",
+        "other": "Når du trykker på fn, gør din Mac også noget andet."
+      },
+      "fix": "Ret det for mig",
+      "fixed": "Ordnet. Nu starter fn kun WalkieTalkey.",
+      "failed": "Det lykkedes ikke. Prøv igen."
+    },
+    "status": {
+      "label": "Status",
+      "ready": "Hold {{key}} for at tale",
+      "readySub": "eller tryk for at tale uden at holde",
+      "paused": "Sat på pause",
+      "pausedSub": "Tasten gør ingenting lige nu."
+    },
+    "access": {
+      "lost": "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
+      "repair": "Giv adgang igen"
+    }
+  }
+}

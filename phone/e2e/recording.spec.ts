@@ -1,0 +1,505 @@
+import { bestCorrelation, bytesToInt16, rms } from "./audio";
+import { ScriptedComputer } from "./computer";
+import {
+  RELAY_PORT,
+  closeScannerIfOpen,
+  statusName,
+  expect,
+  hold,
+  label,
+  mics,
+  pairByLink,
+  preparePage,
+  press,
+  setHidden,
+  sub,
+  tap,
+  test,
+} from "./helpers";
+import { TcpProxy } from "./proxy";
+
+/** How closely the received audio must match the test signal. Chromium plays the WAV file
+ *  itself into its fake microphone; WebKit gets a synthetic stream from an init script, and on
+ *  Linux its audio graph resamples it (0.6-0.85 there, above 0.9 on macOS). Unrelated audio
+ *  scores near 0. */
+function minCorrelation(browserName: string): number {
+  return browserName === "webkit" ? 0.5 : 0.9;
+}
+
+test.describe("recording and streaming (PHONE-20..23, PHONE-30..32)", () => {
+  test("streams 200 ms blocks while talking; the computer gets the audio; Klar på and ⌘V", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer("MacBook");
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await expect(page.locator(".wt-app--rec")).toBeVisible();
+    // PHONE-31: blocks reach the computer while the button is still held.
+    const live = await computer.waitSession(
+      (s) => s.blocks.size >= 3,
+      "three live blocks",
+      10_000,
+    );
+    expect(live.end).toBeNull();
+    // PHONE-21: the level meter follows the microphone (the test signal is loud).
+    const meter = page.locator(".wt-app-meter.wt-app-meter--level");
+    await expect(meter).toHaveCount(1);
+    await expect
+      .poll(() =>
+        meter.evaluate((el) =>
+          Number((el as HTMLElement).style.getPropertyValue("--wt-level")),
+        ),
+      )
+      .toBeGreaterThan(0.3);
+    await page.waitForTimeout(1500);
+    await p.release();
+
+    const s = await computer.waitEnded();
+    expect(s.starts).toBe(1);
+    expect(s.duplicates).toBe(0);
+    const n = s.end!.chunks;
+    expect(n).toBeGreaterThanOrEqual(10);
+    expect(s.blocks.size).toBe(n);
+    // Exactly 3,200 samples per block; only the last may be shorter.
+    for (let i = 0; i < n - 1; i++) expect(s.blocks.get(i)!.length).toBe(6400);
+    const last = s.blocks.get(n - 1)!.length;
+    expect(last).toBeGreaterThan(0);
+    expect(last).toBeLessThanOrEqual(6400);
+    const pcm = ScriptedComputer.pcm(s);
+    expect(s.end!.durationMs).toBe(Math.round(pcm.length / 2 / 16));
+    // The fake microphone's signal arrives intact (same waveform, 16 kHz, mono).
+    const samples = bytesToInt16(pcm);
+    expect(rms(samples)).toBeGreaterThan(0.05);
+    expect(bestCorrelation(samples)).toBeGreaterThan(
+      minCorrelation(browserName),
+    );
+
+    // PHONE-23: the result.
+    await expect(label(page)).toHaveText("Klar på MacBook");
+    await expect(sub(page)).toHaveText("Tryk ⌘V for at indsætte");
+  });
+
+  test("a Windows computer says Ctrl+V", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer("ThinkPad", "win");
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await hold(page, 800);
+    await expect(label(page)).toHaveText("Klar på ThinkPad");
+    await expect(sub(page)).toHaveText("Tryk Ctrl+V for at indsætte");
+  });
+
+  test("sliding off the button cancels (PHONE-26)", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await computer.waitSession((s) => s.blocks.size >= 2, "some audio", 10_000);
+    await p.slideOff();
+    await expect(label(page)).toHaveText("Slip for at annullere");
+    await p.slideBack();
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await p.slideOff();
+    await expect(label(page)).toHaveText("Slip for at annullere");
+    await p.release();
+    await expect(label(page)).toHaveText("Hold for at tale");
+    const s = await computer.waitSession((x) => x.cancelled, "audio_cancel");
+    expect(s.end).toBeNull();
+    expect(s.answered).toBe(0);
+  });
+});
+
+test.describe("tap or hold (PHONE-26, PHONE-29)", () => {
+  test("a quick tap goes hands-free with a lock; the next tap stops and sends", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    // There is no hold-or-tap setting any more.
+    await statusName(page).click();
+    await page.getByRole("button", { name: "Indstillinger" }).click();
+    await expect(page.getByText("Tryk for at starte og stoppe")).toHaveCount(0);
+    await page.getByRole("button", { name: "Tilbage" }).click();
+
+    await tap(page);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    await expect(page.locator(".wt-stage--handsfree")).toBeVisible();
+    await expect(page.locator(".wt-app--rec")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Annullér" })).toBeVisible();
+    // It keeps recording with no finger on the button, and streams while it does.
+    await page.waitForTimeout(1500);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    const live = await computer.waitSession(
+      (s) => s.blocks.size >= 5,
+      "hands-free blocks",
+      10_000,
+    );
+    expect(live.end).toBeNull();
+    await tap(page);
+    const s = await computer.waitEnded();
+    // Not a near-empty recording: the 1.5 s plus the pre-roll.
+    expect(s.end!.durationMs).toBeGreaterThan(1500);
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+    await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
+  });
+
+  /* iOS interrupts a touch with pointercancel (a system gesture, a call, an alert). Within 0.5 s
+     that used to count as a tap and leave the phone recording hands-free without a word. */
+  test("an interrupted press ends the press and sends; it never goes hands-free", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await page.evaluate(() => {
+      const w = window as unknown as { __wtPointerId?: number };
+      document.addEventListener(
+        "pointerdown",
+        (e) => (w.__wtPointerId = e.pointerId),
+        { capture: true },
+      );
+    });
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await page.evaluate(() => {
+      const id = (window as unknown as { __wtPointerId?: number })
+        .__wtPointerId;
+      document
+        .querySelector(".wt-hold")!
+        .dispatchEvent(
+          new PointerEvent("pointercancel", { pointerId: id, bubbles: true }),
+        );
+    });
+    await computer.waitEnded();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+    await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
+    // The finger that comes up later changes nothing.
+    await p.release();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+
+  test("held 0.5 s or longer is push-to-talk: the release sends", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await page.waitForTimeout(700);
+    await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
+    await p.release();
+    await computer.waitEnded();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+
+  test("hands-free: Annullér cancels (audio_cancel)", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await tap(page);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    await computer.waitSession((s) => s.blocks.size >= 2, "some audio", 10_000);
+    await page.getByRole("button", { name: "Annullér" }).click();
+    await expect(label(page)).toHaveText("Hold for at tale");
+    const s = await computer.waitSession((x) => x.cancelled, "audio_cancel");
+    expect(s.end).toBeNull();
+    expect(s.answered).toBe(0);
+  });
+
+  test("hands-free: sliding off during the stopping tap cancels on release", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await tap(page);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await p.slideOff();
+    await expect(label(page)).toHaveText("Slip for at annullere");
+    await p.release();
+    await expect(label(page)).toHaveText("Hold for at tale");
+    await computer.waitSession((x) => x.cancelled, "audio_cancel");
+  });
+
+  test("a quick press that slid off cancels instead of going hands-free", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    const p = await press(page);
+    await p.slideOff();
+    await p.release();
+    await expect(label(page)).toHaveText("Hold for at tale");
+    await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
+    await computer.waitSession((x) => x.cancelled, "audio_cancel");
+  });
+
+  test("hands-free stops by itself at 5 minutes, counting down from 4:45 (PHONE-29)", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await page.clock.install();
+    await pairByLink(page, computer);
+    await tap(page);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    await page.clock.fastForward(4 * 60 * 1000 + 46 * 1000);
+    await expect(page.getByRole("timer")).toContainText(
+      "Optagelsen stopper om",
+    );
+    await page.clock.fastForward(15_000);
+    await computer.waitEnded();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+});
+
+test.describe("the raw, warm microphone (PHONE-30, PHONE-33)", () => {
+  test("asks for the raw microphone, opens it before the press, and the dictation keeps the 300 ms before it", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    // Warm: open before any press, exactly once, without the call-processing chain.
+    await expect.poll(async () => (await mics(page)).live).toBe(1);
+    const m = await mics(page);
+    expect(m.opened).toBe(1);
+    expect(m.constraints[0]).toEqual({
+      channelCount: 1,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    });
+    // Let the pre-roll fill.
+    await page.waitForTimeout(800);
+    // How long the button was down, measured in the page.
+    await page.evaluate(() => {
+      const w = window as unknown as { __press: number[] };
+      w.__press = [];
+      for (const type of ["pointerdown", "pointerup"])
+        document.addEventListener(
+          type,
+          () => w.__press.push(performance.now()),
+          { capture: true },
+        );
+    });
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await page.waitForTimeout(1000);
+    await p.release();
+    const [down, up] = await page.evaluate(
+      () => (window as unknown as { __press: number[] }).__press,
+    );
+    const held = up! - down!;
+    const s = await computer.waitEnded();
+    // The audio starts before the press: everything held, plus most of the 300 ms pre-roll.
+    expect(s.end!.durationMs).toBeGreaterThanOrEqual(held + 200);
+    expect(s.end!.durationMs).toBeLessThan(held + 1000);
+    const samples = bytesToInt16(ScriptedComputer.pcm(s));
+    // No digital silence at the start: the first 50 ms already carry the signal.
+    expect(rms(samples.subarray(0, 800))).toBeGreaterThan(0.01);
+    expect(bestCorrelation(samples)).toBeGreaterThan(
+      minCorrelation(browserName),
+    );
+    // The microphone stays open for the next dictation; nothing new was opened.
+    expect(await mics(page)).toMatchObject({ opened: 1, live: 1 });
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+
+  test("closes in the background and opens again in the foreground; a recording under way is sent", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await expect.poll(async () => (await mics(page)).live).toBe(1);
+    await setHidden(page, true);
+    await expect.poll(async () => (await mics(page)).live).toBe(0);
+    await setHidden(page, false);
+    await expect.poll(async () => (await mics(page)).live).toBe(1);
+
+    // Hands-free, then the app goes to the background: what was said is sent.
+    await tap(page);
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
+    await computer.waitSession((s) => s.blocks.size >= 3, "audio", 10_000);
+    await setHidden(page, true);
+    const s = await computer.waitEnded();
+    expect(s.end!.chunks).toBeGreaterThanOrEqual(3);
+    await expect.poll(async () => (await mics(page)).live).toBe(0);
+  });
+
+  test("not paired: the microphone stays closed", async ({
+    page,
+    browserName,
+  }) => {
+    await preparePage(page, browserName);
+    await page.goto("/");
+    await closeScannerIfOpen(page);
+    await page.waitForTimeout(500);
+    expect((await mics(page)).opened).toBe(0);
+  });
+});
+
+test.describe("offline computer (PHONE-24)", () => {
+  test("the recording waits for the computer and arrives when it connects", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    computer.disconnect();
+    await expect(page.locator(".wt-stage--away")).toBeVisible();
+    await hold(page, 1500);
+    await expect(label(page)).toHaveText(
+      "Testcomputer er ikke online. Optagelsen venter i 10 minutter.",
+    );
+    expect(computer.sessions.size).toBe(0);
+
+    await computer.connect();
+    const s = await computer.waitEnded();
+    expect(s.end!.chunks).toBeGreaterThanOrEqual(7);
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+});
+
+test.describe("a computer that goes to sleep (PHONE-32, RELAY-10)", () => {
+  test("its socket goes quiet without closing; the dictation goes again when it reconnects, without Prøv igen", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    // The lid closes: the relay still counts the computer's socket as live, so it neither buffers
+    // nor tells the phone; everything sent now is lost.
+    computer.goQuiet();
+    await hold(page, 1500);
+    await expect(label(page)).toHaveText("Sender til Testcomputer");
+    await page.waitForTimeout(800);
+    expect(computer.sessions.size).toBe(0);
+
+    // The computer wakes and connects again; the relay sends the phone `peer {online: true}`.
+    await computer.connect();
+    const s = await computer.waitEnded();
+    expect(s.starts).toBe(1);
+    expect(s.mismatches).toBe(0);
+    expect(s.blocks.size).toBe(s.end!.chunks);
+    expect(s.end!.chunks).toBeGreaterThanOrEqual(7);
+    expect(
+      bestCorrelation(bytesToInt16(ScriptedComputer.pcm(s))),
+    ).toBeGreaterThan(minCorrelation(browserName));
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+    await expect(sub(page)).toHaveText("Tryk ⌘V for at indsætte");
+    await expect(page.getByRole("button", { name: "Prøv igen" })).toHaveCount(
+      0,
+    );
+  });
+});
+
+test.describe("resend after reconnect (PHONE-32)", () => {
+  test("the phone's socket drops mid-recording; the whole session is resent and nothing is lost", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const proxy = await TcpProxy.start(RELAY_PORT);
+    try {
+      const computer = await newComputer();
+      await preparePage(page, browserName);
+      await pairByLink(page, computer, {
+        relayUrl: `ws://127.0.0.1:${proxy.port}`,
+      });
+      const p = await press(page);
+      await computer.waitSession(
+        (s) => s.blocks.size >= 4,
+        "live blocks",
+        10_000,
+      );
+      proxy.dropAll();
+      await page.waitForTimeout(1600);
+      await p.release();
+      const s = await computer.waitEnded(20_000);
+      // audio_start again on the new socket, and the blocks again, identical.
+      expect(s.starts).toBeGreaterThanOrEqual(2);
+      expect(s.duplicates).toBeGreaterThan(0);
+      expect(s.mismatches).toBe(0);
+      expect(s.blocks.size).toBe(s.end!.chunks);
+      expect(s.end!.chunks).toBeGreaterThanOrEqual(12);
+      expect(
+        bestCorrelation(bytesToInt16(ScriptedComputer.pcm(s))),
+      ).toBeGreaterThan(minCorrelation(browserName));
+      await expect(label(page)).toHaveText("Klar på Testcomputer");
+    } finally {
+      await proxy.close();
+    }
+  });
+
+  test("no connection says so, and the recording goes once the relay is back", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const proxy = await TcpProxy.start(RELAY_PORT);
+    try {
+      const computer = await newComputer();
+      await preparePage(page, browserName);
+      await pairByLink(page, computer, {
+        relayUrl: `ws://127.0.0.1:${proxy.port}`,
+      });
+      proxy.blocked = true;
+      proxy.dropAll();
+      await expect(label(page)).toHaveText("Ingen forbindelse. Prøver igen.", {
+        timeout: 10_000,
+      });
+      await hold(page, 1000);
+      await expect(label(page)).toHaveText("Ingen forbindelse. Prøver igen.");
+      proxy.blocked = false;
+      const s = await computer.waitEnded(30_000);
+      expect(s.blocks.size).toBe(s.end!.chunks);
+      await expect(label(page)).toHaveText("Klar på Testcomputer");
+    } finally {
+      await proxy.close();
+    }
+  });
+});
