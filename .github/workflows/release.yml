@@ -103,6 +103,9 @@ jobs:
     needs: [create-release, signing]
     strategy:
       fail-fast: false
+      # One at a time: each build adds its platform to latest.json in the draft release, and two
+      # finishing together could overwrite each other's entry.
+      max-parallel: 1
       matrix:
         include:
           - platform: macos-26
