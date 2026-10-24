@@ -118,7 +118,7 @@ function StatusCard(props: { platform: WtPlatform }) {
     );
   }
   return (
-    <section className="wt-status" aria-label={t("wt.status.label")}>
+    <section className="wt-side-status" aria-label={t("wt.status.label")}>
       <GradientBackground
         palette={scheme === "dark" ? "nat" : "morgengry"}
         noise={0.5}

@@ -195,6 +195,23 @@ async function section(page: Page, name: string) {
   await wait(page, 350);
 }
 
+/** The background model download at `pct` (once the screens listen). */
+async function progress(page: Page, pct: number) {
+  await wait(page, 400);
+  await page
+    .evaluate(
+      (p) =>
+        (window as any).__WT_MOCK__.emit?.("model-download-progress", {
+          model_id: "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
+          downloaded: p,
+          total: 100,
+          percentage: p,
+        }),
+      pct,
+    )
+    .catch(() => {});
+}
+
 const SECTIONS: [string, string][] = [
   ["history", "Historik"],
   ["general", "Generelt"],
@@ -232,19 +249,7 @@ function onboardingShots(): Shot[] {
           app: { shortcut_activation: "hold_or_toggle" },
         },
         act: async (page) => {
-          // The background download shows its progress (once the screens
-          // listen for it).
-          await wait(page, 400);
-          await page
-            .evaluate(() =>
-              (window as any).__WT_MOCK__.emit?.("model-download-progress", {
-                model_id: "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
-                downloaded: 38,
-                total: 100,
-                percentage: 38,
-              }),
-            )
-            .catch(() => {});
+          await progress(page, 38);
           // The welcome's logo intro plays once before the shot.
           await wait(page, step === "welcome" ? 2600 : 900);
         },
@@ -262,7 +267,10 @@ function onboardingShots(): Shot[] {
         permissions: { microphone: true },
         wt: { onboarding_resume_step: "microphone" },
       },
-      act: (p) => wait(p, 900),
+      act: async (p) => {
+        await progress(p, 54);
+        await wait(p, 900);
+      },
     },
     {
       name: "onboarding-accessibility-granted",
@@ -272,7 +280,10 @@ function onboardingShots(): Shot[] {
         permissions: { microphone: true, accessibility: true },
         wt: { onboarding_resume_step: "accessibility" },
       },
-      act: (p) => wait(p, 900),
+      act: async (p) => {
+        await progress(p, 54);
+        await wait(p, 900);
+      },
     },
     {
       name: "onboarding-try-needsfix",
@@ -283,7 +294,10 @@ function onboardingShots(): Shot[] {
         globeKey: { fn_is_key: true, usage: 1, needs_fix: true },
         wt: { onboarding_resume_step: "try" },
       },
-      act: (p) => wait(p, 900),
+      act: async (p) => {
+        await progress(p, 54);
+        await wait(p, 900);
+      },
     },
     {
       name: "onboarding-try-listening",
@@ -322,6 +336,7 @@ function onboardingShots(): Shot[] {
       window: "main",
       mock: { ...mac, wt: { onboarding_resume_step: "phone" } },
       act: async (p) => {
+        await progress(p, 81);
         await p
           .getByRole("button", { name: /Vis koden|Par en telefon/ })
           .first()
@@ -438,6 +453,26 @@ function mainShots(): Shot[] {
         await section(p, "Historik");
         await emit(p, "wt-accessibility-lost", true).catch(() => {});
         await wait(p, 500);
+      },
+    },
+    {
+      name: "main-model-downloading",
+      window: "main",
+      mock: {
+        ...installed,
+        downloaded: [],
+        app: { ...installed.app, selected_model: "" },
+        wt: { onboarding_resume_step: "finished" },
+      },
+      act: async (p) => {
+        await section(p, "Model");
+        await emit(p, "model-download-progress", {
+          model_id: EDDA,
+          downloaded: 62,
+          total: 100,
+          percentage: 62,
+        }).catch(() => {});
+        await wait(p, 600);
       },
     },
     {

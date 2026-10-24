@@ -179,7 +179,7 @@ body {
 }
 
 /* The sidebar's status card: the one living surface of the window. */
-.wt-status {
+.wt-side-status {
   margin-top: auto;
   padding-top: var(--space-6);
 }
@@ -970,6 +970,8 @@ textarea.wt-input {
   justify-content: center;
   flex: none;
   min-width: 120px;
+  box-sizing: border-box;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--surface-100);
   border: 1px solid var(--line);

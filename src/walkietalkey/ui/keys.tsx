@@ -219,7 +219,12 @@ export function KeyPicker(props: {
       <div className="wt-keypicker-caps" aria-live="polite">
         {recording ? (
           live ? (
-            <KeyCaps binding={live} platform={props.platform} pressed />
+            <KeyCaps
+              binding={live}
+              platform={props.platform}
+              pressed
+              size={56}
+            />
           ) : (
             <span className="wt-keypicker-prompt">{t("wt.keys.pressNow")}</span>
           )
@@ -228,6 +233,7 @@ export function KeyPicker(props: {
             binding={current}
             platform={props.platform}
             pressed={pressed}
+            size={56}
           />
         )}
       </div>
