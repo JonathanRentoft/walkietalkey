@@ -37,6 +37,8 @@ struct Entry {
 
 /// Accepts one connection, sends a challenge, records the answer and confirms it with `ok`
 /// listing `members`; then holds the socket open until the client closes it.
+// The handshake callback's error type is tungstenite's own.
+#[allow(clippy::result_large_err)]
 async fn fake_relay(members: Vec<MemberInfo>) -> (String, oneshot::Receiver<Entry>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("ws://127.0.0.1:{}", listener.local_addr().unwrap().port());
