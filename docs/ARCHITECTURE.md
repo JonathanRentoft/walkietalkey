@@ -54,3 +54,7 @@ Our own modules (`src-tauri/src/walkietalkey/`, `src-tauri/src/pipeline/da/`):
 - `relay/`: Cloudflare Worker and one SQLite-backed Durable Object per room (hibernation, batching, one alarm).
 - `site/`: Astro with React islands, static, no cookies or analytics.
 - `packages/ui/`: the design system as typed React components and tokens.
+
+## Fine-tuning workbench (`training/`)
+
+Python (uv, PyTorch with MPS, Transformers, PEFT), separate from the app: one command, `wt-train`, with a step per module in `training/wt_train/` (record, fetch, build, train, eval, export, smoke). The sentences and the spelling conventions for English developer terms are in `training/data/`; recordings stay in `training/data/recordings/` (git-ignored) and everything large in the git-ignored work folder. Evaluation reuses the accuracy job's normaliser and WER (`models/eval/wt_eval`) and scores a GGUF through the app's own pipeline (`walkietalkey --transcribe-list`). An exported fine-tune is installed in the app's models folder as `edda-ft-<name>.gguf`; the app decodes ids starting with `edda-` like Edda (`walkietalkey::catalog::decodes_by_segment`).
