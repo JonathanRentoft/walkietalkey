@@ -4,21 +4,34 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-23
+## [0.1.0] - 2026-10-24
 
-The first WalkieTalkey release, built on Handy.
+<!-- TODO(copy): the Danish release notes -->
 
-### Added
+**På dansk**
 
-- Danish dictation with the `fn` key on a Mac (Right Ctrl on Windows): hold to talk, release to paste where you type, or to the clipboard.
-- Edda v0.2 as the Danish speech model, converted to GGUF and checked against the original; Ekko v1 Tiny as the fast model for slower computers; Ekko PnC punctuation on the computer.
-- Transcription while you talk: 10 to 18 second chunks with the previous chunk as context, so a long dictation waits about as long as a short one.
-- Danish filler words removed, your own words and replacements (Ordliste), the Udviklerord pack.
-- Optional AI cleanup with your own provider and key (off by default), with consent, guardrails, chunk-by-chunk cleanup and "Vis hvad der blev sendt".
-- The phone app: hold the button, and the text lands on your computer's clipboard with a notification. Pairing by QR code, end-to-end encryption through a relay that cannot read the audio, no accounts.
-- The relay: a Cloudflare Worker with one Durable Object per room.
+Den første udgave af WalkieTalkey: dansk tale til tekst på din egen computer, gratis og open source.
+
+- Hold fn nede på en Mac (højre Ctrl på Windows), tal, og slip. Eller tryk én gang for at tale uden at holde tasten, og tryk igen for at stoppe.
+- Talen bliver til tekst på din egen computer med Edda, en dansk talemodel. Appen henter den selv første gang, mens du gør resten klar.
+- Telefonappen: hold knappen, eller tryk én gang, og teksten lander i udklipsholderen på din computer. Krypteret fra telefon til computer.
+- Kom i gang på få trin: mikrofon, tilgængelighed (Mac) og prøv det. Ingen konto, ingen sporing.
+- Appen er endnu ikke signeret af Apple eller Microsoft. På Mac åbner du appen én gang og trykker derefter Åbn alligevel under Systemindstillinger › Anonymitet og sikkerhed. På Windows trykker du Flere oplysninger › Kør alligevel.
+
+**In English**
+
+The first WalkieTalkey release, built on Handy: Danish dictation on your own computer, free and open source.
+
+- Hold `fn` on a Mac (Right Ctrl on Windows), talk and release; or tap once to talk hands-free and tap again to stop. WalkieTalkey only needs Accessibility on the Mac, and offers to stop the Globe key's own action with one button.
+- Edda v0.2 as the Danish speech model, converted to GGUF and checked against the original, downloaded by the app from the `models-v1` release; Ekko v1 Tiny as the fast model for slower computers; Ekko PnC punctuation on the computer.
+- Transcription while you talk, piece by piece at pauses, so a long dictation waits about as long as a short one.
+- Danish filler words removed, your own words and replacements (Ordliste), and the Udviklerord pack for English developer words, on by default.
+- Optional AI cleanup with your own provider and key (off by default), with consent, guardrails and "Vis hvad der blev sendt".
+- The phone app at app.walkietalkey.com: tap or hold the button, and the text lands on your computer's clipboard with a notification. Pairing by QR code, end-to-end encryption through a relay that cannot read the audio, no accounts.
+- A larger, calmer desktop app with a floating pill and live waveform while you talk, for key and phone dictations.
 - History with retention, a menu bar menu with Seneste, Par en telefon and Sæt på pause, managed settings for companies, updates with stable and beta channels.
-- The website and the privacy policy.
+- The website at walkietalkey.com with direct downloads and the privacy policy.
+- Not signed by Apple or Microsoft yet: the first time, macOS 15 and later needs Open Anyway under System Settings › Privacy & Security, and Windows SmartScreen needs More info › Run anyway.
 
 [Unreleased]: https://github.com/JonathanRentoft/walkietalkey/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/JonathanRentoft/walkietalkey/releases/tag/v0.1.0

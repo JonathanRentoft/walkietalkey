@@ -192,13 +192,14 @@ jobs:
               --ignore RUSTSEC-2026-0235 --ignore RUSTSEC-2024-0422)
           done
 
+  # The same universal app (Apple Silicon and Intel) the release publishes as WalkieTalkey-mac.dmg.
   build-macos:
-    name: macOS build (Apple Silicon, unsigned)
+    name: macOS build (universal, unsigned)
     uses: ./.github/workflows/build.yml
     with:
       platform: macos-26
-      target: aarch64-apple-darwin
-      build-args: "--target aarch64-apple-darwin --bundles app,dmg"
+      target: universal-apple-darwin
+      build-args: "--target universal-apple-darwin --bundles app,dmg"
       upload-artifacts: true
     secrets: inherit
 

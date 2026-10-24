@@ -1,12 +1,15 @@
 name: Release
 
-# A tag vX.Y.Z on main (OSS-20, OSS-21): builds macOS (Apple Silicon and
-# Intel) and Windows x64, signs the updater artifacts with our key (DESK-110),
+# A tag vX.Y.Z on main (OSS-20, OSS-21): builds macOS (one universal app for
+# Apple Silicon and Intel) and Windows x64, signs the updater artifacts with our key (DESK-110),
 # signs and notarizes the Mac app and signs the Windows installer only when
 # those secrets exist, publishes the GitHub release with latest.json and the
 # release notes from CHANGELOG.md. Every release also becomes the website's
 # updates/beta.json, so beta users get stable releases too; stable users read
 # GitHub's latest release, which skips pre-releases (DESK-112, SITE-08).
+# A stable release is marked latest and gets copies under stable names,
+# WalkieTalkey-mac.dmg and WalkieTalkey-windows.exe, so the website's
+# releases/latest/download/ links always fetch the newest app (run 2).
 
 on:
   push:
@@ -103,12 +106,8 @@ jobs:
       matrix:
         include:
           - platform: macos-26
-            target: aarch64-apple-darwin
-            args: "--target aarch64-apple-darwin"
-            os: mac
-          - platform: macos-26
-            target: x86_64-apple-darwin
-            args: "--target x86_64-apple-darwin"
+            target: universal-apple-darwin
+            args: "--target universal-apple-darwin"
             os: mac
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
@@ -148,6 +147,29 @@ jobs:
               sys.exit(f"latest.json lacks a signed entry for {', '.join(missing)}")
           print("latest.json:", ", ".join(sorted(platforms)))
           PY
+      # Stable names for the website's direct downloads (releases/latest/download/...).
+      - name: Copies under stable names
+        if: needs.create-release.outputs.prerelease != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p stable
+          ASSETS=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets" --paginate --jq '.[] | "\(.id) \(.name)"')
+          fetch() {
+            local id
+            id=$(echo "$ASSETS" | awk -v re="$1" '$2 ~ re {print $1; exit}')
+            if [ -z "$id" ]; then echo "No asset matches $1" >&2; exit 1; fi
+            gh api -H "Accept: application/octet-stream" "repos/${GITHUB_REPOSITORY}/releases/assets/$id" > "stable/$2"
+          }
+          fetch '_universal\.dmg$' WalkieTalkey-mac.dmg
+          fetch '-setup\.exe$' WalkieTalkey-windows.exe
+          # The release is still a draft here, which `gh release upload <tag>` cannot find: upload by id.
+          for f in WalkieTalkey-mac.dmg WalkieTalkey-windows.exe; do
+            gh api --method POST -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${{ needs.create-release.outputs.release-id }}/assets?name=$f" \
+              --input "stable/$f" --jq '.name + " " + (.size|tostring)'
+          done
       - name: Publish the release
         uses: actions/github-script@v9
         with:
@@ -157,6 +179,7 @@ jobs:
               repo: context.repo.repo,
               release_id: ${{ needs.create-release.outputs.release-id }},
               draft: false,
+              make_latest: "${{ needs.create-release.outputs.prerelease == 'true' && 'false' || 'true' }}",
             });
       # The beta channel gets every release, stable ones too (DESK-112).
       - name: Beta manifest for the website
@@ -182,3 +205,4 @@ jobs:
           fi
           bun install --frozen-lockfile
           cd site && bun run build && bunx wrangler pages deploy dist --project-name walkietalkey-site --branch main
+          bunx wrangler deploy --config wrangler.domain.jsonc
