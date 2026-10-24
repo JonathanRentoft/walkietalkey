@@ -42,6 +42,7 @@ enum Command {
     DeleteRoom(Reply<()>),
     SendResult(DeviceId, SessionId, ResultOutcome, Reply<()>),
     AnswerPresence(QueryId, u32, bool, Reply<()>),
+    SendTraining(DeviceId, DevicePayload, Reply<()>),
     Status(oneshot::Sender<Status>),
     ForgetSession(DeviceId, SessionId),
     ReconnectNow,
@@ -129,6 +130,29 @@ impl RelayClient {
         locked: bool,
     ) -> Result<(), ClientError> {
         self.call(|r| Command::AnswerPresence(query, seconds_since_input, locked, r))
+            .await
+    }
+
+    /// A training prompt or the end of a training session to one phone (PROTOCOL.md 8.4,
+    /// PRIV-05): the only text that goes to a phone, and only while the workbench records.
+    /// Never queued: while offline it fails with `NotConnected`, and the app sends the current
+    /// prompt again when the phone or the relay is back.
+    pub async fn send_training(
+        &self,
+        phone: DeviceId,
+        payload: DevicePayload,
+    ) -> Result<(), ClientError> {
+        if !matches!(
+            payload,
+            DevicePayload::TrainingPrompt { .. } | DevicePayload::TrainingEnd { .. }
+        ) {
+            return Err(ClientError::Protocol(
+                wt_protocol::ProtocolError::BadPayload(
+                    "only training_prompt and training_end go through send_training".into(),
+                ),
+            ));
+        }
+        self.call(|r| Command::SendTraining(phone, payload, r))
             .await
     }
 
@@ -455,6 +479,13 @@ impl Actor {
                 // A late answer is useless to the phone (it waits 1 s); drop it.
                 self.queries.remove(&q.0);
                 let _ = r.send(Err(ClientError::NotConnected));
+            }
+            Command::SendTraining(phone, _, r) => {
+                let _ = r.send(if self.phones.contains_key(&phone) {
+                    Err(ClientError::NotConnected)
+                } else {
+                    Err(ClientError::UnknownPhone)
+                });
             }
             Command::Status(r) => {
                 let _ = r.send(self.status());
@@ -990,6 +1021,9 @@ impl Actor {
                 };
                 let _ = reply.send(self.send_payload(sink, phone, &payload).await);
             }
+            Command::SendTraining(phone, payload, reply) => {
+                let _ = reply.send(self.send_payload(sink, phone, &payload).await);
+            }
             Command::Status(r) => {
                 let _ = r.send(self.status());
             }
@@ -1347,7 +1381,26 @@ impl Actor {
                     });
                 }
             }
-            DevicePayload::Presence { .. } | DevicePayload::Result { .. } => {}
+            DevicePayload::AudioStartTraining {
+                session_id,
+                training,
+                prompt,
+            } => {
+                // Tracked like a dictation, so its blocks never start one implicitly; a resend
+                // or an answered take adds nothing.
+                if self.sessions.start(phone, session_id, now) == StartOutcome::New {
+                    self.emit(RelayEvent::TrainingStart {
+                        phone,
+                        session: session_id,
+                        training,
+                        prompt,
+                    });
+                }
+            }
+            DevicePayload::Presence { .. }
+            | DevicePayload::Result { .. }
+            | DevicePayload::TrainingPrompt { .. }
+            | DevicePayload::TrainingEnd { .. } => {}
         }
     }
 }

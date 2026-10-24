@@ -78,6 +78,18 @@ pub enum RelayEvent {
         session: SessionId,
         sample_rate: u32,
     },
+    /// A take for the fine-tuning workbench started (`audio_start_training`, PROTOCOL.md 8.4).
+    /// Its blocks and its end follow as `AudioChunk` and `AudioEnd`, like a dictation's, but it
+    /// never comes as an `AudioStart`: the app records it for the workbench and never
+    /// transcribes it.
+    TrainingStart {
+        phone: DeviceId,
+        session: SessionId,
+        /// The training session the phone's prompt came from.
+        training: SessionId,
+        /// The prompt this take reads.
+        prompt: String,
+    },
     /// One 200 ms block (the last one of a session may be shorter), each index exactly once.
     AudioChunk {
         phone: DeviceId,
