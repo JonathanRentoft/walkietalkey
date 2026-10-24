@@ -3,7 +3,7 @@
  * Live smoke test against a running relay: create a room, add an admission, pair a scripted
  * phone, send frames both ways, revoke the phone, delete the room.
  *
- *   bun scripts/smoke.ts [--relay wss://walkietalkey-relay.jonathan0912.workers.dev] [--rate-limit]
+ *   bun scripts/smoke.ts [--relay wss://relay.walkietalkey.com] [--rate-limit]
  *
  * --rate-limit additionally opens create-intent sockets from this IP until one is refused
  * with 4429 (at most 40; this uses up this IP's create quota for a minute).
@@ -35,7 +35,7 @@ const relay = (() => {
   const i = args.indexOf("--relay");
   return i >= 0
     ? args[i + 1]!
-    : "wss://walkietalkey-relay.jonathan0912.workers.dev";
+    : "wss://relay.walkietalkey.com";
 })();
 const insecure = relay.startsWith("ws://");
 const steps: { step: string; ok: boolean; detail?: string }[] = [];
@@ -80,7 +80,7 @@ async function main() {
   const h = b64uEncode(await sha256(a));
   os.sendControl({ t: "add_admission", h, exp: Date.now() + 10 * 60 * 1000 });
   await os.control("ack");
-  const url = encodePairingUrl("https://walkietalkey-app.pages.dev", {
+  const url = encodePairingUrl("https://app.walkietalkey.com", {
     v: 1,
     r: roomId,
     a,

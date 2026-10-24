@@ -1,5 +1,5 @@
-/* Opt-in live check of a deployment: E2E_LIVE=1 [E2E_LIVE_APP=https://walkietalkey-app.pages.dev]
-   [E2E_LIVE_RELAY=wss://walkietalkey-relay.jonathan0912.workers.dev] npx playwright test e2e/live.spec.ts --project=chromium
+/* Opt-in live check of a deployment: E2E_LIVE=1 [E2E_LIVE_APP=https://app.walkietalkey.com]
+   [E2E_LIVE_RELAY=wss://relay.walkietalkey.com] npx playwright test e2e/live.spec.ts --project=chromium
    Pairs the deployed app with a scripted computer on the live relay, records, and cleans up. */
 import { ScriptedComputer } from "./computer";
 import {
@@ -12,10 +12,10 @@ import {
   test,
 } from "./helpers";
 
-const APP = process.env.E2E_LIVE_APP || "https://walkietalkey-app.pages.dev";
+const APP = process.env.E2E_LIVE_APP || "https://app.walkietalkey.com";
 const RELAY =
   process.env.E2E_LIVE_RELAY ||
-  "wss://walkietalkey-relay.jonathan0912.workers.dev";
+  "wss://relay.walkietalkey.com";
 
 test("live: the deployed app pairs and streams through the live relay", async ({
   page,

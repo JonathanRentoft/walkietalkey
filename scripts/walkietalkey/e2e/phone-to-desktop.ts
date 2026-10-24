@@ -12,7 +12,7 @@
  *   bun scripts/walkietalkey/e2e/phone-to-desktop.ts \
  *     --app src-tauri/target/debug/walkietalkey \
  *     --model walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf \
- *     --relay wss://walkietalkey-relay.jonathan0912.workers.dev \
+ *     --relay wss://relay.walkietalkey.com \
  *     --wav clip.wav --reference clip.txt [--max-wer 0.25]
  */
 import { spawn } from "node:child_process";
@@ -68,9 +68,9 @@ async function main() {
   );
   const relay = arg(
     "--relay",
-    "wss://walkietalkey-relay.jonathan0912.workers.dev",
+    "wss://relay.walkietalkey.com",
   );
-  const phoneApp = arg("--phone-app", "https://walkietalkey-app.pages.dev");
+  const phoneApp = arg("--phone-app", "https://app.walkietalkey.com");
   const wav = arg("--wav");
   const reference = readFileSync(arg("--reference"), "utf8").trim();
   const maxWer = Number(arg("--max-wer", "0.25"));

@@ -15,7 +15,7 @@ const opt = (name: string, dflt: string) => {
 };
 const relay = opt(
   "--relay",
-  "wss://walkietalkey-relay.jonathan0912.workers.dev",
+  "wss://relay.walkietalkey.com",
 );
 const attempts = Number(opt("--attempts", "40"));
 const delay = Number(opt("--delay-ms", "100"));
