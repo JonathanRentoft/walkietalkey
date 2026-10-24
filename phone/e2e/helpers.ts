@@ -83,8 +83,10 @@ async function center(page: Page) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2, h: box.height };
 }
 
-/** Presses the big button and keeps holding until `release()` is called. */
-export async function press(page: Page) {
+/** Presses the big button and keeps holding until `release()` is called. First waits for the warm
+ * microphone (micWarm), unless `warm` is false (a refused microphone). */
+export async function press(page: Page, { warm = true } = {}) {
+  if (warm) await micWarm(page);
   const c = await center(page);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
@@ -116,8 +118,10 @@ export async function closeScannerIfOpen(page: Page): Promise<void> {
   await expect(heading).toBeVisible();
 }
 
-/** A quick tap on the big button (released well within 0.5 s): hands-free. */
-export async function tap(page: Page): Promise<void> {
+/** A quick tap on the big button (released well within 0.5 s): hands-free. Waits for the warm
+ * microphone first, like `press`. */
+export async function tap(page: Page, { warm = true } = {}): Promise<void> {
+  if (warm) await micWarm(page);
   const c = await center(page);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
@@ -141,6 +145,23 @@ export async function mics(page: Page) {
       constraints: list.map((m) => m.constraints),
     };
   });
+}
+
+/** The warm microphone has handed the app at least the 300 ms pre-roll since it last opened
+ * (PHONE-33), like a phone that has been open a moment. A take with no audio is cancelled, not
+ * sent, and the fake microphone starts later on a Mac than on Linux. */
+export async function micWarm(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (window as unknown as { __wtCapturedMs?: number }).__wtCapturedMs ??
+            0,
+        ),
+      { message: "the microphone delivers audio", timeout: 10_000 },
+    )
+    .toBeGreaterThanOrEqual(300);
 }
 
 /** The page goes to the background (or comes back): visibilitychange, pagehide and pageshow. */

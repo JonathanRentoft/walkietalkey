@@ -26,6 +26,28 @@ export function installFakeMedia(cfg: FakeMediaConfig): void {
       /* ignore */
     }
   }
+  // How much audio the app's capture worklet has handed the page since the microphone last
+  // opened (the newest AudioWorkletNode), for micWarm in helpers.ts.
+  const Worklet = w.AudioWorkletNode as typeof AudioWorkletNode | undefined;
+  if (Worklet) {
+    w.__wtCapturedMs = 0;
+    w.AudioWorkletNode = class extends Worklet {
+      constructor(
+        context: BaseAudioContext,
+        name: string,
+        options?: AudioWorkletNodeOptions,
+      ) {
+        super(context, name, options);
+        w.__wtCapturedMs = 0;
+        const rate = context.sampleRate;
+        this.port.addEventListener("message", (e: MessageEvent) => {
+          if (e.data instanceof Float32Array)
+            w.__wtCapturedMs =
+              (w.__wtCapturedMs as number) + (e.data.length / rate) * 1000;
+        });
+      }
+    };
+  }
   const md = navigator.mediaDevices;
   if (!md) return;
   const orig = md.getUserMedia ? md.getUserMedia.bind(md) : null;
