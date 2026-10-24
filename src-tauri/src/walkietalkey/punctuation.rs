@@ -15,6 +15,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+#[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
 use std::time::Instant;
 
 use log::{info, warn};
