@@ -44,6 +44,12 @@ export interface MockOptions {
     pairing_active: boolean;
   };
   pairingExpiresInMs?: number;
+  /** wt_mic_check_status (DESK-59): the silent-microphone notice. */
+  micCheck?: {
+    silent_input: string | null;
+    suggestion: string | null;
+    probing: boolean;
+  };
   history?: unknown[];
   keys?: string[];
   appleIntelligence?: boolean;
@@ -173,6 +179,11 @@ function mockBackend(options: MockOptions) {
       options.permissions ?? {},
     ),
     notification: options.notification ?? "not_determined",
+    micCheck: options.micCheck ?? {
+      silent_input: null,
+      suggestion: null,
+      probing: false,
+    },
     relay: options.relay ?? {
       enabled: true,
       connected: true,
@@ -456,6 +467,20 @@ function mockBackend(options: MockOptions) {
     wt_globe_key_fix: () => {
       state.globeKey = { ...state.globeKey, usage: 0, needs_fix: false };
       return state.globeKey;
+    },
+    // DESK-59: the silent microphone. "Brug {navn}" switches and the notice
+    // goes; "Tjek igen" starts a probe, whose answer the tests emit.
+    wt_mic_check_status: () => state.micCheck,
+    wt_mic_use: (a) => {
+      state.app.selected_microphone = a.name;
+      state.micCheck = { silent_input: null, suggestion: null, probing: false };
+      setTimeout(() => emit("wt-mic-check", state.micCheck), 0);
+      return null;
+    },
+    wt_mic_recheck: () => {
+      state.micCheck = { ...state.micCheck, suggestion: null, probing: true };
+      setTimeout(() => emit("wt-mic-check", state.micCheck), 0);
+      return null;
     },
     check_apple_intelligence_available: () => options.appleIntelligence ?? true,
     fetch_post_process_models: () => [],

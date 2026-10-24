@@ -4,7 +4,10 @@
 // (hands-free, `wt-pill-handsfree`), Renskriver, then the end state from
 // wt-pill-end. The backend sends the same events for key and phone
 // dictations, and hides the window 1.5 s after the end. The pill is a live
-// region, so screen readers hear every state.
+// region, so screen readers hear every state. A key dictation on an input
+// that gives no sound says so while it records (`wt-mic-silent`) and ends
+// with "Mikrofonen giver ingen lyd", then the probe's "Prøv {navn}"
+// (`wt-mic-check`, DESK-59).
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DictationPill, type DictationPillState } from "@walkietalkey/ui";
@@ -14,13 +17,19 @@ import { commands } from "@/bindings";
 import { syncLanguageFromSettings } from "@/i18n";
 import type { ModelStateEvent } from "@/lib/types/events";
 import {
+  micPillHint,
   pillStateFromEnd,
   smoothLevels,
   WAVE_FLOOR,
   waveLevels,
 } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
-import type { PillCountdownEvent, PillEndEvent } from "../lib/types";
+import type {
+  MicCheck,
+  MicSilentEvent,
+  PillCountdownEvent,
+  PillEndEvent,
+} from "../lib/types";
 
 type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
 
@@ -41,6 +50,8 @@ export function PillOverlay() {
   const [wave, setWave] = useState<number[]>(() => silence(BARS));
   const [level, setLevel] = useState(0);
   const [modelLoading, setModelLoading] = useState(false);
+  const [micSilent, setMicSilent] = useState(false);
+  const [micCheck, setMicCheck] = useState<MicCheck | null>(null);
   const showToken = useRef(0);
   const hostRef = useRef<HTMLDivElement>(null);
   const bars = handsFree ? BARS_HANDS_FREE : BARS;
@@ -76,6 +87,8 @@ export function PillOverlay() {
       setCountdown(null);
       setCapturing(false);
       setHandsFree(false);
+      setMicSilent(false);
+      setMicCheck(null);
       resetWave(BARS);
     }
     setState(listening ? "listening" : "processing");
@@ -97,6 +110,7 @@ export function PillOverlay() {
     setVisible(false);
     setCapturing(false);
     setHandsFree(false);
+    setMicSilent(false);
     // The next show starts a new dictation.
     setState("processing");
   });
@@ -130,9 +144,17 @@ export function PillOverlay() {
     setCapturing(false);
     setCountdown(null);
     setHandsFree(false);
+    setMicSilent(false);
+    // Only the probe that follows this end counts (DESK-59).
+    setMicCheck(null);
     setPasteKey(e.shortcut || "⌘V");
     setState(pillStateFromEnd(e.state));
   });
+  // DESK-59: the input has given no sound for 1.5 s, or sound came.
+  useTauriEvent<MicSilentEvent>("wt-mic-silent", (e) =>
+    setMicSilent(!!e?.silent),
+  );
+  useTauriEvent<MicCheck>("wt-mic-check", (c) => setMicCheck(c));
   // The key was held but no model can transcribe yet (Appendix A).
   useTauriEvent("wt-pill-not-ready", () => setState("notready"));
   useTauriEvent<ModelStateEvent>("model-state-changed", (e) => {
@@ -167,13 +189,21 @@ export function PillOverlay() {
     notReady: t("wt.pill.notReady"),
     error: t("wt.pill.error"),
     handsFree: t("wt.pill.handsFree"),
+    micSilent: t("wt.pill.micSilent"),
   };
+  const silentMic = shown === "listening" && micSilent;
+  const hintKey = shown === "micsilent" ? micPillHint(micCheck) : null;
+  const hint = hintKey ? t(hintKey.key, { name: hintKey.name }) : undefined;
   const announcement =
     spoken != null
       ? t("wt.pill.countdown", { seconds: spoken })
-      : shown === "listening" && handsFree
-        ? `${labels.listening}. ${labels.handsFree}`
-        : announcementFor(shown, labels, pasteKey);
+      : silentMic
+        ? `${labels.listening}. ${labels.micSilent}`
+        : shown === "listening" && handsFree
+          ? `${labels.listening}. ${labels.handsFree}`
+          : shown === "micsilent" && hint
+            ? `${labels.micSilent}. ${hint}`
+            : announcementFor(shown, labels, pasteKey);
 
   // The panel never takes focus, so VoiceOver gets a native announcement
   // as well as the live region (spec 6.17).
@@ -191,12 +221,15 @@ export function PillOverlay() {
       data-level={level.toFixed(2)}
       data-handsfree={(shown === "listening" && handsFree) || undefined}
       data-countdown={countdown != null || undefined}
+      data-mic-silent={silentMic || undefined}
     >
       <DictationPill
         size="lg"
         mark
         state={shown}
         handsFree={handsFree}
+        silentMic={silentMic}
+        hint={hint}
         levels={wave}
         seconds={countdown ?? seconds}
         pasteKey={pasteKey}
@@ -234,6 +267,8 @@ function announcementFor(
       return labels.notReady;
     case "error":
       return labels.error;
+    case "micsilent":
+      return labels.micSilent;
     default:
       return "";
   }

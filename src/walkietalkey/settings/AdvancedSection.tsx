@@ -14,6 +14,7 @@ import { KeyboardDiagnostic } from "@/components/settings/debug/KeyboardDiagnost
 import { LiveLogViewer } from "@/components/settings/debug/LiveLogViewer";
 import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
+import { MicNotice } from "../ui/micNotice";
 import {
   Button,
   ChoiceGroup,
@@ -247,6 +248,10 @@ export function AdvancedSection() {
         </SettingRow>
         <div className="wt-handy">
           <MicrophoneSelector descriptionMode="inline" grouped />
+        </div>
+        {/* DESK-59: the selected input gives no sound. */}
+        <MicNotice variant="row" />
+        <div className="wt-handy">
           <LogLevelSelector descriptionMode="inline" grouped />
           <KeyboardDiagnostic />
           {handy?.debug_mode ? (

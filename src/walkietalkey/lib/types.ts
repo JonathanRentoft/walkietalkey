@@ -5,6 +5,7 @@ export type {
   CleanupMode,
   HistoryItem,
   HistoryRetention as HistoryRetentionName,
+  MicCheck,
   PairingView,
   PhoneView,
   RelayView,
@@ -17,9 +18,22 @@ export type { DictationPillState as DictationPillStateName } from "@walkietalkey
 
 /** `wt-pill-end` (src-tauri/src/walkietalkey/pill.rs). */
 export interface PillEndEvent {
-  state: "pasted" | "clipboard" | "no_speech" | "cleanup_skipped";
+  state:
+    | "pasted"
+    | "clipboard"
+    | "no_speech"
+    | "cleanup_skipped"
+    /** The input gave no sound for the whole take (DESK-59). */
+    | "mic_silent";
   /** "⌘V" or "Ctrl+V". */
   shortcut: string;
+}
+
+/** `wt-mic-silent` (mic/mod.rs, DESK-59): the input has given no sound
+ *  for 1.5 s of this recording (`true`), or sound came (`false`). The window
+ *  notice comes as `wt-mic-check` with a `MicCheck`. */
+export interface MicSilentEvent {
+  silent: boolean;
 }
 
 /** `wt-pill-countdown` (limits.rs), from 4:45. */

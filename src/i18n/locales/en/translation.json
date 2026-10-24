@@ -841,7 +841,10 @@
       "notReady": "The speech model is not ready yet",
       "error": "Could not download the speech model. Try again.",
       "countdown": "{{seconds}} seconds left",
-      "handsFree": "Tap again to stop"
+      "handsFree": "Tap again to stop",
+      "micSilent": "The microphone gives no sound",
+      "micTry": "Try {{name}}",
+      "micNone": "Check the microphone"
     },
     "nav": {
       "label": "Settings",
@@ -1171,6 +1174,13 @@
     "access": {
       "lost": "WalkieTalkey no longer has Accessibility access.",
       "repair": "Allow again"
+    },
+    "mic": {
+      "searching": "{{name}} gives no sound. Looking for a microphone that works.",
+      "try": "{{name}} gives no sound. Try {{other}}.",
+      "none": "{{name}} gives no sound, and neither do the other microphones. Check that the microphone is plugged in and on.",
+      "use": "Use {{name}}",
+      "recheck": "Check again"
     }
   }
 }

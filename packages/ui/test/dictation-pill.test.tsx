@@ -102,6 +102,52 @@ describe("DictationPill (DESK-55, Appendix A)", () => {
     expect(screen.getByText("0:07")).toHaveClass("wt-pill-time");
   });
 
+  it("a silent microphone replaces the waveform while listening (DESK-59)", () => {
+    const { container, rerender } = render(
+      <DictationPill
+        state="listening"
+        silentMic
+        levels={[0, 0, 0]}
+        seconds={2}
+      />,
+    );
+    const pill = screen.getByRole("status");
+    expect(spoken(pill)).toBe("Lytter Mikrofonen giver ingen lyd 0:02");
+    expect(container.querySelector(".wt-wave")).toBeNull();
+    // Hands-free keeps the lock; the notice takes the hint's place.
+    rerender(
+      <DictationPill
+        state="listening"
+        silentMic
+        handsFree
+        levels={[0]}
+        seconds={2}
+      />,
+    );
+    expect(container.querySelector(".wt-pill-lock")).not.toBeNull();
+    expect(spoken(pill)).toBe("Lytter Mikrofonen giver ingen lyd 0:02");
+    // Sound came: the waveform is back.
+    rerender(<DictationPill state="listening" levels={[0.4]} seconds={3} />);
+    expect(container.querySelector(".wt-wave")).not.toBeNull();
+    expect(spoken(pill)).not.toContain("Mikrofonen");
+  });
+
+  it("ends with Mikrofonen giver ingen lyd and an optional hint (DESK-59)", () => {
+    const { rerender } = render(<DictationPill state="micsilent" />);
+    const pill = screen.getByRole("status");
+    expect(pill).toHaveClass("wt-pill--micsilent");
+    expect(spoken(pill)).toBe("Mikrofonen giver ingen lyd");
+    rerender(
+      <DictationPill state="micsilent" hint="Prøv MacBook Pro-mikrofon" />,
+    );
+    expect(spoken(pill)).toBe(
+      "Mikrofonen giver ingen lyd Prøv MacBook Pro-mikrofon",
+    );
+    expect(screen.getByText("Prøv MacBook Pro-mikrofon")).toHaveClass(
+      "wt-pill-note-hint",
+    );
+  });
+
   it("the large size carries the mark for the desktop overlay", () => {
     const { container } = render(
       <DictationPill state="processing" size="lg" mark />,

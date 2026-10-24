@@ -4,6 +4,7 @@ import type {
   CleanupMode,
   DictationPillStateName,
   HistoryRetentionName,
+  MicCheck,
   Replacement,
 } from "./types";
 
@@ -384,9 +385,41 @@ export function pillStateFromEnd(state: string): DictationPillStateName {
       return "nospeech";
     case "cleanup_skipped":
       return "raw";
+    case "mic_silent":
+      return "micsilent";
     default:
       return "ready";
   }
+}
+
+/* ------------------------------------------------- Silent microphone */
+
+/** What the window says about a silent input (DESK-59): a translation key
+ *  under `wt.mic` with its values, or `null` while the input works. */
+export function micNotice(check: MicCheck | null | undefined): {
+  key: "wt.mic.searching" | "wt.mic.try" | "wt.mic.none";
+  name: string;
+  other?: string;
+} | null {
+  const name = check?.silent_input;
+  if (!check || !name) return null;
+  if (check.suggestion) {
+    return { key: "wt.mic.try", name, other: check.suggestion };
+  }
+  return { key: check.probing ? "wt.mic.searching" : "wt.mic.none", name };
+}
+
+/** The pill's quieter second part after "Mikrofonen giver ingen lyd":
+ *  "Prøv {navn}" once the probe found one, "Tjek mikrofonen" when none
+ *  works, nothing while it still looks. */
+export function micPillHint(check: MicCheck | null | undefined): {
+  key: "wt.pill.micTry" | "wt.pill.micNone";
+  name?: string;
+} | null {
+  if (!check?.silent_input || check.probing) return null;
+  return check.suggestion
+    ? { key: "wt.pill.micTry", name: check.suggestion }
+    : { key: "wt.pill.micNone" };
 }
 
 /* ----------------------------------------------------------------- Model */

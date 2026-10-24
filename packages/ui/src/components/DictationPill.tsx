@@ -21,7 +21,8 @@ export type DictationPillState =
   | "nospeech"
   | "raw"
   | "notready"
-  | "error";
+  | "error"
+  | "micsilent";
 
 export interface DictationPillLabels {
   idleBefore?: string;
@@ -41,6 +42,9 @@ export interface DictationPillLabels {
   error?: string;
   /** Extension: "Tryk igen for at stoppe" while recording hands-free. */
   handsFree?: string;
+  /** Extension: "Mikrofonen giver ingen lyd" (DESK-59), while listening and
+   *  as the end state. */
+  micSilent?: string;
 }
 
 export interface DictationPillProps {
@@ -67,6 +71,12 @@ export interface DictationPillProps {
   size?: "md" | "lg";
   /** Extension: the mark leads the listening and processing states. */
   mark?: boolean;
+  /** Extension: while listening, the input has delivered no sound for a
+   *  while (DESK-59): the notice replaces the waveform. */
+  silentMic?: boolean;
+  /** Extension: a second, quieter part after an outcome note, such as
+   *  "Prøv MacBook Pro-mikrofon" after "Mikrofonen giver ingen lyd". */
+  hint?: string;
   className?: string;
   style?: CSSProperties;
 }
@@ -84,6 +94,8 @@ export const PILL_LABELS: Required<DictationPillLabels> = {
   notReady: "Talemodellen er ikke klar endnu",
   error: "Kunne ikke hente talemodellen. Prøv igen.",
   handsFree: "Tryk igen for at stoppe",
+  /* TODO(copy): not in Appendix A yet (DESK-59) */
+  micSilent: "Mikrofonen giver ingen lyd",
 };
 
 function Lock() {
@@ -168,6 +180,7 @@ const NOTES: Partial<Record<DictationPillState, keyof DictationPillLabels>> = {
   raw: "raw",
   notready: "notReady",
   error: "error",
+  micsilent: "micSilent",
 };
 
 export function DictationPill(props: DictationPillProps) {
@@ -212,6 +225,7 @@ export function DictationPill(props: DictationPillProps) {
   const [w, setW] = useState<number | null>(null);
   const timeKey = Math.floor(seconds) >= 600 ? "w" : "n";
   const handsFree = state === "listening" && !!props.handsFree;
+  const silentMic = state === "listening" && !!props.silentMic;
   const levelCount = props.levels ? props.levels.length : -1;
   useIsoLayoutEffect(() => {
     if (inner.current)
@@ -235,6 +249,9 @@ export function DictationPill(props: DictationPillProps) {
     L.notReady,
     L.error,
     L.handsFree,
+    L.micSilent,
+    silentMic,
+    props.hint,
   ]);
 
   const markEl = props.mark ? (
@@ -250,7 +267,11 @@ export function DictationPill(props: DictationPillProps) {
   let content: ReactNode[];
   const note = NOTES[state];
   if (state === "listening") {
-    const meter = props.levels ? (
+    const meter = silentMic ? (
+      <span key="mic" className="wt-pill-hint wt-pill-mic">
+        {L.micSilent}
+      </span>
+    ) : props.levels ? (
       <Wave key="wave" levels={props.levels} palette={props.palette} />
     ) : (
       <GradientBars
@@ -270,9 +291,11 @@ export function DictationPill(props: DictationPillProps) {
             {L.listening}
           </span>,
           meter,
-          <span key="hf" className="wt-pill-hint">
-            {L.handsFree}
-          </span>,
+          silentMic ? null : (
+            <span key="hf" className="wt-pill-hint">
+              {L.handsFree}
+            </span>
+          ),
           <span key="t" className="wt-pill-time">
             {fmt(seconds)}
           </span>,
@@ -318,7 +341,15 @@ export function DictationPill(props: DictationPillProps) {
   } else if (note) {
     content = [
       <span key="n" className="wt-pill-note" aria-hidden />,
-      <span key="l">{L[note]}</span>,
+      props.hint ? (
+        // Two lines, so the pill stays narrow: the note, then the hint.
+        <span key="l" className="wt-pill-note-text">
+          <span>{L[note]}</span>{" "}
+          <span className="wt-pill-note-hint">{props.hint}</span>
+        </span>
+      ) : (
+        <span key="l">{L[note]}</span>
+      ),
     ];
   } else {
     content = [

@@ -14,6 +14,7 @@ import { useColorScheme } from "./lib/theme";
 import { SECTIONS, useUi, type SectionId } from "./lib/uiStore";
 import { useModelSetup } from "./onboarding/modelSetup";
 import { AccessNotice } from "./ui/accessNotice";
+import { MicNotice } from "./ui/micNotice";
 import { Button } from "./ui/controls";
 import { SectionIcon } from "./ui/icons";
 import { DICTATION_BINDING, KeyCaps, useKeyName } from "./ui/keys";
@@ -169,6 +170,8 @@ export function MainWindow(props: { platform: WtPlatform }) {
       <main className="wt-main" ref={scroller}>
         <div className="wt-main-inner">
           <AccessNotice platform={props.platform} />
+          {/* Avanceret shows it at the microphone setting itself. */}
+          {section !== "advanced" ? <MicNotice variant="banner" /> : null}
           <PausedBanner />
           <SecureInputWarning />
           <SectionView key={section} id={section} platform={props.platform} />

@@ -26,6 +26,7 @@ import type { PillEndEvent } from "../lib/types";
 import { rememberAccessGranted } from "../ui/accessNotice";
 import { Button, Status } from "../ui/controls";
 import { GlobeFix } from "../ui/globeFix";
+import { MicNotice } from "../ui/micNotice";
 import { DICTATION_BINDING, KeyCaps, KeyPicker, useKeyName } from "../ui/keys";
 import { PairingCode } from "../ui/pairing";
 import { useModelSetup } from "./modelSetup";
@@ -362,6 +363,12 @@ export function TryStep(props: { platform: WtPlatform }) {
         <Status>{t("wt.notify.pressToPaste", { key: end.shortcut })}</Status>
       ) : end?.state === "no_speech" ? (
         <Status tone="warn">{t("wt.pill.noSpeech")}</Status>
+      ) : end?.state === "mic_silent" ? (
+        // DESK-59: the input gave no sound; the suggestion follows.
+        <MicNotice
+          variant="row"
+          fallback={<Status tone="warn">{t("wt.pill.micSilent")}</Status>}
+        />
       ) : end ? (
         <Status tone="ok">{t("wt.onboarding.try.done")}</Status>
       ) : null}
