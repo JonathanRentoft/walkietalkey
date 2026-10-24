@@ -26,6 +26,7 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - No more broken characters ("mødet��") or letters from other scripts in the text: a piece that comes back with them is transcribed again without the developer vocabulary, and any left are removed.
 - No more capital letters in the middle of a sentence where a long dictation was cut at a pause ("og ikke bare Kaster mig"): each joint is read again by the punctuation model, which also removes a full stop that does not belong there.
 - For developers: a fine-tuning workbench in `training/` (`wt-train`): about 1,000 sentences with English developer terms, a recorder, LoRA training on Edda, evaluation like the accuracy job, and export to the app.
+- For developers: the workbench tracks every training, evaluation and export in a local MLflow store (`wt-train ui`), and `wt-train card <run>` starts a lab-journal page from a run.
 - A fine-tuned Edda from the training workbench (`training/`) appears in the model list and is decoded like Edda; it can no longer be "downloaded again", which deleted it.
 - `walkietalkey --transcribe-list <file> --json` transcribes many WAV files with the model loaded once.
 - Up to date: TypeScript 6, Tauri 2.12.5, openssl 0.10.81 and pytest 9.
