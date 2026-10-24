@@ -433,6 +433,19 @@ export async function unthrottle(roomB64: string): Promise<void> {
   });
 }
 
+/**
+ * Stops the clock the room's per-socket token bucket refills by (RELAY-11). The bucket refills
+ * while the room works through a burst, so a room on a loaded machine that takes a second or
+ * more per 50 frames never sees more than 50 per second and never refuses. With the clock
+ * stopped, a burst counts as one instant: the 51st frame is refused however slow the room is.
+ */
+export async function stopTokenClock(roomB64: string): Promise<void> {
+  await inRoom(roomB64, (room) => {
+    const stoppedAt = Date.now();
+    room.tokenClock = () => stoppedAt;
+  });
+}
+
 /** Polls a condition inside the room until it holds. */
 export async function until(
   roomB64: string,

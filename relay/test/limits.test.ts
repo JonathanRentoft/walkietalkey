@@ -8,6 +8,7 @@ import {
   joinPhone,
   newOwner,
   rawFrame,
+  stopTokenClock,
 } from "./helpers.ts";
 
 describe("limits (RELAY-11)", () => {
@@ -41,6 +42,8 @@ describe("limits (RELAY-11)", () => {
   it("more than 50 frames per second on one socket close with 4429", async () => {
     const { owner, client: ownerClient } = await createRoom();
     const p = await joinPhone(owner, ownerClient);
+    // The 200 frames count as one instant, however fast the room works through them.
+    await stopTokenClock(owner.roomB64);
     const f = await frameFrom(
       p.phone.deviceId,
       owner.keys.deviceId,
