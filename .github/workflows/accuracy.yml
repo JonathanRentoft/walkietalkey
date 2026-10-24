@@ -32,7 +32,7 @@ jobs:
     env:
       WT_WORK_DIR: ${{ github.workspace }}/../wt-work
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 50
       - name: Nightly only when main changed in the last day
@@ -44,11 +44,11 @@ jobs:
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         if: steps.changed.outputs.run == 'true'
       - name: Cache the engine, converted models and FLEURS
         if: steps.changed.outputs.run == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.WT_WORK_DIR }}/src
@@ -67,7 +67,7 @@ jobs:
           if [ -f "$RUNNER_TEMP/accuracy/summary.md" ]; then
             cat "$RUNNER_TEMP/accuracy/summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.changed.outputs.run == 'true'
         with:
           name: accuracy-${{ github.run_id }}
