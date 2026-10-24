@@ -774,6 +774,28 @@ async wtAnnounce(text: string) : Promise<void> {
     await TAURI_INVOKE("wt_announce", { text });
 },
 /**
+ * Whether the Globe key still does its own action (macOS
+ * `AppleFnUsageType`) while `fn` is the dictation key.
+ */
+async wtGlobeKeyStatus() : Promise<GlobeKeyStatus> {
+    return await TAURI_INVOKE("wt_globe_key_status");
+},
+/**
+ * "Ret det for mig": sets `AppleFnUsageType` to "Do Nothing" for the user
+ * (the old value comes back when `fn` stops being the key).
+ */
+async wtGlobeKeyFix() : Promise<GlobeKeyStatus> {
+    return await TAURI_INVOKE("wt_globe_key_fix");
+},
+/**
+ * macOS dropped the Accessibility grant (an update changed the app's
+ * signature): clears WalkieTalkey's stale entry and makes macOS show its own
+ * Accessibility dialog. The key listener starts by itself once it is on.
+ */
+async wtAccessibilityRepair() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_accessibility_repair");
+},
+/**
  * Checks for an update now ("Søg efter opdateringer").
  */
 async wtCheckUpdates() : Promise<void> {
@@ -1274,6 +1296,23 @@ export type CleanupRecord = { provider: string;
 sent_text: string; duration_ms: number }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
+/**
+ * The Globe key's own action while `fn` is the dictation key (macOS).
+ */
+export type GlobeKeyStatus = {
+/**
+ * `fn` is the dictation key.
+ */
+fn_is_key: boolean;
+/**
+ * `com.apple.HIToolbox` `AppleFnUsageType`, or null when it is not set.
+ */
+usage: number | null;
+/**
+ * The Globe key would also switch input source, show emoji or start
+ * Apple's dictation when `fn` is tapped.
+ */
+needs_fix: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 /**

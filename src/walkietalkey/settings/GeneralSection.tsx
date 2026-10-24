@@ -1,14 +1,21 @@
 // Indstillinger › Generelt (spec 6.14): start at login, sounds, the pill's
 // place or Vis aldrig, the text in notifications, and the UI language.
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Notice } from "@walkietalkey/ui";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { WtPlatform } from "../lib/helpers";
-import { pasteKey } from "../lib/system";
+import {
+  notificationPermission,
+  openSettingsPage,
+  pasteKey,
+  requestNotificationPermission,
+  type NotificationPermission,
+} from "../lib/system";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
 import {
+  Button,
   ChoiceGroup,
   Group,
   Page,
@@ -18,6 +25,44 @@ import {
 } from "../ui/controls";
 
 type PillPlace = "bottom" | "top" | "never";
+
+/** Notifications carry phone dictations (DESK-56). Onboarding no longer has
+ *  a step for them (run 2): they are asked for when a phone is paired, and
+ *  can be turned on here. Shown only while they are off. */
+function NotificationsRow(props: { platform: WtPlatform }) {
+  const { t } = useTranslation();
+  const [state, setState] = useState<NotificationPermission | null>(null);
+  useEffect(() => {
+    void notificationPermission().then(setState);
+  }, []);
+  if (state !== "not_determined" && state !== "denied") return null;
+  const turnOn = async () => {
+    if (state === "denied") {
+      if (props.platform === "macos") await openSettingsPage("notifications");
+      return;
+    }
+    const ok = await requestNotificationPermission();
+    setState(ok ? "granted" : "denied");
+  };
+  return (
+    <div className="wt-row">
+      <div className="wt-row-text">
+        <p className="wt-row-desc wt-row-desc--warn">
+          {t("wt.general.notificationsOff")}
+        </p>
+      </div>
+      <div className="wt-row-control">
+        {state === "denied" && props.platform !== "macos" ? null : (
+          <Button onClick={() => void turnOn()}>
+            {state === "denied"
+              ? t("wt.general.notificationsOpen")
+              : t("wt.general.notificationsAllow")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function GeneralSection(props: { platform: WtPlatform }) {
   const { t, i18n } = useTranslation();
@@ -117,6 +162,7 @@ export function GeneralSection(props: { platform: WtPlatform }) {
       </Group>
 
       <Group title={t("wt.general.notificationsGroup")}>
+        <NotificationsRow platform={props.platform} />
         <SettingRow
           title={t("wt.general.showText")}
           description={t("wt.general.showTextDesc")}
@@ -145,7 +191,7 @@ export function GeneralSection(props: { platform: WtPlatform }) {
               title={t("wt.notify.textReady")}
               preview={
                 showText
-                  ? t("wt.onboarding.notifications.example")
+                  ? t("wt.general.previewExample")
                   : t("wt.notify.pressToPaste", { key })
               }
               when={t("wt.notify.now")}

@@ -13,6 +13,14 @@ import {
   exportWordList,
   findFastModelId,
   formatClock,
+  forwardStep,
+  globeUsageKey,
+  keyModeKey,
+  ONBOARDING_DONE,
+  onboardingFinished,
+  smoothLevels,
+  WAVE_FLOOR,
+  waveLevels,
   importWords,
   isCloudProvider,
   isCopilotBinding,
@@ -34,49 +42,146 @@ import {
   formatSizeMb,
 } from "./helpers";
 
-describe("onboarding steps (DESK-10..17)", () => {
-  test("a Mac gets all eight steps in the spec's order", () => {
+describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
+  test("a Mac: Velkommen, Mikrofon, Tilgængelighed, Prøv det, Telefon, Klar", () => {
     assert.deepEqual(onboardingSteps("macos", { phonePairing: true }), [
       "welcome",
-      "model",
       "microphone",
-      "key",
-      "paste",
-      "notifications",
-      "phone",
+      "accessibility",
       "try",
+      "phone",
+      "done",
     ]);
   });
 
-  test("Windows has no Accessibility step; paste works without it", () => {
-    const steps = onboardingSteps("windows", { phonePairing: true });
-    assert.ok(!steps.includes("paste"));
-    assert.equal(steps[0], "welcome");
-    assert.equal(steps[steps.length - 1], "try");
+  test("Windows has no Tilgængelighed step: the key and paste need no permission", () => {
+    assert.deepEqual(onboardingSteps("windows", { phonePairing: true }), [
+      "welcome",
+      "microphone",
+      "try",
+      "phone",
+      "done",
+    ]);
+  });
+
+  test("no model step and no Input Monitoring step any more", () => {
+    for (const platform of ["macos", "windows"] as const) {
+      const steps: string[] = onboardingSteps(platform, { phonePairing: true });
+      for (const gone of ["model", "key", "paste", "notifications"])
+        assert.ok(!steps.includes(gone), `${platform} still has ${gone}`);
+    }
   });
 
   test("no phone step when the company forbids pairing", () => {
-    assert.ok(
-      !onboardingSteps("macos", { phonePairing: false }).includes("phone"),
-    );
+    assert.deepEqual(onboardingSteps("macos", { phonePairing: false }), [
+      "welcome",
+      "microphone",
+      "accessibility",
+      "try",
+      "done",
+    ]);
   });
 
   test("next and previous walk the list and stop at the ends", () => {
     const steps = onboardingSteps("macos", { phonePairing: true });
-    assert.equal(nextStep(steps, "welcome"), "model");
-    assert.equal(nextStep(steps, "try"), null);
-    assert.equal(previousStep(steps, "model"), "welcome");
+    assert.equal(nextStep(steps, "welcome"), "microphone");
+    assert.equal(nextStep(steps, "try"), "phone");
+    assert.equal(nextStep(steps, "done"), null);
+    assert.equal(previousStep(steps, "microphone"), "welcome");
     assert.equal(previousStep(steps, "welcome"), null);
+  });
+
+  test("going forward skips a permission step that is already granted", () => {
+    const mac = onboardingSteps("macos", { phonePairing: true });
+    const none = { microphone: false, accessibility: false };
+    assert.equal(forwardStep(mac, "welcome", none), "microphone");
+    assert.equal(
+      forwardStep(mac, "welcome", { microphone: true, accessibility: false }),
+      "accessibility",
+    );
+    assert.equal(
+      forwardStep(mac, "welcome", { microphone: true, accessibility: true }),
+      "try",
+    );
+    assert.equal(
+      forwardStep(mac, "microphone", { microphone: true, accessibility: true }),
+      "try",
+    );
+    assert.equal(forwardStep(mac, "try", none), "phone");
+    assert.equal(forwardStep(mac, "done", none), null);
   });
 
   test("resume picks the stored step, or the next one that exists here", () => {
     const mac = onboardingSteps("macos", { phonePairing: true });
     const win = onboardingSteps("windows", { phonePairing: false });
-    assert.equal(resumeStep("key", mac), "key");
-    assert.equal(resumeStep("paste", win), "notifications");
-    assert.equal(resumeStep("phone", win), "try");
+    assert.equal(resumeStep("accessibility", mac), "accessibility");
+    assert.equal(resumeStep("accessibility", win), "try");
+    assert.equal(resumeStep("phone", win), "done");
     assert.equal(resumeStep(null, mac), null);
     assert.equal(resumeStep("nonsense", mac), null);
+  });
+
+  test("v1's stored steps resume at the step that replaced them", () => {
+    const mac = onboardingSteps("macos", { phonePairing: true });
+    const win = onboardingSteps("windows", { phonePairing: true });
+    assert.equal(resumeStep("model", mac), "microphone");
+    assert.equal(resumeStep("key", mac), "accessibility");
+    assert.equal(resumeStep("paste", mac), "accessibility");
+    assert.equal(resumeStep("key", win), "try");
+    assert.equal(resumeStep("notifications", mac), "try");
+  });
+
+  test("a finished onboarding is remembered as done, not as a step", () => {
+    const mac = onboardingSteps("macos", { phonePairing: true });
+    assert.equal(resumeStep(ONBOARDING_DONE, mac), null);
+    assert.equal(onboardingFinished(ONBOARDING_DONE), true);
+    assert.equal(onboardingFinished("try"), false);
+    assert.equal(onboardingFinished(null), false);
+  });
+});
+
+describe("tap or hold (Phase 1, DESK-22)", () => {
+  test("the key's mode in words", () => {
+    assert.equal(keyModeKey("hold_or_toggle"), "wt.key.howHoldOrTap");
+    assert.equal(keyModeKey(undefined), "wt.key.howHoldOrTap");
+    assert.equal(keyModeKey("push_to_talk"), "wt.key.howHold");
+    assert.equal(keyModeKey("toggle"), "wt.key.howTap");
+  });
+});
+
+describe("Globe key (Phase 1)", () => {
+  test("what fn also does, from AppleFnUsageType", () => {
+    assert.equal(globeUsageKey(1), "wt.globe.usage.inputSource");
+    assert.equal(globeUsageKey(2), "wt.globe.usage.emoji");
+    assert.equal(globeUsageKey(3), "wt.globe.usage.dictation");
+    assert.equal(globeUsageKey(null), "wt.globe.usage.other");
+    assert.equal(globeUsageKey(7), "wt.globe.usage.other");
+  });
+});
+
+describe("live waveform (DESK-55)", () => {
+  test("one level per bar, loudest in the middle, always a visible dot", () => {
+    const bars = waveLevels(
+      [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+      9,
+    );
+    assert.equal(bars.length, 9);
+    for (const b of bars) assert.ok(b >= WAVE_FLOOR && b <= 1);
+    // Symmetric around the middle bar.
+    for (let i = 0; i < 4; i++) assert.equal(bars[i], bars[8 - i]);
+  });
+
+  test("silence is a calm row of dots", () => {
+    assert.deepEqual(waveLevels([], 5), Array(5).fill(WAVE_FLOOR));
+    assert.deepEqual(waveLevels([0, 0, 0], 3), Array(3).fill(WAVE_FLOOR));
+  });
+
+  test("bars rise fast and fall slowly", () => {
+    const up = smoothLevels([0.1, 0.1], [1, 1]);
+    const down = smoothLevels([1, 1], [0, 0]);
+    assert.ok(up[0] > 0.5, "attack is fast");
+    assert.ok(down[0] > 0.6, "release is slow");
+    assert.deepEqual(smoothLevels([], [0.5]), [0.5]);
   });
 });
 

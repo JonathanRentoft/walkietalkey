@@ -11,28 +11,40 @@ export type WtPlatform = "macos" | "windows" | "other";
 
 /* ------------------------------------------------------------ Onboarding */
 
-/** The onboarding steps of spec 6.2, in order (DESK-10..17). */
+/** The onboarding steps of spec 6.2, in order (DESK-10..17, run 2): no
+ *  model step (the model downloads in the background from the first launch)
+ *  and no Input Monitoring step (Accessibility covers the key). */
 export const ONBOARDING_STEPS = [
   "welcome",
-  "model",
   "microphone",
-  "key",
-  "paste",
-  "notifications",
-  "phone",
+  "accessibility",
   "try",
+  "phone",
+  "done",
 ] as const;
 export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number];
 
-/** The steps this computer shows. Accessibility (step 5) is a Mac
- *  permission; Windows pastes without it. The phone step needs pairing to be
- *  allowed (Appendix B `AllowPhonePairing`). */
+/** Stored as `onboarding_resume_step` once onboarding is finished, so a
+ *  finished onboarding never shows again, model or not. */
+export const ONBOARDING_DONE = "finished";
+
+/** v1's steps, mapped to the step that replaced them (DESK-13 resume). */
+const LEGACY_STEPS: Record<string, OnboardingStepId> = {
+  model: "microphone",
+  key: "accessibility",
+  paste: "accessibility",
+  notifications: "try",
+};
+
+/** The steps this computer shows. Tilgængelighed is a Mac permission;
+ *  Windows needs none for the key or for pasting. The phone step needs
+ *  pairing to be allowed (Appendix B `AllowPhonePairing`). */
 export function onboardingSteps(
   platform: WtPlatform,
   opts: { phonePairing: boolean },
 ): OnboardingStepId[] {
   return ONBOARDING_STEPS.filter((step) => {
-    if (step === "paste") return platform === "macos";
+    if (step === "accessibility") return platform === "macos";
     if (step === "phone") return opts.phonePairing;
     return true;
   });
@@ -54,6 +66,24 @@ export function previousStep(
   return i > 0 ? steps[i - 1] : null;
 }
 
+/** The next step going forward, skipping a permission step whose
+ *  permission is already granted (a reinstall keeps them). */
+export function forwardStep(
+  steps: readonly OnboardingStepId[],
+  current: OnboardingStepId,
+  granted: { microphone: boolean; accessibility: boolean },
+): OnboardingStepId | null {
+  let next = nextStep(steps, current);
+  while (
+    next &&
+    ((next === "microphone" && granted.microphone) ||
+      (next === "accessibility" && granted.accessibility))
+  ) {
+    next = nextStep(steps, next);
+  }
+  return next;
+}
+
 /** Where to resume after a restart (DESK-13): the stored step, or the next
  *  step that exists on this computer. */
 export function resumeStep(
@@ -62,13 +92,49 @@ export function resumeStep(
 ): OnboardingStepId | null {
   if (!saved) return null;
   const all = ONBOARDING_STEPS as readonly string[];
-  const at = all.indexOf(saved);
+  const at = all.indexOf(LEGACY_STEPS[saved] ?? saved);
   if (at < 0) return null;
   for (let i = at; i < all.length; i++) {
     const step = all[i] as OnboardingStepId;
     if (steps.includes(step)) return step;
   }
   return null;
+}
+
+export function onboardingFinished(saved: string | null | undefined): boolean {
+  return saved === ONBOARDING_DONE;
+}
+
+/* ------------------------------------------------------------------- Key */
+
+/** How the key works, in words (Phase 1: tap or hold is the default). */
+export function keyModeKey(
+  activation: string | null | undefined,
+): "wt.key.howHoldOrTap" | "wt.key.howHold" | "wt.key.howTap" {
+  if (activation === "push_to_talk") return "wt.key.howHold";
+  if (activation === "toggle") return "wt.key.howTap";
+  return "wt.key.howHoldOrTap";
+}
+
+/** What the Globe key also does while fn is the dictation key, from
+ *  macOS's `AppleFnUsageType` (1 input source, 2 emoji, 3 dictation). */
+export function globeUsageKey(
+  usage: number | null | undefined,
+):
+  | "wt.globe.usage.inputSource"
+  | "wt.globe.usage.emoji"
+  | "wt.globe.usage.dictation"
+  | "wt.globe.usage.other" {
+  switch (usage) {
+    case 1:
+      return "wt.globe.usage.inputSource";
+    case 2:
+      return "wt.globe.usage.emoji";
+    case 3:
+      return "wt.globe.usage.dictation";
+    default:
+      return "wt.globe.usage.other";
+  }
 }
 
 /* -------------------------------------------------------------- Pairing */
@@ -270,6 +336,44 @@ export function isCopilotBinding(binding: string | null | undefined): boolean {
 }
 
 /* ------------------------------------------------------------------ Pill */
+
+/** The lowest bar of the waveform: silence is a calm row of dots. */
+export const WAVE_FLOOR = 0.12;
+
+/** The backend's `mic-level` (one level per frequency band, low to high) as
+ *  `bars` bar heights from WAVE_FLOOR to 1: the voice bands in the middle,
+ *  mirrored outwards, so the waveform is symmetric. */
+export function waveLevels(levels: readonly number[], bars: number): number[] {
+  const out: number[] = [];
+  const half = Math.ceil(bars / 2);
+  const n = levels.length;
+  for (let i = 0; i < bars; i++) {
+    // 0 at the middle bar, 1 at the ends.
+    const pos = half > 1 ? Math.abs(i - (bars - 1) / 2) / (half - 1) : 0;
+    let v = 0;
+    if (n) {
+      // The middle shows the voice bands, the ends the higher ones.
+      const at = Math.min(n - 1, Math.round(pos * (n - 1) * 0.75));
+      v = Math.max(0, Math.min(1, levels[at] || 0));
+      // A gentle hump, so the middle stands taller.
+      v *= 1 - 0.45 * pos;
+    }
+    out.push(WAVE_FLOOR + (1 - WAVE_FLOOR) * Math.pow(v, 0.9));
+  }
+  return out;
+}
+
+/** Fast attack, slow release, per bar. */
+export function smoothLevels(
+  previous: readonly number[],
+  next: readonly number[],
+): number[] {
+  return next.map((v, i) => {
+    const p = previous[i];
+    if (p == null) return v;
+    return v > p ? p + (v - p) * 0.7 : p + (v - p) * 0.25;
+  });
+}
 
 /** The backend's `wt-pill-end` state to the DictationPill state. */
 export function pillStateFromEnd(state: string): DictationPillStateName {
