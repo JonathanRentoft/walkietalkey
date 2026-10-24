@@ -192,6 +192,23 @@ describe("the warm microphone", () => {
     expect(mic.calls).toContain("cool");
   });
 
+  it("granted on a press after a refusal: the microphone is known to be open and closes in the background", async () => {
+    const { c, mic, clock } = await setup({ paired: true });
+    mic.warmError = new MicDeniedError();
+    c.hidden();
+    c.foreground();
+    await sleep(5);
+    mic.warmError = null;
+    mic.take();
+    c.down();
+    clock.t += 1000;
+    c.up();
+    await sleep(5);
+    c.hidden();
+    await sleep(5);
+    expect(mic.take()).toEqual(["start", "stop", "cool"]);
+  });
+
   it("a refused microphone is not asked again on every touch, only when the app comes back", async () => {
     const { c, mic } = await setup({ paired: true, idleMs: 20 });
     mic.warmError = new MicDeniedError();

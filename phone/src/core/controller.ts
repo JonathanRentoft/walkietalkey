@@ -486,6 +486,8 @@ export class PhoneController {
     const entry = this.rooms.get(s.roomId);
     if (!entry) return;
     this.sessions.set(sid, s);
+    // A recording opens the microphone (if warming it was refused, the press may still be granted).
+    this.micOpen = true;
     this.level = 0;
     this.trimFailed();
     void entry.streamer.start(s);
@@ -505,7 +507,9 @@ export class PhoneController {
           void entry.streamer.addBlock(s, block);
           this.showLevel(sid, rms);
         });
+        this.micRefused = false;
       } catch (e) {
+        if (e instanceof MicDeniedError) this.micRefused = true;
         if (this.machine.sessionId !== sid) return;
         if (e instanceof MicDeniedError) this.dispatch({ type: "mic_denied" });
         else
