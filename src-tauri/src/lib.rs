@@ -961,6 +961,9 @@ pub fn run(cli_args: CliArgs) {
                 signal_handle::send_transcription_input(app, "transcribe_with_post_process", "CLI");
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
+            } else if let Some(url) = walkietalkey::relay::training::session_arg(&args) {
+                // WalkieTalkey: a `wt-train record` session (the fine-tuning workbench).
+                walkietalkey::relay::training::start(app, url);
             } else {
                 // A second process was launched without remote-control flags
                 // (e.g. the binary run from a shell). On macOS, relaunching the
@@ -992,6 +995,14 @@ pub fn run(cli_args: CliArgs) {
         ))
         .manage(cli_args.clone())
         .setup(move |app| {
+            // WalkieTalkey: `--training-session` only reaches a running app (the
+            // single-instance plugin forwards it and exits before this); this process is the
+            // first, so no WalkieTalkey is running. Starting one from the recorder's terminal
+            // would make macOS count that terminal as the app using the microphone.
+            if cli_args.training_session.is_some() {
+                eprintln!("WalkieTalkey is not running; start it, then connect again");
+                std::process::exit(walkietalkey::relay::training::NOT_RUNNING_EXIT);
+            }
             #[cfg(target_os = "windows")]
             log::info!(
                 "Vulkan layer policy: VK_LOADER_LAYERS_DISABLE={:?}, WALKIETALKEY_KEEP_VULKAN_IMPLICIT_LAYERS={}",

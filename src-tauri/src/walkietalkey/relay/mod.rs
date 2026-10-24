@@ -9,6 +9,7 @@ pub mod headless;
 pub mod keystore;
 pub mod levels;
 pub mod session;
+pub mod training;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -233,6 +234,11 @@ async fn event_loop(
     let dictations = Arc::new(Dictations::default());
     watch_dictations(app.clone(), client.clone(), Arc::downgrade(&dictations));
     while let Some(event) = events.recv().await {
+        // Training takes (the fine-tuning workbench) are handled before anything else and never
+        // become dictations: no model, pill, transcription, clipboard or history.
+        if training_event(&app, &event) {
+            continue;
+        }
         match event {
             RelayEvent::Connected { .. } | RelayEvent::RoomCreated { .. } => {
                 let _ = app.emit("wt-relay-status", true);
@@ -341,6 +347,8 @@ async fn event_loop(
                     let_go(&app, &dictations, showed_pill);
                 }
             }
+            // Handled by training_event above.
+            RelayEvent::TrainingStart { .. } => {}
             RelayEvent::PresenceQuery { query, .. } => {
                 let (seconds, locked) = super::presence::current();
                 if let Err(e) = client.answer_presence(query, seconds, locked).await {
@@ -349,6 +357,58 @@ async fn event_loop(
             }
             RelayEvent::RelayError { code, message } => warn!("Relay error {code}: {message}"),
         }
+    }
+}
+
+/// WalkieTalkey (training): hands a relay event to the training session first; `true` when it
+/// was a training take's (PROTOCOL.md 8.4). Phone status also reaches it, so the phone gets
+/// its prompt again when it is back.
+fn training_event(app: &AppHandle, event: &RelayEvent) -> bool {
+    use RelayEvent as E;
+    if let E::TrainingStart {
+        phone,
+        session,
+        training: id,
+        prompt,
+        microphone,
+    } = event
+    {
+        let trainer = training::trainer_for(app);
+        trainer.on_start(*phone, *session, *id, prompt.clone(), microphone.clone());
+        return true;
+    }
+    let Some(trainer) = training::trainer() else {
+        return false;
+    };
+    match event {
+        E::AudioChunk {
+            phone,
+            session,
+            index,
+            pcm,
+        } => trainer.on_chunk(&(*phone, *session), *index, pcm),
+        E::AudioEnd {
+            phone,
+            session,
+            chunks,
+            ..
+        } => trainer.on_end((*phone, *session), *chunks),
+        E::AudioCancel { phone, session } => trainer.on_cancel(&(*phone, *session)),
+        E::PeerStatus { phone, online } => {
+            trainer.on_phone(*phone, *online);
+            false
+        }
+        E::Connected { members, .. } => {
+            for m in members {
+                trainer.on_phone(m.id, m.online);
+            }
+            false
+        }
+        E::PhoneLeft { phone } | E::PhoneRemoved { phone } => {
+            trainer.forget_phone(phone);
+            false
+        }
+        _ => false,
     }
 }
 
