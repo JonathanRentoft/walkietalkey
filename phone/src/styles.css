@@ -47,6 +47,90 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* The glow is never clipped (run 2, owner finding 5). PhoneApp's box keeps the design's
+     27.4 x 59.2 proportions, so on a screen that is relatively wider (an iPhone home-screen app
+     below its status bar: 393 x 793) it is narrower than the screen, and its `overflow: hidden`
+     cut the recording glow off in straight edges about 13 px inside the screen's sides. Only the
+     stage, which is the screen itself, clips. */
+  overflow: visible;
+}
+
+/* The halo paints only inside its own box, so no compositing can cut it at the box's square
+   bounds: a conic gradient faded by a radial mask (the same soft edge as the design's 1.6em blur
+   of a 10.1em disc, drawn into a 30em box) instead of `filter: blur()`, whose blur reaches
+   outside the element. It turns with a compositor-only `rotate` instead of repainting a custom
+   property every frame; the colours only depend on the angle, so it looks the same. */
+.wt-stage .wt-app-halo,
+.wt-stage .wt-app--rec .wt-app-halo {
+  inset: -7.5em;
+  filter: none;
+  background: conic-gradient(
+    var(--platin),
+    var(--sand),
+    var(--rav),
+    var(--perle),
+    var(--platin)
+  );
+  -webkit-mask-image: var(--wt-halo-mask);
+  mask-image: var(--wt-halo-mask);
+  --wt-halo-mask: radial-gradient(
+    closest-side,
+    #000 44%,
+    rgb(0 0 0 / 0.977) 46%,
+    rgb(0 0 0 / 0.96) 48.7%,
+    rgb(0 0 0 / 0.933) 51.3%,
+    rgb(0 0 0 / 0.894) 54%,
+    rgb(0 0 0 / 0.841) 56.7%,
+    rgb(0 0 0 / 0.773) 59.3%,
+    rgb(0 0 0 / 0.691) 62%,
+    rgb(0 0 0 / 0.599) 64.7%,
+    rgb(0 0 0 / 0.5) 67.3%,
+    rgb(0 0 0 / 0.401) 70%,
+    rgb(0 0 0 / 0.309) 72.7%,
+    rgb(0 0 0 / 0.227) 75.3%,
+    rgb(0 0 0 / 0.159) 78%,
+    rgb(0 0 0 / 0.106) 80.7%,
+    rgb(0 0 0 / 0.067) 83.3%,
+    rgb(0 0 0 / 0.04) 86%,
+    rgb(0 0 0 / 0.023) 88.7%,
+    rgb(0 0 0 / 0.012) 91.3%,
+    rgb(0 0 0 / 0.006) 94%,
+    rgb(0 0 0 / 0.003) 96.7%,
+    #0000 100%
+  );
+  /* At rest the disc is 8.9em (the design's inset -1.4em), recording 10.1em (-2.6em). */
+  scale: 0.881;
+  animation: wt-turn 6s linear infinite;
+  transition:
+    opacity 0.5s var(--ease-flow),
+    scale 0.5s var(--ease-flow);
+}
+.wt-stage .wt-app--rec .wt-app-halo {
+  scale: 1;
+  animation-duration: 2.4s;
+}
+.wt-stage .wt-app-ring {
+  background: conic-gradient(
+    var(--perle),
+    var(--platin-dyb),
+    var(--sand),
+    var(--rav-dyb),
+    var(--platin),
+    var(--perle)
+  );
+  animation: wt-turn 8s linear infinite;
+}
+@keyframes wt-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-stage .wt-app-halo,
+  .wt-stage .wt-app-ring {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* A long computer name ("Jonathans MacBook Pro") ends in an ellipsis instead of leaving the screen. */
