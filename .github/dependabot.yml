@@ -17,6 +17,13 @@ updates:
       cargo-security:
         applies-to: security-updates
         patterns: ["*"]
+    ignore:
+      # Ekko PnC (DESK-41): rc.14 and rc.15 both link ONNX Runtime 1.31.0, which flips 3 commas in
+      # 2 of the 52 golden cases against the reference runtime (crates/ekko-pnc/tests/golden.rs);
+      # rc.15 also makes Session::builder take an &Environment. rc.13 (ORT 1.28.0) reproduces
+      # the reference exactly. A later rc gets proposed and is judged by the golden test.
+      - dependency-name: ort
+        versions: ["2.0.0-rc.14", "2.0.0-rc.15"]
   # bun.lock is the lockfile; npm updates would leave it behind.
   - package-ecosystem: bun
     directory: /
@@ -28,6 +35,23 @@ updates:
       bun-security:
         applies-to: security-updates
         patterns: ["*"]
+    ignore:
+      # TypeScript 7 (the native compiler) has no JS API for typescript-eslint 8, which refuses to
+      # load with it ("typescript-eslint does not support TS 7.0",
+      # github.com/typescript-eslint/typescript-eslint/issues/10940), so `bun run lint` fails.
+      - dependency-name: typescript
+        versions: [">=7"]
+      # React 19: its types fail about 35 places in Handy's desktop UI and packages/ui
+      # (RefObject<T | null>, no global JSX namespace, useRef() needs an argument), and Handy is
+      # still on React 18. Move together with Handy, in one pull request for all workspaces.
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
