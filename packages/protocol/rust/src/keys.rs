@@ -2,7 +2,7 @@
 
 use p256::ecdsa::signature::{Signer, Verifier};
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
-use p256::elliptic_curve::sec1::ToEncodedPoint;
+use p256::elliptic_curve::sec1::ToSec1Point;
 use p256::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use p256::{PublicKey, SecretKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -35,7 +35,7 @@ impl Spki {
     }
 
     pub fn from_public_key(key: &PublicKey) -> Self {
-        let point = key.to_encoded_point(false);
+        let point = key.to_sec1_point(false);
         let mut out = Vec::with_capacity(SPKI_LEN);
         out.extend_from_slice(&SPKI_PREFIX[..SPKI_PREFIX.len() - 1]);
         out.extend_from_slice(point.as_bytes());
