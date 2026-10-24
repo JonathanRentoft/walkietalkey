@@ -537,8 +537,13 @@ impl AudioRecordingManager {
         };
 
         // Always-on?  Open immediately.
+        // WalkieTalkey (DESK-59): a microphone that cannot open now (none, or
+        // a default the no-loopback guard refuses) must not stop the app from
+        // starting; the next recording opens it again and reports the error.
         if matches!(mode, MicrophoneMode::AlwaysOn) {
-            manager.start_microphone_stream()?;
+            if let Err(e) = manager.start_microphone_stream() {
+                warn!("Could not open the microphone at startup: {e:#}");
+            }
         }
 
         Ok(manager)

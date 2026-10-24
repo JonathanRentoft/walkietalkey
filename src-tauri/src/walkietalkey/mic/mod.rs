@@ -293,6 +293,15 @@ pub fn recheck(app: &AppHandle) {
     if PROBING.load(Ordering::Acquire) {
         return;
     }
+    // "Leder efter en mikrofon, der virker" at once; the button goes.
+    set(
+        app,
+        MicCheck {
+            silent_input: Some(silent.clone()),
+            suggestion: None,
+            probing: true,
+        },
+    );
     let app = app.clone();
     let _ = std::thread::Builder::new()
         .name("wt-mic-recheck".into())
