@@ -66,8 +66,13 @@ jobs:
       - name: Released Xcode and its own SDK
         if: steps.changed.outputs.run == 'true'
         run: scripts/walkietalkey/ci/select-xcode.sh
+      # One Python for every uv environment (UV_PYTHON): the image's Homebrew Python is 3.15, for
+      # which torch 2.11 (transcribe.cpp's converters) has no wheels, and Ekko PnC's tools allow
+      # up to 3.13.
       - uses: astral-sh/setup-uv@v7
         if: steps.changed.outputs.run == 'true'
+        with:
+          python-version: "3.12"
       # Restored always, saved only after a complete measurement, so a half-built engine or a
       # half-converted model never lands in the cache.
       - name: Restore the engine, converted models and FLEURS
