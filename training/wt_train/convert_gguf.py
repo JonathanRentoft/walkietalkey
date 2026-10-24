@@ -10,10 +10,12 @@ model's) gives ``general.author``/``organization``, and its licence metadata
 (Apache-2.0) is Edda's licence. Nothing else in the converter is touched.
 
 Only the standard library is used here: this file runs in transcribe.cpp's
-environment, where the workbench package is not installed.
+environment, where the workbench package is not installed. Run it with
+``python -I``, so its own folder (which holds wt_train/gguf.py) is not on
+sys.path when the converter imports the gguf library.
 
 Usage:
-    uv run --project <tcpp>/scripts/envs/whisper python convert_gguf.py \\
+    uv run --project <tcpp>/scripts/envs/whisper python -I convert_gguf.py \\
         <tcpp>/scripts/convert-whisper.py <merged model dir> <out.gguf> \\
         --variant edda-ft-<slug> --name "<display name>" --repo-id danish-foundation-models/edda-v0.2
 """

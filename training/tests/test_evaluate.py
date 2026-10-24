@@ -155,3 +155,19 @@ def test_lora_backend_merges_the_adapter(tmp_path, tiny_base, fleurs_root):
     wavs = [Path(i.audio) for i in b.splits["test"]]
     texts = evaluate.HFTranscriber(merged, tiny_base, "cpu", batch_size=2, max_new_tokens=4).transcribe(wavs)
     assert len(texts) == len(wavs) and all(err is None for _, err in texts)
+
+
+def test_own_references_are_respelled_and_fleurs_references_are_not(tmp_path):
+    from wt_train.spelling import Spelling, Term
+
+    spelling = Spelling([Term("merge", ("merget",), {"merged": "merget"})])
+
+    class Echo:
+        def transcribe(self, wavs, progress=None):
+            return [("den er merget", None) for _ in wavs]
+
+    clips = [evaluate.EvalClip("a", tmp_path / "a.wav", "Den er merged.")]
+    own, _ = evaluate.score(Echo(), clips, spelling, "own", log=lambda *_: None)
+    fleurs, _ = evaluate.score(Echo(), clips, spelling, "fleurs", log=lambda *_: None, respell_references=False)
+    assert own[0]["reference"] == "Den er merget." and own[0]["sub"] == 0
+    assert fleurs[0]["reference"] == "Den er merged." and fleurs[0]["sub"] == 1

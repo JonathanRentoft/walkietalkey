@@ -60,6 +60,28 @@ def content_sha256(path: Path) -> str:
     return hashlib.sha256(head + np.ascontiguousarray(pcm).tobytes()).hexdigest()
 
 
+def is_pcm16_16k_mono(path: Path) -> bool:
+    i = sf.info(str(path))
+    return i.samplerate == SAMPLE_RATE and i.channels == 1 and i.subtype == "PCM_16"
+
+
+def pcm16_copy(path: Path, cache: Path) -> Path:
+    """``path`` itself when it is 16 kHz mono 16-bit PCM WAV (what the app reads),
+    otherwise a converted copy in ``cache``, made once per source file version."""
+    path = Path(path)
+    if is_pcm16_16k_mono(path):
+        return path
+    stat = path.stat()
+    key = hashlib.sha256(f"{path.resolve()}:{stat.st_size}:{stat.st_mtime_ns}".encode()).hexdigest()[:24]
+    out = Path(cache) / f"{path.stem}-{key}.wav"
+    if not out.is_file():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_name(f".{out.name}.tmp.wav")
+        sf.write(str(tmp), read_16k_mono(path), SAMPLE_RATE, subtype="PCM_16")
+        tmp.replace(out)
+    return out
+
+
 def file_sha256(path: Path, chunk: int = 1 << 22) -> str:
     h = hashlib.sha256()
     with Path(path).open("rb") as f:

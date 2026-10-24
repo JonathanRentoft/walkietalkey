@@ -4,7 +4,8 @@
 only has ``-f``. It knows the models listed in ``FAKE_APP_MODELS`` (comma
 separated) plus every ``*.gguf`` in ``WT_APP_MODELS_DIR``. A transcript is
 the text of the ``<clip>.txt`` next to the clip, upper-cased; a clip whose
-name contains "bad" fails. Every call is logged to ``FAKE_APP_LOG``.
+name contains "bad", or that is not 16-bit PCM (like the real app), fails.
+Every call is logged to ``FAKE_APP_LOG``.
 """
 
 SCRIPT = r'''
@@ -15,6 +16,13 @@ args = sys.argv[1:]
 with open(os.environ["FAKE_APP_LOG"], "a") as log:
     log.write(json.dumps(args) + "\n")
 batch = os.environ.get("FAKE_APP_BATCH") == "1"
+
+def unreadable(wav):
+    import soundfile
+    info = soundfile.info(wav)
+    if info.subtype != "PCM_16":
+        return f"expected 16 kHz mono 16-bit PCM WAV, got {info.subtype}"
+    return None
 
 def text_for(wav):
     txt = Path(wav).with_suffix(".txt")
@@ -38,15 +46,16 @@ if "--transcribe-list" in args and batch:
     for line in listing.read_text().splitlines():
         if not line.strip() or line.startswith("#"):
             continue
-        if "bad" in Path(line).name:
-            print(json.dumps({"error": "cannot open", "file": line}))
+        problem = "cannot open" if "bad" in Path(line).name else unreadable(line)
+        if problem:
+            print(json.dumps({"error": problem, "file": line}))
             failed = True
         else:
             print(json.dumps({"audio_secs": 0.5, "file": line, "text": text_for(line), "transcribe_ms": 12}))
     sys.exit(1 if failed else 0)
 if "-f" in args:
     wav = args[args.index("-f") + 1]
-    if "bad" in Path(wav).name:
+    if "bad" in Path(wav).name or unreadable(wav):
         print("error: cannot open", file=sys.stderr)
         sys.exit(1)
     print(json.dumps({"audio_secs": 0.5, "model": model, "text": text_for(wav), "transcribe_ms": [12]}))

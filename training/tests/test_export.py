@@ -1,8 +1,6 @@
 """Export: names and refusals, the same-text tolerance, the model card, and the whole chain with fakes."""
 
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -77,20 +75,20 @@ def test_the_model_card_credits_edda_and_whisper_and_carries_the_terms():
 
 
 def test_the_converter_wrapper_registers_the_name_and_runs_upstream_unchanged(tmp_path):
-    converter = tmp_path / "convert-whisper.py"
-    converter.write_text(fake_tcpp.CONVERTER, encoding="utf-8")
+    tools = fake_tcpp.install(tmp_path / "tcpp")
     model = tmp_path / "hf"
     model.mkdir()
     (model / "model.safetensors").write_bytes(b"x")
     (model / "config.json").write_text("{}")
     out = tmp_path / "out" / "m.gguf"
-    script = Path(export.__file__).with_name("convert_gguf.py")
-    subprocess.run([sys.executable, str(script), str(converter), str(model), str(out), "--variant", "edda-ft-a",
-                    "--name", "Edda finjusteret", "--repo-id", paths.EDDA_REPO], check=True)
+    export.convert(tools, model, out, "edda-ft-a", "Edda finjusteret", paths.EDDA_REPO)
     meta = read_metadata(out)
     assert meta["general.name"] == "Edda finjusteret" and meta["stt.variant"] == "edda-ft-a"
-    argv = json.loads((out.parent / "converter-argv.json").read_text())
-    assert argv[1:] == [str(model), str(out), "--repo-id", paths.EDDA_REPO, "--variant", "edda-ft-a"]
+    record = json.loads((out.parent / "converter-argv.json").read_text())
+    assert record["argv"][1:] == [str(model), str(out), "--repo-id", paths.EDDA_REPO, "--variant", "edda-ft-a"]
+    # The wrapper's folder (wt_train/, which has a gguf.py) must not shadow the converter's imports.
+    wt_train_dir = str(Path(export.__file__).parent)
+    assert all(Path(p).resolve() != Path(wt_train_dir).resolve() for p in record["sys_path"] if p)
 
 
 @pytest.fixture

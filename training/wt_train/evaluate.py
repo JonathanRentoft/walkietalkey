@@ -6,7 +6,8 @@ Backends
               the same weights ``wt-train export`` converts.
     ``gguf``  a GGUF through the app's own pipeline (``app.py``): ``--model <app
               model id>``, a ``.gguf`` path inside the app's models folder, or
-              ``--run`` for the model that run's export installed.
+              ``--run`` for the model that run's export installed. The app reads
+              16-bit PCM only; float WAVs (FLEURS) go through a 16-bit copy.
     ``hf`` and ``lora`` decode greedily, timestamps off, Danish forced, on the
     Apple GPU in float16 (``--device cpu``: float32); one clip per window.
 
@@ -22,7 +23,9 @@ Metrics: WER, CER and English-term accuracy (strict and lenient), defined in
 ``metrics.py`` with the accuracy job's normaliser (``models/eval/wt_eval/
 normalize.py``). Unless the dataset is FLEURS test itself, FLEURS da_dk test is
 scored too (``--fleurs-limit``, ``--no-fleurs``) as the plain-Danish regression
-check. References are re-spelled with spelling.yaml, like the training data.
+check. The owner's references are re-spelled with spelling.yaml, like the
+training data; FLEURS references are scored as they are, exactly as the
+accuracy job scores them, so its WER is comparable to models/eval's.
 
 Every run appends one row to ``training/results.csv`` (``--results`` for
 another file); the header is fixed (``RESULT_COLUMNS``) and a file with another
@@ -151,15 +154,16 @@ class HFTranscriber:
 
 
 class AppTranscriber:
-    def __init__(self, app, model_id: str):
+    """The app's batch pipeline. It reads 16 kHz mono 16-bit PCM WAV only, so other
+    clips (FLEURS ships 32-bit float) are converted once into ``<work>/cache/pcm16``."""
+
+    def __init__(self, app, model_id: str, cache: Path | None = None):
         self.app, self.model_id = app, model_id
+        self.cache = cache if cache is not None else paths.pcm16_cache_dir()
 
     def transcribe(self, wavs: list[Path], progress=None) -> list[tuple[str, str | None]]:
-        for w in wavs:
-            info = audio.info(w)
-            if not info.is_16k_mono:
-                raise ValueError(f"{w}: the app reads 16 kHz mono WAV, this is {info.rate} Hz, {info.channels} ch")
-        return [(r.text, r.error) for r in self.app.transcribe(wavs, self.model_id, progress=progress)]
+        readable = [audio.pcm16_copy(w, self.cache) for w in wavs]
+        return [(r.text, r.error) for r in self.app.transcribe(readable, self.model_id, progress=progress)]
 
 
 def merged_lora_model(run: Path, base, dtype, device: str):
@@ -175,7 +179,8 @@ def merged_lora_model(run: Path, base, dtype, device: str):
 # --- scoring and results ----------------------------------------------------------------
 
 
-def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: str, log=print):
+def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: str, log=print,
+          respell_references: bool = True):
     started = time.time()
     next_report = [0.0]
 
@@ -186,7 +191,12 @@ def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: 
 
     log(f"{label}: {len(clips)} clips ...")
     results = transcriber.transcribe([c.wav for c in clips], progress=progress)
-    reference = (lambda text: spelling.apply(text)) if spelling else (lambda text: text)
+    if spelling is not None and respell_references:
+        def reference(text: str) -> str:
+            return spelling.apply(text)
+    else:
+        def reference(text: str) -> str:
+            return text
     rows = [{**score_clip(c.id, reference(c.reference), text, spelling, error), "wav": str(c.wav)}
             for c, (text, error) in zip(clips, results)]
     summary = summarize(rows)
@@ -362,14 +372,15 @@ def main(argv: list[str], log=print) -> int:
     out = paths.eval_runs_dir() / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{a.backend}-{_slug(label)}"
     out.mkdir(parents=True, exist_ok=True)
     name, clips = load_dataset(a.dataset, run=run, build=a.build, limit=a.limit)
-    rows, main_summary = score(transcriber, clips, spelling, name, log)
+    rows, main_summary = score(transcriber, clips, spelling, name, log, respell_references=name != FLEURS_TEST)
     entries = [(name, main_summary)]
     _write_rows(out / f"{_slug(name)}.jsonl", rows)
     fleurs_summary = None
     if name == FLEURS_TEST:
         fleurs_summary = main_summary
     elif not a.no_fleurs:
-        frows, fleurs_summary = score(transcriber, fleurs_test(a.fleurs_limit), spelling, FLEURS_TEST, log)
+        frows, fleurs_summary = score(transcriber, fleurs_test(a.fleurs_limit), spelling, FLEURS_TEST, log,
+                                      respell_references=False)
         entries.append((FLEURS_TEST, fleurs_summary))
         _write_rows(out / f"{FLEURS_TEST}.jsonl", frows)
     (out / "summary.json").write_text(json.dumps(

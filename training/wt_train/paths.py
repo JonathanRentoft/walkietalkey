@@ -14,6 +14,7 @@ models/edda, so the same paths are used here):
     hf/                           HF_HOME for downloads (never the user's own cache)
     builds/<experiment>/          dataset manifests from ``wt-train build``
     cache/encoder/                frozen-encoder outputs, fp16, keyed by content
+    cache/pcm16/                  16-bit PCM copies of float WAVs for the app
     runs/train/<run>/             training runs (adapter, metrics, plot)
     runs/eval/<run>/              per-clip evaluation rows
     exports/<model id>/           merged model and GGUF files while exporting
@@ -85,6 +86,11 @@ def builds_dir() -> Path:
 
 def encoder_cache_dir() -> Path:
     return work_dir() / "cache" / "encoder"
+
+
+def pcm16_cache_dir() -> Path:
+    """16-bit PCM copies of clips the app cannot read as they are (FLEURS is float WAV)."""
+    return work_dir() / "cache" / "pcm16"
 
 
 def runs_dir() -> Path:

@@ -114,8 +114,12 @@ def merge(run: Path, base, out_dir: Path) -> Path:
 
 def convert(tools: Tools, hf_dir: Path, out: Path, mid: str, name: str, repo_id: str, run_cmd=subprocess.run) -> Path:
     script = Path(__file__).with_name("convert_gguf.py")
-    run_cmd([*tools.python(), str(script), str(tools.converter), str(hf_dir), str(out),
-             "--variant", mid, "--name", name, "--repo-id", repo_id], check=True)
+    # -I keeps this package's folder off sys.path, so the converter's own
+    # "import gguf" finds the gguf library, not wt_train/gguf.py. The workbench's
+    # virtualenv is not the converter's; uv would only warn about it.
+    env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    run_cmd([*tools.python(), "-I", str(script), str(tools.converter), str(hf_dir), str(out),
+             "--variant", mid, "--name", name, "--repo-id", repo_id], check=True, env=env)
     return out
 
 

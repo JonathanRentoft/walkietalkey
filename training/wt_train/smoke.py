@@ -11,8 +11,9 @@ the chain once, one epoch:
     eval        the merged adapter (lora backend) on its test split and 5 FLEURS test clips
     export      merge, GGUF, Q8_0, same-text check, install as edda-ft-smoke
     app         the app lists edda-ft-smoke and transcribes 2 FLEURS test clips with it
-    cleanup     deletes the run, the cache entries it created, the eval rows, the
-                export folder, the installed model and card, and the stand-ins
+    cleanup     deletes the run, the cache entries it created (encoder outputs and
+                16-bit copies), the eval rows, the export folder, the installed model
+                and card, and the stand-ins
 
 The scores go to a temporary results file (deleted with the rest);
 training/results.csv is checked to be unchanged. ``--keep`` skips the cleanup
@@ -143,7 +144,8 @@ def main(argv: list[str]) -> int:
     def listing(folder: Path, pattern: str) -> set[Path]:
         return set(folder.glob(pattern)) if folder.is_dir() else set()
 
-    watched = [(paths.runs_dir(), "*"), (paths.encoder_cache_dir(), "*/*.npy"), (paths.eval_runs_dir(), "*")]
+    watched = [(paths.runs_dir(), "*"), (paths.encoder_cache_dir(), "*/*.npy"), (paths.eval_runs_dir(), "*"),
+               (paths.pcm16_cache_dir(), "*.wav")]
     before = [listing(folder, pattern) for folder, pattern in watched]
     mid = model_id(SMOKE_SLUG)
     gguf_target, card_target = install_paths(mid, paths.app_models_dir())

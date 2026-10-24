@@ -45,7 +45,7 @@ def main(argv):
     write_gguf(out, {"general.name": VARIANT_DISPLAY_NAMES[variant], "stt.variant": variant,
                      "general.organization": repo.split("/")[0], "tokenizer.tokens": ["a", "b"],
                      "stt.whisper.suppress_tokens": [1, 2, 3]})
-    (out.parent / "converter-argv.json").write_text(json.dumps(argv))
+    (out.parent / "converter-argv.json").write_text(json.dumps({"argv": argv, "sys_path": sys.path}))
     return 0
 '''
 

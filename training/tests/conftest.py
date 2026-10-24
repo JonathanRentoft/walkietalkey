@@ -16,13 +16,14 @@ import pytest
 import soundfile as sf
 
 
-def write_wav(path: Path, seed: int, seconds: float = 0.5, rate: int = 16000, channels: int = 1) -> Path:
+def write_wav(path: Path, seed: int, seconds: float = 0.5, rate: int = 16000, channels: int = 1,
+              subtype: str = "PCM_16") -> Path:
     """A distinct noise clip per seed (distinct content hash)."""
     rng = np.random.default_rng(seed)
     frames = int(seconds * rate)
     pcm = (rng.standard_normal((frames, channels)) * 0.1).astype(np.float32)
     path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(path), pcm if channels > 1 else pcm[:, 0], rate, subtype="PCM_16")
+    sf.write(str(path), pcm if channels > 1 else pcm[:, 0], rate, subtype=subtype)
     return path
 
 
@@ -71,12 +72,13 @@ def takes_config(folder: Path, sentences: Path, spelling: Path, **sections):
 
 
 def write_fleurs(root: Path, split: str, rows: list[tuple[str, str, str]], seed0: int) -> Path:
-    """rows: (sentence id, file stem, raw text). Writes <split>.tsv, <split>/*.wav and the marker."""
+    """rows: (sentence id, file stem, raw text). Writes <split>.tsv, <split>/*.wav (32-bit
+    float, like FLEURS) and the marker."""
     root.mkdir(parents=True, exist_ok=True)
     with (root / f"{split}.tsv").open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_NONE, escapechar="\\")
         for i, (sid, stem, text) in enumerate(rows):
-            write_wav(root / split / f"{stem}.wav", seed0 + i)
+            write_wav(root / split / f"{stem}.wav", seed0 + i, subtype="FLOAT")
             w.writerow([sid, f"{stem}.wav", text, text.lower(), "x", 8000, "FEMALE"])
     (root / (".complete" if split == "test" else ".complete-train")).touch()
     return root
