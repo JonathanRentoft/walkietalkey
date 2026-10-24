@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  TAP_MS,
   initialMachine,
   transition,
   type Effect,
@@ -22,14 +23,16 @@ function run(
   return { state: s, effects };
 }
 
-const online = () =>
-  initialMachine({ mode: "hold", peerOnline: true, connected: true });
+const online = () => initialMachine({ peerOnline: true, connected: true });
 const down = (sessionId = "s1", at = 1000): MachineEvent => ({
   type: "down",
   sessionId,
   at,
 });
-const up: MachineEvent = { type: "up" };
+/** Released after a hold (800 ms after a press at 1000): push-to-talk. */
+const up: MachineEvent = { type: "up", at: 1800 };
+/** Released 0.2 s after a press at 1000: a tap. */
+const tapUp = (at = 1200): MachineEvent => ({ type: "up", at });
 
 describe("hold to talk (PHONE-20, PHONE-21, PHONE-22, PHONE-26)", () => {
   it("starts idle", () => {
@@ -118,31 +121,59 @@ describe("hold to talk (PHONE-20, PHONE-21, PHONE-22, PHONE-26)", () => {
   });
 });
 
-describe("tap to start and stop (PHONE-26 setting)", () => {
-  const toggle = () =>
-    initialMachine({ mode: "toggle", peerOnline: true, connected: true });
-
-  it("first tap records, its release and slides do nothing, the second tap sends on release", () => {
-    let r = run(toggle(), down("t1"));
-    expect(r.state.phase).toBe("rec");
-    expect(r.state.latched).toBe(true);
-    r = run(r.state, up, { type: "slide", inside: false });
-    expect(r.state.phase).toBe("rec");
-    r = run(r.state, down("t2"));
-    expect(r.state.phase).toBe("rec");
-    expect(r.state.armed).toBe(true);
-    r = run(r.state, up);
-    expect(r.state.phase).toBe("send");
-    expect(r.state.sessionId).toBe("t1");
-    expect(r.state.latched).toBe(false);
-    expect(r.effects).toContainEqual({
-      type: "finish_capture",
-      sessionId: "t1",
-    });
+describe("tap or hold (PHONE-26)", () => {
+  it("is exactly 0.5 s", () => {
+    expect(TAP_MS).toBe(500);
   });
 
-  it("sliding off during the second tap cancels", () => {
-    const r = run(toggle(), down("t1"), up, down("t2"), {
+  it("a press released within 0.5 s goes hands-free: it keeps recording, nothing is sent", () => {
+    const r = run(online(), down("t1", 1000), tapUp(1499));
+    expect(r.state.phase).toBe("rec");
+    expect(r.state.handsFree).toBe(true);
+    expect(r.state.sessionId).toBe("t1");
+    expect(r.effects.map((e) => e.type)).toEqual([
+      "start_capture",
+      "haptic",
+      "wake_lock",
+    ]);
+  });
+
+  it("held 0.5 s or longer it is push-to-talk: the release sends", () => {
+    for (const at of [1500, 1800, 60_000]) {
+      const r = run(online(), down("h1", 1000), { type: "up", at });
+      expect(r.state.phase).toBe("send");
+      expect(r.state.handsFree).toBe(false);
+      expect(r.effects).toContainEqual({
+        type: "finish_capture",
+        sessionId: "h1",
+      });
+    }
+  });
+
+  it("hands-free: the next tap sends on its release, however long it is", () => {
+    let r = run(online(), down("t1"), tapUp(), {
+      type: "slide",
+      inside: false,
+    });
+    // No finger on the button: a slide changes nothing.
+    expect(r.state.phase).toBe("rec");
+    r = run(r.state, down("t2", 9000));
+    expect(r.state.phase).toBe("rec");
+    expect(r.state.armed).toBe(true);
+    expect(r.effects).toEqual([]);
+    r = run(r.state, { type: "up", at: 9100 });
+    expect(r.state.phase).toBe("send");
+    expect(r.state.sessionId).toBe("t1");
+    expect(r.state.handsFree).toBe(false);
+    expect(r.effects).toEqual([
+      { type: "finish_capture", sessionId: "t1" },
+      { type: "haptic", kind: "stop" },
+      { type: "wake_lock", on: false },
+    ]);
+  });
+
+  it("hands-free: sliding off during the stopping tap cancels on release", () => {
+    const r = run(online(), down("t1"), tapUp(), down("t2"), {
       type: "slide",
       inside: false,
     });
@@ -155,8 +186,8 @@ describe("tap to start and stop (PHONE-26 setting)", () => {
     });
   });
 
-  it("the cancel control cancels", () => {
-    const r = run(toggle(), down("t1"), up, { type: "cancel" });
+  it("hands-free: Annullér cancels", () => {
+    const r = run(online(), down("t1"), tapUp(), { type: "cancel" });
     expect(r.state.phase).toBe("idle");
     expect(r.effects).toContainEqual({
       type: "cancel_capture",
@@ -165,9 +196,79 @@ describe("tap to start and stop (PHONE-26 setting)", () => {
     expect(run(online(), { type: "cancel" }).effects).toEqual([]);
   });
 
-  it("the mode can be switched in settings", () => {
-    const r = run(online(), { type: "mode", mode: "toggle" });
-    expect(r.state.mode).toBe("toggle");
+  it("hands-free: the 5 minute limit sends (PHONE-29)", () => {
+    const r = run(online(), down("t1"), tapUp(), { type: "max_duration" });
+    expect(r.state.phase).toBe("send");
+    expect(r.effects).toContainEqual({
+      type: "finish_capture",
+      sessionId: "t1",
+    });
+  });
+
+  it("a quick tap that slid off the button cancels; it does not go hands-free", () => {
+    const r = run(
+      online(),
+      down("t1"),
+      { type: "slide", inside: false },
+      tapUp(),
+    );
+    expect(r.state.phase).toBe("idle");
+    expect(r.state.handsFree).toBe(false);
+    expect(r.effects).toContainEqual({
+      type: "cancel_capture",
+      sessionId: "t1",
+    });
+  });
+
+  it("a later recording starts as a press again, not hands-free", () => {
+    const r = run(online(), down("t1"), tapUp(), down("t2"), tapUp(1300), {
+      type: "result",
+      sessionId: "t1",
+      ok: true,
+    });
+    expect(r.state.phase).toBe("ready");
+    const next = run(r.state, down("s2", 5000));
+    expect(next.state.handsFree).toBe(false);
+    expect(run(next.state, { type: "up", at: 6000 }).state.phase).toBe("send");
+  });
+});
+
+describe("the app goes to the background while recording", () => {
+  it("a held or hands-free recording is sent", () => {
+    for (const events of [
+      [down("s1")],
+      [down("s1"), tapUp()],
+      [down("s1"), tapUp(), down("s2")],
+    ]) {
+      const r = run(online(), ...events, { type: "hidden" });
+      expect(r.state.phase).toBe("send");
+      expect(r.effects).toContainEqual({
+        type: "finish_capture",
+        sessionId: "s1",
+      });
+    }
+  });
+
+  it("a recording whose finger slid off is cancelled", () => {
+    const r = run(
+      online(),
+      down("s1"),
+      { type: "slide", inside: false },
+      {
+        type: "hidden",
+      },
+    );
+    expect(r.state.phase).toBe("idle");
+    expect(r.effects).toContainEqual({
+      type: "cancel_capture",
+      sessionId: "s1",
+    });
+  });
+
+  it("changes nothing when not recording", () => {
+    const r = run(online(), down(), up, { type: "hidden" });
+    expect(r.state.phase).toBe("send");
+    expect(r.effects.filter((e) => e.type === "finish_capture").length).toBe(1);
   });
 });
 
@@ -178,10 +279,10 @@ describe("Start diktering from the iOS shell", () => {
     at: 5,
   });
 
-  it("starts a recording like a tap, with the start haptic, in hold mode too", () => {
+  it("starts a hands-free recording, with the start haptic", () => {
     const { state, effects } = run(online(), shell());
     expect(state.phase).toBe("rec");
-    expect(state.latched).toBe(true);
+    expect(state.handsFree).toBe(true);
     expect(state.sessionId).toBe("x1");
     expect(effects).toEqual([
       { type: "start_capture", sessionId: "x1" },
@@ -221,7 +322,7 @@ describe("Start diktering from the iOS shell", () => {
   it("does nothing while already recording", () => {
     const r = run(online(), down("s1"), shell("x2"));
     expect(r.state.sessionId).toBe("s1");
-    expect(r.state.latched).toBe(false);
+    expect(r.state.handsFree).toBe(false);
     expect(r.effects.filter((e) => e.type === "start_capture").length).toBe(1);
   });
 
@@ -315,8 +416,7 @@ describe("results (PHONE-23, PHONE-25)", () => {
 });
 
 describe("offline computer (PHONE-24)", () => {
-  const offline = () =>
-    initialMachine({ mode: "hold", peerOnline: false, connected: true });
+  const offline = () => initialMachine({ peerOnline: false, connected: true });
 
   it("release while the computer is offline -> offline", () => {
     expect(run(offline(), down(), up).state.phase).toBe("offline");

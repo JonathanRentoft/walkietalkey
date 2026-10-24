@@ -40,7 +40,6 @@ export interface RoomRecord {
 }
 
 export interface Settings {
-  mode: "hold" | "toggle";
   haptics: boolean;
   deviceName?: string;
   /** Room id of the computer picked last. */
@@ -52,7 +51,7 @@ export interface PendingLeave {
   relayUrl: string;
 }
 
-const DEFAULT_SETTINGS: Settings = { mode: "hold", haptics: true };
+const DEFAULT_SETTINGS: Settings = { haptics: true };
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -198,10 +197,11 @@ export class PhoneStorage implements CounterStore {
   }
 
   async getSettings(): Promise<Settings> {
-    return {
-      ...DEFAULT_SETTINGS,
-      ...((await this.get<Settings>("settings", "settings")) ?? {}),
-    };
+    // v1 had a hold-or-tap setting ("mode"); tap or hold is no longer a setting (PHONE-26).
+    const { mode: _old, ...stored } =
+      (await this.get<Settings & { mode?: unknown }>("settings", "settings")) ??
+      {};
+    return { ...DEFAULT_SETTINGS, ...stored };
   }
 
   async putSettings(settings: Settings): Promise<void> {

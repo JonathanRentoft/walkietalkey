@@ -7,8 +7,8 @@ export interface ViewState {
   state: PhoneAppState;
   labels: PhoneAppLabels;
   recording: boolean;
-  /** Show the cancel control (a recording that ends with a tap). */
-  latched?: boolean;
+  /** Hands-free (PHONE-26): show the lock and the cancel control. */
+  handsFree?: boolean;
   /** Show LogoLoader `ekko` over the button (Appendix D: while sending). */
   sending: boolean;
 }
@@ -28,13 +28,13 @@ export function viewState(m: MachineState, noConnection: boolean): ViewState {
         : { state: "idle", labels: {}, recording, sending: false };
     case "rec":
     case "cancel":
-      // A latched recording (tap mode, Start diktering) ends with a tap, not a release.
+      // Hands-free (a tap, Start diktering) ends with another tap, not a release.
       return {
         state: m.phase,
-        labels: m.latched && !m.armed ? { rec: T.tapToSend } : {},
+        labels: m.handsFree && !m.armed ? { rec: T.tapAgainToStop } : {},
         recording,
         sending: false,
-        latched: m.latched,
+        handsFree: m.handsFree,
       };
     case "send":
       return noConnection

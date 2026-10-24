@@ -132,9 +132,12 @@ async function main(): Promise<void> {
     },
   };
 
+  // PHONE-30: the warm microphone closes in the background and opens again in the foreground.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") controller.foreground();
+    else controller.hidden();
   });
+  window.addEventListener("pagehide", () => controller.hidden());
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) controller.foreground();
   });
@@ -144,6 +147,12 @@ async function main(): Promise<void> {
     capture: true,
     once: true,
   });
+  // A touch or a key keeps the microphone warm (it closes after a few idle minutes).
+  for (const type of ["pointerdown", "keydown"] as const)
+    document.addEventListener(type, () => controller.activity(), {
+      capture: true,
+      passive: true,
+    });
 
   render();
   await controller.init();

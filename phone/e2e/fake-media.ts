@@ -87,12 +87,17 @@ export function installFakeMedia(cfg: FakeMediaConfig): void {
     ).captureStream(10);
   }
 
+  // Every microphone stream and the constraints it was asked with, for the tests (both engines).
+  const mics: { stream: MediaStream; constraints: unknown }[] = [];
+  w.__wtMics = mics;
   md.getUserMedia = async (c?: MediaStreamConstraints) => {
     if (c?.video && cfg.qr) return qrStream();
     if (c?.audio) {
       if (cfg.denyMic)
         throw new DOMException("Permission denied", "NotAllowedError");
-      if (cfg.audio) return audioStream();
+      const stream = cfg.audio ? await audioStream() : await orig!(c);
+      mics.push({ stream, constraints: c.audio });
+      return stream;
     }
     if (orig) return orig(c);
     throw new DOMException("No device", "NotFoundError");

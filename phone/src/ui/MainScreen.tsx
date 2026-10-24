@@ -65,7 +65,8 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
       className={
         "wt-stage" +
         (target && !target.online ? " wt-stage--away" : "") +
-        (view.sending ? " wt-stage--sending" : "")
+        (view.sending ? " wt-stage--sending" : "") +
+        (view.handsFree && view.labels.rec ? " wt-stage--handsfree" : "")
       }
       data-phase={m.phase}
     >
@@ -119,7 +120,7 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
             <LogoLoader variant="ekko" tone="paper" size={64} />
           </div>
         ) : null}
-        {view.latched ? (
+        {view.handsFree ? (
           <div className="wt-stage-cancel">
             <button
               type="button"

@@ -23,12 +23,10 @@ export const T = {
   lock: "Krypteret fra telefon til computer",
   holdToTalk: "Hold for at tale",
 
-  // Spec section 7.6 and PHONE-26 (the setting's own wording)
+  // Spec section 7.6
   settings: "Indstillinger",
   pairedComputers: "Parrede computere",
   remove: "Fjern",
-  holdOrTap: "Hold eller tryk",
-  tapToToggle: "Tryk for at starte og stoppe",
   haptics: "Haptik",
   about: "Om og licenser",
   cancel: "Annullér",
@@ -88,8 +86,8 @@ export const T = {
     "Bygget med React (MIT), jsQR (Apache-2.0) og skrifttypen Albert Sans (SIL Open Font License 1.1).",
   version: "Version {version}",
   sourceCode: "Kildekode",
-  // TODO(copy): label while a tap-mode or Start diktering recording runs (it ends with a tap)
-  tapToSend: "Tryk for at sende",
+  // TODO(copy): hands-free (PHONE-26), wording from the run 2 brief; shown with a lock
+  tapAgainToStop: "Tryk igen for at stoppe",
   // TODO(copy): the 5 minute limit (PHONE-29)
   countdown: "Optagelsen stopper om {seconds} sekunder",
   // TODO(copy): "Detaljer" texts (PHONE-25)

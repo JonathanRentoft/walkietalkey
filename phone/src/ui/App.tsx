@@ -61,7 +61,7 @@ export function App({
     }
   }, [link, controller]);
 
-  // The iOS shell's "Start diktering": back to the main screen and record as in tap mode. Ignored
+  // The iOS shell's "Start diktering": back to the main screen and record hands-free. Ignored
   // while pairing (scanner, name) and when not paired (the controller checks that).
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -130,7 +130,6 @@ export function App({
         onBack={home}
         onPair={() => setView({ name: "pair" })}
         onRemove={(roomId) => controller.removeRoom(roomId)}
-        onMode={(mode) => controller.setMode(mode)}
         onHaptics={(on) => controller.setHaptics(on)}
       />
     );

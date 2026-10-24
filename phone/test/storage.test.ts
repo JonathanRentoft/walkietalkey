@@ -169,21 +169,25 @@ describe("frame counters (spec 9.4)", () => {
 });
 
 describe("settings and pending leaves", () => {
-  it("defaults to hold to talk with haptics on", async () => {
+  it("defaults to haptics on", async () => {
     const s = await openStorage(dbName());
-    expect(await s.getSettings()).toEqual({ mode: "hold", haptics: true });
+    expect(await s.getSettings()).toEqual({ haptics: true });
     await s.putSettings({
-      mode: "toggle",
       haptics: false,
       deviceName: "Jonathans iPhone",
       target: "x",
     });
     expect(await s.getSettings()).toEqual({
-      mode: "toggle",
       haptics: false,
       deviceName: "Jonathans iPhone",
       target: "x",
     });
+  });
+
+  it("forgets the old hold-or-tap setting (PHONE-26: tap or hold is no longer a setting)", async () => {
+    const s = await openStorage(dbName());
+    await s.putSettings({ mode: "toggle", haptics: true } as never);
+    expect(await s.getSettings()).toEqual({ haptics: true });
   });
 
   it("remembers a leave that could not be sent", async () => {

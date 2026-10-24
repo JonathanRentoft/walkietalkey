@@ -7,6 +7,8 @@ import { FakeComputer, FakeRelay } from "./fake-relay";
 
 class SilentRecorder implements RecorderLike {
   prime(): void {}
+  async warm(): Promise<void> {}
+  cool(): void {}
   async start(): Promise<void> {}
   async stop(): Promise<void> {}
   abort(): void {}

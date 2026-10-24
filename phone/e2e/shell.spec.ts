@@ -11,7 +11,7 @@ import {
 /* The iOS shell contract (PHONE-03): "Start diktering" as the `wt-shell-start` event or `?start=1`,
    and haptics through window.webkit.messageHandlers.haptics. */
 test.describe("iOS shell hooks", () => {
-  test("Start diktering records as in tap mode; a tap sends it; the cancel control cancels", async ({
+  test("Start diktering records hands-free; a tap sends it; the cancel control cancels", async ({
     page,
     browserName,
     newComputer,
@@ -32,7 +32,7 @@ test.describe("iOS shell hooks", () => {
     await page.evaluate(() =>
       window.dispatchEvent(new CustomEvent("wt-shell-start")),
     );
-    await expect(label(page)).toHaveText("Tryk for at sende");
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
     await expect(page.getByRole("button", { name: "Annullér" })).toBeVisible();
     await computer.waitSession(
       (s) => s.blocks.size >= 3,
@@ -51,7 +51,7 @@ test.describe("iOS shell hooks", () => {
     await page.evaluate(() =>
       window.dispatchEvent(new CustomEvent("wt-shell-start")),
     );
-    await expect(label(page)).toHaveText("Tryk for at sende");
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
     await page.getByRole("button", { name: "Annullér" }).click();
     await expect(label(page)).toHaveText("Hold for at tale");
     await computer.waitSession((s) => s.cancelled, "audio_cancel");
@@ -66,7 +66,7 @@ test.describe("iOS shell hooks", () => {
     await preparePage(page, browserName);
     await pairByLink(page, computer);
     await page.goto(`${APP_URL}/?start=1`);
-    await expect(label(page)).toHaveText("Tryk for at sende");
+    await expect(label(page)).toHaveText("Tryk igen for at stoppe");
     expect(page.url()).toBe(`${APP_URL}/`);
     await computer.waitSession(
       (s) => s.blocks.size >= 2,

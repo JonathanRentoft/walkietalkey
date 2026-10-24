@@ -10,7 +10,7 @@ import { countdownSeconds, viewState } from "../src/ui/viewState";
 import { T } from "../src/lib/strings";
 
 const m = (phase: Phase): MachineState => ({
-  ...initialMachine({ mode: "hold", peerOnline: true, connected: true }),
+  ...initialMachine({ peerOnline: true, connected: true }),
   phase,
 });
 
@@ -50,15 +50,15 @@ describe("main screen states (spec 7.3)", () => {
     expect(viewState(m("rec"), true).state).toBe("rec");
   });
 
-  it("a recording that ends with a tap says so and offers the cancel control", () => {
-    const latched = { ...m("rec"), latched: true };
-    expect(viewState(latched, false).labels.rec).toBe("Tryk for at sende");
-    expect(viewState(latched, false).latched).toBe(true);
+  it("hands-free says Tryk igen for at stoppe, with the lock and the cancel control (PHONE-26)", () => {
+    const free = { ...m("rec"), handsFree: true };
+    expect(viewState(free, false).labels.rec).toBe("Tryk igen for at stoppe");
+    expect(viewState(free, false).handsFree).toBe(true);
     // During the stopping tap the release sends, as the label says.
     expect(
-      viewState({ ...latched, armed: true }, false).labels.rec,
+      viewState({ ...free, armed: true }, false).labels.rec,
     ).toBeUndefined();
-    expect(viewState(m("rec"), false).latched).toBe(false);
+    expect(viewState(m("rec"), false).handsFree).toBe(false);
   });
 
   it("sends with the ekko loader", () => {

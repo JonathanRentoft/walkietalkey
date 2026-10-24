@@ -1,8 +1,10 @@
 /* AudioWorklet processor (PHONE-30): mixes the microphone to mono and hands batches of float
-   samples at the context's rate to the main thread, which downsamples them to 16 kHz PCM16 in
-   200 ms blocks (src/audio/pcm.ts). Nothing is stored. "flush" sends what is left and answers
-   "flushed", so the end of the last word is never lost. */
-const BATCH = 2048;
+   samples at the context's rate to the main thread, which keeps the newest 300 ms between
+   dictations and downsamples a dictation to 16 kHz PCM16 in 200 ms blocks (src/audio/capture.ts,
+   src/audio/pcm.ts). Nothing is stored. "flush" sends what is left and answers "flushed", so the
+   end of the last word is never lost. Batches of 1,024 samples (21 ms at 48 kHz) keep the
+   pre-roll close to the moment of the press. */
+const BATCH = 1024;
 
 class CaptureProcessor extends AudioWorkletProcessor {
   constructor() {

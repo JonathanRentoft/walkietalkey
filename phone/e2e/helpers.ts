@@ -94,9 +94,62 @@ export async function press(page: Page) {
   };
 }
 
+/** Holds the button for at least `ms` (push-to-talk when that is 0.5 s or more, PHONE-26). */
 export async function hold(page: Page, ms: number): Promise<void> {
   const p = await press(page);
   await expect(label(page)).toHaveText("Slip for at sende");
   await page.waitForTimeout(ms);
   await p.release();
+}
+
+/** A quick tap on the big button (released well within 0.5 s): hands-free. */
+export async function tap(page: Page): Promise<void> {
+  const c = await center(page);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.up();
+}
+
+/** The microphone streams the app opened (recorded by the fake-media init script). */
+export async function mics(page: Page) {
+  return page.evaluate(() => {
+    const list =
+      (
+        window as unknown as {
+          __wtMics?: { stream: MediaStream; constraints: unknown }[];
+        }
+      ).__wtMics ?? [];
+    return {
+      opened: list.length,
+      live: list.filter((m) =>
+        m.stream.getAudioTracks().some((t) => t.readyState === "live"),
+      ).length,
+      constraints: list.map((m) => m.constraints),
+    };
+  });
+}
+
+/** The page goes to the background (or comes back): visibilitychange, pagehide and pageshow. */
+export async function setHidden(page: Page, hidden: boolean): Promise<void> {
+  await page.evaluate((h) => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => (h ? "hidden" : "visible"),
+    });
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => h,
+    });
+    if (h) {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(
+        new PageTransitionEvent("pagehide", { persisted: true }),
+      );
+    } else {
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      );
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+  }, hidden);
 }
