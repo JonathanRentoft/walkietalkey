@@ -95,8 +95,9 @@ impl ChunkPlan {
     /// (DESK-46). A stretch without one is cut as [`Self::LIVE_DA`] cuts it.
     /// A piece that still comes out cut short is split at its shorter pauses
     /// ([`Self::LIVE_SEGMENTS_FINE`]). Run 5: a pause only ends a piece with
-    /// a second of speech on each side of it, so a noise or a word on its
-    /// own after a pause is decoded with its neighbour.
+    /// 1.5 s of speech on each side of it, so a noise or a few words on their
+    /// own after a pause are decoded with their neighbour (docs/MODELS.md,
+    /// "Invented words on short pieces").
     pub const LIVE_SEGMENTS: Self = Self {
         target_seconds: 14.0,
         max_chunk_samples: 18 * RATE,
@@ -105,7 +106,7 @@ impl ChunkPlan {
         whole_rest_samples: 0,
         split_at_pauses: true,
         min_pause_samples: RATE / 2,
-        min_piece_speech_samples: RATE,
+        min_piece_speech_samples: 3 * RATE / 2,
     };
 
     /// [`Self::LIVE_SEGMENTS`] cut at every pause of a tenth of a second, for
@@ -876,13 +877,15 @@ mod tests {
     fn a_short_last_phrase_is_decoded_with_the_sentence_before_it() {
         // "... og så videre. Tak.": 0.5 s of speech after the last pause is
         // too little to decode alone, so live the cut before it is never
-        // made and the sentence waits for it.
-        let pcm = clip(&probs_with_pauses(6.3, &[(5.0, 5.8)]));
-        let (cuts, before_end) = whole_and_live(&pcm);
-        assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
-        assert_eq!(before_end, 0);
-        // With a second of speech after the pause it is a piece of its own.
-        let pcm = clip(&probs_with_pauses(7.0, &[(5.0, 5.8)]));
+        // made and the sentence waits for it. So is 1.2 s.
+        for end in [6.3, 7.0] {
+            let pcm = clip(&probs_with_pauses(end, &[(5.0, 5.8)]));
+            let (cuts, before_end) = whole_and_live(&pcm);
+            assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
+            assert_eq!(before_end, 0);
+        }
+        // With 1.7 s of speech after the pause it is a piece of its own.
+        let pcm = clip(&probs_with_pauses(7.5, &[(5.0, 5.8)]));
         let (cuts, before_end) = whole_and_live(&pcm);
         assert_eq!(cuts, vec![5.4]);
         assert_eq!(before_end, 1);
@@ -921,7 +924,7 @@ mod tests {
     }
 
     #[test]
-    fn live_a_cut_waits_for_a_second_of_speech_after_it() {
+    fn live_a_cut_waits_for_enough_speech_after_it() {
         let pcm = clip(&probs_with_pauses(9.0, &[(3.0, 3.6)]));
         let mut chunker = live_segments();
         let mut first_at = None;
@@ -930,10 +933,10 @@ mod tests {
                 first_at = Some((i + 1) as f64 * 0.2);
             }
         }
-        // Speech is back at 3.6 s; the cut at 3.3 s is certain once a second
-        // of it is scored.
+        // Speech is back at 3.6 s; the cut at 3.3 s is certain once 1.5 s of
+        // it is scored.
         let at = first_at.expect("the first piece is ready before the end");
-        assert!((4.6..=5.0).contains(&at), "ready at {at:.1}s");
+        assert!((5.1..=5.5).contains(&at), "ready at {at:.1}s");
     }
 
     #[test]
