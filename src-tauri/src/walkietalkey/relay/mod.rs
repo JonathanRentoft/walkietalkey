@@ -4,6 +4,7 @@
 //! as they arrive (DESK-61) and answered with a result that never carries the
 //! text (DESK-64), and presence answers (DESK-63).
 
+pub mod dictations;
 pub mod headless;
 pub mod keystore;
 pub mod levels;
@@ -11,7 +12,7 @@ pub mod session;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use log::{error, info, warn};
@@ -23,7 +24,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use wt_relay_client::wt_protocol::{ComputerOs, DeviceId, ResultOutcome, ResultReason, SessionId};
 use wt_relay_client::{ClientConfig, ClientError, KeyStore, RelayClient, RelayEvent};
 
-use self::session::{SessionAudio, RESEND_WAIT};
+use self::dictations::{Dictation, Dictations, PhoneDictation, TOO_LONG};
+use self::session::RESEND_WAIT;
 use super::output::Source;
 use crate::managers::transcription::{SideStream, TranscriptionManager};
 
@@ -38,46 +40,6 @@ const CONNECT_WAIT: Duration = Duration::from_secs(15);
 
 /// Phone names by device id, for history labels and notifications.
 static NAMES: Lazy<Mutex<HashMap<DeviceId, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-
-/// A phone dictation in progress.
-struct PhoneDictation {
-    audio: SessionAudio,
-    side: Option<SideStream>,
-    started: Instant,
-    paused: bool,
-    /// The pill's waveform while it streams in (DESK-58), when the pill shows.
-    levels: Option<Arc<levels::PhoneLevels>>,
-}
-
-impl PhoneDictation {
-    /// No more audio is coming: the waveform stops.
-    fn stop_levels(&mut self) {
-        if let Some(levels) = self.levels.take() {
-            levels.stop();
-        }
-    }
-}
-
-type DictationMap = HashMap<(DeviceId, SessionId), Arc<Mutex<PhoneDictation>>>;
-type Sessions = Arc<Mutex<DictationMap>>;
-
-/// Dictations whose `audio_end` came, while they wait up to 5 s for the
-/// phone's resend of missing blocks (DESK-61): resent blocks still land here.
-static ENDING: Lazy<Mutex<DictationMap>> = Lazy::new(|| Mutex::new(HashMap::new()));
-
-/// The dictation a block belongs to: one still recording, or one waiting
-/// after its `audio_end` for resent blocks (DESK-61).
-fn dictation_for_audio(
-    sessions: &Sessions,
-    key: &(DeviceId, SessionId),
-) -> Option<Arc<Mutex<PhoneDictation>>> {
-    let recording = sessions.lock().unwrap().get(key).cloned();
-    recording.or_else(|| ENDING.lock().unwrap().get(key).cloned())
-}
-
-/// A phone dictation longer than this is answered `too_long` (PHONE-29: the
-/// phone itself stops at 5:00).
-const TOO_LONG: Duration = Duration::from_secs(5 * 60 + 15);
 
 pub fn client() -> Option<RelayClient> {
     CLIENT.lock().unwrap().clone()
@@ -95,6 +57,36 @@ fn computer_os() -> ComputerOs {
     } else {
         ComputerOs::Mac
     }
+}
+
+/// The other addresses of the relay at `relay_url`. relay.walkietalkey.com
+/// and v1's workers.dev address are the same Worker, which finds a room by
+/// its id alone (RELAY-01), so a room made on one is the same room on the
+/// other and its phones stay paired (DESK-60). A company relay has none.
+fn relay_aliases(relay_url: &str) -> Vec<String> {
+    let ours = [
+        super::settings::DEFAULT_RELAY_URL,
+        super::settings::V1_RELAY_URL,
+    ];
+    let url = relay_url.trim_end_matches('/');
+    if !ours.contains(&url) {
+        return Vec::new();
+    }
+    ours.iter()
+        .filter(|other| **other != url)
+        .map(|other| other.to_string())
+        .collect()
+}
+
+fn client_config(settings: &super::settings::WtSettings) -> ClientConfig {
+    let mut config = ClientConfig::new(
+        settings.relay_url.clone(),
+        settings.phone_app_url.clone(),
+        computer_name(),
+        computer_os(),
+    );
+    config.relay_aliases = relay_aliases(&config.relay_url);
+    config
 }
 
 /// Opens the key store: keys in the keychain, the rest in the data folder.
@@ -140,12 +132,7 @@ async fn ensure_client(app: &AppHandle) -> Result<RelayClient, String> {
     }
     let settings = super::store::get(app);
     let store = open_store(app).map_err(|e| e.to_string())?;
-    let config = ClientConfig::new(
-        settings.relay_url.clone(),
-        settings.phone_app_url.clone(),
-        computer_name(),
-        computer_os(),
-    );
+    let config = client_config(&settings);
     let (client, events) = RelayClient::start(config, store).map_err(|e| e.to_string())?;
     let existing = {
         let mut slot = CLIENT.lock().unwrap();
@@ -220,7 +207,8 @@ async fn event_loop(
     client: RelayClient,
     mut events: UnboundedReceiver<RelayEvent>,
 ) {
-    let sessions: Sessions = Arc::new(Mutex::new(HashMap::new()));
+    let dictations = Arc::new(Dictations::default());
+    watch_dictations(app.clone(), client.clone(), Arc::downgrade(&dictations));
     while let Some(event) = events.recv().await {
         match event {
             RelayEvent::Connected { .. } | RelayEvent::RoomCreated { .. } => {
@@ -266,12 +254,16 @@ async fn event_loop(
             }
             RelayEvent::PhoneLeft { phone } | RelayEvent::PhoneRemoved { phone } => {
                 NAMES.lock().unwrap().remove(&phone);
+                // Its dictations end with it (DESK-58).
+                if let Some(showed_pill) = dictations.forget_phone(&phone) {
+                    let_go(&app, &dictations, showed_pill);
+                }
                 emit_phones_changed(&app);
                 tauri::async_runtime::spawn(disconnect_if_unneeded());
             }
             RelayEvent::PeerStatus { .. } => emit_phones_changed(&app),
             RelayEvent::AudioStart { phone, session, .. } => {
-                on_audio_start(&app, &sessions, phone, session);
+                on_audio_start(&app, &dictations, phone, session);
             }
             RelayEvent::AudioChunk {
                 phone,
@@ -279,7 +271,11 @@ async fn event_loop(
                 index,
                 pcm,
             } => {
-                if let Some(dictation) = dictation_for_audio(&sessions, &(phone, session)) {
+                let found = dictations.for_block(&(phone, session), Instant::now());
+                if let Some((dictation, resumed)) = found {
+                    if resumed {
+                        on_resumed(&app, &dictations, &dictation);
+                    }
                     let mut d = dictation.lock().unwrap();
                     let ready = d.audio.add(index, &pcm);
                     if !ready.is_empty() {
@@ -298,35 +294,29 @@ async fn event_loop(
                 chunks,
                 ..
             } => {
-                let dictation = sessions.lock().unwrap().remove(&(phone, session));
-                if let Some(dictation) = dictation {
+                // Receiving, or gone silent and its rest arriving late.
+                if let Some(dictation) = dictations.end(&(phone, session)) {
                     {
                         let mut d = dictation.lock().unwrap();
                         d.audio.end(chunks);
                         d.stop_levels();
                     }
-                    ENDING
-                        .lock()
-                        .unwrap()
-                        .insert((phone, session), Arc::clone(&dictation));
                     // DESK-27: the place in the output order is taken now.
                     let ticket = super::sequence::take_ticket();
                     let (app, client) = (app.clone(), client.clone());
+                    let dictations = Arc::clone(&dictations);
                     tauri::async_runtime::spawn(async move {
-                        finish_phone_dictation(app, client, phone, session, dictation, ticket)
-                            .await;
+                        finish_phone_dictation(
+                            app, client, dictations, phone, session, dictation, ticket,
+                        )
+                        .await;
                     });
                 }
             }
             RelayEvent::AudioCancel { phone, session } => {
-                if let Some(dictation) = sessions.lock().unwrap().remove(&(phone, session)) {
-                    let mut d = dictation.lock().unwrap();
-                    d.stop_levels();
-                    if let Some(side) = d.side.take() {
-                        side.cancel();
-                    }
+                if let Some(showed_pill) = dictations.cancel(&(phone, session)) {
+                    let_go(&app, &dictations, showed_pill);
                 }
-                listening_ended(&app, &sessions);
             }
             RelayEvent::PresenceQuery { query, .. } => {
                 let (seconds, locked) = super::presence::current();
@@ -345,7 +335,12 @@ pub struct PhoneJoined {
     pub name: String,
 }
 
-fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session: SessionId) {
+fn on_audio_start(
+    app: &AppHandle,
+    dictations: &Arc<Dictations>,
+    phone: DeviceId,
+    session: SessionId,
+) {
     let paused = super::tray::is_paused();
     // DESK-87: a phone recording warms the cleanup connection too.
     super::cleanup::warm(app);
@@ -362,50 +357,122 @@ fn on_audio_start(app: &AppHandle, sessions: &Sessions, phone: DeviceId, session
     // phone's audio.
     let pill = phone_pill(app);
     let levels = pill.then(|| levels::PhoneLevels::start(app));
-    sessions.lock().unwrap().insert(
+    dictations.start(
         (phone, session),
-        Arc::new(Mutex::new(PhoneDictation {
-            audio: SessionAudio::new(),
-            side,
-            started: Instant::now(),
-            paused,
-            levels,
-        })),
+        PhoneDictation::new(side, paused, levels, Instant::now()),
     );
+    show_receiving(app, dictations, pill);
+}
+
+/// The menu bar pulses while a phone dictation is receiving, and the pill
+/// shows when it is the phone's (DESK-58).
+fn show_receiving(app: &AppHandle, dictations: &Arc<Dictations>, pill: bool) {
     crate::tray::set_tray_state(app, crate::tray::TrayIconState::Recording);
     if pill {
         crate::overlay::show_recording_overlay(app);
     }
-    let sessions = Arc::clone(sessions);
-    super::tray::pulse_while(app.clone(), move || !sessions.lock().unwrap().is_empty());
+    let dictations = Arc::clone(dictations);
+    super::tray::pulse_while(app.clone(), move || dictations.is_receiving());
+}
+
+/// A dictation that went silent receives again (a resend after the phone's
+/// reconnect, PHONE-32, or frames the relay held for this computer): the
+/// pill and the menu bar come back. Its live decode does not; it is
+/// transcribed whole at its end.
+fn on_resumed(app: &AppHandle, dictations: &Arc<Dictations>, dictation: &Dictation) {
+    info!("A phone dictation that went silent is receiving again");
+    let pill = phone_pill(app);
+    {
+        let mut d = dictation.lock().unwrap();
+        d.pill = pill;
+        if pill && d.levels.is_none() {
+            d.levels = Some(levels::PhoneLevels::start(app));
+        }
+    }
+    show_receiving(app, dictations, pill);
+}
+
+fn key_recording(app: &AppHandle) -> bool {
+    app.try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
+        .is_some_and(|rm| rm.is_recording())
 }
 
 /// DESK-58: the pill for phone dictations, when that setting is on and the
-/// pill is not hidden. A key dictation owns the pill while it records.
-fn phone_pill(app: &AppHandle) -> bool {
-    let wt = super::store::get(app);
-    let key_recording = app
-        .try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
-        .is_some_and(|rm| rm.is_recording());
-    wt.pill_for_phone && !wt.pill_hidden && !key_recording
+/// pill is not hidden. A key dictation owns the pill while it records, and
+/// while paused (DESK-96) phone dictations show none.
+fn pill_for_phone(
+    settings: &super::settings::WtSettings,
+    key_recording: bool,
+    paused: bool,
+) -> bool {
+    settings.pill_for_phone && !settings.pill_hidden && !key_recording && !paused
 }
 
-fn listening_ended(app: &AppHandle, sessions: &Sessions) {
-    if sessions.lock().unwrap().is_empty() {
+fn phone_pill(app: &AppHandle) -> bool {
+    pill_for_phone(
+        &super::store::get(app),
+        key_recording(app),
+        super::tray::is_paused(),
+    )
+}
+
+/// Phone dictations stopped receiving (silent, cancelled, too long, or their
+/// phone left): the menu bar goes idle once none is busy, and the pill hides
+/// when it was theirs and no other phone dictation or key dictation has it.
+fn let_go(app: &AppHandle, dictations: &Dictations, showed_pill: bool) {
+    let key = key_recording(app);
+    if !dictations.busy() && !key {
         crate::tray::set_tray_state(app, crate::tray::TrayIconState::Idle);
     }
+    if showed_pill && !dictations.pill_in_use() && !key {
+        crate::utils::hide_recording_overlay(app);
+    }
+}
+
+/// The watchdog (DESK-58): about once a second, phone dictations that went
+/// silent let go of the pill and the menu bar, ones past the 5-minute limit
+/// are answered `too_long`, and silent ones kept too long are forgotten in
+/// the relay client too (see `dictations`). Ends with its event loop.
+fn watch_dictations(app: AppHandle, client: RelayClient, weak: Weak<Dictations>) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(dictations::WATCH_EVERY).await;
+            let Some(dictations) = weak.upgrade() else {
+                return;
+            };
+            let watched = dictations.watch(Instant::now());
+            if !watched.silent.is_empty() {
+                info!("A phone dictation went silent; waiting for the rest");
+            }
+            for &((phone, session), _) in &watched.over_limit {
+                warn!("A phone dictation ran past the 5-minute limit");
+                let outcome = ResultOutcome::Failed(ResultReason::TooLong);
+                if let Err(e) = client.send_result(phone, session, outcome).await {
+                    warn!("Could not send the result to the phone: {e}");
+                }
+            }
+            if watched.stopped_any() {
+                let_go(&app, &dictations, watched.showed_pill());
+            }
+            for (phone, session) in watched.dropped {
+                client.forget_session(phone, session);
+            }
+        }
+    });
 }
 
 async fn finish_phone_dictation(
     app: AppHandle,
     client: RelayClient,
+    dictations: Arc<Dictations>,
     phone: DeviceId,
     session: SessionId,
-    dictation: Arc<Mutex<PhoneDictation>>,
+    dictation: Dictation,
     ticket: super::sequence::Ticket,
 ) {
     crate::tray::set_tray_state(&app, crate::tray::TrayIconState::Transcribing);
     let pill = phone_pill(&app);
+    dictation.lock().unwrap().pill = pill;
     if pill {
         crate::overlay::show_transcribing_overlay(&app);
     }
@@ -414,7 +481,7 @@ async fn finish_phone_dictation(
     while !dictation.lock().unwrap().audio.is_complete() && Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    ENDING.lock().unwrap().remove(&(phone, session));
+    dictations.ended(&(phone, session));
     let (side, audio, paused, too_long) = {
         let mut d = dictation.lock().unwrap();
         let rest = d.audio.give_up_on_gaps();
@@ -423,8 +490,9 @@ async fn finish_phone_dictation(
                 side.feed(rest);
             }
         }
-        let too_long =
-            d.audio.duration() > TOO_LONG || d.started.elapsed() > TOO_LONG + RESEND_WAIT;
+        // Counted in audio: a dictation that went silent and arrived late
+        // (PHONE-24, PHONE-32) is not too long for being late.
+        let too_long = d.audio.duration() > TOO_LONG;
         (d.side.take(), d.audio.audio().to_vec(), d.paused, too_long)
     };
     let outcome = if paused {
@@ -686,6 +754,63 @@ pub async fn remove_phone(id: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    /// The owner's v1 state: a confirmed room on v1's address, one phone.
+    fn v1_room() -> wt_relay_client::StoredRoom {
+        wt_relay_client::StoredRoom {
+            relay_url: super::super::settings::V1_RELAY_URL.into(),
+            room_id: wt_relay_client::wt_protocol::RoomId([7; 16]),
+            salt: wt_relay_client::wt_protocol::Salt([8; 16]),
+            created: true,
+        }
+    }
+
+    #[test]
+    fn a_v1_room_stays_the_room_after_the_move_to_walkietalkey_com() {
+        // DESK-60, RELAY-03: the migration moves the relay address, and the
+        // client counts the v1 room as this relay's, so it authenticates to
+        // it with the paired phone (crates/wt-relay-client/tests/same_relay.rs
+        // drives that against a fake relay) instead of making a new room.
+        use super::super::settings::{WtSettings, DEFAULT_RELAY_URL, V1_RELAY_URL};
+        let mut wt = WtSettings {
+            relay_url: V1_RELAY_URL.into(),
+            settings_version: 0,
+            ..WtSettings::default()
+        };
+        let mut handy = crate::settings::get_default_settings();
+        super::super::migrate::upgrade(&mut handy, &mut wt, true);
+        assert_eq!(wt.relay_url, DEFAULT_RELAY_URL);
+
+        let config = client_config(&wt);
+        assert_eq!(config.relay_url, DEFAULT_RELAY_URL);
+        assert!(config.is_same_relay(&v1_room().relay_url));
+        // A user who never saved settings has the new default too.
+        assert!(client_config(&WtSettings::default()).is_same_relay(V1_RELAY_URL));
+        // Someone who keeps v1's address keeps a room made on the new one.
+        let kept = WtSettings {
+            relay_url: V1_RELAY_URL.into(),
+            ..WtSettings::default()
+        };
+        assert!(client_config(&kept).is_same_relay(DEFAULT_RELAY_URL));
+    }
+
+    #[test]
+    fn a_company_relay_has_no_aliases() {
+        // A managed RelayUrl is another relay: a room there is new, as before.
+        use super::super::settings::{WtSettings, DEFAULT_RELAY_URL, V1_RELAY_URL};
+        let company = WtSettings {
+            relay_url: "wss://relae.firma.dk".into(),
+            ..WtSettings::default()
+        };
+        let config = client_config(&company);
+        assert!(config.relay_aliases.is_empty());
+        assert!(!config.is_same_relay(V1_RELAY_URL));
+        assert!(!config.is_same_relay(DEFAULT_RELAY_URL));
+        assert_eq!(
+            relay_aliases(&format!("{DEFAULT_RELAY_URL}/")),
+            vec![V1_RELAY_URL]
+        );
+    }
+
     #[test]
     fn the_pairing_qr_is_an_svg_in_brand_colours() {
         let svg = qr_svg("https://app.walkietalkey.com/p#eyJ2IjoxfQ").unwrap();
@@ -695,32 +820,25 @@ mod tests {
         assert!(!svg.contains("eyJ2IjoxfQ"));
     }
 
-    fn dictation() -> Arc<Mutex<PhoneDictation>> {
-        Arc::new(Mutex::new(PhoneDictation {
-            audio: SessionAudio::new(),
-            side: None,
-            started: Instant::now(),
-            paused: false,
-            levels: None,
-        }))
-    }
-
     #[test]
-    fn blocks_resent_after_audio_end_still_reach_the_dictation() {
-        let sessions: Sessions = Arc::new(Mutex::new(HashMap::new()));
-        let key = (DeviceId([7; 16]), SessionId([9; 16]));
-        let d = dictation();
-        sessions.lock().unwrap().insert(key, Arc::clone(&d));
-        assert!(dictation_for_audio(&sessions, &key).is_some(), "recording");
-        // audio_end: out of the recording map, into the waiting one (DESK-61).
-        let ended = sessions.lock().unwrap().remove(&key).unwrap();
-        ENDING.lock().unwrap().insert(key, ended);
-        let found = dictation_for_audio(&sessions, &key).expect("a resend is still accepted");
-        assert!(Arc::ptr_eq(&found, &d));
-        ENDING.lock().unwrap().remove(&key);
-        assert!(
-            dictation_for_audio(&sessions, &key).is_none(),
-            "after the wait"
-        );
+    fn no_phone_pill_while_paused() {
+        // DESK-96: "Sæt på pause" answers phone dictations with `paused`;
+        // the pill does not show for them (DESK-58).
+        use super::super::settings::WtSettings;
+        let on = WtSettings::default();
+        assert!(on.pill_for_phone, "on by default");
+        assert!(pill_for_phone(&on, false, false));
+        assert!(!pill_for_phone(&on, false, true), "paused");
+        assert!(!pill_for_phone(&on, true, false), "a key dictation has it");
+        let hidden = WtSettings {
+            pill_hidden: true,
+            ..WtSettings::default()
+        };
+        assert!(!pill_for_phone(&hidden, false, false));
+        let off = WtSettings {
+            pill_for_phone: false,
+            ..WtSettings::default()
+        };
+        assert!(!pill_for_phone(&off, false, false));
     }
 }

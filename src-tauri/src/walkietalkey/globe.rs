@@ -82,11 +82,16 @@ pub fn fix(
     Ok((status(fn_is_key, now), saved))
 }
 
-/// fn is no longer the key: puts back what was there before the fix.
-/// Returns what to keep in the settings (nothing once restored).
+/// fn is no longer the key: puts back what was there before the fix, as
+/// long as the Globe key is still at the "Do Nothing" we set. A value the
+/// user chose since then is theirs and stays (DESK-20). Returns what to
+/// keep in the settings (nothing once restored or left alone).
 pub fn restore(store: &dyn DefaultsStore, fn_is_key: bool, saved: Saved) -> Result<Saved, String> {
     if fn_is_key || !saved.fixed {
         return Ok(saved);
+    }
+    if store.read()? != Some(DO_NOTHING) {
+        return Ok(Saved::default());
     }
     match saved.previous {
         Some(value) => store.write(value)?,
@@ -342,6 +347,26 @@ mod tests {
         restore(&store, false, saved).unwrap();
         assert_eq!(*store.value.borrow(), None);
         assert_eq!(*store.writes.borrow(), vec![Some(0), None]);
+    }
+
+    #[test]
+    fn a_choice_the_user_made_after_the_fix_is_kept() {
+        // DESK-20: the user picked Show Emoji & Symbols in System Settings
+        // after "Ret det for mig"; changing the key must not undo that.
+        let store = FakeDefaults::with(Some(1));
+        let (_, saved) = fix(&store, true, Saved::default()).unwrap();
+        *store.value.borrow_mut() = Some(2);
+        store.writes.borrow_mut().clear();
+        assert_eq!(restore(&store, false, saved).unwrap(), Saved::default());
+        assert_eq!(*store.value.borrow(), Some(2));
+        assert!(store.writes.borrow().is_empty(), "nothing written");
+        // Unset by the user (macOS's default) is a choice too.
+        let unset = FakeDefaults::with(Some(3));
+        let (_, saved) = fix(&unset, true, Saved::default()).unwrap();
+        *unset.value.borrow_mut() = None;
+        assert_eq!(restore(&unset, false, saved).unwrap(), Saved::default());
+        assert_eq!(*unset.value.borrow(), None);
+        assert_eq!(*unset.writes.borrow(), vec![Some(0)], "only the fix");
     }
 
     #[test]

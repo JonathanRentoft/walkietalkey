@@ -177,6 +177,10 @@ pub struct WtSettings {
     pub accessibility_granted_once: bool,
 }
 
+/// `onboarding_resume_step` once onboarding is finished (`ONBOARDING_DONE`
+/// in `src/walkietalkey/lib/helpers.ts`).
+pub const ONBOARDING_DONE: &str = "finished";
+
 /// The defaults `WtSettings::default()` and `migrate` bring a store to.
 pub const SETTINGS_VERSION: u32 = 2;
 

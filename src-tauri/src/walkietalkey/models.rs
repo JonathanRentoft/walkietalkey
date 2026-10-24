@@ -25,6 +25,7 @@ use once_cell::sync::Lazy;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, Manager};
 
+use super::settings::ONBOARDING_DONE;
 use crate::catalog::MirrorFile;
 
 /// Where WalkieTalkey's models are published: the assets of release
@@ -105,6 +106,14 @@ pub async fn wait_for_download<F: Fn() -> bool>(model_id: &str, downloaded: F) -
     }
 }
 
+/// Whether the user is past onboarding: WalkieTalkey's own onboarding saves
+/// `onboarding_resume_step = "finished"` (it never sets Handy's
+/// `onboarding_completed`, which only picking a model in the model settings
+/// does); either counts.
+fn onboarding_done(handy_completed: bool, resume_step: Option<&str>) -> bool {
+    handy_completed || resume_step == Some(ONBOARDING_DONE)
+}
+
 /// The model to fetch by itself at the first launch: the selected one (a
 /// company may pin it) or the default (DESK-30), when it is not here yet.
 fn first_launch_target(
@@ -139,9 +148,13 @@ pub fn download_default_at_first_launch(app: &AppHandle) {
     };
     let mm = Arc::clone(&mm);
     let settings = crate::settings::get_settings(app);
+    let wt = super::store::get(app);
     let Some(model_id) = first_launch_target(
         &settings.selected_model,
-        settings.onboarding_completed,
+        onboarding_done(
+            settings.onboarding_completed,
+            wt.onboarding_resume_step.as_deref(),
+        ),
         |id| mm.get_model_info(id).map(|m| m.is_downloaded),
     ) else {
         return;
@@ -391,6 +404,26 @@ mod tests {
         assert_eq!(first_launch_target("custom/my.gguf", false, |_| None), None);
         // After onboarding the user manages models.
         assert_eq!(first_launch_target("", true, missing), None);
+    }
+
+    #[test]
+    fn a_model_deleted_after_onboarding_is_not_fetched_again_at_every_start() {
+        // DESK-11: WalkieTalkey's onboarding saves "finished" and never sets
+        // Handy's onboarding_completed; the 886 MB download is not repeated.
+        let missing = |_: &str| Some(false);
+        let done = onboarding_done(false, Some(ONBOARDING_DONE));
+        assert!(done);
+        assert_eq!(first_launch_target("", done, missing), None);
+        // Handy's flag (a model picked in the model settings) counts too.
+        assert!(onboarding_done(true, None));
+        // A first launch, or one resumed mid-onboarding, still fetches.
+        for step in [None, Some("welcome"), Some("accessibility"), Some("try")] {
+            assert!(!onboarding_done(false, step), "{step:?}");
+        }
+        assert_eq!(
+            first_launch_target("", onboarding_done(false, Some("microphone")), missing).as_deref(),
+            Some(DEFAULT_MODEL_ID)
+        );
     }
 
     #[test]

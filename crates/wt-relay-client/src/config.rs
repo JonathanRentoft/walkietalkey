@@ -17,6 +17,12 @@ pub const DEFAULT_BACKOFF: [Duration; 5] = [
 pub struct ClientConfig {
     /// Relay base URL, `wss://...` (managed setting `RelayUrl`).
     pub relay_url: String,
+    /// Other base URLs of this same relay: the same Worker under another host, such as v1's
+    /// workers.dev address next to relay.walkietalkey.com. The relay finds a room by its id
+    /// alone (RELAY-01), so a room stored with one of these is this relay's room: it is kept
+    /// with its phones, and its stored URL moves to `relay_url`. Any other stored URL is a
+    /// different relay, where a new room is made. Empty by default.
+    pub relay_aliases: Vec<String>,
     /// Phone app base URL for the pairing QR (managed setting `PhoneAppUrl`).
     pub phone_app_url: String,
     /// Shown on the phone ("Klar på <computer>").
@@ -52,6 +58,7 @@ impl ClientConfig {
     ) -> Self {
         ClientConfig {
             relay_url: relay_url.into().trim_end_matches('/').to_string(),
+            relay_aliases: Vec::new(),
             phone_app_url: phone_app_url.into(),
             computer_name: computer_name.into(),
             os,
@@ -71,6 +78,17 @@ impl ClientConfig {
     pub fn insecure_localhost_allowed(&self) -> bool {
         self.allow_insecure_localhost
             && (cfg!(debug_assertions) || cfg!(feature = "insecure-localhost"))
+    }
+
+    /// Whether a room stored with `url` lives on this relay: `relay_url` itself or one of
+    /// `relay_aliases`, a trailing slash aside.
+    pub fn is_same_relay(&self, url: &str) -> bool {
+        let url = url.trim_end_matches('/');
+        url == self.relay_url
+            || self
+                .relay_aliases
+                .iter()
+                .any(|alias| alias.trim_end_matches('/') == url)
     }
 
     pub fn validate(&self) -> Result<(), ClientError> {

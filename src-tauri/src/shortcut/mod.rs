@@ -44,23 +44,25 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
             tauri_impl::init_shortcuts(app);
         }
         KeyboardImplementation::HandyKeys => {
-            if let Err(e) = handy_keys::init_shortcuts(app) {
-                error!("Failed to initialize handy-keys shortcuts: {}", e);
-                // WalkieTalkey (DESK-13): without Accessibility handy-keys
-                // works once it is granted; Tauri's shortcuts never see fn.
-                if !crate::walkietalkey::key_listener::permission_granted() {
-                    return Err(e);
-                }
-                // Fall back to Tauri implementation and persist this fallback
-                warn!("Falling back to Tauri global shortcut implementation and saving fallback to settings");
+            // WalkieTalkey (DESK-13, DESK-20): on macOS, or without
+            // Accessibility, a failure is returned so the key listener's
+            // watcher retries; Tauri's shortcuts never see fn.
+            return crate::walkietalkey::key_listener::start_handy_keys(
+                cfg!(target_os = "macos"),
+                crate::walkietalkey::key_listener::permission_granted,
+                || handy_keys::init_shortcuts(app),
+                || {
+                    // Fall back to Tauri implementation and persist this fallback
+                    warn!("Falling back to Tauri global shortcut implementation and saving fallback to settings");
 
-                // Update settings to persist the fallback so we don't retry HandyKeys on next launch
-                let mut settings = settings::get_settings(app);
-                settings.keyboard_implementation = KeyboardImplementation::Tauri;
-                settings::write_settings(app, settings);
+                    // Update settings to persist the fallback so we don't retry HandyKeys on next launch
+                    let mut settings = settings::get_settings(app);
+                    settings.keyboard_implementation = KeyboardImplementation::Tauri;
+                    settings::write_settings(app, settings);
 
-                tauri_impl::init_shortcuts(app);
-            }
+                    tauri_impl::init_shortcuts(app);
+                },
+            );
         }
     }
     Ok(())
