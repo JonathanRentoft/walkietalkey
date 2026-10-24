@@ -1,0 +1,16 @@
+{
+  "$schema": "../relay/node_modules/wrangler/config-schema.json",
+  // app.walkietalkey.com (run 2, Phase 6): the same static build as the Pages project
+  // walkietalkey-app, served as Workers static assets on a Workers custom domain (DNS record and
+  // certificate come from wrangler). walkietalkey-app.pages.dev stays deployed for v1 pairing codes.
+  // Deploy: `bun run --cwd phone deploy:domain`.
+  "name": "walkietalkey-app-web",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash",
+  },
+  "routes": [{ "pattern": "app.walkietalkey.com", "custom_domain": true }],
+}

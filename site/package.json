@@ -14,7 +14,9 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "lighthouse": "bun scripts/lighthouse.ts",
-    "deploy": "WRANGLER_SEND_METRICS=false wrangler pages deploy dist --project-name walkietalkey-site --branch main"
+    "deploy": "WRANGLER_SEND_METRICS=false wrangler pages deploy dist --project-name walkietalkey-site --branch main",
+    "deploy:domain": "WRANGLER_SEND_METRICS=false wrangler deploy --config wrangler.domain.jsonc",
+    "deploy:www": "WRANGLER_SEND_METRICS=false wrangler deploy --config www/wrangler.jsonc"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.1",
