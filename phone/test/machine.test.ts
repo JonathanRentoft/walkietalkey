@@ -220,6 +220,77 @@ describe("tap or hold (PHONE-26)", () => {
     });
   });
 
+  /* iOS interrupts a touch (a system gesture, a call, an alert) with pointercancel. That is no
+     tap: the press ends, and what was said is sent, never silently left recording hands-free. */
+  it("an interrupted press within 0.5 s sends; it does not go hands-free", () => {
+    const r = run(online(), down("i1", 1000), {
+      type: "up",
+      at: 1100,
+      interrupted: true,
+    });
+    expect(r.state.phase).toBe("send");
+    expect(r.state.handsFree).toBe(false);
+    expect(r.effects).toContainEqual({
+      type: "finish_capture",
+      sessionId: "i1",
+    });
+  });
+
+  it("an interrupted hold sends, like its release", () => {
+    const r = run(online(), down("i2", 1000), {
+      type: "up",
+      at: 4000,
+      interrupted: true,
+    });
+    expect(r.state.phase).toBe("send");
+    expect(r.effects).toContainEqual({
+      type: "finish_capture",
+      sessionId: "i2",
+    });
+  });
+
+  it("an interrupted stopping tap of a hands-free recording sends it", () => {
+    const r = run(online(), down("t1"), tapUp(), down("t2", 9000), {
+      type: "up",
+      at: 9050,
+      interrupted: true,
+    });
+    expect(r.state.phase).toBe("send");
+    expect(r.effects).toContainEqual({
+      type: "finish_capture",
+      sessionId: "t1",
+    });
+  });
+
+  it("an interrupted press that had slid off the button cancels", () => {
+    const r = run(
+      online(),
+      down("i3"),
+      { type: "slide", inside: false },
+      { type: "up", at: 1100, interrupted: true },
+    );
+    expect(r.state.phase).toBe("idle");
+    expect(r.effects).toContainEqual({
+      type: "cancel_capture",
+      sessionId: "i3",
+    });
+  });
+
+  it("an interruption with no finger on a hands-free recording changes nothing", () => {
+    const r = run(online(), down("t1"), tapUp(), {
+      type: "up",
+      at: 5000,
+      interrupted: true,
+    });
+    expect(r.state.phase).toBe("rec");
+    expect(r.state.handsFree).toBe(true);
+    expect(r.effects).toEqual([
+      { type: "start_capture", sessionId: "t1" },
+      { type: "haptic", kind: "start" },
+      { type: "wake_lock", on: true },
+    ]);
+  });
+
   it("a later recording starts as a press again, not hands-free", () => {
     const r = run(online(), down("t1"), tapUp(), down("t2"), tapUp(1300), {
       type: "result",

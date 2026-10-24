@@ -97,13 +97,19 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
     : null;
   const seconds = left !== null ? left : Math.floor(elapsed / 1000);
 
+  /** The finger came up (pointerup), or the system took the touch away (pointercancel). */
   const end = (
     e: ReactPointerEvent<HTMLButtonElement>,
-    checkInside: boolean,
+    interrupted: boolean,
   ) => {
     if (pointer.current !== e.pointerId) return;
     pointer.current = null;
-    if (checkInside) controller.slide(inside(e));
+    if (interrupted) {
+      // Never a tap, so never hands-free by accident: it sends (PHONE-26).
+      controller.interrupted();
+      return;
+    }
+    controller.slide(inside(e));
     controller.up();
   };
 
@@ -152,8 +158,8 @@ export function MainScreen({ controller, snap, onPicker, onDetails }: Props) {
             onPointerMove: (e) => {
               if (pointer.current === e.pointerId) controller.slide(inside(e));
             },
-            onPointerUp: (e) => end(e, true),
-            onPointerCancel: (e) => end(e, false),
+            onPointerUp: (e) => end(e, false),
+            onPointerCancel: (e) => end(e, true),
             onContextMenu: (e) => e.preventDefault(),
             onKeyDown: (e) => {
               if ((e.key === " " || e.key === "Enter") && !e.repeat) {
