@@ -15,8 +15,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path Aliases */
-    "baseUrl": ".",
+    /* Path Aliases (relative to this file; TypeScript 6 deprecates baseUrl) */
     "paths": {
       "@/*": ["./src/*"],
       "@/bindings": ["./src/bindings.ts"]
