@@ -43,8 +43,12 @@ training:
   warmup_fraction: 0.1
   schedule: linear
   epochs: 5
-  batch_size: 8
-  gradient_accumulation: 2
+  # 4 clips per pass, 4 passes per step: the same effective batch of 16 as the
+  # first experiment. Training 4 encoder layers keeps attention over 1500 audio
+  # frames for the backward pass; at 8 clips per pass that needs over 20 GB on a
+  # 32 GB M1 Pro and swaps (about 60 s per step instead of 1.4 s at 4).
+  batch_size: 4
+  gradient_accumulation: 4
   weight_decay: 0.0
   max_grad_norm: 1.0
   seed: 1
