@@ -1,26 +1,40 @@
 version: 2
+# One grouped pull request per ecosystem each week for version updates; security updates come in a
+# separate group per ecosystem, so they never wait behind the routine bumps (run 2).
 updates:
   - package-ecosystem: cargo
-    directory: /src-tauri
+    directories:
+      - /src-tauri
+      - /crates/wt-relay-client
+      - /crates/wt-native
+      - /crates/ekko-pnc
+      - /packages/protocol/rust
     schedule: { interval: weekly }
-    open-pull-requests-limit: 5
-  - package-ecosystem: cargo
-    directory: /crates/wt-relay-client
-    schedule: { interval: weekly }
-  - package-ecosystem: cargo
-    directory: /crates/wt-native
-    schedule: { interval: weekly }
-  - package-ecosystem: cargo
-    directory: /crates/ekko-pnc
-    schedule: { interval: weekly }
-  - package-ecosystem: cargo
-    directory: /packages/protocol/rust
-    schedule: { interval: weekly }
+    groups:
+      cargo:
+        applies-to: version-updates
+        patterns: ["*"]
+      cargo-security:
+        applies-to: security-updates
+        patterns: ["*"]
   # bun.lock is the lockfile; npm updates would leave it behind.
   - package-ecosystem: bun
     directory: /
     schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    groups:
+      bun:
+        applies-to: version-updates
+        patterns: ["*"]
+      bun-security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: monthly }
+    schedule: { interval: weekly }
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns: ["*"]
+      github-actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
