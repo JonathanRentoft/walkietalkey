@@ -608,9 +608,10 @@ impl Chunker {
 
     fn take_until(&mut self, cut: usize) -> Vec<f32> {
         if log::log_enabled!(log::Level::Debug) {
-            let speech = self
-                .speech_samples(self.start..cut)
-                .map_or_else(|| "not scored".to_string(), |n| format!("{:.1}s", seconds(n)));
+            let speech = self.speech_samples(self.start..cut).map_or_else(
+                || "not scored".to_string(),
+                |n| format!("{:.1}s", seconds(n)),
+            );
             debug!(
                 "Long-form chunk: {:.1}-{:.1}s (speech {})",
                 seconds(self.start),
@@ -890,10 +891,7 @@ mod tests {
     #[test]
     fn a_short_fragment_between_two_pauses_joins_the_next_piece() {
         // A 0.5 s "øh" between two pauses is not a piece of its own.
-        let pcm = clip(&probs_with_pauses(
-            10.0,
-            &[(3.0, 3.8), (4.3, 5.0)],
-        ));
+        let pcm = clip(&probs_with_pauses(10.0, &[(3.0, 3.8), (4.3, 5.0)]));
         let (cuts, _) = whole_and_live(&pcm);
         assert_eq!(cuts, vec![3.4]);
     }
@@ -945,7 +943,11 @@ mod tests {
         let mut chunks = chunker.push(&pcm[..]);
         chunks.extend(chunker.finish());
         assert_eq!(cuts(&chunks), vec![4.5]);
-        let speech = |range: Range<usize>| chunker.speech_samples(range).map(|n| n as f64 / RATE as f64);
+        let speech = |range: Range<usize>| {
+            chunker
+                .speech_samples(range)
+                .map(|n| n as f64 / RATE as f64)
+        };
         // 1.0-4.0 s and 5.0-9.0 s, each with Silero's 30 ms pads.
         let first = speech(0..s(4.5)).unwrap();
         assert!((first - 3.06).abs() < 0.05, "{first:.2}");
