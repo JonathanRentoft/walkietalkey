@@ -26,7 +26,7 @@ Rules that keep the code maintainable and the product honest:
 | Design system                     | `packages/ui/`                                                  | `bun run --cwd packages/ui test`                                                                                      |
 | Licences                          | `deny.toml`, `scripts/walkietalkey/check-js-licenses.ts`        | `cargo deny --manifest-path src-tauri/Cargo.toml check`, `bun scripts/walkietalkey/check-js-licenses.ts`, `bun audit` |
 
-On macOS, if linking fails against a beta SDK, point `SDKROOT` at the release SDK (`/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
+On macOS, if linking fails against a beta SDK: with only the Command Line Tools, point `SDKROOT` at `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`; with full Xcode, use Xcode's own SDK and never mix in the Command Line Tools SDK. CI pins a released Xcode with `scripts/walkietalkey/ci/select-xcode.sh`.
 
 The rest of this file is the desktop app's development guide.
 

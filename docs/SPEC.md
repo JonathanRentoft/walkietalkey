@@ -696,7 +696,7 @@ WalkieTalkey is Apache-2.0. Third-party code under MIT keeps its copyright and p
 | Part | Tests |
 |---|---|
 | Pipeline (Rust) | Unit tests per stage; punctuation trigger; vocabulary replacements; cleanup guardrails with a fake provider |
-| Danish accuracy | A test set of 30 to 50 clips: the owner's own dictations (with consent, stored outside the public repo or recorded for the purpose), plus mixed Danish and English sentences. Reports WER, punctuation, the latency of DESK-43 and the AI cleanup time per provider. Runs nightly and before each release, not on every PR (model size) |
+| Danish accuracy | A test set of 30 to 50 clips: the owner's own dictations (with consent, stored outside the public repo or recorded for the purpose), plus mixed Danish and English sentences. Reports WER, punctuation, the latency of DESK-43 and the AI cleanup time per provider. Runs nightly and before each release, not on every PR (model size). In a release it reports in the run summary and never blocks publishing (run 3) |
 | Protocol | Shared test vectors (SEC-05) in TypeScript and Rust; property tests for frame parsing |
 | Relay | Vitest with the Cloudflare Workers pool (Miniflare): auth, create (room id binding), join, leave, revoke, routing, liveness timeout, buffering, limits, housekeeping. Tests count storage writes per dictation, so a change that writes per frame fails |
 | Phone app | Unit tests (Vitest); Playwright in Chromium and WebKit with a fake microphone stream: pairing, recording, cancel, offline, resend after reconnect, errors |
@@ -706,7 +706,8 @@ WalkieTalkey is Apache-2.0. Third-party code under MIT keeps its copyright and p
 ### 15.2 CI
 
 - On every PR: lint, type check, unit tests, relay tests, phone tests, desktop build check (macOS and Windows), licence checks.
-- On tag: the release workflow (OSS-21).
+- On tag: the release workflow (OSS-21). A pull request that changes the release machinery runs the release as a dry run (both builds, updater signatures with a throwaway key, latest.json, the accuracy harness), which publishes nothing (run 3).
+- macOS jobs use one released Xcode and its own SDK (`scripts/walkietalkey/ci/select-xcode.sh`), never the image's Command Line Tools SDK, which can be a beta.
 - Work style: tests first, then code, all green locally before one push; if CI fails, fix everything in one go before merging.
 
 ## 16. Milestones

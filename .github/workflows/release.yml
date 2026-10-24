@@ -31,7 +31,6 @@ on:
       - .github/workflows/build.yml
       - .github/workflows/accuracy.yml
       - scripts/walkietalkey/ci/**
-      - CHANGELOG.md
       - models/tools/setup-transcribe-cpp.sh
       - models/eval/run.sh
       - models/eval/fetch_fleurs.sh

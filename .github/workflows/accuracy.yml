@@ -1,4 +1,4 @@
-# Danish accuracy (spec 15.1): WER of Edda, Handy's Whisper turbo and Ekko v1
+# Danish accuracy (spec 15.1): WER of Edda, Whisper turbo (the catalog's) and Ekko v1
 # Tiny on FLEURS da_dk, nightly and before each release, not on every pull
 # request (model size). Everything is rebuilt from the original public models
 # by models/eval/run.sh, so nothing depends on our own model hosting. The

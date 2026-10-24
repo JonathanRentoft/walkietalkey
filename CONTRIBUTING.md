@@ -14,7 +14,7 @@ The repository is a bun workspace. Install everything once:
 bun install
 ```
 
-Rust comes from rustup (stable). On macOS with only the Command Line Tools, set `SDKROOT=$(xcrun --sdk macosx --show-sdk-path)` if a newer SDK breaks linking, and `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the speech engine's CMake build.
+Rust comes from rustup (stable). On macOS with only the Command Line Tools, set `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk` if a newer SDK breaks linking (without Xcode, `xcrun` returns the newest SDK, which can be a beta), and `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the speech engine's CMake build.
 
 | Part                                   | Folder                                                      | Build and run                   | Tests                                                                                       |
 | -------------------------------------- | ----------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------- |

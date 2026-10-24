@@ -43,12 +43,16 @@ jobs:
         run: bun run check:translations
       - name: Desktop UI unit tests and the owner's copy list
         run: bun run test:wt && bun run check:copy
-      - name: Handy's keyboard and model-language checks
+      - name: Keyboard and model-language checks
         run: bun run test:keyboard && bun run check:model-languages
       - name: Model catalog in sync with its package
         run: bun run check:catalog
       - name: CI and release scripts (Xcode pin, release assets and latest.json)
         run: bun test scripts/walkietalkey/ci
+      # The release reads its notes from CHANGELOG.md; check them on every pull request, since a
+      # CHANGELOG change alone does not start the release dry run.
+      - name: Release notes for the app's version in CHANGELOG.md (OSS-21)
+        run: bun scripts/walkietalkey/ci/release-assets.ts --notes-out "$RUNNER_TEMP/release-notes.md"
       - name: Protocol (TypeScript, shared test vectors)
         working-directory: packages/protocol
         run: bun run typecheck && bun run test
