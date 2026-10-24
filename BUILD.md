@@ -101,6 +101,36 @@ bun run tauri build
 
 This compiles a release binary and generates platform-specific bundles (deb, rpm, AppImage on Linux; dmg on macOS; msi on Windows).
 
+### Local Mac builds that keep their permissions
+
+macOS ties Accessibility and microphone grants to the app's code signature. Tauri signs local builds ad-hoc, and an ad-hoc signature changes with every build, so each new build silently loses the grants (System Settings still shows WalkieTalkey switched on, but the key is dead). Sign local builds with one self-signed certificate instead; the designated requirement then stays `identifier "com.walkietalkey.app" and certificate root = H"..."` for every build.
+
+Once per Mac, create a code-signing identity named "WalkieTalkey Local" in the login keychain and trust it for code signing (macOS asks for your password; codesign's first use asks too, answer Always Allow):
+
+```bash
+D="$(mktemp -d)" && cd "$D" && umask 077
+cat > cert.cnf <<'CNF'
+[req]
+distinguished_name = dn
+x509_extensions = ext
+prompt = no
+[dn]
+CN = WalkieTalkey Local
+[ext]
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature
+extendedKeyUsage = critical,codeSigning
+CNF
+openssl req -x509 -newkey rsa:3072 -sha256 -days 3650 -nodes -keyout key.pem -out cert.pem -config cert.cnf
+P="$(openssl rand -hex 16)"
+openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -name "WalkieTalkey Local" -out id.p12 -passout pass:"$P"
+security import id.p12 -k ~/Library/Keychains/login.keychain-db -P "$P" -T /usr/bin/codesign
+security add-trusted-cert -p codeSign -k ~/Library/Keychains/login.keychain-db cert.pem
+rm -f key.pem id.p12; cd - >/dev/null
+```
+
+Then build with `scripts/walkietalkey/build-local-mac.sh`. It signs with that identity when it exists (otherwise the build stays ad-hoc) and prints the designated requirement. Release builds from CI stay ad-hoc until the project has an Apple Developer ID; after such an update the app notices that macOS dropped Accessibility and offers to repair it.
+
 ## Linux Install (from source; Handy's notes, not supported by WalkieTalkey v1)
 
 The raw binary (`src-tauri/target/release/handy`) cannot run standalone — it needs Tauri resource files (tray icons, sounds, VAD model) to be co-located at the expected path.
