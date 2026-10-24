@@ -196,7 +196,8 @@ export class Limiter {
 
   process(input: Float32Array): Float32Array {
     if (this.gain === 1) return input;
-    for (let i = 0; i < input.length; i++) this.pending.push(input[i]! * this.gain);
+    for (let i = 0; i < input.length; i++)
+      this.pending.push(input[i]! * this.gain);
     return this.drain(this.look);
   }
 
@@ -214,10 +215,14 @@ export class Limiter {
         const a = Math.abs(this.pending[k]!);
         if (a * allowed > LIMITER_CEILING) allowed = LIMITER_CEILING / a;
       }
-      this.released = Math.min(allowed, this.released + (1 - this.released) * this.release);
+      this.released = Math.min(
+        allowed,
+        this.released + (1 - this.released) * this.release,
+      );
       this.recent.push(this.released);
       this.recentSum += this.released;
-      if (this.recent.length > this.look + 1) this.recentSum -= this.recent.shift()!;
+      if (this.recent.length > this.look + 1)
+        this.recentSum -= this.recent.shift()!;
       out[o] = this.pending.shift()! * (this.recentSum / this.recent.length);
     }
     return out;
@@ -288,7 +293,10 @@ export class PcmPipeline {
   }
 
   finish(): void {
-    for (const y of [this.limiter.process(this.ds.flush()), this.limiter.flush()])
+    for (const y of [
+      this.limiter.process(this.ds.flush()),
+      this.limiter.flush(),
+    ])
       if (y.length) this.framer.push(floatToPcm16(y));
     this.framer.flush();
   }

@@ -289,8 +289,12 @@ describe("gain and limiter (run 4: the raw iPhone microphone arrives 17-18 dB be
 
   it("never lets a sample past -1 dBFS, so PCM16 never clips", () => {
     expect(LIMITER_CEILING).toBeCloseTo(dbfs(-1), 9);
-    const square = new Float32Array(16000).map((_, i) => (i % 40 < 20 ? 1 : -1));
-    const impulses = new Float32Array(16000).map((_, i) => (i % 1777 === 0 ? 1 : 0));
+    const square = new Float32Array(16000).map((_, i) =>
+      i % 40 < 20 ? 1 : -1,
+    );
+    const impulses = new Float32Array(16000).map((_, i) =>
+      i % 1777 === 0 ? 1 : 0,
+    );
     const burst = new Float32Array(16000);
     burst.set(noise(800, 1), 8000);
     const signals: [string, Float32Array][] = [
@@ -322,7 +326,9 @@ describe("gain and limiter (run 4: the raw iPhone microphone arrives 17-18 dB be
     x.set(sine(200, 16000, 8000, 0.5), 0);
     x.set(sine(200, 16000, 16000, dbfs(-40)), 8000);
     const y = limit(x);
-    expect(peak(y.subarray(4000, 8000))).toBeGreaterThan(LIMITER_CEILING * 0.98);
+    expect(peak(y.subarray(4000, 8000))).toBeGreaterThan(
+      LIMITER_CEILING * 0.98,
+    );
     // Right after the loud part the gain is still down...
     const quietGain = dbfs(-40) * dbfs(15);
     expect(peak(y.subarray(8100, 8400)) / quietGain).toBeLessThan(0.5);
