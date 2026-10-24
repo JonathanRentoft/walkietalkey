@@ -33,9 +33,7 @@ import {
 const args = process.argv.slice(2);
 const relay = (() => {
   const i = args.indexOf("--relay");
-  return i >= 0
-    ? args[i + 1]!
-    : "wss://relay.walkietalkey.com";
+  return i >= 0 ? args[i + 1]! : "wss://relay.walkietalkey.com";
 })();
 const insecure = relay.startsWith("ws://");
 const steps: { step: string; ok: boolean; detail?: string }[] = [];

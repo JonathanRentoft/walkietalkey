@@ -762,7 +762,7 @@ Use these strings exactly. Sentence case, no exclamation marks, no emoji.
 
 **Cleanup consent**: Teksten (ikke lyden) sendes til {udbyder}, hver gang du dikterer. · Slå til · Annullér
 
-**Key (run 2)**: Ret det for mig · macOS har glemt WalkieTalkeys adgang efter opdateringen. · Giv adgang igen (drafted, TODO(copy))
+**Key (run 2, from the owner's brief)**: Ret det for mig
 
 **Managed**: Styret af din organisation
 

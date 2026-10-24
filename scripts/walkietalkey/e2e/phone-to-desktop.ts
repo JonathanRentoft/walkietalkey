@@ -66,10 +66,7 @@ async function main() {
     "--model",
     "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
   );
-  const relay = arg(
-    "--relay",
-    "wss://relay.walkietalkey.com",
-  );
+  const relay = arg("--relay", "wss://relay.walkietalkey.com");
   const phoneApp = arg("--phone-app", "https://app.walkietalkey.com");
   const wav = arg("--wav");
   const reference = readFileSync(arg("--reference"), "utf8").trim();

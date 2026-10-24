@@ -13,9 +13,7 @@ import {
 } from "./helpers";
 
 const APP = process.env.E2E_LIVE_APP || "https://app.walkietalkey.com";
-const RELAY =
-  process.env.E2E_LIVE_RELAY ||
-  "wss://relay.walkietalkey.com";
+const RELAY = process.env.E2E_LIVE_RELAY || "wss://relay.walkietalkey.com";
 
 test("live: the deployed app pairs and streams through the live relay", async ({
   page,
