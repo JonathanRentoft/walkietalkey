@@ -135,7 +135,7 @@ mod imp {
                     // SAFETY: `name` is a NUL-terminated wide string that outlives the call.
                     let id = unsafe { RegisterClipboardFormatW(PCWSTR(name.as_ptr())) };
                     if id == 0 {
-                        return Err(platform(windows::core::Error::from_win32()));
+                        return Err(platform(windows::core::Error::from_thread()));
                     }
                     id
                 }
@@ -153,7 +153,7 @@ mod imp {
         // SAFETY: `memory` is a live movable block.
         let target = unsafe { GlobalLock(memory) };
         if target.is_null() {
-            let err = windows::core::Error::from_win32();
+            let err = windows::core::Error::from_thread();
             // SAFETY: allocated above and not handed to the clipboard.
             let _ = unsafe { GlobalFree(Some(memory)) };
             return Err(platform(err));
