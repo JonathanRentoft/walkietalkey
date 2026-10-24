@@ -193,7 +193,10 @@ mod tests {
     fn env_flag_enabled_true_for_truthy_values() {
         for value in ["1", "true", "TRUE", "yes", "on", " 1 "] {
             std::env::set_var("WALKIETALKEY_TEST_FLAG_TRUTHY", value);
-            assert!(env_flag_enabled("WALKIETALKEY_TEST_FLAG_TRUTHY"), "{value:?}");
+            assert!(
+                env_flag_enabled("WALKIETALKEY_TEST_FLAG_TRUTHY"),
+                "{value:?}"
+            );
         }
         std::env::remove_var("WALKIETALKEY_TEST_FLAG_TRUTHY");
     }
@@ -204,7 +207,10 @@ mod tests {
 
         for value in ["0", "false", "FALSE", "no", "off", ""] {
             std::env::set_var("WALKIETALKEY_TEST_FLAG_FALSY", value);
-            assert!(!env_flag_enabled("WALKIETALKEY_TEST_FLAG_FALSY"), "{value:?}");
+            assert!(
+                !env_flag_enabled("WALKIETALKEY_TEST_FLAG_FALSY"),
+                "{value:?}"
+            );
         }
         std::env::remove_var("WALKIETALKEY_TEST_FLAG_FALSY");
     }

@@ -51,19 +51,18 @@ pub fn get_tray_translations(locale: Option<String>) -> TrayStrings {
 mod tests {
     use super::{get_tray_translations, TRANSLATIONS};
 
+    /// WalkieTalkey ships Danish and English only (DESK-03, run 3); every
+    /// other locale, Chinese script fallbacks included, ends in English.
     #[test]
     fn resolves_locale_fallbacks() {
         for (locale, expected) in [
-            ("zh-Hant-TW", "zh-TW"),
-            ("zh-Hant-HK", "zh-TW"),
-            ("zh-HK", "zh-TW"),
-            ("zh-MO", "zh-TW"),
-            ("ZH-TW", "zh-TW"),
-            ("zh_Hant_TW", "zh-TW"),
-            ("zh-Hans-CN", "zh"),
-            ("yue-Hant-HK", "zh-TW"),
-            ("yue-Hans-CN", "zh"),
-            ("fr-FR", "fr"),
+            ("da", "da"),
+            ("da-DK", "da"),
+            ("DA_dk", "da"),
+            ("en-GB", "en"),
+            ("zh-Hant-TW", "en"),
+            ("zh-Hans-CN", "en"),
+            ("fr-FR", "en"),
             ("xx-YY", "en"),
         ] {
             assert_eq!(
