@@ -4,7 +4,7 @@ Free, open-source Danish dictation for Mac, Windows and your phone.
 
 ![WalkieTalkey: hold the key, talk, and the text appears](docs/assets/hero.gif)
 
-Hold `fn` on a Mac (Right Ctrl on Windows, or a key you choose), talk, let go, and the text appears where you are typing. Or hold the button in the phone app, talk, let go, and the text lands on the computer you are sitting at, on the clipboard with a small notification.
+Hold `fn` on a Mac (Right Ctrl on Windows, or a key you choose), talk, let go, and the text appears where you are typing. Or tap the key once to talk hands-free and tap again to stop. The phone app works the same way: hold the button or tap it, and the text lands on the computer you are sitting at, on the clipboard with a small notification.
 
 - Speech becomes text on your own computer, with Edda, a Danish speech model. Long dictations are transcribed while you talk, so you wait about as long after two minutes as after ten seconds.
 - Your own words and replacements, Danish filler words removed, punctuation on the computer, and optional AI cleanup with a provider and key you choose.
@@ -13,8 +13,8 @@ Hold `fn` on a Mac (Right Ctrl on Windows, or a key you choose), talk, let go, a
 
 ## Download
 
-- **Mac** (macOS 13 or newer, Apple silicon and Intel) and **Windows** (10 and 11, x64): [the latest release](https://github.com/JonathanRentoft/walkietalkey/releases/latest).
-- **Phone**: open the phone app from the QR code in the desktop app ("Par en telefon"). It works in the browser on iPhone and Android; add it to the home screen.
+- **[walkietalkey.com/hent](https://walkietalkey.com/hent)**: direct downloads for Mac (macOS 13 or newer, one app for Apple silicon and Intel: [WalkieTalkey-mac.dmg](https://github.com/JonathanRentoft/walkietalkey/releases/latest/download/WalkieTalkey-mac.dmg)) and Windows (10 and 11, x64: [WalkieTalkey-windows.exe](https://github.com/JonathanRentoft/walkietalkey/releases/latest/download/WalkieTalkey-windows.exe)), and [all releases](https://github.com/JonathanRentoft/walkietalkey/releases). The builds are not signed by Apple or Microsoft yet; the download page says what to click the first time.
+- **Phone**: scan the QR code in the desktop app ("Par en telefon") to open [app.walkietalkey.com](https://app.walkietalkey.com). It works in the browser on iPhone and Android; add it to the home screen.
 - Companies: [docs/MANAGED_SETTINGS.md](docs/MANAGED_SETTINGS.md) (own relay, own model server, managed settings for Intune, Jamf and Group Policy).
 
 The app downloads its speech model on first start (886 MB for Edda, or 134 MB for Ekko v1 Tiny on slower computers), from our release [`models-v1`](https://github.com/JonathanRentoft/walkietalkey/releases/tag/models-v1) or your company's server, and checks every file's SHA-256 ([docs/MODELS.md](docs/MODELS.md)).
