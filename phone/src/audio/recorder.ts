@@ -96,7 +96,14 @@ export class Recorder implements RecorderLike {
         window.AudioContext ??
         (window as unknown as { webkitAudioContext: AudioContextCtor })
           .webkitAudioContext;
-      this.ctx = new AC({ latencyHint: "interactive" });
+      const ctx = new AC({ latencyHint: "interactive" });
+      // An interruption suspends the context without ending the track (PHONE-33): what the
+      // pre-roll holds from before it must never start a later dictation (capture.ts).
+      ctx.addEventListener("statechange", () => {
+        const sink = this.capture?.sink;
+        if (ctx.state !== "running" && sink && !sink.recording) sink.clear();
+      });
+      this.ctx = ctx;
     }
     this.module ??= this.ctx.audioWorklet
       .addModule(workletUrl)

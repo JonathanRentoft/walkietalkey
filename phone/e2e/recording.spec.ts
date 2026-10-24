@@ -159,6 +159,43 @@ test.describe("tap or hold (PHONE-26, PHONE-29)", () => {
     await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
   });
 
+  /* iOS interrupts a touch with pointercancel (a system gesture, a call, an alert). Within 0.5 s
+     that used to count as a tap and leave the phone recording hands-free without a word. */
+  test("an interrupted press ends the press and sends; it never goes hands-free", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer();
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    await page.evaluate(() => {
+      const w = window as unknown as { __wtPointerId?: number };
+      document.addEventListener(
+        "pointerdown",
+        (e) => (w.__wtPointerId = e.pointerId),
+        { capture: true },
+      );
+    });
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await page.evaluate(() => {
+      const id = (window as unknown as { __wtPointerId?: number })
+        .__wtPointerId;
+      document
+        .querySelector(".wt-hold")!
+        .dispatchEvent(
+          new PointerEvent("pointercancel", { pointerId: id, bubbles: true }),
+        );
+    });
+    await computer.waitEnded();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+    await expect(page.locator(".wt-stage--handsfree")).toHaveCount(0);
+    // The finger that comes up later changes nothing.
+    await p.release();
+    await expect(label(page)).toHaveText("Klar på Testcomputer");
+  });
+
   test("held 0.5 s or longer is push-to-talk: the release sends", async ({
     page,
     browserName,

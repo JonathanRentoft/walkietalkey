@@ -55,6 +55,9 @@ export interface MockOptions {
   qrSvg?: string;
   /** wt_globe_key_status (macOS Globe key, Phase 1). */
   globeKey?: { fn_is_key: boolean; usage: number | null; needs_fix: boolean };
+  /** wt_key_listener_status (DESK-13, DESK-17). Default: it runs once
+   *  Accessibility is granted (always on Windows), like the backend. */
+  keyListener?: { running: boolean };
 }
 
 export async function installMock(page: Page, options: MockOptions = {}) {
@@ -429,7 +432,14 @@ function mockBackend(options: MockOptions) {
       setTimeout(() => emit("wt-update-status", { state: "up_to_date" }), 20);
       return null;
     },
-    wt_accessibility_repair: () => true,
+    wt_key_listener_status: () =>
+      options.keyListener ?? {
+        running: platform !== "macos" || !!state.permissions.accessibility,
+      },
+    wt_accessibility_lost: () => false,
+    // Resets the app's own entry and shows macOS's dialog; trusted only once
+    // the user switches it on (the tests do that with the permissions).
+    wt_accessibility_repair: () => !!state.permissions.accessibility,
     wt_globe_key_status: () => state.globeKey,
     wt_globe_key_fix: () => {
       state.globeKey = { ...state.globeKey, usage: 0, needs_fix: false };

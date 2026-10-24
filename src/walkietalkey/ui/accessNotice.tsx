@@ -1,9 +1,10 @@
-// "macOS har glemt WalkieTalkeys adgang" (run 2): until the Mac app has a
-// Developer ID, an update can silently drop the Accessibility grant (System
-// Settings still shows it on, but the key is dead). The backend says so with
+// The lost Accessibility grant (run 2, DESK-13): until the Mac app has a
+// Developer ID, an update can silently drop the grant (System Settings still
+// shows it on, but the key is dead). The backend says so with
 // `wt-accessibility-lost` at startup; the window may open after that, so a
-// grant this window has seen before and that is gone now counts too. One
-// sentence and one button; it disappears by itself once the key listener
+// grant this window has seen before and that is gone now counts too. The
+// user may also have switched it off on purpose, so the sentence is neutral.
+// One sentence and one button; it disappears by itself once the key listener
 // runs again (`wt-key-listener`) or the grant is back.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,11 +12,7 @@ import { create } from "zustand";
 import { commands } from "@/bindings";
 import type { WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
-import {
-  hasPermission,
-  openAccessibilityPane,
-  openSettingsPage,
-} from "../lib/system";
+import { hasPermission, repairAccessibilityAndOpenPane } from "../lib/system";
 import { Button } from "./controls";
 
 const SEEN_KEY = "wt.accessibilitySeen";
@@ -99,13 +96,7 @@ export function AccessNotice(props: { platform: WtPlatform }) {
 
   const repair = async () => {
     setAsked(true);
-    try {
-      await commands.wtAccessibilityRepair();
-      await openSettingsPage("accessibility");
-    } catch {
-      // A backend without the repair: the pane alone.
-      await openAccessibilityPane();
-    }
+    await repairAccessibilityAndOpenPane();
   };
 
   return (

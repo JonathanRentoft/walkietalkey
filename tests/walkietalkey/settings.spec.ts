@@ -524,15 +524,17 @@ test.describe("settings", () => {
     await expect(page.getByTestId("globe-fix")).toHaveCount(0);
   });
 
-  test("macOS forgot the Accessibility grant: one notice, one button, gone once the key works", async ({
+  test("the Accessibility grant is gone: one neutral notice, one button, gone once the key works (DESK-13)", async ({
     page,
   }) => {
     await openApp(page, { permissions: { accessibility: false } });
     await emit(page, "wt-accessibility-lost", true);
     const notice = page.getByRole("alert").filter({
-      hasText: "macOS har glemt WalkieTalkeys adgang efter opdateringen.",
+      hasText: "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
     });
     await expect(notice).toBeVisible();
+    // The user may have switched it off on purpose: no blame on macOS.
+    await expect(notice).not.toContainText(/glemt|opdatering/);
     await notice.getByRole("button", { name: "Giv adgang igen" }).click();
     await expect
       .poll(async () => (await calls(page, "wt_accessibility_repair")).length)
@@ -557,7 +559,7 @@ test.describe("settings", () => {
     await openApp(page, { permissions: { accessibility: false } });
     await expect(
       page.getByText(
-        "macOS har glemt WalkieTalkeys adgang efter opdateringen.",
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
       ),
     ).toBeVisible();
     // Granted again in System Settings: the notice goes by itself.
@@ -567,7 +569,7 @@ test.describe("settings", () => {
     );
     await expect(
       page.getByText(
-        "macOS har glemt WalkieTalkeys adgang efter opdateringen.",
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
       ),
     ).toHaveCount(0, { timeout: 5000 });
   });
@@ -579,7 +581,7 @@ test.describe("settings", () => {
     await page.waitForTimeout(500);
     await expect(
       page.getByText(
-        "macOS har glemt WalkieTalkeys adgang efter opdateringen.",
+        "WalkieTalkey har ikke længere adgang til Tilgængelighed.",
       ),
     ).toHaveCount(0);
   });

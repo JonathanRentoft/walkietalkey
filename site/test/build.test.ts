@@ -26,6 +26,9 @@ const fileFor = (path: string) =>
 const html = (key: PageKey) => readFileSync(fileFor(PAGES[key].path), "utf8");
 const doc = (key: PageKey) => parse(html(key));
 const KEYS = Object.keys(PAGES) as PageKey[];
+/** If iOS drops the pairing link, the home-screen app opens the scanner by itself (spec 5.3, PHONE-10). */
+const IPHONE_FALLBACK =
+  "Ellers åbner appen kameraet, og du scanner koden igen.";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
@@ -475,6 +478,12 @@ describe("Hent (SITE-02)", () => {
     expect(win).toContain("WalkieTalkey-windows.exe");
     expect(win).toMatch(/endnu ikke (er )?signeret af Microsoft/);
     expect(win).toContain("Flere oplysninger › Kør alligevel");
+    // Review finding (run 2): before SmartScreen, Edge usually blocks a new unsigned download.
+    expect(win).toContain("ikke er almindeligt downloadet");
+    expect(win).toContain("Behold › Vis mere › Behold alligevel");
+    expect(win.indexOf("Behold alligevel")).toBeLessThan(
+      win.indexOf("Kør alligevel"),
+    );
     expect(card("mac").querySelector("a.wt-shiny")!.getAttribute("href")).toBe(
       MAC_DOWNLOAD_URL,
     );
@@ -508,6 +517,8 @@ describe("Hent (SITE-02)", () => {
     const text = textOf(d.querySelector(".phone-get")!);
     expect(text).toContain("Scan koden med telefonens kamera.");
     expect(text).toContain("hjemmeskærmen");
+    // Not yet confirmed on a real iPhone that iOS keeps the link (spec 5.3): the honest fallback.
+    expect(text).toContain(IPHONE_FALLBACK);
   });
   it("links to all releases", () => {
     expect(d.querySelector(`a[href="${ALL_RELEASES_URL}"]`)).not.toBeNull();
@@ -527,6 +538,7 @@ describe("no outdated copy (run 2)", () => {
     expect(text).toMatch(/tryk(ke)? igen/i);
     expect(text).toContain("Scan koden med telefonens kamera.");
     expect(text).toContain("hjemmeskærmen");
+    expect(text).toContain(IPHONE_FALLBACK);
     expect(text).not.toContain("tryk Par med en computer");
   });
   it("the homepage's third step says tap or hold", () => {
@@ -557,6 +569,22 @@ describe("content of the other pages", () => {
     expect(text).toContain("databehandler");
     expect(text).toContain("FileVault eller BitLocker");
     expect(d.querySelector(`main a[href="${CONTACT_URL}"]`)).not.toBeNull();
+  });
+  /* Review finding (run 2): the warm phone microphone (PHONE-30, PHONE-33) and the debugging
+     audio that phone dictations now keep too (DESK-92), in plain Danish. */
+  it("Privatliv says the phone's microphone stays open, what is kept between dictations and what is sent (PRIV-02)", () => {
+    const text = visibleText(doc("privacy"));
+    expect(text).toContain(
+      "Mens telefonappen er åben og parret, er telefonens mikrofon tændt",
+    );
+    expect(text).toContain(
+      "Mellem dikteringerne ligger højst de seneste 0,3 sekunder lyd i telefonens hukommelse",
+    );
+    expect(text).toContain(
+      "kommer op til 0,3 sekunder fra lige før trykket med i dikteringen",
+    );
+    expect(text).toContain("Ellers bliver intet sendt eller gemt.");
+    expect(text).toContain("lyden fra både tasten og telefonen");
   });
   it("Sikkerhed explains private reporting through GitHub, answered within 7 days", () => {
     const d = doc("security");

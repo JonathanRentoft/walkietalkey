@@ -628,6 +628,14 @@ export class PhoneController {
   }
 
   /**
+   * The system took the touch away (pointercancel: an iOS gesture, a call, an alert). The press
+   * ends as if released, but never as a tap: a short one sends too instead of going hands-free.
+   */
+  interrupted(): void {
+    this.dispatch({ type: "up", at: this.now(), interrupted: true });
+  }
+
+  /**
    * The iOS shell's "Start diktering" (`wt-shell-start`, or `?start=1` on a cold start): starts a
    * hands-free recording. Ignored when not paired or already recording.
    */

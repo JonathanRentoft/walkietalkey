@@ -5,7 +5,8 @@
  * Tap or hold (PHONE-26): a recording starts the moment the button goes down. Released within
  * 0.5 s it goes hands-free and keeps recording until the next tap (sends), "Annullér" or the
  * 5 minute limit; held longer it is push-to-talk and the release sends. Sliding off the button
- * while a finger is on it shows "Slip for at annullere", and letting go there cancels.
+ * while a finger is on it shows "Slip for at annullere", and letting go there cancels. A press the
+ * system interrupts (pointercancel) ends like a release that is never a tap: it sends.
  */
 import type { ResultReason } from "@walkietalkey/protocol";
 
@@ -48,7 +49,11 @@ export interface MachineState {
 
 export type MachineEvent =
   | { type: "down"; sessionId: string; at: number }
-  | { type: "up"; at: number }
+  /**
+   * The finger came up. `interrupted`: the system took the touch away (pointercancel, for example
+   * an iOS gesture or a call); that ends the press like a release but is never a tap.
+   */
+  | { type: "up"; at: number; interrupted?: boolean }
   | { type: "slide"; inside: boolean }
   | { type: "max_duration" }
   | { type: "empty"; sessionId: string }
@@ -192,8 +197,13 @@ export function transition(s: MachineState, e: MachineEvent): Transition {
       if (s.handsFree && !s.armed) return same(s);
       if (s.phase === "cancel") return cancel(s);
       if (s.phase !== "rec") return same(s);
-      // A tap: hands-free from here on.
-      if (!s.handsFree && e.at - (s.recStartedAt ?? e.at) < TAP_MS)
+      // A tap: hands-free from here on. An interrupted press is no tap: it sends what was said
+      // instead of recording on silently (PHONE-26).
+      if (
+        !s.handsFree &&
+        !e.interrupted &&
+        e.at - (s.recStartedAt ?? e.at) < TAP_MS
+      )
         return same({ ...s, handsFree: true });
       return finish(s);
     case "slide":

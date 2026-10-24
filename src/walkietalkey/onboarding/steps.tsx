@@ -17,8 +17,8 @@ import type { WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import {
   hasPermission,
-  openAccessibilityPane,
   openSettingsPage,
+  repairAccessibilityAndOpenPane,
   requestPermission,
   windowsMicrophoneAllowed,
 } from "../lib/system";
@@ -26,7 +26,7 @@ import type { PillEndEvent } from "../lib/types";
 import { rememberAccessGranted } from "../ui/accessNotice";
 import { Button, Status } from "../ui/controls";
 import { GlobeFix } from "../ui/globeFix";
-import { DICTATION_BINDING, KeyCaps, useKeyName } from "../ui/keys";
+import { DICTATION_BINDING, KeyCaps, KeyPicker, useKeyName } from "../ui/keys";
 import { PairingCode } from "../ui/pairing";
 import { useModelSetup } from "./modelSetup";
 
@@ -209,9 +209,11 @@ export function AccessibilityStep(props: { onGranted: () => void }) {
     rememberAccessGranted();
   }, [granted]);
 
+  // DESK-13: repairs a stale entry first (a reinstalled build can show the
+  // switch on while macOS does not trust the app), then opens the pane.
   const open = async () => {
     setOpened(true);
-    await openAccessibilityPane();
+    await repairAccessibilityAndOpenPane();
   };
 
   return (
@@ -240,6 +242,32 @@ export function AccessibilityStep(props: { onGranted: () => void }) {
 
 /* ---------------------------------------------------------- 4. Prøv det */
 
+/** Whether the backend's key listener runs (DESK-13, DESK-17). The backend
+ *  sends `wt-key-listener` when it starts or fails, usually at startup before
+ *  this window exists, so the step asks once when it opens and then follows
+ *  the event. An event that arrives first wins over the answer. */
+function useKeyListener(): boolean | null {
+  const [running, setRunning] = useState<boolean | null>(null);
+  const heard = useRef(false);
+  useEffect(() => {
+    let stop = false;
+    void commands
+      .wtKeyListenerStatus()
+      .then((s) => {
+        if (!stop && !heard.current && s) setRunning(!!s.running);
+      })
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, []);
+  useTauriEvent<{ running: boolean }>("wt-key-listener", (e) => {
+    heard.current = true;
+    setRunning(!!e?.running);
+  });
+  return running;
+}
+
 export function TryStep(props: { platform: WtPlatform }) {
   const { t } = useTranslation();
   const key = useKeyName(props.platform);
@@ -248,8 +276,9 @@ export function TryStep(props: { platform: WtPlatform }) {
   const progress = useModelSetup((s) => s.progress);
   const [end, setEnd] = useState<PillEndEvent | null>(null);
   const [down, setDown] = useState(false);
-  const [listener, setListener] = useState<boolean | null>(null);
+  const listener = useKeyListener();
   const field = useRef<HTMLTextAreaElement>(null);
+  const windows = props.platform === "windows";
   useEffect(() => {
     field.current?.focus();
     // The paste helper; the key listener is the backend's own (it starts
@@ -261,9 +290,6 @@ export function TryStep(props: { platform: WtPlatform }) {
     setDown(!!d);
     if (d) setEnd(null);
   });
-  useTauriEvent<{ running: boolean }>("wt-key-listener", (e) =>
-    setListener(!!e?.running),
-  );
   const modelReady = phase === "ready";
 
   return (
@@ -271,15 +297,31 @@ export function TryStep(props: { platform: WtPlatform }) {
       <StepTitle>{t("wt.onboarding.try.title")}</StepTitle>
       <p className="wt-onb-lead">{t("wt.onboarding.try.lead", { key })}</p>
       <p className="wt-onb-text">{t("wt.onboarding.try.tap", { key })}</p>
+      {windows ? (
+        <p className="wt-onb-text">{t("wt.onboarding.try.otherKeyWindows")}</p>
+      ) : null}
       <div className="wt-try">
-        <div className="wt-try-key" aria-hidden>
-          <KeyCaps
-            binding={binding}
-            platform={props.platform}
-            pressed={down}
-            size={64}
-          />
-        </div>
+        {windows ? (
+          // DESK-21: many new laptops have a Copilot key instead of Right
+          // Ctrl, so the key is chosen here (the picker of Indstillinger ›
+          // Tast). Afterwards focus goes back to the field for the test.
+          <div className="wt-try-key wt-try-key--picker">
+            <KeyPicker
+              platform={props.platform}
+              showLive
+              onChanged={() => field.current?.focus()}
+            />
+          </div>
+        ) : (
+          <div className="wt-try-key" aria-hidden>
+            <KeyCaps
+              binding={binding}
+              platform={props.platform}
+              pressed={down}
+              size={64}
+            />
+          </div>
+        )}
         <div className="wt-try-main">
           <label className="wt-row-title" htmlFor="wt-try-field">
             {t("wt.onboarding.try.fieldLabel")}
@@ -326,7 +368,7 @@ export function TryStep(props: { platform: WtPlatform }) {
       {listener === false && props.platform === "macos" ? (
         <div className="wt-onb-actions">
           <Status tone="warn">{t("wt.onboarding.try.keyNotRunning")}</Status>
-          <Button onClick={() => void openAccessibilityPane()}>
+          <Button onClick={() => void repairAccessibilityAndOpenPane()}>
             {t("wt.onboarding.accessibility.open")}
           </Button>
         </div>

@@ -189,6 +189,17 @@ describe("tap or hold (PHONE-26)", () => {
     expect(c.getSnapshot().machine.phase).toBe("send");
     expect(recorder.calls).toContain("stop");
   });
+
+  it("an interrupted press (pointercancel) sends, even within 0.5 s; never hands-free", async () => {
+    const { c, recorder, clock } = await setup({ paired: true });
+    c.down();
+    clock.t += 120;
+    c.interrupted();
+    await tick();
+    expect(c.getSnapshot().machine.phase).toBe("send");
+    expect(c.getSnapshot().machine.handsFree).toBe(false);
+    expect(recorder.calls).toContain("stop");
+  });
 });
 
 describe("the level meter follows the microphone (PHONE-21)", () => {
