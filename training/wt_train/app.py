@@ -25,6 +25,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -74,6 +75,18 @@ def _json_lines(text: str) -> list[dict]:
     return rows
 
 
+@contextmanager
+def _scratch_cwd():
+    """An empty working directory inside a temporary folder. A debug build of the
+    app exports its TypeScript bindings to ``../src/bindings.ts`` relative to its
+    working directory; started here, that file lands in the temporary folder, not
+    in the repository."""
+    with tempfile.TemporaryDirectory(prefix="wt-train-app-") as td:
+        cwd = Path(td) / "cwd"
+        cwd.mkdir()
+        yield cwd
+
+
 class App:
     def __init__(self, binary: Path, timeout: float = 600.0):
         self.bin = Path(binary)
@@ -83,7 +96,9 @@ class App:
         return f"App({self.bin})"
 
     def _run(self, args: list[str], timeout: float | None = None) -> subprocess.CompletedProcess:
-        return subprocess.run([str(self.bin), *args], capture_output=True, timeout=timeout or self.timeout)
+        with _scratch_cwd() as cwd:
+            return subprocess.run([str(self.bin), *args], capture_output=True, cwd=cwd,
+                                  timeout=timeout or self.timeout)
 
     @cached_property
     def supports_batch(self) -> bool:
@@ -113,7 +128,7 @@ class App:
     def transcribe(self, wavs: list[Path], model_id: str, progress=None) -> list[AppResult]:
         wavs = [Path(w).resolve() for w in wavs]
         if self.supports_batch:
-            return self._batch(wavs, model_id)
+            return self._batch(wavs, model_id, progress)
         results = []
         for n, wav in enumerate(wavs, 1):
             results.append(self._one(wav, model_id))
@@ -121,17 +136,27 @@ class App:
                 progress(n, len(wavs))
         return results
 
-    def _batch(self, wavs: list[Path], model_id: str) -> list[AppResult]:
-        with tempfile.TemporaryDirectory() as td:
+    def _batch(self, wavs: list[Path], model_id: str, progress=None) -> list[AppResult]:
+        """One --transcribe-list call; its JSON lines are read as they come, for progress."""
+        rows: dict[str, dict] = {}
+        with tempfile.TemporaryDirectory() as td, _scratch_cwd() as cwd:
             listing = Path(td) / "clips.list"
             listing.write_text("".join(f"{w}\n" for w in wavs), encoding="utf-8")
-            out = self._run(["--transcribe-list", str(listing), "--model", model_id, "--json"],
-                            timeout=max(self.timeout, 60.0 * len(wavs)))
-        rows = {str(Path(r["file"]).resolve()): r for r in _json_lines(out.stdout.decode("utf-8", "replace"))
-                if "file" in r}
-        if out.returncode not in (0, 1) or (out.returncode != 0 and not rows):
-            raise RuntimeError(f"{self.bin} --transcribe-list failed ({out.returncode}): "
-                               f"{out.stderr.decode('utf-8', 'replace')[-2000:]}")
+            errors = Path(td) / "stderr.txt"
+            with errors.open("wb") as err:
+                proc = subprocess.Popen([str(self.bin), "--transcribe-list", str(listing), "--model", model_id,
+                                         "--json"], stdout=subprocess.PIPE, stderr=err, cwd=cwd)
+                assert proc.stdout is not None
+                for raw in proc.stdout:
+                    for row in _json_lines(raw.decode("utf-8", "replace")):
+                        if "file" in row:
+                            rows[str(Path(row["file"]).resolve())] = row
+                            if progress:
+                                progress(len(rows), len(wavs))
+                code = proc.wait()
+            stderr = errors.read_text(encoding="utf-8", errors="replace")
+        if code not in (0, 1) or (code != 0 and not rows):
+            raise RuntimeError(f"{self.bin} --transcribe-list failed ({code}): {stderr[-2000:]}")
         results = []
         for wav in wavs:
             row = rows.get(str(wav))

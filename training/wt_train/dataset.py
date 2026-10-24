@@ -53,7 +53,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import audio, fleurs, paths
+from . import audio, console, fleurs, paths
 from .audio import file_sha256
 from .config import Config, load_config, to_dict, with_overrides
 from .harness import normalize
@@ -291,7 +291,7 @@ def _split_summary(items: list[Item], manifest: Path) -> dict:
 
 
 def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None = None,
-          log=print) -> Build:
+          log=console.log) -> Build:
     """Build, check and write the splits for one experiment config."""
     spelling = load_spelling(cfg.data.path("spelling"))
     own, skipped = load_recordings(cfg.data.path("recordings"), cfg.data.path("sentences"), spelling)

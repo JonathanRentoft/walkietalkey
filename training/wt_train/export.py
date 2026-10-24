@@ -45,7 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import paths
+from . import console, paths
 from .audio import file_sha256
 from .config import SLUG_RE, config_from_dict, key_knobs
 from .dataset import SOURCE_RECORDING, read_manifest
@@ -188,7 +188,7 @@ def _gguf_texts(tools: Tools, gguf: Path, wavs: list[Path]) -> list[str]:
 def export_run(run: Path, *, slug: str | None = None, name: str | None = None, force: bool = False,
                keep_intermediate: bool = False, n_verify: int | None = None, max_differing: int | None = None,
                reference_device: str = "cpu", tools: Tools | None = None, base=None, run_cmd=subprocess.run,
-               reference_texts: Callable | None = None, gguf_texts: Callable | None = None, log=print) -> dict:
+               reference_texts: Callable | None = None, gguf_texts: Callable | None = None, log=console.log) -> dict:
     run = Path(run)
     saved = json.loads((run / "config.json").read_text(encoding="utf-8"))
     cfg = config_from_dict(saved["config"])

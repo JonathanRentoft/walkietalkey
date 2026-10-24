@@ -5,7 +5,8 @@ only has ``-f``. It knows the models listed in ``FAKE_APP_MODELS`` (comma
 separated) plus every ``*.gguf`` in ``WT_APP_MODELS_DIR``. A transcript is
 the text of the ``<clip>.txt`` next to the clip, upper-cased; a clip whose
 name contains "bad", or that is not 16-bit PCM (like the real app), fails.
-Every call is logged to ``FAKE_APP_LOG``.
+Every call is logged to ``FAKE_APP_LOG``, and, like a debug build, it writes
+``../src/bindings.ts`` relative to its working directory.
 """
 
 SCRIPT = r'''
@@ -13,6 +14,9 @@ import json, os, sys
 from pathlib import Path
 
 args = sys.argv[1:]
+# Like a debug build of the app: export TypeScript bindings next to the working directory.
+Path("../src").mkdir(exist_ok=True)
+Path("../src/bindings.ts").write_text("// generated\n")
 with open(os.environ["FAKE_APP_LOG"], "a") as log:
     log.write(json.dumps(args) + "\n")
 batch = os.environ.get("FAKE_APP_BATCH") == "1"

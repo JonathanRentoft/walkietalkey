@@ -21,7 +21,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import paths
+from . import console, paths
 
 _SCALARS = {0: "<B", 1: "<b", 2: "<H", 3: "<h", 4: "<I", 5: "<i", 6: "<f", 7: "<?", 10: "<Q", 11: "<q", 12: "<d"}
 _STRING, _ARRAY = 8, 9
@@ -104,7 +104,7 @@ class Tools:
         return self.converter.is_file() and self.quantize.is_file() and self.cli.is_file()
 
 
-def transcribe_cpp(setup: bool = True, log=print) -> Tools:
+def transcribe_cpp(setup: bool = True, log=console.log) -> Tools:
     tools = Tools(paths.transcribe_cpp_dir())
     if not tools.ready():
         if not setup:

@@ -21,10 +21,17 @@ def clips(tmp_path, make_wav):
 @pytest.mark.parametrize("batch", [True, False])
 def test_transcribe_returns_one_result_per_clip(tmp_path, monkeypatch, clips, batch):
     binary, log = fake_app.install(tmp_path, monkeypatch, batch=batch)
+    here = tmp_path / "repo" / "training"
+    here.mkdir(parents=True)
+    monkeypatch.chdir(here)
     app = App(binary)
     assert app.supports_batch is batch
-    results = app.transcribe(clips, "edda-ft-x")
+    seen = []
+    results = app.transcribe(clips, "edda-ft-x", progress=lambda done, total: seen.append((done, total)))
     assert [r.text for r in results] == ["TEKST A", "TEKST B", ""]
+    assert seen[-1] == (3, 3) and len(seen) == 3
+    # The binary ran in a scratch folder: its ../src/bindings.ts never reaches the caller's tree.
+    assert not (tmp_path / "repo" / "src").exists()
     assert results[0].error is None and results[2].error
     calls = [json.loads(line) for line in log.read_text().splitlines()]
     work = [c for c in calls if "--model" in c]

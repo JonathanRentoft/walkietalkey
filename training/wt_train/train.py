@@ -52,7 +52,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import audio, dataset, paths, whisper
+from . import audio, console, dataset, paths, whisper
 from .config import Config, LoraConfig, config_hash, load_config, to_dict, with_overrides
 from .dataset import Build, Item
 from .encoder_cache import CacheSpec, EncoderCache
@@ -136,7 +136,7 @@ def resolve_run(arg: str, root: Path | None = None) -> Path:
 
 
 def fill_cache(cache: EncoderCache, base: whisper.Base, items: list[Item], device: str, batch_size: int,
-               log=print) -> list[Path]:
+               log=console.log) -> list[Path]:
     """Compute the missing entries with a float16 (GPU) or float32 (CPU) copy of the base."""
     import torch
 
@@ -289,7 +289,7 @@ def save_run_inputs(run: Path, cfg: Config, build: Build) -> None:
 
 
 def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = None,
-        runs_root: Path | None = None, cache_root: Path | None = None, log=print) -> Path:
+        runs_root: Path | None = None, cache_root: Path | None = None, log=console.log) -> Path:
     """Train one experiment; returns the run folder."""
     import torch
     from peft import LoraConfig as PeftLoraConfig

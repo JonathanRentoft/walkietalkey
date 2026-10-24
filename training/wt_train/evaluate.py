@@ -46,7 +46,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import audio, paths
+from . import audio, console, paths
 from .config import config_from_dict, config_hash, key_knobs
 from .dataset import SPLITS, read_manifest
 from .metrics import score_clip, summarize
@@ -179,7 +179,7 @@ def merged_lora_model(run: Path, base, dtype, device: str):
 # --- scoring and results ----------------------------------------------------------------
 
 
-def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: str, log=print,
+def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: str, log=console.log,
           respell_references: bool = True):
     started = time.time()
     next_report = [0.0]
@@ -312,7 +312,7 @@ def gguf_model_id(model: str | None, run: Path | None) -> str:
     raise ValueError("--backend gguf needs --model <app model id> or --run")
 
 
-def main(argv: list[str], log=print) -> int:
+def main(argv: list[str], log=console.log) -> int:
     p = argparse.ArgumentParser(prog="wt-train eval", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--backend", choices=["hf", "lora", "gguf"], required=True)
