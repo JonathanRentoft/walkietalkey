@@ -60,7 +60,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import subprocess
 import sys
 from collections import Counter
@@ -278,20 +277,9 @@ def pick_session(sessions: dict[str, SessionInfo], wanted: str | None) -> tuple[
 
 def pick_app(explicit: Path | str | None = None) -> app_module.App:
     """The binary that transcribes: ``--app-bin`` or ``WT_APP_BIN``; else the installed app (the
-    one the owner records with) before the repository's builds, like ``app.handoff_training``,
-    the first with the batch interface, else the first there is."""
-    chosen = explicit or os.environ.get("WT_APP_BIN")
-    if chosen:
-        found = app_module.App(Path(chosen))
-        if not found.bin.is_file():
-            raise FileNotFoundError(f"no WalkieTalkey binary at {found.bin}")
-        return found
-    installed = app_module.INSTALLED_APP
-    order = [installed, *(p for p in app_module.candidates() if p != installed)]
-    existing = [app_module.App(p) for p in order if p.is_file()]
-    if not existing:
-        raise FileNotFoundError("no WalkieTalkey app found; install it, or pass --app-bin")
-    return next((a for a in existing if a.supports_batch), existing[0])
+    one the owner records with) before the repository's builds, the first with the batch
+    interface (``app.find_app(prefer_installed=True)``, as the pilot report uses)."""
+    return app_module.find_app(explicit, prefer_installed=True)
 
 
 # --- one take -------------------------------------------------------------------------------

@@ -19,6 +19,12 @@ earlier take is kept aside). It is checked (:mod:`.checks`); a refused take
 metadata, and the session moves to the next sentence without a take, wrapping
 round, so stopping and starting again resumes where the owner left off. A take
 that failed a check is kept and offered for a redo.
+
+Run 7, the pilot: a session for a recording ``setup`` (``wt-train pilot record``) reads
+the pilot sentences in that setup's device and style, keeps its takes in the setup's
+folder, and adds ``setup`` and ``pilot: true`` to each take's metadata and to the
+session log. The app sees an ordinary session: the hello answer is still only the
+device and the style.
 """
 
 from __future__ import annotations
@@ -51,14 +57,15 @@ def b64u(data: bytes) -> str:
 
 class Session:
     def __init__(self, *, root: Path, condition: Condition, items: list, texts: dict[str, str],
-                 exam: bool = False, phone: str | None = None, clock=time.time):
+                 exam: bool = False, phone: str | None = None, setup: str | None = None, clock=time.time):
         self.id = secrets.token_hex(8)
         self.training = secrets.token_bytes(16)
         self.condition = condition
         self.items = list(items)
         self.exam = exam
+        self.setup = setup
         self.root = Path(root)
-        self.store = TakeStore(root, condition.id, texts, exam=exam)
+        self.store = TakeStore(root, condition.id, texts, exam=exam, setup=setup)
         self.phone_hint = phone
         self.clock = clock
         self.cond = threading.Condition()
@@ -79,9 +86,13 @@ class Session:
         statuses = [self.store.status(i.id) for i in self.items]
         self.index: int | None = next((n for n, st in enumerate(statuses) if st != "recorded"), None)
         log_session(self.root, {"event": "start", "session": self.id, "condition": condition.id, "exam": exam,
-                                "items": len(self.items), "time": _now()})
+                                **self._pilot(), "items": len(self.items), "time": _now()})
 
     # --- helpers ----------------------------------------------------------------
+
+    def _pilot(self) -> dict:
+        """What a pilot session adds to its log lines and its takes' metadata."""
+        return {"setup": self.setup, "pilot": True} if self.setup is not None else {}
 
     def _push(self, command: dict) -> None:
         self.seq += 1
@@ -231,6 +242,7 @@ class Session:
             "sample_rate": 16000,
             "seconds": round(result.seconds, 3),
             "checks": result.as_dict(),
+            **self._pilot(),
         }
         if c.device == "phone":
             out["relay"] = {"session": meta.get("session"), "chunks": meta.get("chunks"),
@@ -291,7 +303,7 @@ class Session:
             self._push({"type": "end"})
             self.ended = True
             log_session(self.root, {"event": "end", "session": self.id, "condition": self.condition.id,
-                                    "exam": self.exam, "saved": self.saved, "time": _now()})
+                                    "exam": self.exam, **self._pilot(), "saved": self.saved, "time": _now()})
 
     def state(self) -> dict:
         with self.cond:
@@ -302,6 +314,7 @@ class Session:
                 "condition": {"id": self.condition.id, "label": self.condition.label,
                               "device": self.condition.device, "style": self.condition.style},
                 "exam": self.exam,
+                "pilot": {"setup": self.setup} if self.setup is not None else None,
                 "app": {"connected": connected, **({k: self.app[k] for k in ("version", "input")}
                                                    if self.app else {})},
                 "phone": self.phone,

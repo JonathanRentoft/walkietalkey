@@ -34,6 +34,9 @@ SENTENCES_CSV = DATA / "sentences.csv"
 SPELLING_YAML = DATA / "spelling.yaml"
 # Which condition each sentence is recorded in (wt-train plan), committed.
 PLAN_CSV = DATA / "plan.csv"
+# Run 7: the share of the sentences each condition gets (wt-train plan --mix), committed next
+# to the plan; a plan elsewhere keeps its own mix.yaml beside it.
+MIX_YAML = DATA / "mix.yaml"
 # The long-form exam paragraphs: read once per condition, never trained on.
 EXAM_YAML = DATA / "exam.yaml"
 # Git-ignored; the owner's voice never leaves this Mac.

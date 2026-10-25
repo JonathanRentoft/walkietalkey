@@ -257,3 +257,69 @@ test("the app's API needs the session's token, and a web page cannot post to it 
   );
   expect(status).toBe(403);
 });
+
+test("a pilot setup: the page says it is a pilot, names the setup, and the take lands in its folder @pilot", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#condition")).toHaveText(
+    "· Pilot: airpods-whisper · Mac'en, hvisket",
+  );
+  await expect(page).toHaveTitle("Pilot: airpods-whisper");
+  const note = page.locator("#pilot");
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("Det er en pilot");
+  await expect(note).toContainText("opsætningen airpods-whisper");
+  await expect(note).toContainText("aldrig til træning");
+  await expect(note).toContainText("Vælg mikrofonen i WalkieTalkey");
+
+  const app = await FakeApp.fromFile(join(work(), "pilot-app-url"));
+  const hello = await app.hello([]);
+  expect(hello.status).toBe(200);
+  // The app sees an ordinary Mac session, whispered.
+  expect(await hello.json()).toMatchObject({ device: "mac", style: "whisper" });
+  await expect(page.locator("#sentence")).toHaveText(
+    "Buildet fejler på CI'en i dag.",
+  );
+  await expect(page.locator("#hint")).toHaveText(
+    "Hvisk. Tryk mellemrum for at optage.",
+  );
+  await expect(page.locator("#conditions tr.current")).toContainText(
+    "airpods-whisper",
+  );
+  await expect(page.locator("#conditions tr.current")).toContainText(
+    "0 af 2 sætninger",
+  );
+  await expect(page.locator("#conditions")).not.toContainText("eksamen");
+
+  await page.keyboard.press("Space");
+  expect((await app.next("mac_start")).prompt).toBe("pilot-01");
+  await app.event({
+    type: "recording",
+    prompt: "pilot-01",
+    source: "mac",
+    input: "AirPods Pro",
+  });
+  await page.keyboard.press("Space");
+  await app.next("mac_stop");
+  const r = await app.take(
+    { prompt: "pilot-01", source: "mac", missing: 0, duration_ms: 3000 },
+    pcmOf(speech, 0, 3),
+  );
+  expect(r).toMatchObject({ saved: true });
+  await expect(page.locator("#conditions tr.current")).toContainText(
+    "1 af 2 sætninger",
+  );
+  const folder = join(work(), "pilot", "airpods-whisper");
+  expect(readWav(join(folder, "pilot-01.wav")).rate).toBe(16000);
+  const meta = JSON.parse(readFileSync(join(folder, "pilot-01.json"), "utf8"));
+  expect(meta).toMatchObject({
+    id: "pilot-01",
+    setup: "airpods-whisper",
+    pilot: true,
+    condition: "mac-whisper",
+    device: "mac",
+    style: "whisper",
+    microphone: "AirPods Pro",
+  });
+});

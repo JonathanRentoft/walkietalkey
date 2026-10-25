@@ -1,7 +1,9 @@
-"""Scores per recording condition (device x style: phone whispered, phone normal, Mac normal).
+"""Scores per recording condition (device x style: phone whispered, phone normal, Mac normal,
+Mac whispered; ``conditions.py``).
 
 The workbench records most takes on the phone, many of them whispered, so one
-overall WER hides what matters. ``summaries`` groups per-clip rows (from
+overall WER hides what matters. Every condition is scored alike, whatever its share
+of the mix (run 7 added Mac whispered). ``summaries`` groups per-clip rows (from
 ``metrics.score_clip`` with a ``condition`` key) and summarises each group with
 ``metrics.summarize``: WER with its confidence interval, CER and English-term
 accuracy, strict and lenient. Clips without a condition (FLEURS, rehearsal, a

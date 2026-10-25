@@ -15,7 +15,9 @@ punctuation (Ekko PnC) and applies its Danish finishing. Two interfaces:
 The binary is ``--app-bin`` / ``WT_APP_BIN``, else the first of
 ``src-tauri/target/release``, ``src-tauri/target/debug`` (in this repository)
 and ``/Applications/WalkieTalkey.app`` that has the batch interface, else the
-first of them that exists.
+first of them that exists. ``find_app(prefer_installed=True)`` (run 7: the pilot
+report, ``wt-train check``) looks at the installed app first, the one the owner
+records with, then the repository's builds, as the recorder's handoff does.
 """
 
 from __future__ import annotations
@@ -41,14 +43,18 @@ def candidates() -> list[Path]:
     return [target / "release" / exe, target / "debug" / exe, INSTALLED_APP]
 
 
-def find_app(explicit: Path | str | None = None) -> "App":
+def find_app(explicit: Path | str | None = None, prefer_installed: bool = False) -> "App":
+    """``explicit`` or ``WT_APP_BIN``, else the first candidate with the batch interface (else the
+    first that exists). The candidates are the repository's builds, then the installed app; with
+    ``prefer_installed``, the installed app first (as :func:`handoff_training` orders them)."""
     chosen = explicit or os.environ.get("WT_APP_BIN")
     if chosen:
         app = App(Path(chosen))
         if not app.bin.is_file():
             raise FileNotFoundError(f"no WalkieTalkey binary at {app.bin}")
         return app
-    existing = [App(p) for p in candidates() if p.is_file()]
+    order = [INSTALLED_APP, *candidates()[:2]] if prefer_installed else candidates()
+    existing = [App(p) for p in order if p.is_file()]
     if not existing:
         raise FileNotFoundError("no WalkieTalkey binary found; build the app or pass --app-bin")
     return next((a for a in existing if a.supports_batch), existing[0])

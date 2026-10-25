@@ -1,5 +1,7 @@
 // The recorder page (wt-train record): the sentence to read, the progress per condition, the link
-// to the WalkieTalkey app and the last take's check. The audio never passes this page: the app
+// to the WalkieTalkey app and the last take's check. For the pilot (wt-train pilot record) the
+// same page reads the pilot sentences in one recording setup, says so and names the setup, and its
+// table shows the setups instead of the conditions. The audio never passes this page: the app
 // records it (on the phone through the pairing, or on the Mac's own input) and hands it to the
 // local server (wt_train/recorder/server.py). The page only polls that server and asks it to move
 // on, go back or start and stop a Mac take.
@@ -12,6 +14,7 @@ const $ = (id) => document.getElementById(id);
 const ui = {
   condition: $("condition"),
   progress: $("progress"),
+  pilot: $("pilot"),
   linkText: $("link-text"),
   connect: $("connect"),
   conditions: document.querySelector("#conditions tbody"),
@@ -59,6 +62,14 @@ const CHECKS = {
   gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
   error: "Optagelsen kunne ikke gemmes.",
 };
+
+// TODO(copy): run 7, the pilot.
+function pilotNote(setup, mac) {
+  const intro = `Det er en pilot: tolv sætninger med opsætningen ${setup}, så du kan høre, om lyden er god, før du indtaler i timevis. Optagelserne bruges kun til at sammenligne opsætningerne og aldrig til træning.`;
+  return mac
+    ? `${intro} Vælg mikrofonen i WalkieTalkey, før du optager.`
+    : intro;
+}
 
 const LINK = {
   connecting: "Forbinder til WalkieTalkey på denne Mac",
@@ -119,10 +130,12 @@ function linkLine() {
 }
 
 function renderConditions() {
+  const s = state.session;
+  const currentRow = s.pilot ? s.pilot.setup : s.condition.id;
   const rows = state.conditions.map((c) => {
     const p = state.progress[c.id];
     const tr = document.createElement("tr");
-    if (c.id === state.session.condition.id) tr.className = "current";
+    if (c.id === currentRow) tr.className = "current";
     const name = document.createElement("th");
     name.scope = "row";
     name.textContent = c.label;
@@ -131,9 +144,11 @@ function renderConditions() {
       ? `${number(p.done)} af ${number(p.total)} sætninger`
       : "";
     const exam = document.createElement("td");
-    exam.textContent = p
-      ? `${number(p.exam_done)} af ${number(p.exam_total)} afsnit til eksamen`
-      : "";
+    // The pilot has no exam.
+    exam.textContent =
+      p && typeof p.exam_total === "number"
+        ? `${number(p.exam_done)} af ${number(p.exam_total)} afsnit til eksamen`
+        : "";
     tr.append(name, sentences, exam);
     return tr;
   });
@@ -146,7 +161,12 @@ function render() {
   const item = current();
   const mac = isMac();
   const whisper = s.condition.style === "whisper";
-  ui.condition.textContent = `· ${s.condition.label}${s.exam ? " · eksamen" : ""}`;
+  ui.condition.textContent = s.pilot
+    ? `· Pilot: ${s.pilot.setup} · ${s.condition.label}`
+    : `· ${s.condition.label}${s.exam ? " · eksamen" : ""}`;
+  ui.pilot.hidden = !s.pilot;
+  ui.pilot.textContent = s.pilot ? pilotNote(s.pilot.setup, mac) : "";
+  document.title = s.pilot ? `Pilot: ${s.pilot.setup}` : "Indtaling";
   ui.progress.textContent = `${number(s.done)} af ${number(s.total)} indtalt`;
   const link = linkLine();
   ui.linkText.textContent = link.text;
@@ -162,9 +182,11 @@ function render() {
   } else {
     ui.sid.textContent = "";
     ui.badge.textContent = "";
-    ui.sentence.textContent = s.total
-      ? "Alle er indtalt i denne betingelse. Tak."
-      : "Der er intet at indtale her.";
+    ui.sentence.textContent = !s.total
+      ? "Der er intet at indtale her."
+      : s.pilot
+        ? `Piloten er indtalt med ${s.pilot.setup}. Tak. Sammenlign opsætningerne med wt-train pilot report.`
+        : "Alle er indtalt i denne betingelse. Tak.";
   }
   const voice = whisper ? "Hvisk" : "Tal med almindelig stemme";
   const rec = s.recording;

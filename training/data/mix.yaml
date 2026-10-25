@@ -1,0 +1,10 @@
+# The recording mix: the share of the sentences each condition gets, in percent
+# (conditions.py). Written by `wt-train plan --mix phone-whisper=40,...`, which also
+# deals the sentences without a take again to fit it; `wt-train record` records only
+# the conditions with a share. Change it with --mix: an edit here alone deals nothing
+# again.
+mix:
+  phone-whisper: 40
+  phone-normal: 40
+  mac-normal: 20
+  mac-whisper: 0

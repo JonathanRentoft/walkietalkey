@@ -1,0 +1,13 @@
+id,text,kind
+pilot-01,"Jeg har pushet rettelsen til branchen, så du kan reviewe den nu.",terms
+pilot-02,Mødet med kunden er flyttet til torsdag klokken ti.,plain
+pilot-03,"Buildet fejler på CI'en, fordi der mangler en dependency.",terms
+pilot-04,Husk at sende fakturaen til bogholderiet inden udgangen af måneden.,plain
+pilot-05,Vi deployer den nye feature til staging i eftermiddag og til prod i morgen.,terms
+pilot-06,"Jeg holder fri i næste uge, så skriv til Mette, hvis det haster.",plain
+pilot-07,"Endpointet giver en timeout, når databasen har travlt om morgenen.",terms
+pilot-08,"Tak for et godt møde i går, jeg sender et referat i løbet af dagen.",plain
+pilot-09,Jeg har oprettet et issue i Linear og skrevet til resten af holdet i Slack.,terms
+pilot-10,Kan vi rykke vores samtale til efter frokost?,plain
+pilot-11,"Kan du merge PR'en i eftermiddag, så vi kan lave en release i morgen?",terms
+pilot-12,"Budgettet for næste år skal godkendes af ledelsen, før vi kan ansætte flere.",plain

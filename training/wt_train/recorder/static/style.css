@@ -41,9 +41,19 @@ body {
 }
 header {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+}
+/* The pilot (wt-train pilot record): a line under the title. */
+#pilot {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
 }
 h1 {
   margin: 0;
