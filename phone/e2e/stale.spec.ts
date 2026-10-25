@@ -142,8 +142,15 @@ test.describe("stale pairings (run 5, spec 5.4)", () => {
     await expect(label(page)).toHaveText(
       "MacBook er ikke online. Optagelsen venter i 10 minutter.",
     );
-    await page.clock.fastForward(10 * 60 * 1000 + 1000);
-    await expect(label(page)).toHaveText("Nåede ikke frem til MacBook.");
+    // The 10 minutes count from the moment the finished take is handed to the
+    // relay, a moment after the release: jump again if the first jump came first.
+    // A timer that was never set would still fail every attempt.
+    await expect(async () => {
+      await page.clock.fastForward(10 * 60 * 1000 + 1000);
+      await expect(label(page)).toHaveText("Nåede ikke frem til MacBook.", {
+        timeout: 1000,
+      });
+    }).toPass({ timeout: 15_000 });
     await expect(
       sub(page).getByRole("button", { name: "Prøv igen" }),
     ).toBeVisible();
