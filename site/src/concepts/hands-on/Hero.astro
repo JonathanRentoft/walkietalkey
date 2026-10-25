@@ -1,0 +1,82 @@
+---
+/* Concept C (hands-on), the first screen: the hero is a live toy. A small screen with a liquid wallpaper (the page's
+   one living surface up here) holds a minimal note; below it a big key. Hold the key (the real fn key if the browser
+   ever reports it, otherwise the space bar, or the button itself), and the app's pill floats up at the bottom centre
+   of the screen, listening. Let go, the pill says "Renskriver", the next sample sentence lands in the note at once,
+   the pill says "Indsat" and fades (DESK-55). A tap under 300 ms does nothing (DESK-26), Esc cancels (DESK-25).
+   toy.ts drives it; the HTML holds the finished example (a sentence in the note, the pill on "Indsat"), so the page
+   reads the same without JavaScript. The h1 is the slogan, and its three words follow the toy: Tal while you hold,
+   Slip when you let go, Indsæt when the text lands. */
+import { DictationPill, Keycap, LiquidBackground, ShinyButton } from "@walkietalkey/ui";
+import { CTA, FINE_PRINT, ONE_LINER, PRODUCT, SAMPLES, SLOGAN } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+import { HO } from "./copy";
+
+/* each hold dictates the next of these; the first one is already in the note */
+const queue = [SAMPLES.mail, SAMPLES.mixed, SAMPLES.wordsWritten, SAMPLES.phone, SAMPLES.correctionWritten];
+const words = SLOGAN.split(" ");
+const text = {
+  holding: HO.hero.holding,
+  holdingTouch: HO.hero.holdingTouch,
+  short: HO.hero.short,
+  cancelled: HO.hero.cancelled,
+  listening: PRODUCT.listening,
+  processing: PRODUCT.processing,
+  pasted: HO.hero.pastedSay,
+  fn: HO.hero.keyFn,
+};
+const MIC = "M8 1.8a2.3 2.3 0 0 1 2.3 2.3v3.5a2.3 2.3 0 0 1-4.6 0V4.1A2.3 2.3 0 0 1 8 1.8ZM3.6 7.3a4.4 4.4 0 0 0 8.8 0M8 11.8v2.4";
+---
+<section class="ho-hero" aria-labelledby="ho-h1" data-ho-live>
+  <div class="ho-wrap ho-hero-grid">
+    <h1 class="ho-h1" id="ho-h1" data-slogan>{words.map((w, i) => <>{i > 0 && " "}<span data-step={["hold", "work", "done"][i]}>{w}</span></>)}</h1>
+    <p class="ho-lead">{ONE_LINER}</p>
+    <div class="ho-ctas">
+      <div class="ho-cta-row">
+        <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+        <ShinyButton variant="glass" size="lg" icon={false} href={PAGES.how.path}>{CTA.how}</ShinyButton>
+      </div>
+      <p class="ho-fine">{FINE_PRINT}</p>
+    </div>
+
+    <div class="ho-toy" data-toy data-samples={JSON.stringify(queue)} data-text={JSON.stringify(text)}>
+      <LiquidBackground className="ho-screen" palette="morgengry">
+        <div class="ho-note">
+          <div class="ho-note-bar" aria-hidden="true">
+            <span class="ho-dots"><i></i><i></i><i></i></span>
+            <span class="ho-note-title">{HO.hero.docTitle}</span>
+            <span class="ho-dots ho-dots--ghost"><i></i><i></i><i></i></span>
+          </div>
+          <div class="ho-note-body" data-doc>
+            <p class="ho-line"><span class="ho-paste">{SAMPLES.first}</span><i class="ho-caret" aria-hidden="true"></i></p>
+          </div>
+        </div>
+        <div class="ho-dock" aria-hidden="true" data-dock data-show>
+          <DictationPill state="pasted" size="lg" className="ho-pill" />
+        </div>
+      </LiquidBackground>
+      <template data-pill-states>
+        <DictationPill state="listening" size="lg" mark seconds={0} />
+        <DictationPill state="processing" size="lg" mark />
+        <DictationPill state="pasted" size="lg" />
+      </template>
+
+      <div class="ho-controls">
+        <button type="button" class="ho-hold" data-hold aria-describedby="ho-hint ho-honest">
+          <span class="ho-hold-body">
+            <span class="ho-hold-cap" aria-hidden="true">
+              <svg class="ho-hold-mic" viewBox="0 0 16 16" width="34" height="34"><path d={MIC} /></svg>
+            </span>
+            <span class="ho-hold-label">{PRODUCT.phoneHold}</span>
+          </span>
+        </button>
+        <p class="ho-hint" id="ho-hint">
+          <span class="ho-hint-idle ho-hint-keys">{HO.hero.holdBefore} <Keycap size={34} className="ho-hint-key"><span data-keyname>{HO.hero.keySpace}</span></Keycap> {HO.hero.holdAfter}</span>
+          <span class="ho-hint-msg" data-msg></span>
+        </p>
+        <p class="ho-honest" id="ho-honest">{HO.hero.honest}</p>
+        <p class="wt-sr" aria-live="polite" data-live></p>
+      </div>
+    </div>
+  </div>
+</section>
