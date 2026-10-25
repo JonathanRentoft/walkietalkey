@@ -385,6 +385,15 @@ kbd.inline {
   margin-top: auto;
 }
 
+/* Run 6, Hent: macOS's and Safari's English names next to the Danish ones */
+.gk-en {
+  color: var(--ink-muted);
+}
+.ios-steps {
+  display: grid;
+  gap: var(--space-2);
+}
+
 .steps-list {
   list-style: none;
   padding: 0 !important;
