@@ -144,7 +144,11 @@ def test_an_export_sits_under_its_training_run_with_its_card(store, tmp_path):
     assert got.data.params["model_id"] == "edda-ft-first" and got.data.params["sha256"] == "ab" * 32
     assert got.data.metrics["size_bytes"] == 886_000_000 and got.data.metrics["verify/exact_matches"] == 9
     assert got.data.metrics["verify/passed"] == 1 and got.data.metrics["seconds/convert"] == 9.5
-    assert "edda-ft-first.README.md" in artifacts(got)
+    # Run 6: the card and export.json sit under model/, the folder its registered version points at.
+    c, _ = tracking.client()
+    assert {a.path for a in c.list_artifacts(got.info.run_id, "model")} == {"model/edda-ft-first.README.md",
+                                                                            "model/export.json"}
+    assert got.data.tags["wt.change"] == "model"
 
 
 def test_the_smoke_test_tracks_nothing(store, monkeypatch):

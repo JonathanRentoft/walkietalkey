@@ -156,3 +156,20 @@ def test_a_failed_same_text_check_installs_nothing(tmp_path, tiny_run, tiny_base
                           gguf_texts=lambda w: ["farvel"] * len(w), log=lambda *_: None)
     assert not (tmp_path / "app-models" / "edda-ft-tiny.gguf").exists()
     assert not (tiny_run / "export.json").exists()
+
+
+def test_a_versioned_export_is_a_file_of_its_own_with_a_sidecar_for_the_app(tmp_path, tiny_run, tiny_base):
+    """Run 6: version N installs as edda-ft-<slug>-v<N>, so earlier versions stay installed for rolling back,
+    and its sidecar tells the app's version list its number, run, date and validation WER."""
+    tools = fake_tcpp.install(tmp_path / "tcpp")
+    same = lambda w: ["hej"] * len(w)  # noqa: E731
+    for v in (1, 2):
+        export.export_run(tiny_run, tools=tools, base=tiny_base, reference_texts=same, gguf_texts=same,
+                          log=lambda *_: None, version=v)
+    models = tmp_path / "app-models"
+    assert {p.name for p in models.glob("edda-ft-tiny-v*.gguf")} == {"edda-ft-tiny-v1.gguf", "edda-ft-tiny-v2.gguf"}
+    assert read_metadata(models / "edda-ft-tiny-v2.gguf", {"general.name"}) == {"general.name": "Edda (lille test) v2"}
+    side = json.loads((models / "edda-ft-tiny-v2.json").read_text())
+    assert side["model_id"] == "edda-ft-tiny-v2" and side["version"] == 2 and side["run"] == tiny_run.name
+    assert side["registered_model"] == "edda-da" and side["base_repo"]
+    assert 0 <= side["validation_wer"] and side["created"] and len(side["sha256"]) == 64

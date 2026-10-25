@@ -7,7 +7,8 @@ the text of the ``<clip>.txt`` next to the clip, upper-cased; a clip whose
 name contains "bad", or that is not 16-bit PCM (like the real app), fails.
 Every call is logged to ``FAKE_APP_LOG``, and, like a debug build, it writes
 ``../src/bindings.ts`` relative to its working directory. ``FAKE_APP_TRAINING_EXIT``
-gives it ``--training-session`` (the recorder's handoff), which exits with that code.
+gives it ``--training-session`` (the recorder's handoff), which exits with that code;
+``FAKE_APP_USE_EXIT`` gives it ``--use-model`` (run 6: ``wt-train use``), likewise.
 """
 
 SCRIPT = r'''
@@ -34,13 +35,18 @@ def text_for(wav):
     return txt.read_text(encoding="utf-8").strip().upper() if txt.is_file() else "hej"
 
 training = os.environ.get("FAKE_APP_TRAINING_EXIT")
+use = os.environ.get("FAKE_APP_USE_EXIT")
 if "--help" in args:
     print("Usage: walkietalkey [OPTIONS]\n  -f, --transcribe-file <WAV>\n  --model <MODEL>\n  --json")
     if batch:
         print("      --transcribe-list <FILE>  Transcribe every WAV listed")
     if training is not None:
         print("      --training-session <URL>  Hand a recorder session to the running app")
+    if use is not None:
+        print("      --use-model <ID>  Select an installed model in the app")
     sys.exit(0)
+if "--use-model" in args:
+    sys.exit(int(use) if use is not None else 2)
 if "--training-session" in args:
     # 0: handed to the running app; 3: no app is running (like the real one).
     sys.exit(int(training) if training is not None else 2)
