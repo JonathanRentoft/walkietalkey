@@ -20,6 +20,9 @@ STEPS = {
     "use": ("wt_train.use", "switch the app to a model version, or back to edda"),
     "smoke": ("wt_train.smoke", "run the whole chain on 20 FLEURS clips"),
     "ui": ("wt_train.ui", "open the MLflow UI for the tracked runs"),
+    "report": ("wt_train.report", "an HTML page of an evaluation, or of two compared (--vs)"),
+    "pilot": ("wt_train.pilot", "record the pilot sentences per setup, and compare the setups"),
+    "check": ("wt_train.check", "look over the latest recording session: levels, noise, takes"),
     "card": ("wt_train.journal", "write a lab-journal page for a run"),
 }
 

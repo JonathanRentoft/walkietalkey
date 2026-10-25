@@ -38,6 +38,10 @@ PLAN_CSV = DATA / "plan.csv"
 EXAM_YAML = DATA / "exam.yaml"
 # Git-ignored; the owner's voice never leaves this Mac.
 RECORDINGS = DATA / "recordings"
+# Run 7: the pilot. Twelve sentences (committed) read once per recording setup before the real
+# recordings; the takes (git-ignored, like recordings/) never enter any split.
+PILOT_CSV = DATA / "pilot.csv"
+PILOT = DATA / "pilot"
 CONFIGS = TRAINING / "configs"
 RESULTS_CSV = TRAINING / "results.csv"
 MODEL_CARD_TEMPLATE = TRAINING / "model-card" / "TEMPLATE.md"
@@ -103,6 +107,11 @@ def runs_dir() -> Path:
 
 def eval_runs_dir() -> Path:
     return work_dir() / "runs" / "eval"
+
+
+def reports_dir() -> Path:
+    """Run 7: the HTML pages of ``wt-train report`` and ``wt-train pilot report``."""
+    return work_dir() / "reports"
 
 
 def exports_dir() -> Path:
