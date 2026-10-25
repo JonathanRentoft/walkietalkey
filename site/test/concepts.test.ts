@@ -24,11 +24,16 @@ const CONCEPT_JS_BUDGET = 24 * 1024;
 /** "composed rather than stacked as fourteen sections" */
 const MAX_SECTIONS = 8;
 
+/* CONCEPTS_ONLY=<name> builds and checks one concept (while working on it). */
+const RUN = process.env.CONCEPTS_ONLY
+  ? CONCEPTS.filter((c) => c === process.env.CONCEPTS_ONLY)
+  : CONCEPTS;
+
 const draft: Partial<Record<Concept, { dir: string; doc: HTMLElement }>> = {};
 const prod: Partial<Record<Concept, { dir: string; doc: HTMLElement }>> = {};
 
 beforeAll(() => {
-  for (const c of CONCEPTS) {
+  for (const c of RUN) {
     for (const [into, isDraft] of [
       [draft, true],
       [prod, false],
@@ -79,7 +84,7 @@ function css(dir: string, d: HTMLElement): string {
 const feature = (d: HTMLElement, key: string) =>
   d.querySelectorAll(`[data-feature="${key}"]`);
 
-describe.each(CONCEPTS)("concept %s (run 6)", (c) => {
+describe.each(RUN)("concept %s (run 6)", (c) => {
   const d = () => draft[c]!.doc;
   const p = () => prod[c]!.doc;
 

@@ -15,6 +15,8 @@ export default defineConfig({
   compressHTML: true,
   build: { format: "file", inlineStylesheets: "never", assets: "_assets" },
   devToolbar: { enabled: false },
+  /* Run 6: a cache per front page, so the concepts can be built side by side */
+  cacheDir: `./node_modules/.astro-${conceptDir(BUILD.concept)}`,
   integrations: [
     react(),
     {
