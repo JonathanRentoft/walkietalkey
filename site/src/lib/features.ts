@@ -155,7 +155,7 @@ export const FEATURES: Record<FeatureKey, Feature> = {
     key: "free",
     title: "Gratis for alle, også for virksomheder",
     short: "0 kr. for alle. Betalt hjælp til opsætning, hvis I vil have den.",
-    body: "WalkieTalkey koster ikke noget, heller ikke for virksomheder. Vil I have det sat op på alle computere, med fælles ordliste og jeres eget relæ, kan I købe hjælp til det. Hjælpen er en service, ikke en licens.",
+    body: "WalkieTalkey koster ikke noget, heller ikke for virksomheder. Vil I have det sat op på alle computere, med fælles ordliste og jeres eget relæ, kan I købe hjælp til det.",
   },
   start: {
     key: "start",
