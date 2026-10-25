@@ -40,7 +40,8 @@ header is fixed (``RESULT_COLUMNS``) and a file with another header is refused
 rather than mixed. Per-clip rows and ``summary.json`` (with ``by_condition`` and
 ``metrics``, the flat numbers ``per_condition.for_logging`` makes for a tracker)
 go to ``<work>/runs/eval/<timestamp>-<backend>-<model>/``; ``run()`` returns the
-same report.
+same report. Run 7: ``main()`` ends with the run's HTML page (``wt-train report``,
+``report.py``) in ``<work>/reports/``, attached to its MLflow run; no browser opens.
 """
 
 from __future__ import annotations
@@ -392,7 +393,11 @@ def gguf_model_id(model: str | None, run: Path | None) -> str:
 
 def main(argv: list[str], log=console.log) -> int:
     report = run(argv, log)
-    tracking.log_eval(report)
+    run_id = tracking.log_eval(report)
+    # Run 7: every evaluation leaves its HTML page (wt-train report), attached to its run.
+    from . import report as report_page
+
+    report_page.after_eval(report, run_id, log)
     return report["exit_code"]
 
 
@@ -500,7 +505,8 @@ def run(argv: list[str], log=console.log) -> dict:
     code = 0 if all(s["failed"] == 0 for _, s in entries) else 1
     return {"exit_code": code, "results": dict(entries), "by_condition": by_condition, "metrics": metrics,
             "out": out, "backend": a.backend, "model": label, "dataset": name,
-            "train_run": run.name if run is not None else None}
+            "train_run": run.name if run is not None else None,
+            "spelling": str(a.spelling) if spelling is not None else None}
 
 
 def _write_rows(path: Path, rows: list[dict]) -> None:

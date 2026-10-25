@@ -300,18 +300,21 @@ def log_training_inputs(tracked: Run, config: dict, config_hash: str, splits: di
                     "dataset": {"fingerprint": fingerprint["fingerprint"], "counts": fingerprint["counts"]}})
 
 
-def log_eval(report: dict) -> None:
+def log_eval(report: dict) -> str:
     """One ``wt-train eval``: every metric (overall, per condition, the FLEURS regression)
-    and its files, under its training run when it scored one."""
+    and its files, under its training run when it scored one. Run 7: tagged ``wt.eval_dir``
+    with its folder, and returns the run's id ("" when tracking is off) for its report page."""
     if not enabled():
-        return
+        return ""
     out = Path(report["out"])
-    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report)) as r:
+    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report),
+             tags={"wt.eval_dir": str(out.resolve())}) as r:
         r.params({"backend": report.get("backend", ""), "model": report.get("model", ""),
                   "dataset": report.get("dataset", ""), "train_run": report.get("train_run") or ""})
         r.metrics(report.get("metrics") or {})
         for name in ("summary.json", "terms.md", "side-by-side.md"):
             r.artifact(out / name)
+    return r.id
 
 
 def eval_change(report: dict) -> str:

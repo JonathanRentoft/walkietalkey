@@ -32,6 +32,8 @@ p.sub{color:var(--muted);margin:0 0 24px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .card b{display:block;font-size:24px;font-variant-numeric:tabular-nums}.card span{color:var(--muted);font-size:13px}
+.card small{display:block;color:var(--muted);font-size:12px;margin-top:2px;font-variant-numeric:tabular-nums}
+p.note{color:var(--muted);font-size:13px;margin:8px 0 0}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;
 overflow:hidden;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -99,9 +101,34 @@ def table(headers: Sequence[str], rows: Iterable[Sequence[object]], numeric: Seq
     return Raw(f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>")
 
 
-def cards(items: Iterable[tuple[str, str]]) -> str:
-    return Raw('<div class="cards">' + "".join(
-        f'<div class="card"><b>{esc(v)}</b><span>{esc(k)}</span></div>' for k, v in items) + "</div>")
+def cards(items: Iterable[Sequence[str]]) -> str:
+    """Big numbers: ``(label, value)`` or ``(label, value, note)`` per card; the note
+    (an interval, a count) goes small under the label."""
+
+    def card(item: Sequence[str]) -> str:
+        label, value, *rest = item
+        note = f"<small>{esc(rest[0])}</small>" if rest and rest[0] else ""
+        return f'<div class="card"><b>{esc(value)}</b><span>{esc(label)}</span>{note}</div>'
+
+    return Raw('<div class="cards">' + "".join(card(i) for i in items) + "</div>")
+
+
+def change(delta: float | None, text: str, lower_is_better: bool = True) -> str:
+    """``text`` (a formatted difference) coloured by whether the change helps: green
+    when it goes the good way, red when not, muted when there is none."""
+    if not delta:
+        return Raw(f'<span class="muted">{esc(text)}</span>')
+    good = (delta < 0) == lower_is_better
+    return Raw(f'<span class="{"better" if good else "worse"}">{esc(text)}</span>')
+
+
+def clip_card(anchor: str, title: str, facts: Sequence[object], fields: Sequence[tuple[str, object]],
+              audio: str = "") -> str:
+    """One clip: a header (title, facts, player) over a list of labelled fields (the
+    reference, a diff). ``anchor`` becomes ``id="clip-<anchor>"`` so a page can link to it."""
+    head = f"<b>{esc(title)}</b>" + "".join(f"<span>{cell(f)}</span>" for f in facts) + cell(audio)
+    body = "".join(f"<dt>{esc(k)}</dt><dd>{cell(v)}</dd>" for k, v in fields)
+    return Raw(f'<section class="clip" id="clip-{esc(anchor)}"><header>{head}</header><dl>{body}</dl></section>')
 
 
 def audio_tag(path: Path | str | None) -> str:

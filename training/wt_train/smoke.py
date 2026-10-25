@@ -148,7 +148,7 @@ def main(argv: list[str]) -> int:
         return set(folder.glob(pattern)) if folder.is_dir() else set()
 
     watched = [(paths.runs_dir(), "*"), (paths.encoder_cache_dir(), "*/*.npy"), (paths.eval_runs_dir(), "*"),
-               (paths.pcm16_cache_dir(), "*.wav")]
+               (paths.pcm16_cache_dir(), "*.wav"), (paths.reports_dir(), "*.html")]
     before = [listing(folder, pattern) for folder, pattern in watched]
     mid = model_id(SMOKE_SLUG)
     gguf_target, card_target = install_paths(mid, paths.app_models_dir())
