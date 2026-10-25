@@ -19,6 +19,8 @@ export interface MockOptions {
   downloaded?: string[];
   /** Custom model files in the models folder (a workbench fine-tune): id and name. */
   customModels?: { id: string; name: string }[];
+  /** Run 6: the app runs from its disk image (wt_runs_from_disk_image). */
+  fromDiskImage?: boolean;
   /** Run 6: the workbench's sidecars for versions of Edda, by model id. */
   versions?: Record<
     string,
@@ -399,6 +401,7 @@ function mockBackend(options: MockOptions) {
       );
     },
     cancel_download: () => null,
+    wt_runs_from_disk_image: () => options.fromDiskImage ?? false,
     // Run 6: the base Edda and the installed versions of it (versions.rs).
     wt_model_versions: () => {
       const all = models();

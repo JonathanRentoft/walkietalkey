@@ -486,6 +486,22 @@ test.describe("settings", () => {
     await expect(rows.nth(1)).toContainText("I brug");
   });
 
+  /* Run 6: macOS runs an app opened from its disk image from a read-only copy, which cannot update itself. */
+  test("an app run from its disk image asks to be opened from Programmer", async ({
+    page,
+  }) => {
+    await openApp(page, { fromDiskImage: true });
+    await expect(page.getByTestId("disk-image-notice")).toContainText(
+      "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv.",
+    );
+  });
+
+  test("an app in Programmer shows no disk image notice", async ({ page }) => {
+    await openApp(page);
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    await expect(page.getByTestId("disk-image-notice")).toHaveCount(0);
+  });
+
   test("Hold talemodellen indlæst maps to the unload timeout", async ({
     page,
   }) => {

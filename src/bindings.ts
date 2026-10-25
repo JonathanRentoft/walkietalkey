@@ -751,6 +751,12 @@ async wtIsPaused() : Promise<boolean> {
  * Ekko PnC's state for Indstillinger › Model (DESK-41).
  */
 /**
+ * Whether this app runs from a read-only copy that cannot update itself.
+ */
+async wtRunsFromDiskImage() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_runs_from_disk_image");
+},
+/**
  * Indstillinger › Model › Versioner (run 6).
  */
 async wtModelVersions() : Promise<ModelVersion[]> {

@@ -68,13 +68,15 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <!-- TODO(copy), run 5 and 6: macOS 26 blocks the first open of an app without an Apple Developer ID. Three
                steps with macOS's own names in Danish and English (run 6: the owner's Mac runs in English). The dialog
                says "“WalkieTalkey” blev ikke åbnet" / "“WalkieTalkey” Not Opened"; close it with Done, never Move to
-               Trash. The Danish name of its Done button is not confirmed, so only the English one is named. Open
+               Trash. The Danish name of its Done button is not confirmed, so only the English one is named. Run 6:
+               opened from the disk image, macOS runs a read-only copy that cannot update itself, so step 2 says
+               "fra Programmer". Open
                Anyway shows under Sikkerhed only for a while after that first try. Ctrl-click › Åbn no longer gets
                past it on macOS 15 and later. Change this with the first release signed by Apple. -->
           <p>WalkieTalkey er endnu ikke signeret af Apple. Første gang gør du sådan:</p>
           <ol class="steps-list gatekeeper">
             <li>Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer <span class="gk-en">(<span lang="en">Applications</span>)</span>.</li>
-            <li>Åbn den. macOS siger, at den ikke blev åbnet. Luk advarslen <span class="gk-en">(<span lang="en">Done</span>)</span>.</li>
+            <li>Åbn WalkieTalkey fra Programmer, ikke fra diskbilledet. macOS siger, at den ikke blev åbnet. Luk advarslen <span class="gk-en">(<span lang="en">Done</span>)</span>.</li>
             <li>Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel <span class="gk-en">(<span lang="en">System Settings › Privacy &amp; Security › Open Anyway</span>)</span>. Tryk Åbn alligevel igen, og bekræft med Touch ID eller adgangskoden.</li>
           </ol>
           <p class="gatekeeper-note">Kun første gang. Åbn alligevel <span class="gk-en">(<span lang="en">Open Anyway</span>)</span> står under Sikkerhed et stykke tid efter trin 2.</p>

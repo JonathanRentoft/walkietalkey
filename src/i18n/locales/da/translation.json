@@ -1060,7 +1060,8 @@
       "checking": "Søger efter opdateringer",
       "upToDate": "Du har den nyeste version",
       "downloading": "Henter version {{version}}",
-      "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere."
+      "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere.",
+      "fromDiskImage": "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra."
     },
     "advanced": {
       "intro": "Indstillinger, de fleste aldrig får brug for.",

@@ -1060,7 +1060,8 @@
       "checking": "Checking for updates",
       "upToDate": "You have the newest version",
       "downloading": "Downloading version {{version}}",
-      "failed": "Could not check for updates. Try again later."
+      "failed": "Could not check for updates. Try again later.",
+      "fromDiskImage": "WalkieTalkey runs from the disk image and cannot update itself. Quit it, drag it to Applications, and open it from there."
     },
     "advanced": {
       "intro": "Settings most people never need.",

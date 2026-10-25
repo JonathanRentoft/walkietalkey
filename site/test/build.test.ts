@@ -596,6 +596,8 @@ describe("Hent (SITE-02)", () => {
     expect(steps[0]).toContain("Programmer");
     expect(steps[0]).toContain("Applications");
     expect(steps[1]).toMatch(/luk advarslen/i);
+    /* opened from the disk image, macOS runs a read-only copy that cannot update itself (run 6) */
+    expect(steps[1]).toContain("fra Programmer, ikke fra diskbilledet");
     expect(steps[1]).toContain("Done");
     expect(steps[2]).toContain("Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel");
     expect(steps[2]).toContain("System Settings › Privacy & Security › Open Anyway");
