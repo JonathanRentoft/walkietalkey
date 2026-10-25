@@ -5,6 +5,14 @@
     "jsxImportSource": "react",
     "types": ["node", "bun"]
   },
-  "include": [".astro/types.d.ts", "src", "test", "e2e", "e2e-concepts", "scripts", "*.ts"],
+  "include": [
+    ".astro/types.d.ts",
+    "src",
+    "test",
+    "e2e",
+    "e2e-concepts",
+    "scripts",
+    "*.ts"
+  ],
   "exclude": ["dist", "node_modules", ".concepts", ".variants"]
 }

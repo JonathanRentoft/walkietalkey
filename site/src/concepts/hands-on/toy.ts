@@ -14,9 +14,11 @@ const HIDE_MS = 1500;
 
 type PillState = "listening" | "processing" | "pasted";
 
-const isFn = (e: KeyboardEvent) => e.key === "Fn" || e.key === "Globe" || e.code === "Fn";
+const isFn = (e: KeyboardEvent) =>
+  e.key === "Fn" || e.key === "Globe" || e.code === "Fn";
 const isSpace = (e: KeyboardEvent) => e.code === "Space" || e.key === " ";
-const CONTROLS = "input, textarea, select, button, a, summary, label, [contenteditable], [role], [tabindex]";
+const CONTROLS =
+  "input, textarea, select, button, a, summary, label, [contenteditable], [role], [tabindex]";
 
 export function toy(root: HTMLElement) {
   const hero = root.closest<HTMLElement>("section") ?? root;
@@ -24,7 +26,9 @@ export function toy(root: HTMLElement) {
   const dock = root.querySelector<HTMLElement>("[data-dock]");
   const pill = dock?.querySelector<HTMLElement>(".wt-pill");
   const doc = root.querySelector<HTMLElement>("[data-doc]");
-  const tpl = root.querySelector<HTMLTemplateElement>("template[data-pill-states]");
+  const tpl = root.querySelector<HTMLTemplateElement>(
+    "template[data-pill-states]",
+  );
   if (!button || !dock || !pill || !doc || !tpl) return;
   const live = root.querySelector<HTMLElement>("[data-live]");
   const msg = root.querySelector<HTMLElement>("[data-msg]");
@@ -35,7 +39,9 @@ export function toy(root: HTMLElement) {
 
   const states: Partial<Record<PillState, HTMLElement>> = {};
   tpl.content.querySelectorAll<HTMLElement>(".wt-pill").forEach((p) => {
-    const s = (["listening", "processing", "pasted"] as const).find((k) => p.classList.contains("wt-pill--" + k));
+    const s = (["listening", "processing", "pasted"] as const).find((k) =>
+      p.classList.contains("wt-pill--" + k),
+    );
     if (s) states[s] = p;
   });
 
@@ -53,7 +59,8 @@ export function toy(root: HTMLElement) {
   function setPill(s: PillState) {
     const src = states[s];
     const c = clip();
-    const inner = src?.querySelector(".wt-pill-inner")?.cloneNode(true) as HTMLElement | undefined;
+    const inner = src?.querySelector(".wt-pill-inner")?.cloneNode(true) as
+      HTMLElement | undefined;
     if (!src || !c || !inner) return;
     pill!.style.width = pill!.offsetWidth + "px";
     pill!.className = src.className + " ho-pill";
@@ -89,7 +96,9 @@ export function toy(root: HTMLElement) {
   function seconds() {
     const s = Math.floor((performance.now() - t0) / 1000);
     const el = pill!.querySelector(".wt-pill-time");
-    if (el) el.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    if (el)
+      el.textContent =
+        Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
 
   /* ------------------------------------------------------------------ the text */
@@ -106,7 +115,11 @@ export function toy(root: HTMLElement) {
     if (caret) line.append(caret);
     doc!.append(line);
     /* the note keeps what fits: the oldest lines go */
-    while (doc!.scrollHeight > doc!.clientHeight + 1 && doc!.children.length > 1) doc!.firstElementChild?.remove();
+    while (
+      doc!.scrollHeight > doc!.clientHeight + 1 &&
+      doc!.children.length > 1
+    )
+      doc!.firstElementChild?.remove();
     if (!reduced()) replay(span, "ho-landed");
   }
 
@@ -172,16 +185,23 @@ export function toy(root: HTMLElement) {
   function sawFn() {
     if (root.hasAttribute("data-fn")) return;
     root.setAttribute("data-fn", "");
-    root.querySelectorAll("[data-keyname]").forEach((k) => (k.textContent = T.fn));
+    root
+      .querySelectorAll("[data-keyname]")
+      .forEach((k) => (k.textContent = T.fn));
   }
   /** Space belongs to the toy only while at least a third of it is on screen */
   function inView() {
     const r = root!.getBoundingClientRect();
-    return Math.min(r.bottom, innerHeight) - Math.max(r.top, 0) >= Math.min(r.height, innerHeight) / 3;
+    return (
+      Math.min(r.bottom, innerHeight) - Math.max(r.top, 0) >=
+      Math.min(r.height, innerHeight) / 3
+    );
   }
   function spaceOk(t: EventTarget | null) {
     if (!inView()) return false;
-    return !(t instanceof Element) || t === document.body || !t.closest(CONTROLS);
+    return (
+      !(t instanceof Element) || t === document.body || !t.closest(CONTROLS)
+    );
   }
   window.addEventListener("keydown", (e) => {
     if (isFn(e)) {
@@ -201,7 +221,6 @@ export function toy(root: HTMLElement) {
       hold.up();
     }
   });
-
 
   /* the finished example is for the page without JavaScript: here the note starts empty, the pill hidden */
   doc.querySelector("[data-example]")?.remove();

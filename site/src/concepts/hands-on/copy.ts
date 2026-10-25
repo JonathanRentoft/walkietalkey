@@ -22,7 +22,8 @@ export const HO = {
     /** Esc while holding (DESK-25) */
     cancelled: "Annulleret. Der blev ikke skrevet noget.",
     /** honest about what the toy is */
-    honest: "Siden lytter ikke. Den skriver en prøvesætning, som om du havde sagt den.",
+    honest:
+      "Siden lytter ikke. Den skriver en prøvesætning, som om du havde sagt den.",
     /** for screen readers, after the text lands */
     pastedSay: "Indsat: {text}",
   },

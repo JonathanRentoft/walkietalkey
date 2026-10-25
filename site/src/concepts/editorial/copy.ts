@@ -19,7 +19,8 @@ export const ED = {
   featuresTitle: "Seks ting, den kan",
   /** the section around Fig. 1, for screen readers */
   plateLabel: "Sådan ser det ud",
-  plateCaption: "Hold fn nede, og tal. Når du slipper, lander linjen i det program, du skriver i.",
+  plateCaption:
+    "Hold fn nede, og tal. Når du slipper, lander linjen i det program, du skriver i.",
   /** the one computer window */
   window: {
     title: "Ny besked",
@@ -44,7 +45,8 @@ export const ED = {
   },
   demoAria: {
     fn: "Tasten fn på en Mac, eller højre Ctrl på Windows.",
-    phone: "Telefonappens knap i tre trin: Hold for at tale, Slip for at sende, Klar på MacBook.",
+    phone:
+      "Telefonappens knap i tre trin: Hold for at tale, Slip for at sende, Klar på MacBook.",
     corrections:
       "Du siger: Lad os mødes onsdag, nej, torsdag klokken ti. Med AI-oprydning står der: Lad os mødes torsdag klokken ti.",
     mixed:

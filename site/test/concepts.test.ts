@@ -39,7 +39,10 @@ beforeAll(() => {
       [prod, false],
     ] as const) {
       const dir = buildConcept(c, isDraft, true);
-      into[c] = { dir, doc: parse(readFileSync(join(dir, "index.html"), "utf8")) };
+      into[c] = {
+        dir,
+        doc: parse(readFileSync(join(dir, "index.html"), "utf8")),
+      };
     }
   }
 }, 300_000);
@@ -53,7 +56,10 @@ function visibleText(root: HTMLElement): string {
   return clone.querySelector("body")!.textContent.replace(/\s+/g, " ");
 }
 
-function scriptBytes(dir: string, d: HTMLElement): { files: string[]; bytes: number } {
+function scriptBytes(
+  dir: string,
+  d: HTMLElement,
+): { files: string[]; bytes: number } {
   const seen = new Set<string>();
   let bytes = 0;
   const load = (file: string) => {
@@ -105,14 +111,18 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
     for (const key of FEATURE_ORDER) {
       const blocks = feature(d(), key);
       expect(blocks.length, key).toBeGreaterThanOrEqual(1);
-      expect(blocks.map(visibleText).join(" "), key).toContain(FEATURES[key].title);
+      expect(blocks.map(visibleText).join(" "), key).toContain(
+        FEATURES[key].title,
+      );
     }
   });
 
   it(`composes the features into at most ${MAX_SECTIONS} sections instead of one section each`, () => {
     const main = d().querySelector("main")!;
     expect(main).not.toBeNull();
-    expect(main.querySelectorAll(":scope > section").length).toBeLessThanOrEqual(MAX_SECTIONS);
+    expect(
+      main.querySelectorAll(":scope > section").length,
+    ).toBeLessThanOrEqual(MAX_SECTIONS);
   });
 
   it("says privacy in the four facts that hold, and links the details (spec 2.6)", () => {
@@ -122,7 +132,11 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
   });
 
   it("links the code under its open-source feature", () => {
-    expect(feature(d(), "oss").some((b) => !!b.querySelector(`a[href="${REPO_URL}"]`))).toBe(true);
+    expect(
+      feature(d(), "oss").some(
+        (b) => !!b.querySelector(`a[href="${REPO_URL}"]`),
+      ),
+    ).toBe(true);
   });
 
   it("is free for everyone, with paid setup help as a service, not a licence (principle 3)", () => {
@@ -130,8 +144,12 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
     const text = blocks.map(visibleText).join(" ");
     expect(text).toContain(PLANS.free.price);
     expect(text).toContain(PLANS.footnote);
-    expect(blocks.some((b) => !!b.querySelector(`a[href="${CONTACT_URL}"]`))).toBe(true);
-    expect(blocks.some((b) => !!b.querySelector(`a[href="${PAGES.business.path}"]`))).toBe(true);
+    expect(
+      blocks.some((b) => !!b.querySelector(`a[href="${CONTACT_URL}"]`)),
+    ).toBe(true);
+    expect(
+      blocks.some((b) => !!b.querySelector(`a[href="${PAGES.business.path}"]`)),
+    ).toBe(true);
   });
 
   it("gets started in three steps", () => {
@@ -142,8 +160,11 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
   it("has a short FAQ that links to the rest", () => {
     const blocks = feature(d(), "faq");
     const text = blocks.map(visibleText).join(" ");
-    for (const q of FAQ.filter((q) => !q.claim)) expect(text, q.q).toContain(q.q);
-    expect(blocks.some((b) => !!b.querySelector(`a[href="${PAGES.faq.path}"]`))).toBe(true);
+    for (const q of FAQ.filter((q) => !q.claim))
+      expect(text, q.q).toContain(q.q);
+    expect(
+      blocks.some((b) => !!b.querySelector(`a[href="${PAGES.faq.path}"]`)),
+    ).toBe(true);
   });
 
   it("ties self-corrections to the optional AI cleanup (spec 6.10, PRIV-04)", () => {
@@ -152,13 +173,18 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
     expect(text).toMatch(/AI-oprydning/);
     /* nowhere else does the page promise it without saying so */
     for (const el of d().querySelectorAll("main p, main li"))
-      if (/onsdag, nej, torsdag/.test(el.textContent) && !el.closest('[data-feature="corrections"]'))
+      if (
+        /onsdag, nej, torsdag/.test(el.textContent) &&
+        !el.closest('[data-feature="corrections"]')
+      )
         expect(el.textContent, el.textContent).toMatch(/AI-oprydning/);
   });
 
   it("says the text lands on the computer you sit at, never on the others (spec 12.1)", () => {
     const text = visibleText(d().querySelector("body")!);
-    expect(feature(d(), "notify").map(visibleText).join(" ")).toContain("den computer, du sidder ved");
+    expect(feature(d(), "notify").map(visibleText).join(" ")).toContain(
+      "den computer, du sidder ved",
+    );
     expect(text).not.toMatch(/historikken|alle dine computere/);
   });
 
@@ -192,7 +218,9 @@ describe.each(RUN)("concept %s (run 6)", (c) => {
 
   it("has at most one WebGL surface and loads nothing from other origins (SITE-04, SITE-06)", () => {
     expect(d().querySelectorAll("canvas").length).toBeLessThanOrEqual(1);
-    for (const el of d().querySelectorAll('[src], link[href]:not([rel="canonical"])')) {
+    for (const el of d().querySelectorAll(
+      '[src], link[href]:not([rel="canonical"])',
+    )) {
       const url = el.getAttribute("src") ?? el.getAttribute("href")!;
       expect(url, url).not.toMatch(/^(https?:)?\/\//);
     }

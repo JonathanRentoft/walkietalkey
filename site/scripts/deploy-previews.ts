@@ -5,7 +5,12 @@
    Usage: bun scripts/deploy-previews.ts [concept ...]   (default: all three; needs `wrangler login`)
    Each build goes to .concepts/<concept>/ with SITE_CONCEPT=<concept> and SITE_DRAFT=1 (lib/build.ts). */
 import { execFileSync } from "node:child_process";
-import { CONCEPTS, pickConcept, previewBranch, type Concept } from "../src/lib/build";
+import {
+  CONCEPTS,
+  pickConcept,
+  previewBranch,
+  type Concept,
+} from "../src/lib/build";
 import { SITE, buildConcept } from "./concepts";
 
 const PROJECT = "walkietalkey-site";
@@ -22,8 +27,22 @@ for (const c of wanted) {
   console.log(`== ${c}: deploy to the preview branch ${branch}`);
   execFileSync(
     "bunx",
-    ["wrangler", "pages", "deploy", out, "--project-name", PROJECT, "--branch", branch, "--commit-dirty=true"],
-    { cwd: SITE, stdio: "inherit", env: { ...process.env, WRANGLER_SEND_METRICS: "false" } },
+    [
+      "wrangler",
+      "pages",
+      "deploy",
+      out,
+      "--project-name",
+      PROJECT,
+      "--branch",
+      branch,
+      "--commit-dirty=true",
+    ],
+    {
+      cwd: SITE,
+      stdio: "inherit",
+      env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
+    },
   );
   console.log(`== ${c}: https://${branch}.${PROJECT}.pages.dev`);
 }

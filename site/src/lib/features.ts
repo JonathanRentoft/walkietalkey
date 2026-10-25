@@ -50,7 +50,8 @@ export const ONE_LINER =
   "Dansk tale til tekst. Hold fn nede, tal, og slip, så står teksten der, hvor du skriver.";
 
 /** The line under every hero's buttons. */
-export const FINE_PRINT = "Gratis og open source · Mac og Windows · Ingen konto";
+export const FINE_PRINT =
+  "Gratis og open source · Mac og Windows · Ingen konto";
 
 /** Calls to action. */
 export const CTA = {
@@ -104,7 +105,8 @@ export const FEATURES: Record<FeatureKey, Feature> = {
   phone: {
     key: "phone",
     title: "Telefonen er din mikrofon",
-    short: "Hold knappen på telefonen, tal, og slip. Teksten lander på din computer.",
+    short:
+      "Hold knappen på telefonen, tal, og slip. Teksten lander på din computer.",
     body: "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt, står ved tavlen eller vil tale lavt.",
     claim: {
       text: "Du kan også hviske, så du ikke forstyrrer i et åbent kontor.",
@@ -114,7 +116,8 @@ export const FEATURES: Record<FeatureKey, Feature> = {
   corrections: {
     key: "corrections",
     title: "Den retter, når du retter dig selv",
-    short: "Siger du onsdag, nej, torsdag, står der torsdag. Med AI-oprydning, hvis du slår den til.",
+    short:
+      "Siger du onsdag, nej, torsdag, står der torsdag. Med AI-oprydning, hvis du slår den til.",
     body: "Siger du onsdag, nej, torsdag, skriver den kun torsdag. Det gør AI-oprydning, som er valgfri og slået fra, indtil du selv slår den til. Så sendes teksten, ikke lyden, til den udbyder, du vælger, eller den bliver på din Mac med Apple Intelligence.",
   },
   mixed: {
@@ -246,7 +249,8 @@ export const PLANS = {
       "Svar til IT og jura om data og sikkerhed",
     ],
   },
-  footnote: "Hjælpen er en service, ikke en licens. Appen er den samme for alle.",
+  footnote:
+    "Hjælpen er en service, ikke en licens. Appen er den samme for alle.",
 };
 
 export interface Question {

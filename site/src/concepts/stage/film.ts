@@ -15,13 +15,15 @@ export function start(): void {
 
   const rest = new IntersectionObserver(
     (entries) => {
-      for (const e of entries) e.target.toggleAttribute("data-paused", !e.isIntersecting);
+      for (const e of entries)
+        e.target.toggleAttribute("data-paused", !e.isIntersecting);
     },
     { rootMargin: "20% 0px" },
   );
   document.querySelectorAll("[data-ps-live]").forEach((el) => rest.observe(el));
 
-  const scrollDriven = typeof CSS !== "undefined" && CSS.supports("animation-timeline: view()");
+  const scrollDriven =
+    typeof CSS !== "undefined" && CSS.supports("animation-timeline: view()");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (scrollDriven || reduced) return;
 
@@ -35,5 +37,7 @@ export function start(): void {
     },
     { threshold: 0.55 },
   );
-  document.querySelectorAll("[data-ps-shot] .ps-panel").forEach((el) => play.observe(el));
+  document
+    .querySelectorAll("[data-ps-shot] .ps-panel")
+    .forEach((el) => play.observe(el));
 }

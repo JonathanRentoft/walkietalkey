@@ -18,16 +18,20 @@ export function conceptOut(c: Concept, draft = true): string {
 export function buildConcept(c: Concept, draft = true, quiet = false): string {
   const out = conceptOut(c, draft);
   rmSync(out, { recursive: true, force: true });
-  execFileSync("bunx", ["astro", "build", "--outDir", out, ...(quiet ? ["--silent"] : [])], {
-    cwd: SITE,
-    stdio: quiet ? "pipe" : "inherit",
-    env: {
-      ...process.env,
-      SITE_CONCEPT: c,
-      SITE_DRAFT: draft ? "1" : "0",
-      ASTRO_TELEMETRY_DISABLED: "1",
+  execFileSync(
+    "bunx",
+    ["astro", "build", "--outDir", out, ...(quiet ? ["--silent"] : [])],
+    {
+      cwd: SITE,
+      stdio: quiet ? "pipe" : "inherit",
+      env: {
+        ...process.env,
+        SITE_CONCEPT: c,
+        SITE_DRAFT: draft ? "1" : "0",
+        ASTRO_TELEMETRY_DISABLED: "1",
+      },
     },
-  });
+  );
   return out;
 }
 
@@ -35,6 +39,8 @@ if (import.meta.main) {
   const args = process.argv.slice(2);
   const draft = !args.includes("--prod");
   const named = args.filter((a) => !a.startsWith("--"));
-  const wanted = named.length ? named.map((v) => pickConcept(v)!) : [...CONCEPTS];
+  const wanted = named.length
+    ? named.map((v) => pickConcept(v)!)
+    : [...CONCEPTS];
   for (const c of wanted) console.log(`${c}: ${buildConcept(c, draft)}`);
 }

@@ -43,3 +43,8 @@ licenses/
 models/*/licenses/
 # The website's hero variants, built by site/test/variants.test.ts and site/scripts/deploy-previews.ts
 site/.variants
+
+# Local site builds and reports (run 6)
+site/.concepts
+site/.visual
+site/.variants

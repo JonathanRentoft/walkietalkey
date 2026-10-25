@@ -70,7 +70,10 @@ export function holdable(button: HTMLElement, on: HoldEvents): Hold {
     api.down("pointer");
   });
   button.addEventListener("pointerup", () => api.by === "pointer" && api.up());
-  button.addEventListener("pointercancel", () => api.by === "pointer" && api.cancel());
+  button.addEventListener(
+    "pointercancel",
+    () => api.by === "pointer" && api.cancel(),
+  );
   button.addEventListener("contextmenu", (e) => e.preventDefault());
   /* the hold is the action, never a click */
   button.addEventListener("click", (e) => e.preventDefault());
@@ -94,7 +97,10 @@ export function holdable(button: HTMLElement, on: HoldEvents): Hold {
     }
   });
   window.addEventListener("blur", () => api.cancel());
-  document.addEventListener("visibilitychange", () => document.hidden && api.cancel());
+  document.addEventListener(
+    "visibilitychange",
+    () => document.hidden && api.cancel(),
+  );
   return api;
 }
 
@@ -108,7 +114,8 @@ export function say(el: HTMLElement | null, text: string) {
 export const fill = (t: string, v: Record<string, string>) =>
   t.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? "");
 
-export const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+export const reduced = () =>
+  matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Restarts a CSS animation on an element by taking its class off and putting it back. */
 export function replay(el: Element | null, cls: string) {

@@ -16,7 +16,8 @@ const doc = (page: Page) => page.locator("[data-doc]");
 const lines = (page: Page) => page.locator("[data-doc] .ho-line");
 const dock = (page: Page) => page.locator("[data-dock]");
 const pill = (page: Page) => page.locator("[data-dock] .wt-pill");
-const shown = (page: Page) => dock(page).evaluate((el) => el.hasAttribute("data-show"));
+const shown = (page: Page) =>
+  dock(page).evaluate((el) => el.hasAttribute("data-show"));
 
 /** The page as a visitor finds it with JavaScript: an empty note with the hint as its placeholder, no pill. */
 async function ready(page: Page) {
@@ -32,14 +33,19 @@ test.describe("the toy, with a keyboard", () => {
     test.skip(deviceOf(info) !== "desktop", "keyboard on a computer");
   });
 
-  test("holding Space listens, and the sentence lands only at release", async ({ page }) => {
+  test("holding Space listens, and the sentence lands only at release", async ({
+    page,
+  }) => {
     await ready(page);
     await page.keyboard.down("Space");
     await expect(pill(page)).toHaveClass(/wt-pill--listening/);
     await expect(pill(page)).toBeVisible();
     await expect(pill(page)).toContainText("Lytter");
     await expect.poll(() => shown(page)).toBe(true);
-    await expect(page.locator("[data-slogan]")).toHaveAttribute("data-at", "hold");
+    await expect(page.locator("[data-slogan]")).toHaveAttribute(
+      "data-at",
+      "hold",
+    );
     await page.waitForTimeout(800);
     /* nothing is written while you hold: the note is still empty, and Space did not scroll the page */
     await expect(lines(page)).toHaveCount(0);
@@ -52,7 +58,9 @@ test.describe("the toy, with a keyboard", () => {
     await expect(lines(page)).toHaveCount(1);
     await expect(page.locator("[data-placeholder]")).toHaveCount(0);
     await expect(pill(page)).toContainText("Indsat");
-    await expect(page.locator("[data-live]").first()).toContainText(SAMPLES.first);
+    await expect(page.locator("[data-live]").first()).toContainText(
+      SAMPLES.first,
+    );
     /* the pill hides about 1.5 s after the end */
     await expect.poll(() => shown(page), { timeout: 3500 }).toBe(false);
 
@@ -64,7 +72,9 @@ test.describe("the toy, with a keyboard", () => {
     await expect(lines(page)).toHaveCount(2);
   });
 
-  test("a tap under 300 ms dictates nothing, with a gentle hint to hold", async ({ page }) => {
+  test("a tap under 300 ms dictates nothing, with a gentle hint to hold", async ({
+    page,
+  }) => {
     await ready(page);
     await page.keyboard.down("Space");
     await page.waitForTimeout(90);
@@ -76,7 +86,9 @@ test.describe("the toy, with a keyboard", () => {
     expect(await shown(page)).toBe(false);
   });
 
-  test("Esc while holding cancels, and nothing is written", async ({ page }) => {
+  test("Esc while holding cancels, and nothing is written", async ({
+    page,
+  }) => {
     await ready(page);
     await page.keyboard.down("Space");
     await page.waitForTimeout(600);
@@ -88,18 +100,32 @@ test.describe("the toy, with a keyboard", () => {
     expect(await shown(page)).toBe(false);
   });
 
-  test("the fn key works the moment a browser reports it, and the hint says so", async ({ page }) => {
+  test("the fn key works the moment a browser reports it, and the hint says so", async ({
+    page,
+  }) => {
     await ready(page);
-    await expect(page.locator("[data-keyname]")).toHaveText([HO.hero.keySpace, HO.hero.keySpace]);
-    await page.evaluate(() => dispatchEvent(new KeyboardEvent("keydown", { key: "Fn", code: "Fn" })));
-    await expect(page.locator("[data-keyname]")).toHaveText([HO.hero.keyFn, HO.hero.keyFn]);
+    await expect(page.locator("[data-keyname]")).toHaveText([
+      HO.hero.keySpace,
+      HO.hero.keySpace,
+    ]);
+    await page.evaluate(() =>
+      dispatchEvent(new KeyboardEvent("keydown", { key: "Fn", code: "Fn" })),
+    );
+    await expect(page.locator("[data-keyname]")).toHaveText([
+      HO.hero.keyFn,
+      HO.hero.keyFn,
+    ]);
     await expect(pill(page)).toHaveClass(/wt-pill--listening/);
     await page.waitForTimeout(450);
-    await page.evaluate(() => dispatchEvent(new KeyboardEvent("keyup", { key: "Fn", code: "Fn" })));
+    await page.evaluate(() =>
+      dispatchEvent(new KeyboardEvent("keyup", { key: "Fn", code: "Fn" })),
+    );
     await expect(doc(page)).toContainText(SAMPLES.first);
   });
 
-  test("the button works from the keyboard, and Space still types in a text field", async ({ page }) => {
+  test("the button works from the keyboard, and Space still types in a text field", async ({
+    page,
+  }) => {
     await ready(page);
     await page.locator("[data-hold]").focus();
     await page.keyboard.down("Enter");
@@ -115,7 +141,9 @@ test.describe("the toy, with a keyboard", () => {
     await expect(lines(page)).toHaveCount(1);
   });
 
-  test("Space belongs to the page again once the toy is out of sight", async ({ page }) => {
+  test("Space belongs to the page again once the toy is out of sight", async ({
+    page,
+  }) => {
     await ready(page);
     await page.locator('[data-feature="mixed"]').scrollIntoViewIfNeeded();
     const y = await page.evaluate(() => scrollY);
@@ -130,7 +158,9 @@ test.describe("the toy, with a keyboard", () => {
 
 test.describe("with reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
-  test("the toy still works, and nothing loops while it listens", async ({ page }, info) => {
+  test("the toy still works, and nothing loops while it listens", async ({
+    page,
+  }, info) => {
     test.skip(deviceOf(info) !== "desktop", "keyboard on a computer");
     await ready(page);
     await page.keyboard.down("Space");
@@ -146,7 +176,9 @@ test.describe("with reduced motion", () => {
 
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
-  test("the hero shows the finished example: the sentence in the note, the pill on Indsat", async ({ page }) => {
+  test("the hero shows the finished example: the sentence in the note, the pill on Indsat", async ({
+    page,
+  }) => {
     await page.goto("/");
     await expect(lines(page)).toHaveCount(1);
     await expect(doc(page)).toContainText(SAMPLES.first);
@@ -165,21 +197,34 @@ test.describe("the toy, on a phone", () => {
     const box = (await page.locator("[data-hold]").boundingBox())!;
     const pt = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [pt] });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [pt],
+    });
     await page.waitForTimeout(ms);
-    const during = { listening: await pill(page).getAttribute("class"), lines: await lines(page).count() };
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    const during = {
+      listening: await pill(page).getAttribute("class"),
+      lines: await lines(page).count(),
+    };
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
     return during;
   }
 
-  test("the big button is thumb-sized and in the first screen", async ({ page }) => {
+  test("the big button is thumb-sized and in the first screen", async ({
+    page,
+  }) => {
     await ready(page);
     const box = (await page.locator(".ho-hold-cap").boundingBox())!;
     expect(box.width).toBeGreaterThanOrEqual(88);
     expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   });
 
-  test("holding the button dictates at release; a short tap does not", async ({ page }) => {
+  test("holding the button dictates at release; a short tap does not", async ({
+    page,
+  }) => {
     await ready(page);
     const during = await touch(page, 700);
     expect(during.listening).toMatch(/wt-pill--listening/);
@@ -197,7 +242,9 @@ test.describe("the toy, on a phone", () => {
 });
 
 test.describe("the bento's demos react", () => {
-  test("the phone sends to the computer you sit at, and only there", async ({ page }) => {
+  test("the phone sends to the computer you sit at, and only there", async ({
+    page,
+  }) => {
     await page.goto("/");
     const phone = page.locator("[data-phone]");
     const label = phone.locator(".wt-app-label");
@@ -205,10 +252,18 @@ test.describe("the bento's demos react", () => {
     const [mac, pc] = HO.notify.computers;
     await btn.scrollIntoViewIfNeeded();
     await expect(label).toContainText("Hold for at tale");
-    await btn.dispatchEvent("pointerdown", { button: 0, pointerId: 7, isPrimary: true });
+    await btn.dispatchEvent("pointerdown", {
+      button: 0,
+      pointerId: 7,
+      isPrimary: true,
+    });
     await expect(label).toContainText("Slip for at sende");
     await page.waitForTimeout(500);
-    await btn.dispatchEvent("pointerup", { button: 0, pointerId: 7, isPrimary: true });
+    await btn.dispatchEvent("pointerup", {
+      button: 0,
+      pointerId: 7,
+      isPrimary: true,
+    });
     await expect(label).toContainText(`Sender til ${mac}`);
     await expect(label).toContainText(`Klar på ${mac}`);
     const notices = page.locator("[data-notify] .wt-notice");
@@ -220,7 +275,9 @@ test.describe("the bento's demos react", () => {
     await page.getByRole("button", { name: `Sæt dig ved ${pc}` }).click();
     await expect(notices.nth(1)).toHaveClass(/wt-notice--in/);
     await expect(notices.nth(0)).not.toHaveClass(/wt-notice--in/);
-    await expect(page.locator("[data-notify] .ho-comp-hit").nth(1)).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.locator("[data-notify] .ho-comp-hit").nth(1),
+    ).toHaveAttribute("aria-pressed", "true");
     await expect(phone.locator(".wt-app-dev")).toContainText(pc);
   });
 
@@ -234,7 +291,9 @@ test.describe("the bento's demos react", () => {
     expect((await gone.boundingBox())?.width ?? 0).toBeLessThan(1);
     await sw.click();
     await expect(sw).toHaveAttribute("aria-checked", "false");
-    await expect.poll(async () => (await gone.boundingBox())?.width ?? 0).toBeGreaterThan(20);
+    await expect
+      .poll(async () => (await gone.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(20);
     await expect(gone).toHaveAttribute("aria-hidden", "false");
     await sw.click();
     await expect(sw).toHaveAttribute("aria-checked", "true");
@@ -249,11 +308,15 @@ test.describe("the bento's demos react", () => {
     await expect(tile.locator("[data-hit]")).toHaveText("Søren Kjærsgaard");
     await expect(tile.locator("[data-said]")).toContainText("søren kjærsgaard");
     await input.press("Enter");
-    await expect(tile.locator(".ho-chip").first()).toHaveText("Søren Kjærsgaard");
+    await expect(tile.locator(".ho-chip").first()).toHaveText(
+      "Søren Kjærsgaard",
+    );
     await expect(input).toHaveValue("");
   });
 
-  test("picking a program, an English word, a new recording and the price", async ({ page }) => {
+  test("picking a program, an English word, a new recording and the price", async ({
+    page,
+  }) => {
     await page.goto("/");
     const apps = page.locator("[data-apps]");
     await apps.scrollIntoViewIfNeeded();
@@ -263,8 +326,14 @@ test.describe("the bento's demos react", () => {
 
     const mixed = page.locator("[data-mixed]");
     await mixed.getByRole("button", { name: "deploy" }).click();
-    await expect(mixed.locator('mark[data-w="deploy"]')).toHaveAttribute("data-on", "");
-    await expect(mixed.locator('mark[data-w="merge"]')).not.toHaveAttribute("data-on", "");
+    await expect(mixed.locator('mark[data-w="deploy"]')).toHaveAttribute(
+      "data-on",
+      "",
+    );
+    await expect(mixed.locator('mark[data-w="merge"]')).not.toHaveAttribute(
+      "data-on",
+      "",
+    );
 
     const priv = page.locator("[data-privacy]");
     const noise = await priv.locator("[data-noise]").textContent();
@@ -285,10 +354,18 @@ test.describe("the bento's demos react", () => {
     const start = page.locator("[data-start]");
     const perms = start.getByRole("switch");
     await perms.first().scrollIntoViewIfNeeded();
-    await expect(start.locator("[data-final]")).not.toHaveAttribute("data-ready", "");
+    await expect(start.locator("[data-final]")).not.toHaveAttribute(
+      "data-ready",
+      "",
+    );
     await perms.nth(0).click();
     await perms.nth(1).click();
-    await expect(start.locator("[data-final]")).toHaveAttribute("data-ready", "");
-    await expect(start.locator("[data-ready-label]")).toHaveText(HO.start.ready);
+    await expect(start.locator("[data-final]")).toHaveAttribute(
+      "data-ready",
+      "",
+    );
+    await expect(start.locator("[data-ready-label]")).toHaveText(
+      HO.start.ready,
+    );
   });
 });

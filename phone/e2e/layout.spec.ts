@@ -180,22 +180,54 @@ test.describe("text is at least 16 px on every screen (Phase 4)", () => {
   /* Run 6: the exact Safari steps for the visitor's iOS version, each with Safari's button drawn and named as Danish
      and English iOS name it. */
   for (const [label, version, steps] of [
-    ["iOS 26 and newer", "26.1", ["Tryk på ••• ved siden af adressefeltet.", "Tryk på Del.", "Tryk på Vis mere, pilen nedad.", "Tryk på Føj til hjemmeskærm.", "Tryk på Tilføj.", "Åbn WalkieTalkey fra hjemmeskærmen."]],
-    ["older iOS", "18.6", ["Tryk på Del nederst i Safari.", "Rul ned, og tryk på Føj til hjemmeskærm.", "Tryk på Tilføj.", "Åbn WalkieTalkey fra hjemmeskærmen."]],
+    [
+      "iOS 26 and newer",
+      "26.1",
+      [
+        "Tryk på ••• ved siden af adressefeltet.",
+        "Tryk på Del.",
+        "Tryk på Vis mere, pilen nedad.",
+        "Tryk på Føj til hjemmeskærm.",
+        "Tryk på Tilføj.",
+        "Åbn WalkieTalkey fra hjemmeskærmen.",
+      ],
+    ],
+    [
+      "older iOS",
+      "18.6",
+      [
+        "Tryk på Del nederst i Safari.",
+        "Rul ned, og tryk på Føj til hjemmeskærm.",
+        "Tryk på Tilføj.",
+        "Åbn WalkieTalkey fra hjemmeskærmen.",
+      ],
+    ],
   ] as const)
     test(`the install steps on ${label}`, async ({ browser }) => {
       const { defaultBrowserType: _engine, ...iphone } = devices["iPhone 15"];
       const userAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${version} Mobile/15E148 Safari/604.1`;
-      const context = await browser.newContext({ ...iphone, userAgent, baseURL: APP_URL });
+      const context = await browser.newContext({
+        ...iphone,
+        userAgent,
+        baseURL: APP_URL,
+      });
       const page = await context.newPage();
       await page.goto("/");
       const items = page.locator(".wt-install > li .wt-install-text");
       await expect(items).toHaveText([...steps]);
-      await expect(page.locator(".wt-install-step[data-step=share]")).toContainText("På engelsk: Share");
-      await expect(page.locator(".wt-install-step[data-step=addToHome]")).toContainText("På engelsk: Add to Home Screen");
-      await expect(page.locator(".wt-install-step[data-step=share] svg")).toHaveCount(1);
+      await expect(
+        page.locator(".wt-install-step[data-step=share]"),
+      ).toContainText("På engelsk: Share");
+      await expect(
+        page.locator(".wt-install-step[data-step=addToHome]"),
+      ).toContainText("På engelsk: Add to Home Screen");
+      await expect(
+        page.locator(".wt-install-step[data-step=share] svg"),
+      ).toHaveCount(1);
       expect(await smallTexts(page)).toEqual([]);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - innerWidth,
+      );
       expect(overflow).toBeLessThanOrEqual(0);
       await context.close();
     });

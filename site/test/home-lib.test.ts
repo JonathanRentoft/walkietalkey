@@ -31,7 +31,11 @@ import {
 describe("front page concepts (run 6, chosen at build time)", () => {
   it("has the three concepts of the brief, A, B and C", () => {
     expect(CONCEPTS).toEqual(["editorial", "stage", "hands-on"]);
-    expect(CONCEPTS.map((c) => CONCEPT_INFO[c].letter)).toEqual(["a", "b", "c"]);
+    expect(CONCEPTS.map((c) => CONCEPT_INFO[c].letter)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
     /* no two concepts share a class prefix, so no rule of one styles another */
     expect(new Set(CONCEPTS.map((c) => CONCEPT_INFO[c].prefix)).size).toBe(3);
   });

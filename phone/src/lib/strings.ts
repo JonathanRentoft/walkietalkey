@@ -49,8 +49,10 @@ export const T = {
     add: "Tryk på Tilføj.",
   },
   installOpen: "Åbn WalkieTalkey fra hjemmeskærmen.",
-  installShareVisible: "Kan du se Del med det samme, så spring de tre prikker over.",
-  installUseSafari: "Åbn siden i Safari. Andre browsere kan ikke føje WalkieTalkey til hjemmeskærmen på samme måde.",
+  installShareVisible:
+    "Kan du se Del med det samme, så spring de tre prikker over.",
+  installUseSafari:
+    "Åbn siden i Safari. Andre browsere kan ikke føje WalkieTalkey til hjemmeskærmen på samme måde.",
   installEnglish: "På engelsk:",
   // TODO(copy): Phase 5, opened from a pairing link in a Safari tab: the home-screen app pairs itself
   installOpenPairs:

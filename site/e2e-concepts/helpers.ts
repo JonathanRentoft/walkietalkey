@@ -2,8 +2,10 @@
 import type { Page, TestInfo } from "@playwright/test";
 import type { Concept } from "../src/lib/build";
 
-export const conceptOf = (info: TestInfo) => info.project.metadata.concept as Concept;
-export const deviceOf = (info: TestInfo) => info.project.metadata.device as "desktop" | "mobile";
+export const conceptOf = (info: TestInfo) =>
+  info.project.metadata.concept as Concept;
+export const deviceOf = (info: TestInfo) =>
+  info.project.metadata.device as "desktop" | "mobile";
 
 /** Scrolls through the whole page in steps, so scroll-driven and in-view effects all run once. */
 export async function scrollThrough(page: Page) {
@@ -26,7 +28,8 @@ export async function endlessAnimations(page: Page) {
         return a.playState === "running" && t?.iterations === Infinity;
       })
       .map((a) => {
-        const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
+        const el = (a.effect as KeyframeEffect | null)
+          ?.target as Element | null;
         return `${(a as CSSAnimation).animationName ?? a.id} on ${el?.className ?? el?.tagName}`;
       }),
   );

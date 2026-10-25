@@ -336,9 +336,7 @@ export function InstallScreen(props: {
   userAgent?: string;
 }) {
   const { computer } = props;
-  const { flow, safari } = installFlow(
-    props.userAgent ?? navigator.userAgent,
-  );
+  const { flow, safari } = installFlow(props.userAgent ?? navigator.userAgent);
   const notes = (
     <>
       {!safari ? <p className="wt-install-note">{T.installUseSafari}</p> : null}

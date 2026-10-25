@@ -346,7 +346,9 @@ describe("Forside: five calm sections (run 5)", () => {
   /* Run 6: without SITE_CONCEPT the build is the current front page, so production stays as it is until the owner
      picks one of the three concepts (lib/build.ts). */
   it("builds the current front page, the fn-led hero, when no concept is chosen", () => {
-    expect(d.querySelector("body")!.getAttribute("data-concept")).toBe("current");
+    expect(d.querySelector("body")!.getAttribute("data-concept")).toBe(
+      "current",
+    );
     const hero = section("hero");
     expect(hero.getAttribute("data-hero")).toBe("fn");
     expect(hero.querySelector("h1")!.textContent).toBe(HERO.title);
@@ -599,12 +601,24 @@ describe("Hent (SITE-02)", () => {
     /* opened from the disk image, macOS runs a read-only copy that cannot update itself (run 6) */
     expect(steps[1]).toContain("fra Programmer, ikke fra diskbilledet");
     expect(steps[1]).toContain("Done");
-    expect(steps[2]).toContain("Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel");
-    expect(steps[2]).toContain("System Settings › Privacy & Security › Open Anyway");
+    expect(steps[2]).toContain(
+      "Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel",
+    );
+    expect(steps[2]).toContain(
+      "System Settings › Privacy & Security › Open Anyway",
+    );
     expect(steps[2]).toContain("Touch ID");
     /* the English names are marked as English for screen readers */
-    const en = card.querySelectorAll('.gatekeeper [lang="en"]').map((e) => e.textContent);
-    expect(en).toEqual(expect.arrayContaining(["Applications", "Done", "System Settings › Privacy & Security › Open Anyway"]));
+    const en = card
+      .querySelectorAll('.gatekeeper [lang="en"]')
+      .map((e) => e.textContent);
+    expect(en).toEqual(
+      expect.arrayContaining([
+        "Applications",
+        "Done",
+        "System Settings › Privacy & Security › Open Anyway",
+      ]),
+    );
     const note = textOf(card.querySelector(".gatekeeper-note")!);
     expect(note).toContain("Kun første gang.");
     expect(note).toContain("Åbn alligevel");
@@ -642,11 +656,17 @@ describe("Hent (SITE-02)", () => {
     expect(text).toContain("Scan koden med telefonens kamera.");
     expect(text).toContain("hjemmeskærmen");
     /* Run 6: Safari's exact steps for each iOS, the buttons in Danish and English (phone/src/lib/install.ts) */
-    const ios = d.querySelectorAll(".ios-steps > li").map((li) => textOf(li).trim());
+    const ios = d
+      .querySelectorAll(".ios-steps > li")
+      .map((li) => textOf(li).trim());
     expect(ios).toHaveLength(2);
     expect(ios[0]).toMatch(/^iOS 26 og nyere/);
-    expect(ios[0]).toContain("••• › Del › Vis mere › Føj til hjemmeskærm › Tilføj");
-    expect(ios[0]).toContain("••• › Share › View More › Add to Home Screen › Add");
+    expect(ios[0]).toContain(
+      "••• › Del › Vis mere › Føj til hjemmeskærm › Tilføj",
+    );
+    expect(ios[0]).toContain(
+      "••• › Share › View More › Add to Home Screen › Add",
+    );
     expect(ios[1]).toMatch(/^Ældre iOS/);
     expect(ios[1]).toContain("Del › Føj til hjemmeskærm › Tilføj");
     expect(ios[1]).toContain("Share › Add to Home Screen › Add");

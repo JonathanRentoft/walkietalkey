@@ -28,7 +28,11 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)");
 
 /** Runs `onChange(true)` while at least `share` of `el` is in sight and the tab is visible, `onChange(false)`
     otherwise. */
-function whileInSight(el: Element, onChange: (run: boolean) => void, share = 0): void {
+function whileInSight(
+  el: Element,
+  onChange: (run: boolean) => void,
+  share = 0,
+): void {
   let visible = false;
   const sync = () => onChange(visible && !document.hidden);
   new IntersectionObserver(
@@ -46,7 +50,10 @@ function whileInSight(el: Element, onChange: (run: boolean) => void, share = 0):
 export const PLATE_IN_SIGHT = 0.4;
 
 /** The cover's gradient drifts only while the cover is in sight. */
-export function restOutOfSight(backdrop: HTMLElement, cover: HTMLElement): void {
+export function restOutOfSight(
+  backdrop: HTMLElement,
+  cover: HTMLElement,
+): void {
   whileInSight(cover, (run) => backdrop.toggleAttribute("data-paused", !run));
 }
 
@@ -54,7 +61,9 @@ export function restOutOfSight(backdrop: HTMLElement, cover: HTMLElement): void 
 export function playPlate(plate: HTMLElement): void {
   const motion = reduced();
   const key = plate.querySelector<HTMLElement>("[data-ed-key]");
-  const time = plate.querySelector<HTMLElement>(".wt-pill--listening .wt-pill-time");
+  const time = plate.querySelector<HTMLElement>(
+    ".wt-pill--listening .wt-pill-time",
+  );
   let inSight = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let tick: ReturnType<typeof setInterval> | undefined;
@@ -66,7 +75,10 @@ export function playPlate(plate: HTMLElement): void {
     if (step === "held" && time) {
       const from = Date.now();
       time.textContent = clock(0);
-      tick = setInterval(() => (time.textContent = clock(Date.now() - from)), 250);
+      tick = setInterval(
+        () => (time.textContent = clock(Date.now() - from)),
+        250,
+      );
     }
   }
   function go(i: number) {

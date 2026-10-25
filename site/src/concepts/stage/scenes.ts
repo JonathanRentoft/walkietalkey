@@ -23,7 +23,8 @@ export type Rect = readonly [number, number, number, number];
    --bw, --bh: its size, in container units of the view) and centres it there. tan(atan2(a, b)) is a / b as a plain
    number, so the scale needs no JavaScript and every stage has its final size before anything loads. */
 
-export type ShotKey = "hero" | "fn" | "phone" | "notify" | "corrections" | "mixed" | "words";
+export type ShotKey =
+  "hero" | "fn" | "phone" | "notify" | "corrections" | "mixed" | "words";
 
 export interface ShotDef {
   key: ShotKey;
@@ -119,16 +120,35 @@ export const SHOTS: Record<ShotKey, ShotDef> = {
 };
 
 /** The order the film plays them in: the Mac first, then the phone sends and the computer receives, then the screen. */
-export const FILM: ShotKey[] = ["fn", "phone", "notify", "corrections", "mixed", "words"];
+export const FILM: ShotKey[] = [
+  "fn",
+  "phone",
+  "notify",
+  "corrections",
+  "mixed",
+  "words",
+];
 
 /** The English words in the mixed sentence, which the screen marks. */
-export const ENGLISH = ["merger", "pull request", "standup", "deployer", "staging"];
+export const ENGLISH = [
+  "merger",
+  "pull request",
+  "standup",
+  "deployer",
+  "staging",
+];
 /** The names the word list fixes. */
 export const NAMES = ["Mette Holm", "Navigent"];
 
 /** Splits a sentence into parts, marking every occurrence of the given phrases. */
-export function marked(text: string, phrases: string[]): { t: string; mark: boolean }[] {
-  const re = new RegExp(`(${phrases.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+export function marked(
+  text: string,
+  phrases: string[],
+): { t: string; mark: boolean }[] {
+  const re = new RegExp(
+    `(${phrases.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+    "g",
+  );
   return text
     .split(re)
     .filter((t) => t !== "")

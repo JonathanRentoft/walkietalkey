@@ -5,9 +5,13 @@
    reduced motion every change is a plain swap. */
 import { fill, holdable, reduced, replay, say } from "./hold";
 
-const $ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => root.querySelector<T>(sel);
-const $$ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => [...root.querySelectorAll<T>(sel)];
-const pressed = (el: Element, on: boolean) => el.setAttribute("aria-pressed", String(on));
+const $ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) =>
+  root.querySelector<T>(sel);
+const $$ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => [
+  ...root.querySelectorAll<T>(sel),
+];
+const pressed = (el: Element, on: boolean) =>
+  el.setAttribute("aria-pressed", String(on));
 const checked = (el: Element) => el.getAttribute("aria-checked") === "true";
 
 /* ------------------------------------------------------------- phone and notify */
@@ -55,7 +59,9 @@ function phone(tile: HTMLElement) {
       clearInterval(tick);
       tick = window.setInterval(() => {
         const s = Math.floor((performance.now() - t0) / 1000);
-        if (time) time.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        if (time)
+          time.textContent =
+            Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
       }, 250);
       set("rec");
     },
@@ -72,7 +78,9 @@ function phone(tile: HTMLElement) {
       set("send");
       wait = window.setTimeout(() => {
         set("ready");
-        document.dispatchEvent(new CustomEvent(SENT, { detail: tile.dataset.sample || "" }));
+        document.dispatchEvent(
+          new CustomEvent(SENT, { detail: tile.dataset.sample || "" }),
+        );
         wait = window.setTimeout(() => set("idle"), 4500);
       }, 900);
     },
@@ -115,7 +123,9 @@ function notify(tile: HTMLElement) {
       document.dispatchEvent(new CustomEvent(SIT));
     }),
   );
-  document.addEventListener(SENT, (e) => land(on, (e as CustomEvent<string>).detail));
+  document.addEventListener(SENT, (e) =>
+    land(on, (e as CustomEvent<string>).detail),
+  );
 }
 
 /* ------------------------------------------------------------- writing */
@@ -157,7 +167,9 @@ function words(tile: HTMLElement) {
     e.preventDefault();
     const name = clean(input.value);
     if (!name) return;
-    const known = $$(chips, ".ho-chip").find((c) => c.textContent?.toLowerCase() === name.toLowerCase());
+    const known = $$(chips, ".ho-chip").find(
+      (c) => c.textContent?.toLowerCase() === name.toLowerCase(),
+    );
     if (!known) {
       const li = document.createElement("li");
       li.className = "ho-chip ho-chip--new";
@@ -209,7 +221,11 @@ function privacy(tile: HTMLElement) {
   const hex = () =>
     (noise.textContent || "")
       .split(" ")
-      .map(() => Math.floor(Math.random() * 65536).toString(16).padStart(4, "0"))
+      .map(() =>
+        Math.floor(Math.random() * 65536)
+          .toString(16)
+          .padStart(4, "0"),
+      )
       .join(" ");
   btn.addEventListener("click", () => {
     clearInterval(iv);
@@ -262,7 +278,9 @@ function start(panel: HTMLElement) {
   const update = () => {
     const ok = perms.every(checked);
     final?.toggleAttribute("data-ready", ok);
-    if (label) label.textContent = (ok ? panel.dataset.readyText : panel.dataset.waitText) || "";
+    if (label)
+      label.textContent =
+        (ok ? panel.dataset.readyText : panel.dataset.waitText) || "";
   };
   perms.forEach((p) => {
     p.setAttribute("aria-checked", "false");
@@ -285,7 +303,10 @@ function price(panel: HTMLElement) {
   const fmt = new Intl.NumberFormat("da-DK");
   range.addEventListener("input", () => {
     const c = counts[Number(range.value)] ?? 1;
-    const text = c === 1 ? panel.dataset.one || "" : fill(panel.dataset.many || "", { n: fmt.format(c) });
+    const text =
+      c === 1
+        ? panel.dataset.one || ""
+        : fill(panel.dataset.many || "", { n: fmt.format(c) });
     count.textContent = text;
     range.setAttribute("aria-valuetext", text);
     const many = c >= 25;
@@ -297,11 +318,14 @@ function price(panel: HTMLElement) {
 
 /* ------------------------------------------------------------- rest when out of sight */
 function rest(el: HTMLElement) {
-  new IntersectionObserver(([en]) => el.toggleAttribute("data-paused", !en.isIntersecting)).observe(el);
+  new IntersectionObserver(([en]) =>
+    el.toggleAttribute("data-paused", !en.isIntersecting),
+  ).observe(el);
 }
 
 export function demos(doc: ParentNode = document) {
-  const each = (sel: string, f: (el: HTMLElement) => void) => $$(doc, sel).forEach(f);
+  const each = (sel: string, f: (el: HTMLElement) => void) =>
+    $$(doc, sel).forEach(f);
   each("[data-notify]", notify);
   each("[data-phone]", phone);
   each("[data-corr]", corrections);

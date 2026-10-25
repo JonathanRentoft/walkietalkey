@@ -12,7 +12,9 @@ test("loads without errors and never scrolls sideways", async ({ page }) => {
   await scrollThrough(page);
   expect(errors).toEqual([]);
   const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
@@ -43,7 +45,9 @@ test("shows every feature's title once it is in view", async ({ page }) => {
 
 test.describe("with reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
-  test("nothing loops, and every feature stands there from the start", async ({ page }) => {
+  test("nothing loops, and every feature stands there from the start", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.waitForTimeout(500);
     expect(await endlessAnimations(page)).toEqual([]);

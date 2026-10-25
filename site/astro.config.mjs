@@ -36,7 +36,12 @@ export default defineConfig({
     /* Run 6: the front page of this build (lib/build.ts): src/concepts/current/ without SITE_CONCEPT. */
     resolve: {
       alias: {
-        "@concept": fileURLToPath(new URL(`./src/concepts/${conceptDir(BUILD.concept)}`, import.meta.url)),
+        "@concept": fileURLToPath(
+          new URL(
+            `./src/concepts/${conceptDir(BUILD.concept)}`,
+            import.meta.url,
+          ),
+        ),
       },
     },
     ssr: { noExternal: ["@walkietalkey/ui"] },
