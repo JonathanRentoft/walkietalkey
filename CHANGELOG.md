@@ -4,7 +4,19 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 <!-- TODO(copy): the Danish release notes -->
+
+**På dansk**
+
+- Første gang er let: Mac'en beder kun om Mikrofon og Tilgængelighed, og WalkieTalkey spørger aldrig om din adgangskode til nøgleringen, heller ikke efter en opdatering.
+- Én gang efter denne opdatering: par telefonen igen. Nøglerne ligger nu i en privat mappe på din Mac i stedet for i nøgleringen. Bruger du AI-oprydning, skal du indtaste din nøgle igen.
+- Færre ord, som ingen har sagt: et klik, et åndedrag eller et par ord efter en pause bliver nu skrevet sammen med sætningen ved siden af. På den danske FLEURS-test falder fejlraten gennem appen fra 8,44 % til 7,63 %.
+- Ingen store bogstaver midt i en sætning, hvor en lang diktering blev delt ved en pause, og ingen ødelagte tegn i teksten.
+- Telefonens lyd kommer 15 dB kraftigere frem. Kommer computeren ikke tilbage, siger telefonen "Par igen" i stedet for bare at vente.
+- Giver mikrofonen ingen lyd, siger pillen det og foreslår en mikrofon, der virker.
+- Telefonen tilbydes først efter din første diktering, der virker.
 
 **In English**
 
@@ -29,6 +41,7 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - No more capital letters in the middle of a sentence where a long dictation was cut at a pause ("og ikke bare Kaster mig"): each joint is read again by the punctuation model, which also removes a full stop that does not belong there.
 - For developers: a fine-tuning workbench in `training/` (`wt-train`): about 1,000 sentences with English developer terms, a recorder, LoRA training on Edda, evaluation like the accuracy job, and export to the app.
 - For developers: the workbench tracks every training, evaluation and export in a local MLflow store (`wt-train ui`), and `wt-train card <run>` starts a lab-journal page from a run.
+- For developers: `wt-train record` records training sentences on the paired phone (whispered or in a normal voice) or on the Mac, through exactly the audio path of a dictation; the phone shows the sentence in large text, and the takes never reach the clipboard or the history.
 - A fine-tuned Edda from the training workbench (`training/`) appears in the model list and is decoded like Edda; it can no longer be "downloaded again", which deleted it.
 - `walkietalkey --transcribe-list <file> --json` transcribes many WAV files with the model loaded once.
 - Up to date: TypeScript 6, Tauri 2.12.5, openssl 0.10.81 and pytest 9.
