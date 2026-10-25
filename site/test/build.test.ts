@@ -19,7 +19,7 @@ import {
   WINDOWS_DOWNLOAD_URL,
   type PageKey,
 } from "../src/lib/site";
-import { DEFAULT_HERO, HERO } from "../src/lib/hero";
+import { HERO } from "../src/lib/hero";
 import { STAGE_WORDS } from "../src/lib/stage";
 
 /** Run 5: the front page's whole JavaScript, inline and from files with their imports, uncompressed. */
@@ -343,12 +343,15 @@ describe("Forside: five calm sections (run 5)", () => {
     for (const s of ["how", "privacy", "free", "faq"])
       expect(section(s).querySelectorAll("h2"), s).toHaveLength(1);
   });
-  it("builds the fn-led hero when no variant is chosen", () => {
+  /* Run 6: without SITE_CONCEPT the build is the current front page, so production stays as it is until the owner
+     picks one of the three concepts (lib/build.ts). */
+  it("builds the current front page, the fn-led hero, when no concept is chosen", () => {
+    expect(d.querySelector("body")!.getAttribute("data-concept")).toBe("current");
     const hero = section("hero");
-    expect(hero.getAttribute("data-hero")).toBe(DEFAULT_HERO);
-    expect(hero.querySelector("h1")!.textContent).toBe(HERO.fn.title);
+    expect(hero.getAttribute("data-hero")).toBe("fn");
+    expect(hero.querySelector("h1")!.textContent).toBe(HERO.title);
     expect(textOf(hero.querySelector(".hero-lead")!).trim()).toBe(
-      HERO.fn.lead.replace("{fn}", "fn"),
+      HERO.lead.replace("{fn}", "fn"),
     );
   });
   it("shows the italic W mark in the hero, in liquid metal on night", () => {

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import react from "@astrojs/react";
 import { copyFontLicence, removeReadmes } from "@walkietalkey/ui/build/assets";
 import { defineConfig } from "astro/config";
+import { BUILD, conceptDir } from "./src/lib/build.ts";
 import { SITE_URL } from "./src/lib/site.ts";
 
 /* Static output for Cloudflare Pages (SITE-01). build.format "file" writes hent.html, which Pages serves at /hent
@@ -30,6 +31,12 @@ export default defineConfig({
     },
   ],
   vite: {
+    /* Run 6: the front page of this build (lib/build.ts): src/concepts/current/ without SITE_CONCEPT. */
+    resolve: {
+      alias: {
+        "@concept": fileURLToPath(new URL(`./src/concepts/${conceptDir(BUILD.concept)}`, import.meta.url)),
+      },
+    },
     ssr: { noExternal: ["@walkietalkey/ui"] },
     build: { assetsInlineLimit: 0 },
   },
