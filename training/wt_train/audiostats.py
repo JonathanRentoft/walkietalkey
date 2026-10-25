@@ -79,9 +79,10 @@ def measure_samples(x: np.ndarray, rate: int) -> AudioStats:
     noise = round(float(np.median(pauses)) if len(pauses) >= 5 else float(np.percentile(levels, 10)), 1)
     edge = int(rate * EDGE_S)
     return AudioStats(
-        seconds=round(seconds, 3), speech_seconds=round((end - start) / rate, 3), level_dbfs=round(level, 1),
-        peak_dbfs=round(peak, 1), noise_dbfs=round(noise, 1), snr_db=round(level - noise, 1),
-        clipped_samples=clipped, silent=False, cut_start=start < edge, cut_end=end > len(x) - edge)
+        seconds=round(float(seconds), 3), speech_seconds=round(float(end - start) / rate, 3),
+        level_dbfs=round(level, 1), peak_dbfs=round(peak, 1), noise_dbfs=round(noise, 1),
+        snr_db=round(level - noise, 1), clipped_samples=clipped, silent=False,
+        cut_start=bool(start < edge), cut_end=bool(end > len(x) - edge))
 
 
 def measure(path: Path) -> AudioStats:

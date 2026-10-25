@@ -79,6 +79,15 @@ def test_a_clean_take_is_measured_level_noise_snr_and_length(tmp_path):
     assert not s.cut_start and not s.cut_end and not s.silent
 
 
+def test_the_stats_are_plain_values_json_can_write(tmp_path):
+    import json
+
+    sf.write(tmp_path / "t.wav", _speech_like(), 16000, subtype="PCM_16")
+    data = audiostats.measure(tmp_path / "t.wav").as_dict()
+    assert json.loads(json.dumps(data)) == data
+    assert all(type(v) in (int, float, bool) for v in data.values())
+
+
 def test_clipping_silence_and_cut_off_takes_are_noticed(tmp_path):
     loud = np.clip(_speech_like(level=1.5), -1, 1)
     sf.write(tmp_path / "loud.wav", loud, 16000, subtype="PCM_16")
