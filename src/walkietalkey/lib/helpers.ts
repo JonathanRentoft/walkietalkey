@@ -521,3 +521,28 @@ export function lastSeen(
   if (ago === 1) return { kind: "yesterday" };
   return { kind: "date", date: new Date(day * 86_400_000) };
 }
+
+/** Run 6: a version's export date, Danish style ("25. okt. 2026"). */
+export function formatVersionDate(
+  iso: string | null | undefined,
+): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+/** Run 6: a version's validation WER (0 to 1) as "6,1 %". */
+export function formatValidationWer(
+  wer: number | null | undefined,
+): string | null {
+  if (wer === null || wer === undefined) return null;
+  return `${(wer * 100).toLocaleString("da-DK", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} %`;
+}

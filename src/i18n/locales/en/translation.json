@@ -1040,7 +1040,14 @@
         "failed": "Could not download the punctuation model.",
         "unsupported": "Not available on an Intel Mac",
         "retry": "Try again"
-      }
+      },
+      "versions": "Versions of Edda",
+      "versionsDesc": "Each time you train Edda with the fine-tuning workbench, a new version appears. Switch back at any time.",
+      "baseNote": "The base model. It always stays on this computer.",
+      "versionLabel": "Version {{n}}",
+      "werLabel": "{{wer}} errors on validation",
+      "inUse": "In use",
+      "switchFailed": "Could not switch model. Try again."
     },
     "updates": {
       "auto": "Automatic updates",

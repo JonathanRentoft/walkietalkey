@@ -6,12 +6,16 @@ import {
   commands,
   type ModelInfo,
   type ModelUnloadTimeout,
+  type ModelVersion,
   type PncStatus,
 } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
+  EDDA_MODEL_ID,
   formatSizeMb,
+  formatValidationWer,
+  formatVersionDate,
   totalSizeMb,
   unloadChoice,
   UNLOAD_OPTIONS,
@@ -72,6 +76,93 @@ function PunctuationRow() {
         ) : null}
       </>
     </SettingRow>
+  );
+}
+
+/** Run 6: the base Edda and every installed version of it, from the
+ *  workbench (versions.rs). Switching is rolling back; the base always stays. */
+function VersionsGroup() {
+  const { t } = useTranslation();
+  const current = useModelStore((s) => s.currentModel);
+  const models = useModelStore((s) => s.models);
+  const selectModel = useModelStore((s) => s.selectModel);
+  const locked = useLocked("selected_model");
+  const [rows, setRows] = useState<ModelVersion[]>([]);
+  const [failed, setFailed] = useState(false);
+  const refresh = () =>
+    void commands
+      .wtModelVersions()
+      .then(setRows)
+      .catch(() => setRows([]));
+  // A new selection, a new file, or `wt-train use` from the terminal.
+  useEffect(refresh, [current, models]);
+  useTauriEvent<{ model_id: string; error: string | null }>(
+    "wt-model-switched",
+    (e) => {
+      setFailed(!!e?.error);
+      void useModelStore.getState().loadCurrentModel();
+      refresh();
+    },
+  );
+  if (rows.length < 2) return null;
+  const use = async (id: string) => {
+    setFailed(false);
+    const ok = await selectModel(id);
+    if (ok === false) setFailed(true);
+    refresh();
+  };
+  return (
+    <Group
+      title={t("wt.modelSettings.versions")}
+      description={t("wt.modelSettings.versionsDesc")}
+    >
+      <ul className="wt-list">
+        {rows.map((v) => {
+          const selected = v.id === current || (v.selected && !current);
+          const facts = v.base
+            ? [t("wt.modelSettings.baseNote")]
+            : [
+                v.version !== null
+                  ? t("wt.modelSettings.versionLabel", { n: v.version })
+                  : null,
+                formatVersionDate(v.created),
+                v.validation_wer !== null
+                  ? t("wt.modelSettings.werLabel", {
+                      wer: formatValidationWer(v.validation_wer),
+                    })
+                  : null,
+              ].filter(Boolean);
+          return (
+            <li key={v.id} className="wt-list-item">
+              <div className="wt-list-main">
+                <span>{v.name}</span>
+                <span className="wt-list-sub">{facts.join(" · ")}</span>
+              </div>
+              <div className="wt-row-control">
+                {selected ? (
+                  <Status tone="ok">{t("wt.modelSettings.inUse")}</Status>
+                ) : (
+                  <Button
+                    disabled={locked}
+                    aria-label={t("wt.modelSettings.useNamed", {
+                      name: v.name,
+                    })}
+                    onClick={() => void use(v.id)}
+                  >
+                    {t("wt.modelSettings.use")}
+                  </Button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {failed ? (
+        <div className="wt-row">
+          <Status tone="warn">{t("wt.modelSettings.switchFailed")}</Status>
+        </div>
+      ) : null}
+    </Group>
   );
 }
 
@@ -212,6 +303,8 @@ export function ModelSection() {
         </SettingRow>
       </Group>
 
+      <VersionsGroup />
+
       <Group
         title={t("wt.modelSettings.others")}
         description={t("wt.modelSettings.othersDesc")}
@@ -240,15 +333,18 @@ export function ModelSection() {
                       >
                         {t("wt.modelSettings.use")}
                       </Button>
-                      <Button
-                        variant="quiet"
-                        aria-label={t("wt.modelSettings.deleteNamed", {
-                          name: m.name,
-                        })}
-                        onClick={() => void store.deleteModel(m.id)}
-                      >
-                        {t("wt.common.delete")}
-                      </Button>
+                      {/* Run 6: the base Edda always stays. */}
+                      {m.id === EDDA_MODEL_ID ? null : (
+                        <Button
+                          variant="quiet"
+                          aria-label={t("wt.modelSettings.deleteNamed", {
+                            name: m.name,
+                          })}
+                          onClick={() => void store.deleteModel(m.id)}
+                        >
+                          {t("wt.common.delete")}
+                        </Button>
+                      )}
                     </>
                   ) : store.downloadingModels[m.id] ? (
                     <Button onClick={() => void store.cancelDownload(m.id)}>

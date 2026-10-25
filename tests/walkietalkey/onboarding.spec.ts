@@ -336,8 +336,14 @@ test.describe("onboarding", () => {
     await page.getByRole("button", { name: "Kom i gang" }).click();
     // Both permissions are granted, yet their screens are shown, as a new user sees them.
     await expect(heading(page, "Mikrofon")).toBeVisible();
-    await page.getByRole("button", { name: "Giv adgang til mikrofonen" }).click();
-    await expect(page.getByText("I gennemgangen ændrer WalkieTalkey ikke dine tilladelser.")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Giv adgang til mikrofonen" })
+      .click();
+    await expect(
+      page.getByText(
+        "I gennemgangen ændrer WalkieTalkey ikke dine tilladelser.",
+      ),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Næste" }).click();
     await expect(heading(page, "Tilgængelighed")).toBeVisible();
     await expect(page.locator(".wt-onb-ax")).toBeVisible();
@@ -355,7 +361,9 @@ test.describe("onboarding", () => {
       .slice(earlier)
       .map((c) => c.cmd)
       .filter((cmd) =>
-        /request_|accessibility_repair|open_url|open_microphone|autostart|reset/i.test(cmd),
+        /request_|accessibility_repair|open_url|open_microphone|autostart|reset/i.test(
+          cmd,
+        ),
       );
     expect(touched).toEqual([]);
     const after = await mockState(page);
@@ -364,7 +372,9 @@ test.describe("onboarding", () => {
     expect(after.app.autostart_enabled).toBe(before.app.autostart_enabled);
   });
 
-  test("Vis introduktionen igen can be closed at any screen", async ({ page }) => {
+  test("Vis introduktionen igen can be closed at any screen", async ({
+    page,
+  }) => {
     await installMock(page, {
       downloaded: [EDDA],
       permissions: { microphone: true, accessibility: true },

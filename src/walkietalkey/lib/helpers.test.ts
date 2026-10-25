@@ -2,6 +2,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  formatValidationWer,
+  formatVersionDate,
   addWord,
   consentKey,
   dayNumber,
@@ -529,5 +531,21 @@ describe("consentKey", () => {
       consentKey("custom", "https://a.example/v1"),
       consentKey("custom", "https://b.example/v1"),
     );
+  });
+});
+
+describe("versions of Edda (run 6)", () => {
+  test("the export date in Danish", () => {
+    assert.equal(
+      formatVersionDate("2026-10-25T12:00:00+00:00"),
+      "25. okt. 2026",
+    );
+    assert.equal(formatVersionDate(null), null);
+    assert.equal(formatVersionDate("not a date"), null);
+  });
+  test("the validation WER as a Danish percentage", () => {
+    assert.equal(formatValidationWer(0.061), "6,1 %");
+    assert.equal(formatValidationWer(0.0583), "5,8 %");
+    assert.equal(formatValidationWer(null), null);
   });
 });

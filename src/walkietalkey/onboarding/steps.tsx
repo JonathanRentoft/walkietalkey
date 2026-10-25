@@ -157,13 +157,11 @@ export function MicrophoneStep(props: {
     !replay,
   );
   const shownAccess: MicAccess | null = replay ? "not_determined" : access;
-  const granted =
-    shownAccess === null ? null : shownAccess === "granted";
+  const granted = shownAccess === null ? null : shownAccess === "granted";
   const [asked, setAsked] = useState(false);
   useAdvanceOnGrant(granted, props.onGranted);
   // macOS asks only once; after a no, the pane is the only way (run 5).
-  const settingsOnly =
-    shownAccess === "denied" || shownAccess === "restricted";
+  const settingsOnly = shownAccess === "denied" || shownAccess === "restricted";
 
   // One button, one click: macOS's own question while it has never been
   // answered, else the exact pane at once.
@@ -298,10 +296,7 @@ export function AccessibilityStep(props: {
 }) {
   const { t } = useTranslation();
   const replay = !!props.replay;
-  const [polled] = usePermission(
-    () => hasPermission("accessibility"),
-    !replay,
-  );
+  const [polled] = usePermission(() => hasPermission("accessibility"), !replay);
   const granted = replay ? false : polled;
   const [opened, setOpened] = useState(false);
   useAdvanceOnGrant(granted, props.onGranted);

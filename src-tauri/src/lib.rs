@@ -808,6 +808,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_get_settings,
             walkietalkey::commands::wt_update_settings,
             walkietalkey::commands::wt_import_model_file,
+            walkietalkey::versions::wt_model_versions,
             walkietalkey::commands::wt_pairing_start,
             walkietalkey::commands::wt_pairing_cancel,
             walkietalkey::commands::wt_relay_status,
@@ -978,6 +979,9 @@ pub fn run(cli_args: CliArgs) {
             } else if let Some(url) = walkietalkey::relay::training::session_arg(&args) {
                 // WalkieTalkey: a `wt-train record` session (the fine-tuning workbench).
                 walkietalkey::relay::training::start(app, url);
+            } else if let Some(id) = walkietalkey::versions::use_model_arg(&args) {
+                // WalkieTalkey: `wt-train use` switches the model version (run 6).
+                walkietalkey::versions::use_model_running(app, id);
             } else {
                 // A second process was launched without remote-control flags
                 // (e.g. the binary run from a shell). On macOS, relaunching the
@@ -1016,6 +1020,11 @@ pub fn run(cli_args: CliArgs) {
             if cli_args.training_session.is_some() {
                 eprintln!("WalkieTalkey is not running; start it, then connect again");
                 std::process::exit(walkietalkey::relay::training::NOT_RUNNING_EXIT);
+            }
+            // WalkieTalkey (run 6): `--use-model` with no app running saves the
+            // choice for the next start, and starts nothing.
+            if let Some(id) = cli_args.use_model.as_deref() {
+                std::process::exit(walkietalkey::versions::use_model_offline(app.handle(), id));
             }
             #[cfg(target_os = "windows")]
             log::info!(

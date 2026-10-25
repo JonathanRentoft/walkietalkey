@@ -406,6 +406,86 @@ test.describe("settings", () => {
     await expect(page.getByRole("button", { name: "Hent igen" })).toBeEnabled();
   });
 
+  /* Run 6: the app lists the base Edda and every installed version of it, switches between them, and never
+     deletes the base: rolling back means switching. */
+  test("Model lists Edda and its versions, switches between them, and keeps Edda", async ({
+    page,
+  }) => {
+    await openApp(page, {
+      customModels: [
+        { id: "edda-ft-first-v1", name: "Edda finjusteret v1" },
+        { id: "edda-ft-first-v2", name: "Edda finjusteret v2" },
+      ],
+      versions: {
+        "edda-ft-first-v1": {
+          version: 1,
+          created: "2026-10-25T12:00:00+00:00",
+          validation_wer: 0.061,
+          run: "first-1",
+        },
+        "edda-ft-first-v2": {
+          version: 2,
+          created: "2026-10-26T09:30:00+00:00",
+          validation_wer: 0.058,
+          run: "first-2",
+        },
+      },
+      app: { selected_model: "edda-ft-first-v2" },
+    });
+    await section(page, "Model");
+    const group = page.getByRole("region", { name: "Versioner af Edda" });
+    const rows = group.getByRole("listitem");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText("Edda v0.2");
+    await expect(rows.nth(0)).toContainText(
+      "Grundmodellen. Den bliver altid på computeren.",
+    );
+    await expect(rows.nth(1)).toContainText("Version 1");
+    await expect(rows.nth(1)).toContainText("25. okt. 2026");
+    await expect(rows.nth(1)).toContainText("6,1 %");
+    await expect(rows.nth(2)).toContainText("Version 2");
+    await expect(rows.nth(2)).toContainText("I brug");
+    // Roll back to version 1, then to the base.
+    await rows.nth(1).getByRole("button", { name: "Brug" }).click();
+    await expect
+      .poll(async () => (await mockState(page)).app.selected_model)
+      .toBe("edda-ft-first-v1");
+    await expect(rows.nth(1)).toContainText("I brug");
+    await rows.nth(0).getByRole("button", { name: "Brug" }).click();
+    await expect
+      .poll(async () => (await mockState(page)).app.selected_model)
+      .toBe(EDDA);
+    // The base Edda has no delete button anywhere; versions do.
+    await expect(
+      page.getByRole("button", { name: "Slet Edda v0.2" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Slet Edda finjusteret v1" }),
+    ).toHaveCount(1);
+  });
+
+  test("a version switched from the terminal shows at once (wt-train use)", async ({
+    page,
+  }) => {
+    await openApp(page, {
+      customModels: [{ id: "edda-ft-first-v1", name: "Edda finjusteret v1" }],
+      versions: { "edda-ft-first-v1": { version: 1 } },
+    });
+    await section(page, "Model");
+    const rows = page
+      .getByRole("region", { name: "Versioner af Edda" })
+      .getByRole("listitem");
+    await expect(rows.nth(0)).toContainText("I brug");
+    await page.evaluate(() => {
+      (window as any).__WT_MOCK__.state.app.selected_model = "edda-ft-first-v1";
+    });
+    await emit(page, "wt-model-switched", {
+      model_id: "edda-ft-first-v1",
+      error: null,
+    });
+    await expect(rows.nth(1)).toContainText("I brug");
+  });
+
   test("Hold talemodellen indlæst maps to the unload timeout", async ({
     page,
   }) => {
