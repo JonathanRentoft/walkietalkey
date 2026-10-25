@@ -155,4 +155,5 @@ def test_tables_and_percentages():
     t = htmlpage.table(["Setup", "WER"], [["iphone-whisper", htmlpage.pct(0.0763)], ["<x>", "–"]])
     assert "<th>Setup</th>" in t and "<td>7.63 %</td>" in t and "<td>&lt;x&gt;</td>" in t
     assert htmlpage.pct(None) == "–"
+    assert htmlpage.db(-0.02) == "0.0 dBFS" and htmlpage.db(-17.66) == "-17.7 dBFS" and htmlpage.db(None) == "–"
     assert htmlpage.pct_ci(0.0763, (0.071, 0.0818)) == "7.63 % (7.10 to 8.18)"

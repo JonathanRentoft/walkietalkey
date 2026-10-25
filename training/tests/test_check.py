@@ -360,7 +360,8 @@ def test_takes_that_do_not_match_their_sentence_are_flagged(tmp_path, monkeypatc
     rec.start(SID_A, "phone-normal", "2026-10-25T10:00:00+02:00")
     texts = {"s0001": "Der er en kat i haven i dag.", "s0002": "Der er en hund i haven i dag.",
              "s0003": "Der er en fisk i haven i dag.", "s0004": "Der er en fugl i haven i dag.",
-             "s0005": "Vi skal deploy'e den i dag."}
+             "s0005": "Vi skal deploy'e den i dag.",
+             "s0006": "Det regerende parti South West Africa People's Organisation vandt igen valget."}
     for i, (sid, text) in enumerate(texts.items()):
         rec.take(SID_A, sid, speech(seed=i), name="phone-normal", text=text)
     spelling = tmp_path / "spelling.yaml"
@@ -371,12 +372,16 @@ def test_takes_that_do_not_match_their_sentence_are_flagged(tmp_path, monkeypatc
         "s0003": "",                               # nothing heard
         "s0004": "Der er en hest i haven i dag.",  # one word wrong: a slip, not a mismatch
         "s0005": "vi skal deploye den i dag",      # the reference is re-spelled like the training data
+        # read right, but Edda garbles the English name: WER above 50 %, yet half the words heard
+        # (a wrong sentence keeps under 30 %), so it is Edda's error, not a take to redo
+        "s0006": "Det regerende parti bi sykel af rika an tekes or ga nisat vandt igen valget.",
     })
     code, out, _ = run(capsys, folders, "--spelling", str(spelling))
     assert code == 1
     mismatch = next(x for x in out.splitlines() if x.strip().startswith("not matching"))
     assert "s0002 (WER 88 %)" in mismatch and "s0003 (nothing heard)" in mismatch
     assert "s0004" not in mismatch and "s0005" not in mismatch and "s0001" not in mismatch
+    assert "s0006" not in mismatch
     assert "match (base Edda through the app)" in out
     assert 'heard "Det regner meget i København."' in out
     # one batch, with the shipped Edda

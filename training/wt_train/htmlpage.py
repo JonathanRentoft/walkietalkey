@@ -86,7 +86,9 @@ def pct_ci(value: float | None, ci: Sequence[float] | None) -> str:
 
 
 def db(value: float | None, unit: str = "dBFS") -> str:
-    return "–" if value is None else f"{value:.1f} {unit}"
+    if value is None:
+        return "–"
+    return f"{0.0 if abs(value) < 0.05 else value:.1f} {unit}"  # never "-0.0"
 
 
 def table(headers: Sequence[str], rows: Iterable[Sequence[object]], numeric: Sequence[int] = ()) -> str:

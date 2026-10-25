@@ -40,7 +40,11 @@ Problems, each listed with its sentence ids; the limits follow the take's style
   scored against the take's text re-spelled like the training data (as
   ``wt-train eval`` does): nothing heard, or a WER above :data:`MISMATCH_WER`
   with at least :data:`MISMATCH_MIN_ERRORS` word errors (one slip in a short
-  sentence is Edda's error, not a wrong take). ``--no-transcribe`` skips it
+  sentence is Edda's error, not a wrong take) *and* fewer than
+  :data:`MISMATCH_HEARD` of the sentence's words heard. A take read right that
+  Edda garbles (an English name, a hard whisper) keeps about half of its words
+  (a real FLEURS take with an English organisation name: 47 %); a wrong
+  sentence keeps only its small words (8 %), so only that is a redo. ``--no-transcribe`` skips it
   (quick, offline); without an app the audio is still checked and the verdict
   says the match was not.
 
@@ -91,6 +95,8 @@ NOISY_SNR_DB = {"normal": 15.0, "whisper": 10.0}
 CUT_MIN_SNR_DB = 15.0
 MISMATCH_WER = 0.5
 MISMATCH_MIN_ERRORS = 2
+# Share of the sentence's words (normalised, counted with repeats) found in the transcript.
+MISMATCH_HEARD = 0.3
 # What Edda heard is shown for at most this many takes that do not match, room permitting.
 HEARD_LINES = 5
 # A problem in this share of the takes (and at least SYSTEMIC_MIN of them) is the setup's.
@@ -296,6 +302,7 @@ class Row:
     wer: float | None = None
     word_errors: int | None = None
     ref_words: int | None = None
+    heard: float | None = None
 
     def as_dict(self) -> dict:
         t = self.take
@@ -307,6 +314,7 @@ class Row:
             "check": _plain(self.check.as_dict()), "problems": list(self.problems), "details": self.problems,
             "transcript": self.transcript, "transcribe_error": self.transcribe_error,
             "wer": None if self.wer is None else round(self.wer, 4), "word_errors": self.word_errors,
+            "heard": None if self.heard is None else round(self.heard, 3),
             "ref_words": self.ref_words,
         }
 
@@ -387,13 +395,25 @@ def match(rows: list[Row], app_bin: Path | None, spelling_path: Path | None) -> 
         row.wer = row.word_errors / row.ref_words if row.ref_words else float(row.word_errors > 0)
         errors += row.word_errors
         words += row.ref_words
+        row.heard = words_heard(scored["ref_norm"], scored["hyp_norm"])
         if not text.strip():
             row.problems["mismatch"] = "nothing heard"
-        elif row.wer > MISMATCH_WER and row.word_errors >= MISMATCH_MIN_ERRORS:
+        elif (row.wer > MISMATCH_WER and row.word_errors >= MISMATCH_MIN_ERRORS
+              and row.heard < MISMATCH_HEARD):
             row.problems["mismatch"] = f"WER {round(row.wer * 100)} %"
     return {"ran": True, "app": str(found.bin), "model": paths.SHIPPED_EDDA_ID,
             "transcribed": len(heard) - len(failed), "wer": round(errors / words, 4) if words else None,
             "failed": failed}
+
+
+def words_heard(ref_norm: str, hyp_norm: str) -> float:
+    """The share of the reference's words that are in the transcript, each counted as often
+    as it occurs in both (order ignored)."""
+    from collections import Counter
+
+    ref, hyp = Counter(ref_norm.split()), Counter(hyp_norm.split())
+    total = sum(ref.values())
+    return sum(min(n, hyp[w]) for w, n in ref.items()) / total if total else 1.0
 
 
 # --- the report -----------------------------------------------------------------------------
@@ -438,7 +458,8 @@ def label(kind: str, style: str | None) -> str:
         "loud": f"too loud for {voice}" + (f" (above {round(LOUD_DBFS[style])} dBFS)" if style else ""),
         "noisy": "noisy" + (f" (SNR below {round(NOISY_SNR_DB[style])} dB)" if style else ""),
         "short": "short (less speech than the text needs; let go too soon?)",
-        "mismatch": f"not matching the text (WER above {round(MISMATCH_WER * 100)} % or nothing heard)",
+        "mismatch": (f"not matching the text (under {round(MISMATCH_HEARD * 100)} % of its words heard, "
+                     "or nothing)"),
     }[kind]
 
 
