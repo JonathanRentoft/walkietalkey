@@ -9,6 +9,7 @@ import {
   forwardStep,
   ONBOARDING_DONE,
   onboardingSteps,
+  phoneOfferPending,
   previousStep,
   type OnboardingStepId,
   type WtPlatform,
@@ -38,12 +39,13 @@ export function Onboarding(props: {
   const wt = useWtSettings();
   const updateWt = useWtStore((s) => s.update);
   const mac = props.platform === "macos";
+  // Run 5: Telefon comes only after a dictation in Prøv det that worked (a
+  // restart at Telefon had one).
+  const [dictated, setDictated] = useState(props.initialStep === "phone");
+  const phonePairing = wt?.allow_phone_pairing ?? true;
   const steps = useMemo(
-    () =>
-      onboardingSteps(props.platform, {
-        phonePairing: wt?.allow_phone_pairing ?? true,
-      }),
-    [props.platform, wt?.allow_phone_pairing],
+    () => onboardingSteps(props.platform, { phonePairing, dictated }),
+    [props.platform, phonePairing, dictated],
   );
   const [step, setStep] = useState<OnboardingStepId>(props.initialStep);
   const [phoneShown, setPhoneShown] = useState(false);
@@ -88,8 +90,16 @@ export function Onboarding(props: {
     // DESK-97: start at login, on by default after onboarding.
     await useSettingsStore.getState().updateSetting("autostart_enabled", true);
     // Finished, whether or not the model is in place yet: the download goes
-    // on in the background and the pill says when it is not ready.
-    await updateWt({ onboarding_resume_step: ONBOARDING_DONE });
+    // on in the background and the pill says when it is not ready. Without
+    // Telefon (no dictation worked yet), pairing is offered once later, after
+    // the first dictation that works (run 5).
+    await updateWt({
+      onboarding_resume_step: ONBOARDING_DONE,
+      phone_offer_pending: phoneOfferPending({
+        phonePairing,
+        phoneStepShown: steps.includes("phone"),
+      }),
+    });
     props.onDone();
   };
 
@@ -113,7 +123,12 @@ export function Onboarding(props: {
       content = <AccessibilityStep onGranted={() => void forward()} />;
       break;
     case "try":
-      content = <TryStep platform={props.platform} />;
+      content = (
+        <TryStep
+          platform={props.platform}
+          onDictated={() => setDictated(true)}
+        />
+      );
       break;
     case "phone":
       content = <PhoneStep onShown={() => setPhoneShown(true)} />;

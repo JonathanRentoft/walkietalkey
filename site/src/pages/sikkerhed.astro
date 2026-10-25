@@ -31,7 +31,9 @@ const threats: [string, string, string][] = [
 
       <h2>Nøgler</h2>
       <ul>
-        <li>Hver enhed laver sine egne nøglepar (P-256), første gang den starter. Den private del forlader aldrig enheden. På Mac ligger den i nøgleringen, på Windows i Credential Manager, og på telefonen som en nøgle, der ikke kan læses ud.</li>
+        <!-- TODO(copy): from v0.2.0 the Mac keeps its keys in WalkieTalkey's own secret folder, never the keychain
+             (spec 9.2, SEC-11); the folder is bound to the Mac's hardware UUID, so a copy on another Mac is emptied. -->
+        <li>Hver enhed laver sine egne nøglepar (P-256), første gang den starter. Den private del forlader aldrig enheden. På Mac ligger den i en privat mappe, som kun WalkieTalkey bruger, aldrig i nøgleringen. Mappen er bundet til netop den Mac. På Windows ligger den i Credential Manager, og på telefonen som en nøgle, der ikke kan læses ud.</li>
         <li>Hvert par af telefon og computer får sine egne nøgler, én til hver retning. Fjerner du én telefon, påvirker det ikke de andre.</li>
         <li>Hver besked har et tæller-nummer, så en gammel besked, der sendes igen, bliver afvist.</li>
       </ul>

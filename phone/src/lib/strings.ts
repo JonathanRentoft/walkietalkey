@@ -98,6 +98,12 @@ export const T = {
   statusAway: "{computer} er ikke online",
   statusConnecting: "Forbinder til {computer}",
   statusLost: "Ikke forbundet til {computer}",
+  // TODO(copy): run 5, a computer the relay has not seen for days (maybe reset or reinstalled)
+  statusGone: "{computer} har ikke været online i {days} dage",
+  // TODO(copy): run 5, offered when a pairing may be stale (spec 5.4)
+  pairAgain: "Par igen",
+  repairHint:
+    "Er {computer} nulstillet eller installeret igen? Så skal telefonen parres igen.",
   // TODO(copy): what the status line does when tapped (screen readers)
   statusPick: "Vælg computer og indstillinger",
   // TODO(copy): the 5 minute limit (PHONE-29)
@@ -113,6 +119,31 @@ export const T = {
     unknown: "Der skete en uventet fejl.",
   } as Record<string, string>,
   detailCode: "Kode: {code}",
+
+  // TODO(copy): the training screen, while the computer records sentences for the fine-tuning
+  // workbench (wt-train record, PRIV-05)
+  trainingTitle: "Indtaling til {computer}",
+  trainingLeave: "Afslut",
+  trainingWhisper: "Hvisk",
+  trainingNormal: "Almindelig stemme",
+  trainingProgress: "{done} af {total}",
+  trainingComplete: "Alle sætninger er indtalt. Tak.",
+  trainingRedo: "Optag forrige igen",
+  trainingRedoing: "Du optager den forrige igen.",
+  trainingBack: "Tilbage til den næste",
+  trainingWaiting: "Venter på {computer}",
+  trainingSaved: "Gemt",
+  trainingChecks: {
+    ok: "Gemt.",
+    quiet:
+      "Optagelsen er svag. Tal lidt tættere på mikrofonen, og optag den igen.",
+    clipped:
+      "Lyden er for kraftig og forvrænget. Hold lidt mere afstand, og optag den igen.",
+    short: "Optagelsen ser ud til at være skåret af. Optag den igen.",
+    silent: "Hørte ikke noget. Optag den igen.",
+    gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
+    error: "Optagelsen kunne ikke gemmes.",
+  } as Record<string, string>,
 } as const;
 
 /** Fills {name} placeholders. */

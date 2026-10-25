@@ -71,6 +71,8 @@ def test_a_run_logs_every_epoch_and_keeps_the_best_adapter(tmp_path, tiny_base, 
     assert metrics[0]["train_loss"] is None and all(m["train_loss"] > 0 for m in metrics[1:])
     assert (run / "metrics.png").stat().st_size > 1000
     assert len(list((run / "validation").glob("epoch-*.jsonl"))) == 3
+    # Run 4's takes are the Mac's, normal voice: validation WER per recording condition.
+    assert all(set(m["validation_wer_by_condition"]) == {"mac-normal"} for m in metrics)
 
     best = json.loads((run / "best.json").read_text())
     by_wer = min(metrics, key=lambda m: (m["validation_wer"], m["validation_loss"]))

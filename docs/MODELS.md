@@ -300,24 +300,214 @@ accurate, but a cut-short last chunk then costs several encoder passes after
 release (DESK-43, DESK-46). The app therefore decodes Edda one piece at a time
 while the user talks, text only, with the previous text as the context prompt: a
 pause of half a second or more (the usual break between sentences) ends a piece
-once it is a second long, so a sentence with its shorter pauses stays whole, and
-a piece whose text still comes out cut short (under 1.6 words per second of
-audio) is split again at its shorter pauses and kept only with 25 % more words.
-The batch path (the CLI, a history re-transcription) does the same. WER through
-the app (`walkietalkey -f <clip> --json`, the harness's normalisation), and the
-wait after release (`walkietalkey -f <clip> --live`, release build, M1 Pro):
+(run 4: once it is a second long; run 5: with 1.5 s of speech on each side, see
+"Invented words on short pieces" below), so a sentence with its shorter pauses
+stays whole, and a piece whose text still comes out cut short (run 4: under 1.6
+words per second of audio; run 5: under 9 letters per second of speech) is split
+again at its shorter pauses and kept only with 25 % more words. The batch path
+(the CLI, a history re-transcription) does the same. WER through the app
+(`walkietalkey -f <clip> --json`, the harness's normalisation), and the wait
+after release (`walkietalkey -f <clip> --live`, release build, M1 Pro), run 4:
 
-| Decoding                                                               |           Single sentences (100) | 2 utterances (100) | 3 utterances (60) | Wait, 16 s | Wait, 2 min |
-| ---------------------------------------------------------------------- | -------------------------------: | -----------------: | ----------------: | ---------: | ----------: |
-| Whole windows                                                          | (7.17 % on all 930, engine only) |            15.49 % |           22.09 % |            |             |
-| At every pause                                                         |                          11.01 % |            10.68 % |            9.46 % |            |             |
-| Whole, cut-short chunks again by segment                               |                           6.89 % |             8.13 % |            7.09 % |     1.03 s |      4.74 s |
-| At pauses of 0.2 s or more                                             |                           9.15 % |             8.60 % |            9.61 % |     0.93 s |      0.99 s |
-| **At pauses of 0.5 s or more, cut-short pieces split finer (shipped)** |                       **8.65 %** |         **7.45 %** |        **7.70 %** | **0.92 s** |  **0.99 s** |
+| Decoding                                                             |           Single sentences (100) | 2 utterances (100) | 3 utterances (60) | Wait, 16 s | Wait, 2 min |
+| -------------------------------------------------------------------- | -------------------------------: | -----------------: | ----------------: | ---------: | ----------: |
+| Whole windows                                                        | (7.17 % on all 930, engine only) |            15.49 % |           22.09 % |            |             |
+| At every pause                                                       |                          11.01 % |            10.68 % |            9.46 % |            |             |
+| Whole, cut-short chunks again by segment                             |                           6.89 % |             8.13 % |            7.09 % |     1.03 s |      4.74 s |
+| At pauses of 0.2 s or more                                           |                           9.15 % |             8.60 % |            9.61 % |     0.93 s |      0.99 s |
+| **At pauses of 0.5 s or more, cut-short pieces split finer (run 4)** |                       **8.65 %** |         **7.45 %** |        **7.70 %** | **0.92 s** |  **0.99 s** |
 
-With the shipped decoding, 1 of 260 windows still loses a quarter of its words
+With run 4's decoding, 1 of 260 windows still loses a quarter of its words
 (against 17 of 100 two-utterance windows decoded whole), and the wait after a
 two-minute dictation is within 0.1 s of the wait after 16 s.
+
+## Invented words on short pieces (run 5, DESK-46)
+
+Run 4 scored all 930 FLEURS da_dk test clips through the app
+(`training/results.csv`): the shipped Edda v0.2 Q8_0 at 8.44 % WER (95 % CI
+7.84 to 9.05) against 7.21 % (6.66 to 7.78) for the base model in Transformers
+(float16, greedy, one clip per window). The gap was mostly insertions: 319
+against 135. The 20 clips with the most insertions beyond the float16 run
+carried 102 of them ("Tester en to tre fire fem seks syv otte.", "G rides
+USB", a loop of "der er af Svendås").
+
+**The measured path is the real one.** `--transcribe-list` (and
+`--transcribe-file`) decodes with the live chunker's plan (`LIVE_SEGMENTS`), the
+same chunk decode (context prompts, joint repair, script guard) and the same
+finishing as a dictation, and the chunker cuts a clip pushed whole exactly as it
+cuts it fed in 200 ms pieces (`audio_toolkit::chunking` tests). A phone
+dictation reaches the chunker as it is, like a file. A key recording does not:
+the recorder's own VAD (Silero at 0.3, 450 ms pre-roll and hangover) drops what
+it calls silence first, so its pauses are shorter and its ends trimmed.
+`--key-recording` passes a file through the recorder's capture sink first, so
+that path is measured too (below).
+
+**What the chunker cut.** With the pieces logged (debug log, `Long-form chunk`),
+the 20 clips had 41 pieces, 9 of them under 3 s; 11 pieces were re-split as
+"cut short" and 7 of those re-splits replaced the whole text. On an evenly
+spread 200, there were 17 pieces under 3 s and 40 re-splits (of 261 pieces).
+Two things in the chunker made the short pieces:
+
+- A pause of 0.5 s ended a piece once the piece was a second long, silence
+  included. FLEURS clips end with up to 6 s of room sound, a breath or a click
+  after the sentence; that stretch, after a pause, became a piece of its own
+  (on the 200: 14 clips with a short last piece, 23 insertions more than
+  float16; on the 20: 7 clips, 16).
+- The cut-short check counted words per second of the whole piece, silence
+  included, so a single sentence with two seconds of silence around it looked
+  cut short. Its re-split at 0.1 s pauses made pieces of one or two seconds,
+  which invented words, and the invented words won because the rule keeps the
+  pieces when they have 25 % more words (on the 20: 7 clips, 45 insertions).
+
+**Why Edda invents words on them.** A probe on transcribe.cpp 0.4.0 (the
+library's C API with the app's run settings: Danish, text only, the previous
+text as prompt) read the engine's per-window trace on such pieces:
+
+| Piece (FLEURS clip, seconds)    | No-speech probability | Greedy pass: avg log-prob, text                  | Kept (5 fallbacks to T = 1.0), 4 seeds                                             |
+| ------------------------------- | --------------------: | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| 731573035460961798, 17.8-19.6   |                 0.000 | -1.43 "Tak, kusk, kusk"                          | "Ja det var såvel", "Nord Thriste nyssund", "ensemble", "T enforcement"            |
+| 7915212696696083057, 16.7-18.2  |                 0.000 | -1.42 "Det er der ikke, hvor fedt."              | "Kikal guys", "Det er nemlig следующ", "Starsrael surrounded Dont", "движ"         |
+| 17525722700148894525, 13.1-21.8 |                 0.000 | -1.80 "Ja"                                       | "synthing отно", "itte ακ相alling 1960emy", "concur Queens", "all Broadjamilleden" |
+| 2502419634491081382, 9.9-15.9   |                 0.000 | -0.61 "Tester en to tre fire fem seks syv otte." | (passes at greedy: the same every time)                                            |
+| The same clips whole            |                 0.000 | -0.14, -0.11: the sentence only                  | (no fallback)                                                                      |
+
+Edda never predicts Whisper's no-speech token (probability 0.000 on silence,
+noise and speech alike; it was fine-tuned without such examples), so the
+engine's no-speech gate (`no_speech_prob > 0.6`) can never fire. On a piece
+without speech the greedy pass is unsure (average log-probability under -1.0),
+so transcribe.cpp falls back to sampling at temperatures 0.2 to 1.0 and, when
+no try passes, keeps the last: random words in several scripts, different on
+every run (the library's default seed is random; the 20 clips gave 106, 78 and
+98 insertions on three runs with run 4's chunking). Some pieces pass at greedy
+with a fluent invention. With the sentence in the same window, Edda writes the
+sentence and stops. Turning the fallback off makes it worse: greedy-only
+decoding writes fluent sentences into such pieces ("Det er bare ikke, at det er
+bare ikke at se.", "Hun har været uden at se på arbejde"), 103 insertions on the
+20 clips against 52 with the fallback.
+
+**What changed (run 5).** The fix is in the chunker: never give Edda a piece
+without real speech.
+
+- A pause ends a piece only with at least 1.5 s of speech (VAD) on each side of
+  it. Less before it, and the stretch joins the next piece; less after it, and
+  live the cut waits until that much speech has followed, so at the end a short
+  rest joins the piece before it. The maximum-length rule (18 s) keeps the same
+  condition and keeps a stretch whole up to 28 s (one window) rather than cut
+  off a stretch past the maximum that has no speech.
+- A piece in which the VAD found no speech at all is not decoded (only when the
+  VAD heard speech elsewhere in the recording, so a quiet speaker it misses is
+  still decoded).
+- The cut-short check counts letters per second of speech: under 9, with more
+  than 4 s of speech. Danish pieces come out at a median of 14 (1st percentile
+  9.2) on 600 pieces of FLEURS single and joined clips; on the 200 the check now
+  fires once instead of 40 times, which also spares those re-splits' decode time
+  after release.
+- Edda's pieces decode with a fixed sampling seed, so the same audio gives the
+  same text and evaluations repeat exactly; the library's fallback recipe stays.
+
+How the two thresholds were chosen (WER, substitutions / deletions /
+insertions; the 20 clips, an evenly spread 200 of the 930, the joined clips with
+0.3 s pauses, where Edda stops early most, and synthetic clips that end in a real
+short phrase after a 0.8 s pause: FLEURS clips whose last 0.25 to 1 s, or 1 to
+2 s, of sound was moved 0.8 s away from the rest):
+
+| Speech on each side of a cut, cut-short check | 20 clips              | 200 clips              | 2 utt., 0.3 s pauses (100) | Last phrase 0.25-1 s (60) | Last phrase 1-2 s (32) |
+| --------------------------------------------- | --------------------- | ---------------------- | -------------------------- | ------------------------- | ---------------------- |
+| None, run 4's check (run 4)                   | 30.24 % (54/1/98)     | 7.94 % (206/72/68)     | 8.15 % (239/56/54)         | 11.14 % (100/19/32)       | 7.79 % (43/6/10)       |
+| 1 s, run 4's check                            | 22.33 % (52/2/59)     | 7.58 % (207/70/53)\*   | 7.80 % (241/63/30)         | 8.70 % (86/18/14)\*       |                        |
+| 1 s, no re-split                              | 18.38 % (47/4/42)\*   |                        | 8.62 % (236/107/26)        |                           |                        |
+| 1 s, under 6 letters per second of speech     | 14.62 % (49/5/20)     | 7.37 % (210/74/37)     | 7.99 % (236/76/30)         |                           | 7.79 % (43/6/10)       |
+| 1 s, under 9                                  | 15.02 % (49/5/22)     | 7.32 % (209/72/38)     | 7.94 % (242/68/30)         |                           |                        |
+| 1 s, under 10                                 | 17.59 % (50/5/34)     |                        | 7.85 % (241/63/32)         |                           |                        |
+| 1.5 s, under 6                                | 14.03 % (48/5/18)     | 7.25 % (206/73/37)     |                            | 8.48 % (84/19/12)         | 8.19 % (42/10/10)      |
+| 2 s, under 6                                  | 13.24 % (46/6/15)     |                        |                            |                           | 7.40 % (36/15/5)       |
+| **1.5 s, under 9, fixed seed (run 5)**        | **14.03 % (48/5/18)** | **7.25 % (206/73/37)** | **7.94 % (243/70/27)**     | **8.48 % (84/19/12)**     | **8.19 % (42/10/10)**  |
+
+\* Without the no-speech rule and the maximum-length condition (an earlier
+build). Each row is one run with the random seed, so small differences are
+noise. A larger speech minimum removes more noise pieces but merges real short
+phrases into the sentence before them, where greedy Edda sometimes stops at the
+pause (2 s: 15 deletions against 6 on the 1-2 s phrases); 1.5 s is the
+compromise. Without the re-split, joined sentences with 0.3 s pauses lose twice
+the words; 9 letters per second keeps most of that and stays clear of ordinary
+pieces.
+
+**Results.** All 930 FLEURS da_dk test clips through the app built from
+`50b750a1` (`wt-train eval --backend gguf`, `training/results.csv`):
+
+| Path                                                     |        WER | 95 % CI      |    CER | Subst. | Del. | Ins. |
+| -------------------------------------------------------- | ---------: | ------------ | -----: | -----: | ---: | ---: |
+| Base Edda v0.2, Transformers float16 (run 4)             |     7.21 % | 6.66 to 7.78 | 2.61 % |  1,053 |  289 |  135 |
+| App, file or phone dictation, run 4                      |     8.44 % | 7.84 to 9.05 | 3.42 % |  1,129 |  282 |  319 |
+| **App, file or phone dictation, run 5**                  | **7.63 %** | 7.10 to 8.18 | 2.75 % |  1,105 |  290 |  168 |
+| App, key recording (`--key-recording`), run 4's chunking |     8.24 % | 7.65 to 8.82 | 3.37 % |  1,102 |  299 |  287 |
+| **App, key recording (`--key-recording`), run 5**        | **7.54 %** | 7.00 to 8.07 | 2.77 % |  1,085 |  302 |  159 |
+
+The key-recording rows come from the same clips passed through the recorder's
+VAD first (scored like `wt-train eval`; run 4's chunking is a run 5 build with
+the speech minimum off, run 4's cut-short check and the random seed). The
+recorder's silence removal alone does not fix it (287 insertions): it keeps
+450 ms around anything it hears, so a noise after the sentence still arrives
+after a pause. The app's interval now overlaps the float16 baseline's on both
+paths. On the 20 clips the
+insertions beyond the float16 run fall from 102 to 14 (WER 31.42 % to 14.03 %;
+float16 9.09 %). Substitutions / deletions / insertions per clip, from the
+930-clip runs:
+
+| FLEURS clip          | Words | float16    | Run 4 app    | Run 5 app   | What run 4 invented, and where                           |
+| -------------------- | ----: | ---------- | ------------ | ----------- | -------------------------------------------------------- |
+| 2051415096147390912  |    21 | 2 / 1 / 0  | 2 / 0 / 13   | 3 / 2 / 0   | "der er af Svendås" four times (re-split)                |
+| 16599102496662238901 |    21 | 2 / 1 / 0  | 3 / 0 / 11   | 2 / 1 / 0   | "Ang involves ... en stor betydning" (re-split)          |
+| 7915212696696083057  |    18 | 1 / 1 / 0  | 3 / 0 / 11   | 2 / 1 / 1   | "Hrelsandet exclus Ayeet atthepắng ..." (noise after)    |
+| 2502419634491081382  |    16 | 2 / 0 / 0  | 3 / 0 / 9    | 3 / 0 / 0   | "Tester en to tre fire fem seks syv otte." (noise after) |
+| 4851889155600873884  |    21 | 1 / 0 / 0  | 2 / 0 / 6    | 1 / 0 / 0   | "uanstændigste regering i St. De havde" (re-split)       |
+| 589359802683847315   |    53 | 4 / 0 / 0  | 7 / 0 / 5    | 7 / 0 / 2   | "Geo Spis af Fortis ... Conny Rostris" (re-split)        |
+| 7407803414687478783  |    12 | 2 / 0 / 0  | 2 / 0 / 5    | 2 / 0 / 0   | "regering af Moss gik đólerne" (re-split)                |
+| 13697487523436270226 |     8 | 1 / 0 / 0  | 2 / 0 / 4    | 1 / 0 / 0   | "R Penso Hadj Spark Qualquer." (noise before)            |
+| 17340757067814297395 |    25 | 3 / 1 / 0  | 3 / 1 / 4    | 3 / 1 / 3   | "scrapedullah" (noise after), "et år siden" (both)       |
+| 17525722700148894525 |    24 | 0 / 0 / 0  | 0 / 0 / 4    | 0 / 0 / 0   | "S!!!! to corn to" (noise after)                         |
+| 10206519617373672484 |    17 | 1 / 0 / 0  | 1 / 0 / 3    | 1 / 0 / 0   | "Redeem's M" (noise after)                               |
+| 1037714189972178176  |     9 | 0 / 0 / 0  | 0 / 0 / 3    | 0 / 0 / 0   | "vir haya as" (noise after)                              |
+| 16073310946335797123 |    20 | 1 / 0 / 0  | 2 / 0 / 3    | 2 / 0 / 0   | "F T I R" for "(FTIR)"                                   |
+| 16784563479963076732 |    15 | 2 / 1 / 0  | 4 / 0 / 3    | 4 / 0 / 3   | "S V A P O" for "(SWAPO)" (both)                         |
+| 16788956687477097039 |    34 | 2 / 0 / 0  | 2 / 0 / 3    | 0 / 0 / 2   | numbers at a joint (both)                                |
+| 3819249943536717398  |    33 | 0 / 0 / 0  | 1 / 0 / 3    | 0 / 0 / 0   | "og Chry" (noise after)                                  |
+| 557199963716864611   |    45 | 6 / 1 / 2  | 6 / 0 / 5    | 6 / 0 / 5   | "er en lang rute" before a cut (both)                    |
+| 577638229780910873   |    33 | 0 / 0 / 0  | 0 / 0 / 3    | 0 / 0 / 0   | "Burn bul nutr" (noise after)                            |
+| 7055059421005981818  |    53 | 4 / 0 / 1  | 7 / 0 / 4    | 6 / 0 / 1   | "Giudspisa. Conni Rostris" (re-split)                    |
+| 731573035460961798   |    28 | 2 / 0 / 1  | 2 / 0 / 4    | 5 / 0 / 1   | "G rides USB" (noise after)                              |
+| **All 20**           |   506 | 36 / 6 / 4 | 52 / 1 / 106 | 48 / 5 / 18 |                                                          |
+
+On the joined clips with recorded pauses, run 5 gives 6.96 % (218 / 49 / 31) on
+2 utterances (run 4: 7.45 %, 212 / 45 / 62) and 7.12 % (155 / 68 / 11) on 3 (run
+4: 7.70 %, 168 / 56 / 29). One of these 160 windows still loses a quarter of
+its words, as in run 4, and none of the 100 with 0.3 s pauses.
+
+**What is left** (0.42 points to the float16 run, 52 substitutions and 33
+insertions more): a pause inside a sentence still ends a piece, and Edda then
+sometimes finishes the sentence on its own ("ved afslutningen af et år siden.",
+"som følge af en rute set er en lang rute."), or a word cut at a joint is written
+as two ("lyd, redigering"); a joint where the next piece starts with digits can
+come out with the numbers in words. These are the cost of decoding while the
+user talks (DESK-46), not short pieces.
+
+**DESK-46 after the change** (`walkietalkey --transcribe-file <wav> --live
+--json`, release build, the 15.98 s and 120.02 s FLEURS dictations in
+`_kit/work/bench`, runs interleaved, M1 Pro, 25 October 2026, with other jobs
+on the machine: 1-minute load average 1.3 to 3.0):
+
+| Build                  | Runs | Wait, 16 s (median) | Wait, 2 min (median) |  Difference |
+| ---------------------- | ---: | ------------------: | -------------------: | ----------: |
+| Run 4 (`63efb83d`)     |    3 |              1.05 s |               0.99 s |     -0.06 s |
+| **Run 5 (`50b750a1`)** |    5 |          **1.03 s** |           **0.99 s** | **-0.04 s** |
+
+The two-minute dictation waits no longer than the 16-second one, as before
+(DESK-46: within 0.3 s). Both builds measure about 0.1 s slower on the short
+clip than run 4 did on 23 October (0.92 s), on the same audio: the machine, not
+the change.
+
+The measurements (per-clip rows with every piece's range, speech and text, the
+probe and its output) are in `_kit/work/runs/run5-short-pieces/`.
 
 ## Licence terms
 

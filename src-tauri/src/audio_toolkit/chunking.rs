@@ -43,6 +43,15 @@ pub struct ChunkPlan {
     /// With `split_at_pauses`: only pauses at least this long end a piece, so
     /// a short hesitation inside a sentence stays in its piece.
     pub min_pause_samples: usize,
+    /// With `split_at_pauses` (run 5): a pause only ends a piece when the VAD
+    /// finds at least this much speech on each side of it, from the previous
+    /// cut and up to the end of the recording. Less before it, and that
+    /// stretch joins the next piece; less after it, and live the cut waits
+    /// for more speech, so at the end a short rest joins the piece before it.
+    /// Whisper-family models decode every piece as an utterance and never
+    /// return nothing: a piece that holds only a click, a breath or one short
+    /// word comes back with invented words.
+    pub min_piece_speech_samples: usize,
 }
 
 impl ChunkPlan {
@@ -55,6 +64,7 @@ impl ChunkPlan {
         whole_rest_samples: 40 * RATE,
         split_at_pauses: false,
         min_pause_samples: 0,
+        min_piece_speech_samples: 0,
     };
 
     /// WalkieTalkey's live plan (DESK-46): 10 to 20 s chunks cut only in
@@ -72,6 +82,7 @@ impl ChunkPlan {
         whole_rest_samples: 20 * RATE,
         split_at_pauses: false,
         min_pause_samples: 0,
+        min_piece_speech_samples: 0,
     };
 
     /// WalkieTalkey, for Edda (docs/MODELS.md, "Edda and pauses"): decoded
@@ -83,7 +94,10 @@ impl ChunkPlan {
     /// the piece since the last such pause is left, whatever the length
     /// (DESK-46). A stretch without one is cut as [`Self::LIVE_DA`] cuts it.
     /// A piece that still comes out cut short is split at its shorter pauses
-    /// ([`Self::LIVE_SEGMENTS_FINE`]).
+    /// ([`Self::LIVE_SEGMENTS_FINE`]). Run 5: a pause only ends a piece with
+    /// 1.5 s of speech on each side of it, so a noise or a few words on their
+    /// own after a pause are decoded with their neighbour (docs/MODELS.md,
+    /// "Invented words on short pieces").
     pub const LIVE_SEGMENTS: Self = Self {
         target_seconds: 14.0,
         max_chunk_samples: 18 * RATE,
@@ -92,6 +106,7 @@ impl ChunkPlan {
         whole_rest_samples: 0,
         split_at_pauses: true,
         min_pause_samples: RATE / 2,
+        min_piece_speech_samples: 3 * RATE / 2,
     };
 
     /// [`Self::LIVE_SEGMENTS`] cut at every pause of a tenth of a second, for
@@ -176,22 +191,54 @@ struct CutCandidate {
     gap_seconds: f64,
 }
 
-/// Cuts in the middle of every pause of at least `min_pause` that speech has
-/// come back after (so the cut can no longer move), from `start` on, leaving
-/// out any that would end a piece shorter than `min`: that fragment joins the
-/// next piece.
-fn pause_cuts(segments: &[Range<usize>], start: usize, min: usize, min_pause: usize) -> Vec<usize> {
+/// The part of `segment` from `from` on, in samples.
+fn speech_from(segment: &Range<usize>, from: usize) -> usize {
+    segment.end.saturating_sub(segment.start.max(from))
+}
+
+/// How much of `range` the speech segments cover, in samples.
+fn speech_within(segments: &[Range<usize>], range: Range<usize>) -> usize {
+    segments
+        .iter()
+        .map(|segment| {
+            segment
+                .end
+                .min(range.end)
+                .saturating_sub(segment.start.max(range.start))
+        })
+        .sum()
+}
+
+/// Cuts in the middle of every pause of at least the plan's minimum that
+/// speech has come back after (so the cut can no longer move), from `start`
+/// on. A cut that would end a piece shorter than the minimum, or with less
+/// speech than the minimum, is left out: that fragment joins the next piece.
+/// A cut with less speech than the minimum after it in all of `segments` is
+/// not made yet: live, it waits for more speech; at the end, the rest joins
+/// the piece before it.
+fn pause_cuts(segments: &[Range<usize>], start: usize, plan: &ChunkPlan) -> Vec<usize> {
     let mut cuts = Vec::new();
     let mut from = start;
+    // Speech from the last cut to the pause at hand, and after that pause.
+    let mut before = 0;
+    let mut after: usize = segments.iter().map(|s| speech_from(s, start)).sum();
     for pair in segments.windows(2) {
-        if pair[1].start.saturating_sub(pair[0].end) < min_pause {
+        let spoken = speech_from(&pair[0], from);
+        before += spoken;
+        after -= spoken;
+        if pair[1].start.saturating_sub(pair[0].end) < plan.min_pause_samples {
             continue;
         }
         let cut = (pair[0].end + pair[1].start) / 2;
-        if cut >= from + min {
-            cuts.push(cut);
-            from = cut;
+        if cut < from + plan.min_chunk_samples || before < plan.min_piece_speech_samples {
+            continue;
         }
+        if after < plan.min_piece_speech_samples {
+            break;
+        }
+        cuts.push(cut);
+        from = cut;
+        before = 0;
     }
     cuts
 }
@@ -216,20 +263,34 @@ fn cut_candidates(segments: &[Range<usize>], samples: usize) -> Vec<CutCandidate
     candidates
 }
 
+/// The most audio one piece may hold when the plan keeps a piece whole rather
+/// than cut off a stretch without speech: just under one Whisper window.
+const WINDOW_SAMPLES: usize = 28 * RATE;
+
 /// Greedy, left to right from `from`: each cut is the best-scoring pause
 /// min-max after the previous one (5-40 s in Handy's plan), preferring long
 /// pauses near the target and ones that leave at least the minimum after
 /// them. With no pause, it is a hard cut at the maximum, or halfway when that
 /// would leave under the minimum. Audio of the maximum or less is never cut.
-/// `candidates` must be in order.
+/// `candidates` must be in order; `segments` are the speech they are cut
+/// between.
+///
+/// With [`ChunkPlan::min_piece_speech_samples`] (run 5), a pause is only used
+/// with that much speech on each side of it (after it, within the lookahead
+/// past the maximum, so live cuts match the plan for the whole clip). When no
+/// pause will do and there is no more than that much speech past the
+/// maximum either, the stretch is kept whole up to one window: what is past
+/// the maximum is silence or a noise, which must not be decoded alone.
 fn plan_cuts(
     plan: &ChunkPlan,
     candidates: &[CutCandidate],
+    segments: &[Range<usize>],
     samples: usize,
     from: usize,
 ) -> Vec<usize> {
     let max_chunk = plan.max_chunk_samples;
     let min_chunk = plan.min_chunk_samples;
+    let min_speech = plan.min_piece_speech_samples;
     let target = plan.target_seconds;
     let mut cuts = Vec::new();
     let mut start = from;
@@ -239,12 +300,19 @@ fn plan_cuts(
         while first < candidates.len() && candidates[first].cut < start + min_chunk {
             first += 1;
         }
+        let horizon = samples.min(start + max_chunk + plan.lookahead_samples);
+        let speech_around = |cut: usize| {
+            min_speech == 0
+                || (speech_within(segments, start..cut) >= min_speech
+                    && speech_within(segments, cut..horizon) >= min_speech)
+        };
         // A pause that leaves under 5 s is only used when no other pause will do.
         let mut best: Option<(usize, f64)> = None;
         let mut fallback: Option<(usize, f64)> = None;
         for candidate in candidates[first..]
             .iter()
             .take_while(|candidate| candidate.cut <= start + max_chunk)
+            .filter(|candidate| speech_around(candidate.cut))
         {
             let position = (candidate.cut - start) as f64 / RATE as f64;
             let off_target = if position > target {
@@ -265,7 +333,16 @@ fn plan_cuts(
         } else {
             start + max_chunk
         };
-        start = best.or(fallback).map_or(hard_cut, |(cut, _)| cut);
+        start = match best.or(fallback) {
+            Some((cut, _)) => cut,
+            None if min_speech > 0
+                && samples - start <= WINDOW_SAMPLES
+                && speech_within(segments, start + max_chunk..horizon) < min_speech =>
+            {
+                break;
+            }
+            None => hard_cut,
+        };
         cuts.push(start);
     }
     cuts
@@ -366,6 +443,7 @@ impl Chunker {
         let cuts = plan_cuts(
             &self.plan,
             &cut_candidates(&segments, scored),
+            &segments,
             scored,
             self.start,
         );
@@ -393,6 +471,7 @@ impl Chunker {
                         let cuts = plan_cuts(
                             &self.plan,
                             &cut_candidates(&segments, self.len),
+                            &segments,
                             self.len,
                             self.start,
                         );
@@ -410,6 +489,7 @@ impl Chunker {
                     let cuts = plan_cuts(
                         &self.plan,
                         &cut_candidates(&segments, self.len),
+                        &segments,
                         self.len,
                         self.start,
                     );
@@ -447,6 +527,7 @@ impl Chunker {
             let cuts = plan_cuts(
                 &self.plan,
                 &cut_candidates(&segments, scored),
+                &segments,
                 scored,
                 self.start,
             );
@@ -463,15 +544,25 @@ impl Chunker {
     /// Takes every piece that ends at a pause in the first `scored` samples.
     fn cut_segments(&mut self, scored: usize) -> Vec<Vec<f32>> {
         let segments = speech_segments(&self.probs, self.frame_samples, scored);
-        pause_cuts(
-            &segments,
-            self.start,
-            self.plan.min_chunk_samples,
-            self.plan.min_pause_samples,
-        )
-        .into_iter()
-        .map(|cut| self.take_until(cut))
-        .collect()
+        pause_cuts(&segments, self.start, &self.plan)
+            .into_iter()
+            .map(|cut| self.take_until(cut))
+            .collect()
+    }
+
+    /// How much speech the VAD found in `range` of the audio pushed so far,
+    /// in samples. `None` where the audio is not scored: a clip too short to
+    /// cut, or after the VAD failed.
+    pub fn speech_samples(&self, range: Range<usize>) -> Option<usize> {
+        if self.scorer.is_none() || self.uncut {
+            return None;
+        }
+        let scored = (self.probs.len() * self.frame_samples).min(self.len);
+        if range.end > scored {
+            return None;
+        }
+        let segments = speech_segments(&self.probs, self.frame_samples, scored);
+        Some(speech_within(&segments, range))
     }
 
     /// Scores every frame not yet scored, making the scorer first if this is
@@ -517,11 +608,18 @@ impl Chunker {
     }
 
     fn take_until(&mut self, cut: usize) -> Vec<f32> {
-        debug!(
-            "Long-form chunk: {:.1}-{:.1}s",
-            seconds(self.start),
-            seconds(cut)
-        );
+        if log::log_enabled!(log::Level::Debug) {
+            let speech = self.speech_samples(self.start..cut).map_or_else(
+                || "not scored".to_string(),
+                |n| format!("{:.1}s", seconds(n)),
+            );
+            debug!(
+                "Long-form chunk: {:.1}-{:.1}s (speech {})",
+                seconds(self.start),
+                seconds(cut),
+                speech
+            );
+        }
         let chunk = self.pending.drain(..cut - self.start).collect();
         self.start = cut;
         chunk
@@ -597,6 +695,7 @@ mod tests {
         plan_cuts(
             &ChunkPlan::HANDY,
             &cut_candidates(&segments, samples),
+            &segments,
             samples,
             0,
         )
@@ -725,6 +824,143 @@ mod tests {
         let mut chunks = chunker.push(&pcm[..]);
         chunks.extend(chunker.finish());
         assert_eq!(chunks.len(), 1);
+    }
+
+    fn live_segments() -> Chunker {
+        let make = || {
+            Ok(Box::new(ScriptedScorer {
+                scored: Arc::new(AtomicUsize::new(0)),
+                calls: 0,
+                fail_on: None,
+            }) as Box<dyn SpeechScorer>)
+        };
+        Chunker::with_plan(Box::new(make), ChunkPlan::LIVE_SEGMENTS)
+    }
+
+    /// Cuts a clip pushed whole and the same clip fed live in 200 ms pieces;
+    /// asserts they agree and returns the cuts and how many pieces were
+    /// ready before the end.
+    fn whole_and_live(pcm: &[f32]) -> (Vec<f64>, usize) {
+        let mut once = live_segments();
+        let mut whole = once.push(pcm);
+        whole.extend(once.finish());
+        assert_eq!(whole.concat(), pcm, "every sample once, in order");
+        let mut chunker = live_segments();
+        let mut live = feed_live(&mut chunker, pcm);
+        let before_end = live.len();
+        live.extend(chunker.finish());
+        assert_eq!(lengths(&live), lengths(&whole), "live cuts as whole");
+        (cuts(&whole), before_end)
+    }
+
+    #[test]
+    fn a_noise_after_the_last_pause_joins_the_piece_before_it() {
+        // Run 5 (DESK-46): a sentence, a pause, then a click or a breath the
+        // VAD takes for 0.4 s of speech, then silence. Cut off on its own, the
+        // noise came back from Edda as invented words ("Tester en to tre fire
+        // fem seks syv otte."); with the sentence before it, it does not.
+        let pcm = clip(&probs_with_pauses(7.5, &[(4.0, 6.0), (6.4, 7.5)]));
+        let (cuts, before_end) = whole_and_live(&pcm);
+        assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
+        assert_eq!(before_end, 0);
+    }
+
+    #[test]
+    fn a_noise_before_the_first_pause_joins_the_piece_after_it() {
+        // Leading silence with a 0.3 s noise, a pause, then the dictation.
+        let pcm = clip(&probs_with_pauses(8.0, &[(0.0, 1.0), (1.3, 2.5)]));
+        let (cuts, _) = whole_and_live(&pcm);
+        assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
+    }
+
+    #[test]
+    fn a_short_last_phrase_is_decoded_with_the_sentence_before_it() {
+        // "... og så videre. Tak.": 0.5 s of speech after the last pause is
+        // too little to decode alone, so live the cut before it is never
+        // made and the sentence waits for it. So is 1.2 s.
+        for end in [6.3, 7.0] {
+            let pcm = clip(&probs_with_pauses(end, &[(5.0, 5.8)]));
+            let (cuts, before_end) = whole_and_live(&pcm);
+            assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
+            assert_eq!(before_end, 0);
+        }
+        // With 1.7 s of speech after the pause it is a piece of its own.
+        let pcm = clip(&probs_with_pauses(7.5, &[(5.0, 5.8)]));
+        let (cuts, before_end) = whole_and_live(&pcm);
+        assert_eq!(cuts, vec![5.4]);
+        assert_eq!(before_end, 1);
+    }
+
+    #[test]
+    fn a_short_fragment_between_two_pauses_joins_the_next_piece() {
+        // A 0.5 s "øh" between two pauses is not a piece of its own.
+        let pcm = clip(&probs_with_pauses(10.0, &[(3.0, 3.8), (4.3, 5.0)]));
+        let (cuts, _) = whole_and_live(&pcm);
+        assert_eq!(cuts, vec![3.4]);
+    }
+
+    #[test]
+    fn a_long_piece_is_not_cut_into_a_piece_without_speech() {
+        // 17 s of speech, a pause, a 0.3 s noise, then silence to 25 s: past
+        // the 18 s maximum, but the only pause to cut at would leave the
+        // noise alone, so it is one piece (it still fits one window).
+        let pcm = clip(&probs_with_pauses(25.0, &[(17.0, 17.6), (17.9, 25.0)]));
+        let (cuts, before_end) = whole_and_live(&pcm);
+        assert!(cuts.is_empty(), "one piece, got cuts at {cuts:?}");
+        assert_eq!(before_end, 0);
+    }
+
+    #[test]
+    fn a_stretch_longer_than_a_window_is_still_cut() {
+        // 17 s of speech, then 15 s of silence: more than one Whisper window,
+        // so it is cut at the maximum, and what is left has no speech.
+        let pcm = clip(&probs_with_pauses(32.0, &[(17.0, 32.0)]));
+        let (cuts, _) = whole_and_live(&pcm);
+        assert_eq!(cuts, vec![18.0]);
+        let mut chunker = live_segments();
+        let mut chunks = chunker.push(&pcm[..]);
+        chunks.extend(chunker.finish());
+        assert_eq!(chunker.speech_samples(s(18.0)..pcm.len()), Some(0));
+    }
+
+    #[test]
+    fn live_a_cut_waits_for_enough_speech_after_it() {
+        let pcm = clip(&probs_with_pauses(9.0, &[(3.0, 3.6)]));
+        let mut chunker = live_segments();
+        let mut first_at = None;
+        for (i, piece) in pcm.chunks(s(0.2)).enumerate() {
+            if !chunker.push(piece).is_empty() && first_at.is_none() {
+                first_at = Some((i + 1) as f64 * 0.2);
+            }
+        }
+        // Speech is back at 3.6 s; the cut at 3.3 s is certain once 1.5 s of
+        // it is scored.
+        let at = first_at.expect("the first piece is ready before the end");
+        assert!((5.1..=5.5).contains(&at), "ready at {at:.1}s");
+    }
+
+    #[test]
+    fn the_chunker_reports_the_speech_in_each_piece() {
+        let pcm = clip(&probs_with_pauses(9.0, &[(0.0, 1.0), (4.0, 5.0)]));
+        let mut chunker = live_segments();
+        let mut chunks = chunker.push(&pcm[..]);
+        chunks.extend(chunker.finish());
+        assert_eq!(cuts(&chunks), vec![4.5]);
+        let speech = |range: Range<usize>| {
+            chunker
+                .speech_samples(range)
+                .map(|n| n as f64 / RATE as f64)
+        };
+        // 1.0-4.0 s and 5.0-9.0 s, each with Silero's 30 ms pads.
+        let first = speech(0..s(4.5)).unwrap();
+        assert!((first - 3.06).abs() < 0.05, "{first:.2}");
+        let second = speech(s(4.5)..pcm.len()).unwrap();
+        assert!((second - 4.03).abs() < 0.05, "{second:.2}");
+        // A clip too short to cut is never scored.
+        let mut short = live_segments();
+        let mut chunks = short.push(&pcm[..s(0.8)]);
+        chunks.extend(short.finish());
+        assert_eq!(short.speech_samples(0..s(0.8)), None);
     }
 
     #[test]

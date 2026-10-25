@@ -38,7 +38,7 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
     <div class="get">
       <div class="get-opt" data-platform="mac">
         <DownloadButton href={MAC_DOWNLOAD_URL} size="lg">Hent til Mac</DownloadButton>
-        <p class="get-meta">macOS 13 eller nyere · Apple Silicon og Intel</p>
+        <p class="get-meta">macOS 13 eller nyere · Apple Silicon og Intel · <a href="#foerste-gang">Sådan åbner du den første gang</a></p>
         <p class="get-alt" data-for="mac">Har du Windows? <a href={WINDOWS_DOWNLOAD_URL}>Hent til Windows</a></p>
       </div>
       <div class="get-opt" data-platform="win">
@@ -65,11 +65,17 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <span class="badge-rec">Passer til din computer</span>
           <h3 id="mac">Mac</h3>
           <p>macOS 13 Ventura eller nyere, på Mac med Apple Silicon og Mac med Intel.</p>
-          <ol class="steps-list">
-            <li>Åbn filen WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.</li>
-            <li>Åbn WalkieTalkey fra Programmer. Din Mac advarer, fordi appen endnu ikke er signeret af Apple. Luk beskeden.</li>
-            <li>Gå til Systemindstillinger › Anonymitet og sikkerhed, rul ned, og tryk Åbn alligevel. Bekræft, når din Mac spørger.</li>
+          <!-- TODO(copy), run 5: macOS 26 blocks the first open of an app without an Apple Developer ID. Three steps in
+               macOS's own Danish words; the dialog says "“WalkieTalkey” blev ikke åbnet" (close it, never "Flyt til
+               papirkurv"), and Åbn alligevel shows under Sikkerhed only for a while after that first try. Ctrl-click ›
+               Åbn no longer gets past it on macOS 15 and later. Change this with the first release signed by Apple. -->
+          <p>WalkieTalkey er endnu ikke signeret af Apple. Første gang gør du sådan:</p>
+          <ol class="steps-list gatekeeper">
+            <li>Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.</li>
+            <li>Åbn den, og luk advarslen.</li>
+            <li>Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel. Bekræft med Touch ID eller adgangskoden.</li>
           </ol>
+          <p class="gatekeeper-note">Kun første gang. Åbn alligevel står under Sikkerhed et stykke tid efter trin 2.</p>
           <DownloadButton href={MAC_DOWNLOAD_URL}>Hent til Mac</DownloadButton>
         </section>
         <section class="card" data-platform="win" aria-labelledby="win">

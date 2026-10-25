@@ -39,7 +39,7 @@ listed in [Clarifications and deviations](#clarifications-and-deviations).
 
 Each device has a signing key pair (ECDSA P-256) and an agreement key pair (ECDH P-256). In
 TypeScript the private keys are non-extractable `CryptoKey`s (SEC-09). The Rust side keeps the
-32-byte scalars in the `KeyStore` (keychain in the desktop app).
+32-byte scalars in the `KeyStore` (the desktop's secret store: a private folder on macOS, SEC-11; Credential Manager on Windows).
 
 ```
 deviceId = SHA-256(signing SPKI)[0..16]
@@ -223,16 +223,19 @@ higher than the last accepted one from that sender (`replay`); decrypt with the 
 
 ### 8.2 Payloads (Appendix C.2)
 
-| Type | Name             | Direction        | Plaintext                                                                                  |
-| ---- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------ |
-| 0x10 | `device_info`    | phone → computer | `{"name":…,"platform":…}`; name ≤ 256 UTF-8 bytes, platform ≤ 32 (`ios`, `android`, `web`) |
-| 0x11 | `presence`       | computer → phone | `{"secondsSinceInput":u32,"locked":bool}`; only as an answer to 0x12                       |
-| 0x12 | `presence_query` | phone → computer | `{}`                                                                                       |
-| 0x20 | `audio_start`    | phone → computer | `{"sessionId":…,"sampleRate":16000,"codec":"pcm16"}` (other values are refused)            |
-| 0x21 | `audio_chunk`    | phone → computer | binary: sessionId (16) ‖ firstIndex (uint32 BE) ‖ PCM16 little-endian mono 16 kHz          |
-| 0x22 | `audio_end`      | phone → computer | `{"sessionId":…,"chunks":u32,"durationMs":u32}`                                            |
-| 0x23 | `audio_cancel`   | phone → computer | `{"sessionId":…}`                                                                          |
-| 0x30 | `result`         | computer → phone | `{"sessionId":…,"ok":true}` or `{"sessionId":…,"ok":false,"reason":…}`; never text         |
+| Type | Name                   | Direction        | Plaintext                                                                                  |
+| ---- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| 0x10 | `device_info`          | phone → computer | `{"name":…,"platform":…}`; name ≤ 256 UTF-8 bytes, platform ≤ 32 (`ios`, `android`, `web`) |
+| 0x11 | `presence`             | computer → phone | `{"secondsSinceInput":u32,"locked":bool}`; only as an answer to 0x12                       |
+| 0x12 | `presence_query`       | phone → computer | `{}`                                                                                       |
+| 0x20 | `audio_start`          | phone → computer | `{"sessionId":…,"sampleRate":16000,"codec":"pcm16"}` (other values are refused)            |
+| 0x21 | `audio_chunk`          | phone → computer | binary: sessionId (16) ‖ firstIndex (uint32 BE) ‖ PCM16 little-endian mono 16 kHz          |
+| 0x22 | `audio_end`            | phone → computer | `{"sessionId":…,"chunks":u32,"durationMs":u32}`                                            |
+| 0x23 | `audio_cancel`         | phone → computer | `{"sessionId":…}`                                                                          |
+| 0x24 | `audio_start_training` | phone → computer | `audio_start` + `"training":…,"prompt":…` and optionally `"microphone":…` (8.4)            |
+| 0x30 | `result`               | computer → phone | `{"sessionId":…,"ok":true}` or `{"sessionId":…,"ok":false,"reason":…}`; never text         |
+| 0x31 | `training_prompt`      | computer → phone | `{"training":…,"style":…,"done":u32,"total":u32,"next":{…}?,"last":{…}?}` (8.4)            |
+| 0x32 | `training_end`         | computer → phone | `{"training":…}` (8.4)                                                                     |
 
 - A 200 ms block is 3,200 samples = 6,400 bytes. An `audio_chunk` carries 1 to 10 consecutive
   blocks starting at block `firstIndex`; every block is 6,400 bytes except the session's very
@@ -256,6 +259,54 @@ index), drops duplicates, reports missing indices with `audio_end` and keeps del
 blocks; the application waits up to 5 s for them (DESK-61). The computer remembers answered
 sessions for 15 minutes and answers a resend of one with the same result instead of
 transcribing it twice.
+
+### 8.4 Training takes (run 5; DESK-65, PHONE-50, PHONE-51, PRIV-05)
+
+The fine-tuning workbench (`wt-train record`, `training/`) records sentences on the phone through
+the dictation path. The recorder on the computer hands its session to the running app, which
+sends the sentence to the session's phone; the phone records it and sends it back as a take. It is
+the one deliberate exception to "text never goes back to the phone" (spec 12.1): only the
+recorder's sentences, only while its session runs, inside the end-to-end encryption.
+
+```
+0x24 audio_start_training (phone → computer)
+{"sessionId":…,"sampleRate":16000,"codec":"pcm16","training":…,"prompt":"s0042","microphone":"iPhone-mikrofon"}
+
+0x31 training_prompt (computer → phone)
+{"training":…,"style":"whisper","done":12,"total":416,
+ "next":{"prompt":"s0043","text":"Kan du deploye til staging?"},
+ "last":{"prompt":"s0042","text":"Vi merger PR'en, når buildet er grønt.","check":"quiet"}}
+
+0x32 training_end (computer → phone)
+{"training":…}
+```
+
+- `training` is the session's id, 16 random bytes (base64url). `prompt` is the recorder's id of
+  a sentence (1 to 64 UTF-8 bytes), `text` 1 to 4,096 bytes, `microphone` the phone's track
+  label (1 to 128 bytes, left out when unknown). `style` is `normal` or `whisper`. `next` is left
+  out when the condition is complete, `last` before the first take. `check` is one of `ok`,
+  `quiet`, `clipped`, `short`, `silent`, `gaps`, `error`; a decoder maps any other value to
+  `error`, like result reasons. Keys in this order; decoders ignore unknown keys.
+- A training take's blocks, end and cancel are the ordinary 0x21 to 0x23, with the same
+  resending (8.3); every start of it, resends included, is 0x24. The computer tracks it in the
+  same session tracker, so its blocks never start a dictation implicitly, and answers with an
+  ordinary `result`: `ok` when the recorder kept the take (a failed check is shown with the next
+  prompt and offered for a redo), `no_speech` for a silent take, otherwise `error`. A take of no
+  running session gets `error` at its end, and the phone gets `training_end`.
+- The computer sends the current prompt when the recorder moves on, and again when the phone
+  comes online (`peer`) or the computer's own connection is new; `training_prompt` is never
+  queued while offline.
+- A new frame type rather than a flag in `audio_start`: JSON decoders ignore unknown keys, so an
+  older desktop would transcribe a flagged take and paste it. An older desktop drops 0x24, but
+  it would still start a dictation implicitly from the take's 0x21 blocks; so the phone sends a
+  training take only to a computer that sent the prompt on the current connection (PHONE-51:
+  when the computer goes offline, or the phone's connection drops or is new, the prompt goes
+  stale until the computer sends it again). What is left is a take sitting in the relay buffer
+  while the computer is replaced by an older version within those 10 minutes.
+- An older phone drops 0x31 and 0x32 (unknown types, 8.1) and keeps working; its counter still
+  advances.
+- The relay needs no change: it routes by the header and reads only the type byte, to flush a
+  buffered batch on 0x22 and 0x23, which training takes use too.
 
 ## 9. Counters (spec 9.4)
 
@@ -378,7 +429,8 @@ afterwards; ping every 30 s; reconnect after 1, 2, 5, 10, 30, 30… s (reset aft
 auth) and at once on `reconnect_now()` (wake, network change). Results are queued while offline
 (at most 64) and sent after the next auth. Presence is sent only as the answer to a pending
 `presence_query`. Ten seconds after connecting, phones the relay lists that have no keys on the
-computer are revoked (a revoke that was lost while offline).
+computer are revoked (a revoke that was lost while offline). `send_training` carries a
+`training_prompt` or `training_end` to one phone, never queued (8.4).
 
 ## 13. Test vectors (SEC-05)
 
@@ -387,7 +439,8 @@ the room id preimage and value, challenge signatures (valid, high-S, wrong label
 every pairing derivation (`shared`, `pairInfo`, `base`, `k_p2c`, `k_c2p`, `mac_key`,
 `macInput`, `join_mac`), the pairing URL, one or more sealed frames for every frame type with
 their nonces, counters, plaintexts and decoded payloads, invalid frames with the expected error,
-every control message in its canonical serialization, and the counter-reservation steps. Binary
+every control message in its canonical serialization, and the counter-reservation steps. The
+training frames (8.4) come after the others, so every earlier vector kept its nonce and bytes. Binary
 values are lowercase hex; counters are decimal strings. All inputs are derived from fixed labels
 (`SHA-256("wt-test-vectors/<label>")`) and signatures are RFC 6979, so the file is reproducible:
 
@@ -486,4 +539,11 @@ corruptMac?, skipDeviceInfo?}`, `connect`, `stream {wav, fps?, dropAfter?}`, `re
     sender id is wrong.
 24. **Counter persistence frequency:** the receiver stores its last accepted counter for every
     frame (5 per second while streaming). The desktop `KeyStore` should keep counters in a plain
-    file, not the keychain; only device keys and pair keys are secret.
+    file, not the secret store; only device keys and pair keys are secret.
+25. **Training frames (run 5, 8.4):** 0x24, 0x31 and 0x32 are additions to Appendix C.2. The design
+    note of run 4 said a desktop without training support simply drops a training take; it drops
+    the 0x24 start, but the client's implicit start (a lost `audio_start`) would make the take's
+    blocks a dictation. The phone's rule (PHONE-51) closes that: a take only goes to a computer
+    that sent the prompt on the current connection. `audio_start_training` also carries the
+    prompt's id (so a take is always tied to the sentence it reads, even when the recorder has
+    moved on) and the microphone's name (clip metadata).

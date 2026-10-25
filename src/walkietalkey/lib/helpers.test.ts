@@ -29,6 +29,9 @@ import {
   micPillHint,
   nextStep,
   onboardingSteps,
+  dictationWorked,
+  phoneOfferPending,
+  resumeOptions,
   parseReplacements,
   parseWordList,
   pillStateFromEnd,
@@ -46,46 +49,91 @@ import {
 
 describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
   test("a Mac: Velkommen, Mikrofon, Tilgængelighed, Prøv det, Telefon, Klar", () => {
-    assert.deepEqual(onboardingSteps("macos", { phonePairing: true }), [
-      "welcome",
-      "microphone",
-      "accessibility",
-      "try",
-      "phone",
-      "done",
-    ]);
+    assert.deepEqual(
+      onboardingSteps("macos", { phonePairing: true, dictated: true }),
+      ["welcome", "microphone", "accessibility", "try", "phone", "done"],
+    );
   });
 
   test("Windows has no Tilgængelighed step: the key and paste need no permission", () => {
-    assert.deepEqual(onboardingSteps("windows", { phonePairing: true }), [
-      "welcome",
-      "microphone",
-      "try",
-      "phone",
-      "done",
-    ]);
+    assert.deepEqual(
+      onboardingSteps("windows", { phonePairing: true, dictated: true }),
+      ["welcome", "microphone", "try", "phone", "done"],
+    );
   });
 
   test("no model step and no Input Monitoring step any more", () => {
     for (const platform of ["macos", "windows"] as const) {
-      const steps: string[] = onboardingSteps(platform, { phonePairing: true });
+      const steps: string[] = onboardingSteps(platform, {
+        phonePairing: true,
+        dictated: true,
+      });
       for (const gone of ["model", "key", "paste", "notifications"])
         assert.ok(!steps.includes(gone), `${platform} still has ${gone}`);
     }
   });
 
   test("no phone step when the company forbids pairing", () => {
-    assert.deepEqual(onboardingSteps("macos", { phonePairing: false }), [
-      "welcome",
-      "microphone",
-      "accessibility",
+    assert.deepEqual(
+      onboardingSteps("macos", { phonePairing: false, dictated: true }),
+      ["welcome", "microphone", "accessibility", "try", "done"],
+    );
+  });
+
+  test("run 5: Telefon comes only after a dictation that worked, never before", () => {
+    assert.deepEqual(
+      onboardingSteps("macos", { phonePairing: true, dictated: false }),
+      ["welcome", "microphone", "accessibility", "try", "done"],
+    );
+    // Prøv det moves straight on to Klar until a dictation works.
+    const before = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: false,
+    });
+    assert.equal(nextStep(before, "try"), "done");
+    // A restart at Telefon was reached after a dictation that worked.
+    assert.equal(
+      resumeStep(
+        "phone",
+        onboardingSteps("macos", resumeOptions("phone", true)),
+      ),
+      "phone",
+    );
+    assert.equal(
+      resumeStep("try", onboardingSteps("macos", resumeOptions("try", true))),
       "try",
-      "done",
-    ]);
+    );
+  });
+
+  test("run 5: a dictation worked when it was pasted or put on the clipboard", () => {
+    assert.equal(dictationWorked("pasted"), true);
+    assert.equal(dictationWorked("clipboard"), true);
+    assert.equal(dictationWorked("cleanup_skipped"), true);
+    assert.equal(dictationWorked("no_speech"), false);
+    assert.equal(dictationWorked("mic_silent"), false);
+    assert.equal(dictationWorked(undefined), false);
+  });
+
+  test("run 5: pairing is offered later only when onboarding ended without it", () => {
+    assert.equal(
+      phoneOfferPending({ phonePairing: true, phoneStepShown: false }),
+      true,
+    );
+    assert.equal(
+      phoneOfferPending({ phonePairing: true, phoneStepShown: true }),
+      false,
+    );
+    assert.equal(
+      phoneOfferPending({ phonePairing: false, phoneStepShown: false }),
+      false,
+    );
   });
 
   test("next and previous walk the list and stop at the ends", () => {
-    const steps = onboardingSteps("macos", { phonePairing: true });
+    const steps = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: true,
+    });
     assert.equal(nextStep(steps, "welcome"), "microphone");
     assert.equal(nextStep(steps, "try"), "phone");
     assert.equal(nextStep(steps, "done"), null);
@@ -94,7 +142,10 @@ describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
   });
 
   test("going forward skips a permission step that is already granted", () => {
-    const mac = onboardingSteps("macos", { phonePairing: true });
+    const mac = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: true,
+    });
     const none = { microphone: false, accessibility: false };
     assert.equal(forwardStep(mac, "welcome", none), "microphone");
     assert.equal(
@@ -114,8 +165,14 @@ describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
   });
 
   test("resume picks the stored step, or the next one that exists here", () => {
-    const mac = onboardingSteps("macos", { phonePairing: true });
-    const win = onboardingSteps("windows", { phonePairing: false });
+    const mac = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: true,
+    });
+    const win = onboardingSteps("windows", {
+      phonePairing: false,
+      dictated: true,
+    });
     assert.equal(resumeStep("accessibility", mac), "accessibility");
     assert.equal(resumeStep("accessibility", win), "try");
     assert.equal(resumeStep("phone", win), "done");
@@ -124,8 +181,14 @@ describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
   });
 
   test("v1's stored steps resume at the step that replaced them", () => {
-    const mac = onboardingSteps("macos", { phonePairing: true });
-    const win = onboardingSteps("windows", { phonePairing: true });
+    const mac = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: true,
+    });
+    const win = onboardingSteps("windows", {
+      phonePairing: true,
+      dictated: true,
+    });
     assert.equal(resumeStep("model", mac), "microphone");
     assert.equal(resumeStep("key", mac), "accessibility");
     assert.equal(resumeStep("paste", mac), "accessibility");
@@ -134,7 +197,10 @@ describe("onboarding steps (DESK-10..17, run 2: plug and play)", () => {
   });
 
   test("a finished onboarding is remembered as done, not as a step", () => {
-    const mac = onboardingSteps("macos", { phonePairing: true });
+    const mac = onboardingSteps("macos", {
+      phonePairing: true,
+      dictated: true,
+    });
     assert.equal(resumeStep(ONBOARDING_DONE, mac), null);
     assert.equal(onboardingFinished(ONBOARDING_DONE), true);
     assert.equal(onboardingFinished("try"), false);

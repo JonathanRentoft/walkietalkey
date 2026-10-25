@@ -11,6 +11,7 @@ import type { PhoneController } from "../core/controller";
 import { suggestPhoneName } from "../lib/pairingLink";
 import type { Platform } from "../lib/platform";
 import { T } from "../lib/strings";
+import { TrainingScreen } from "../training/TrainingScreen";
 import { MainScreen } from "./MainScreen";
 import { Loading, NameScreen, PairScreen, ScanScreen } from "./screens";
 import {
@@ -168,6 +169,17 @@ export function App({
         onBack={paired ? home : undefined}
       />
     );
+  } else if (snap.training) {
+    // A computer's training session (the fine-tuning workbench): its sentence instead of the
+    // main screen, until the session ends.
+    screen = (
+      <TrainingScreen
+        controller={controller}
+        snap={snap}
+        training={snap.training}
+        onDetails={() => setSheet("details")}
+      />
+    );
   } else {
     screen = (
       <MainScreen
@@ -175,6 +187,10 @@ export function App({
         snap={snap}
         onPicker={() => setSheet("picker")}
         onDetails={() => setSheet("details")}
+        onPairAgain={() => {
+          setSheet(null);
+          setView({ name: "pair" });
+        }}
       />
     );
   }

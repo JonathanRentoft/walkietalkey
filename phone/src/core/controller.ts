@@ -40,12 +40,19 @@ import {
   type PresenceAnswer,
 } from "./presence";
 import { Pacer } from "./resend";
+import { dayNumber, daysAway, isStale, supersededRooms } from "./stale";
 import {
   SessionStreamer,
   isOpen,
   newSession,
   type AudioSession,
 } from "./streamer";
+import {
+  STALE_MS,
+  fromPrompt,
+  trainingItem,
+  type TrainingView,
+} from "../training/state";
 
 /** PHONE-29: five minutes per recording. */
 export const MAX_RECORDING_MS = 5 * 60 * 1000;
@@ -72,6 +79,15 @@ export interface ComputerView {
   deviceName: string;
   connected: boolean;
   online: boolean;
+  /** The day the relay last saw the computer (RELAY-02); null when unknown. */
+  lastSeenDay: number | null;
+  /** Whole days since then; null when unknown. */
+  daysAway: number | null;
+  /**
+   * Run 5: away for days, so maybe reset, reinstalled or with a new identity: the screen offers
+   * "Par igen" while it still waits for the computer (PHONE-24, core/stale.ts).
+   */
+  stale: boolean;
 }
 
 export interface Notice {
@@ -105,6 +121,8 @@ export interface Snapshot {
    * latest 200 ms block; 0 when not recording.
    */
   level: number;
+  /** A computer's training session (the fine-tuning workbench): the training screen shows. */
+  training: TrainingView | null;
 }
 
 export interface ControllerDeps {
@@ -121,6 +139,8 @@ export interface ControllerDeps {
   micIdleMs?: number;
   /** Whether the page is visible now (document.visibilityState). */
   visible?: () => boolean;
+  /** training/state.ts STALE_MS, shortened in tests. */
+  trainingStaleMs?: number;
 }
 
 interface RoomEntry {
@@ -157,6 +177,11 @@ export class PhoneController {
   private loaded = false;
   private snapshot: Snapshot;
   private readonly listeners = new Set<() => void>();
+  /**
+   * Admissions this phone has sent a join with in this session (in memory only). Only a retry of
+   * one of them may fall back to authenticating as a member (link.ts `memberFallback`, run 5).
+   */
+  private readonly joinAttempts = new Set<string>();
   private choosing = false;
   private chooseAgain = false;
   /** The page is visible (not in the background). */
@@ -168,6 +193,10 @@ export class PhoneController {
   /** Opening the microphone was refused; ask again only when the app comes back. */
   private micRefused = false;
   private micIdleTimer: ReturnType<typeof setTimeout> | null = null;
+  /** WalkieTalkey training (training/state.ts): the prompt on screen, and sessions that are over. */
+  private training: TrainingView | null = null;
+  private readonly trainingOver = new Set<string>();
+  private trainingTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -186,17 +215,26 @@ export class PhoneController {
   getSnapshot = (): Snapshot => this.snapshot;
 
   private buildSnapshot(): Snapshot {
+    const today = dayNumber(this.now());
     return {
       loaded: this.loaded,
       rooms: [...this.rooms.values()]
-        .map((r) => ({
-          roomId: r.record.roomId,
-          name: r.record.computerName,
-          os: r.record.os,
-          deviceName: r.record.deviceName,
-          connected: r.link.connected,
-          online: r.link.connected && r.link.peerOnline,
-        }))
+        .map((r) => {
+          const view = {
+            connected: r.link.connected,
+            online: r.link.connected && r.link.peerOnline,
+            lastSeenDay: r.link.ownerLastSeenDay,
+          };
+          return {
+            roomId: r.record.roomId,
+            name: r.record.computerName,
+            os: r.record.os,
+            deviceName: r.record.deviceName,
+            ...view,
+            daysAway: daysAway(view.lastSeenDay, today),
+            stale: isStale(view, today),
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name, "da")),
       target: this.target,
       machine: this.machine,
@@ -208,6 +246,7 @@ export class PhoneController {
         this.machine.phase === "rec" || this.machine.phase === "cancel"
           ? this.level
           : 0,
+      training: this.training,
     };
   }
 
@@ -254,6 +293,7 @@ export class PhoneController {
       store: this.deps.storage,
       WebSocketImpl: this.deps.WebSocketImpl,
       backoffMs: this.deps.backoffMs,
+      now: this.now,
       onEvent: (e) => this.linkEvent(record.roomId, e),
     });
     const entry: RoomEntry = {
@@ -290,12 +330,14 @@ export class PhoneController {
     const isTarget = roomId === this.target;
     switch (e.type) {
       case "status":
+        if (!e.connected) this.trainingStale(roomId);
         if (isTarget) {
           this.dispatch({ type: "connection", up: e.connected });
           this.watchConnection();
         }
         break;
       case "peer":
+        if (!e.online) this.trainingStale(roomId);
         if (isTarget) this.dispatch({ type: "peer", online: e.online });
         // PHONE-32: the computer is back. Its old socket may have looked live at the relay for up
         // to 75 s after it went to sleep and swallowed what was sent, so open sessions go again.
@@ -303,6 +345,8 @@ export class PhoneController {
           void entry.streamer.peerReturned(this.sessionsOf(roomId));
         break;
       case "authenticated":
+        // A new connection: the training prompt waits until the computer sends it again.
+        this.trainingStale(roomId);
         void entry.streamer.resendOpen(this.sessionsOf(roomId));
         break;
       case "payload":
@@ -345,7 +389,102 @@ export class PhoneController {
         locked: p.locked,
       };
       for (const w of entry.presenceWaiters.splice(0)) w(answer);
+    } else if (p.type === "training_prompt") {
+      const t = fromPrompt(entry.record.roomId, entry.record.computerName, p);
+      if (this.trainingOver.has(t.id)) return;
+      this.clearTrainingTimer();
+      this.training = t;
+      // Takes go to the computer that asked for them.
+      if (t.roomId !== this.target && !this.busy()) this.setTarget(t.roomId);
+    } else if (p.type === "training_end") {
+      const id = b64uEncode(p.training);
+      this.trainingOver.add(id);
+      if (this.training?.id === id) this.endTraining();
     }
+  }
+
+  private busy(): boolean {
+    const phase = this.machine.phase;
+    return (
+      phase === "rec" ||
+      phase === "cancel" ||
+      phase === "send" ||
+      phase === "offline"
+    );
+  }
+
+  private clearTrainingTimer(): void {
+    if (this.trainingTimer) clearTimeout(this.trainingTimer);
+    this.trainingTimer = null;
+  }
+
+  private endTraining(): void {
+    this.clearTrainingTimer();
+    this.training = null;
+    // The last take's "Gemt" is not a dictation's "Klar på": the main screen starts afresh.
+    const phase = this.machine.phase;
+    if (
+      phase === "ready" ||
+      phase === "no_speech" ||
+      phase === "error" ||
+      phase === "paused"
+    )
+      this.machine = {
+        ...this.machine,
+        phase: "idle",
+        sessionId: null,
+        detail: null,
+      };
+  }
+
+  /** The computer went away, or this phone's connection is new (training/state.ts). */
+  private trainingStale(roomId: string): void {
+    const t = this.training;
+    if (!t || t.roomId !== roomId || t.stale) return;
+    this.training = { ...t, stale: true };
+    this.clearTrainingTimer();
+    this.trainingTimer = setTimeout(() => {
+      this.trainingTimer = null;
+      if (this.training?.stale) {
+        this.endTraining();
+        this.changed();
+      }
+    }, this.deps.trainingStaleMs ?? STALE_MS);
+  }
+
+  /** "Optag forrige igen" on the training screen, or back to the next sentence. */
+  trainingRedo(on: boolean): void {
+    const t = this.training;
+    if (!t || !t.last || this.busy()) return;
+    this.training = { ...t, redo: on };
+    this.changed();
+  }
+
+  /** "Afslut": back to normal; this session's prompts are not shown again. */
+  leaveTraining(): void {
+    const t = this.training;
+    if (!t) return;
+    this.trainingOver.add(t.id);
+    this.endTraining();
+    this.changed();
+  }
+
+  /**
+   * A new recording: a training take while the training screen shows (to the computer that
+   * asked for it), else a dictation to the target. Null when there is nothing to record.
+   */
+  private sessionForPress(): AudioSession | null {
+    const t = this.training;
+    if (t) {
+      const item = trainingItem(t);
+      if (t.stale || !item || !this.rooms.has(t.roomId)) return null;
+      const s = newSession(t.roomId, this.now());
+      const microphone = this.deps.recorder.microphoneName?.() ?? undefined;
+      s.training = { id: t.training, prompt: item.prompt, microphone };
+      return s;
+    }
+    if (!this.target || !this.rooms.has(this.target)) return null;
+    return newSession(this.target, this.now());
   }
 
   /** "Ingen forbindelse. Prøver igen." once the target's socket has been down for a moment. */
@@ -613,10 +752,13 @@ export class PhoneController {
 
   /** The button went down: recording starts now (PHONE-26). */
   down(): void {
-    if (!this.target || !this.rooms.has(this.target)) return;
+    // A press during a hands-free recording stops it; the new session is then never used.
+    const s = this.recording()
+      ? newSession("", this.now())
+      : this.sessionForPress();
+    if (!s) return;
     this.prime();
     this.activity();
-    const s = newSession(this.target, this.now());
     this.pendingSession = s;
     this.dispatch({ type: "down", sessionId: s.sid, at: this.now() });
     this.pendingSession = null;
@@ -640,10 +782,10 @@ export class PhoneController {
    * hands-free recording. Ignored when not paired or already recording.
    */
   shellStart(): boolean {
-    if (!this.target || !this.rooms.has(this.target)) return false;
+    const s = this.sessionForPress();
+    if (!s) return false;
     this.prime();
     this.activity();
-    const s = newSession(this.target, this.now());
     this.pendingSession = s;
     this.dispatch({ type: "shell_start", sessionId: s.sid, at: this.now() });
     this.pendingSession = null;
@@ -663,6 +805,7 @@ export class PhoneController {
     if (this.maxTimer) clearTimeout(this.maxTimer);
     if (this.noConnTimer) clearTimeout(this.noConnTimer);
     if (this.micIdleTimer) clearTimeout(this.micIdleTimer);
+    this.clearTrainingTimer();
     this.maxTimer = null;
     this.noConnTimer = null;
     this.micIdleTimer = null;
@@ -792,9 +935,15 @@ export class PhoneController {
     const device =
       this.device ?? (await this.deps.storage.loadOrCreateDeviceKeys());
     this.device = device;
+    // Run 5: the "ok lost" fallback only where it can be true, never for an old code of a room
+    // this phone is already in (it would replace working keys).
+    const attempt = b64uEncode(p.a);
+    const memberFallback =
+      !this.rooms.has(b64uEncode(p.r)) || this.joinAttempts.has(attempt);
+    this.joinAttempts.add(attempt);
     let h;
     try {
-      h = await joinRoom(this.WS, p, device);
+      h = await joinRoom(this.WS, p, device, undefined, memberFallback);
     } catch (e) {
       const kind = e instanceof JoinError ? e.kind : "error";
       this.pairing = {
@@ -862,6 +1011,17 @@ export class PhoneController {
     this.pairing = { state: "idle" };
     this.setTarget(roomId);
     this.activity();
+    // Run 5: the same computer under an old identity (reset, reinstalled, v0.2.0) is replaced:
+    // its old room would wait for an owner that never comes back.
+    // A link without an outcome yet counts as online: it is kept.
+    const views = [...this.rooms.values()].map((r) => ({
+      roomId: r.record.roomId,
+      computerName: r.record.computerName,
+      os: r.record.os,
+      online: !r.link.settled || (r.link.connected && r.link.peerOnline),
+    }));
+    for (const gone of supersededRooms(views, record))
+      void this.removeRoom(gone);
     return true;
   }
 
@@ -906,6 +1066,7 @@ export class PhoneController {
       this.clearResultTimer(s.sid);
     }
     await this.deps.storage.deleteRoom(roomId);
+    if (this.training?.roomId === roomId) this.endTraining();
     if (notify)
       this.notices = [
         ...this.notices,

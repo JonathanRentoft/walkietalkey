@@ -12,7 +12,7 @@ Rules that keep the code maintainable and the product honest:
 - **Tests first.** The relay tests count storage writes per dictation; the protocol has shared test vectors in TypeScript and Rust (`packages/protocol/test-vectors.json`); AI providers are always fakes in tests. Never use real API keys.
 - **English** for code, comments, commits and docs. **Danish** for user-facing text, from spec Appendix A; new strings not in the spec are marked `TODO(copy)`. No em dashes in user-facing text.
 - **Privacy**: no telemetry, no analytics, no crash reporting. Audio is never stored unless "Gem lyd til fejlfinding" is on; text never goes back to the phone.
-- **Secrets** live in the OS keychain (`walkietalkey::secrets`, `wt-native`), never in settings files or logs.
+- **Secrets** live in the app's secret store (`walkietalkey::secrets`): on macOS a private folder (`wt_native::secret_file`, `0700`/`0600`, atomic writes, excluded from Time Machine, bound to the Mac), never the keychain, which asks for the password after every update of an app without a Team ID (SEC-11); on Windows Credential Manager (SEC-10). Never in settings files or logs.
 
 | Part                              | Folder                                                          | Commands                                                                                                              |
 | --------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -209,7 +209,9 @@ The desktop app supports command-line parameters on all platforms for integratio
 | `--debug`                 | Enable debug mode with verbose (Trace) logging                                                                                            |
 | `-f`, `--transcribe-file` | Transcribe a 16 kHz mono WAV headlessly and exit                                                                                          |
 | `--live`                  | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46)                         |
+| `--key-recording`         | With `--transcribe-file` or `--transcribe-list`: pass each file through the recorder's silence removal first, as a key recording is       |
 | `--phone-receive`         | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
+| `--training-session`      | Hand a `wt-train record` session (its 127.0.0.1 link) to the running app; exits 3 when WalkieTalkey is not running                        |
 
 **Key design decisions:**
 

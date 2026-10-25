@@ -82,6 +82,33 @@ export async function requestPermission(p: MacPermission): Promise<boolean> {
   return hasPermission(p);
 }
 
+/** A grant came from System Settings, which is now in front: WalkieTalkey
+ *  comes back by itself, so the user never has to find its window (run 5). */
+export function comeBack() {
+  void commands.showMainWindowCommand().catch(() => undefined);
+}
+
+export type MicAccess =
+  "granted" | "denied" | "restricted" | "not_determined" | "unknown";
+
+/** Mikrofon (DESK-12, run 5): macOS asks only while the answer is
+ *  "not_determined"; after a no, only System Settings can change it. */
+export async function microphoneAccess(): Promise<MicAccess> {
+  try {
+    const a = await commands.wtMicrophoneAccess();
+    if (
+      a === "granted" ||
+      a === "denied" ||
+      a === "restricted" ||
+      a === "not_determined"
+    )
+      return a;
+  } catch {
+    /* an older backend */
+  }
+  return (await hasPermission("microphone")) ? "granted" : "unknown";
+}
+
 /** Tilgængelighed (run 2): one button. Asking first puts WalkieTalkey in
  *  the list, so the pane that opens has its switch ready; the app notices
  *  the grant by itself (usePermission). */

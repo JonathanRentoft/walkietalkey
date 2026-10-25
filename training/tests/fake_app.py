@@ -6,7 +6,8 @@ separated) plus every ``*.gguf`` in ``WT_APP_MODELS_DIR``. A transcript is
 the text of the ``<clip>.txt`` next to the clip, upper-cased; a clip whose
 name contains "bad", or that is not 16-bit PCM (like the real app), fails.
 Every call is logged to ``FAKE_APP_LOG``, and, like a debug build, it writes
-``../src/bindings.ts`` relative to its working directory.
+``../src/bindings.ts`` relative to its working directory. ``FAKE_APP_TRAINING_EXIT``
+gives it ``--training-session`` (the recorder's handoff), which exits with that code.
 """
 
 SCRIPT = r'''
@@ -32,11 +33,17 @@ def text_for(wav):
     txt = Path(wav).with_suffix(".txt")
     return txt.read_text(encoding="utf-8").strip().upper() if txt.is_file() else "hej"
 
+training = os.environ.get("FAKE_APP_TRAINING_EXIT")
 if "--help" in args:
     print("Usage: walkietalkey [OPTIONS]\n  -f, --transcribe-file <WAV>\n  --model <MODEL>\n  --json")
     if batch:
         print("      --transcribe-list <FILE>  Transcribe every WAV listed")
+    if training is not None:
+        print("      --training-session <URL>  Hand a recorder session to the running app")
     sys.exit(0)
+if "--training-session" in args:
+    # 0: handed to the running app; 3: no app is running (like the real one).
+    sys.exit(int(training) if training is not None else 2)
 if "--list-models" in args:
     ids = [m for m in os.environ.get("FAKE_APP_MODELS", "").split(",") if m]
     folder = Path(os.environ.get("WT_APP_MODELS_DIR", "/nonexistent"))

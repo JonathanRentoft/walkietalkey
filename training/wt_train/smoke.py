@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 import shutil
 import sys
@@ -116,6 +117,8 @@ def main(argv: list[str]) -> int:
     p.add_argument("--device", choices=["auto", "mps", "cpu"], help="instead of smoke.yaml's training.device")
     p.add_argument("--keep", action="store_true", help="leave the artifacts in place (debugging)")
     a = p.parse_args(argv)
+    # Everything the smoke test makes is deleted afterwards, so it tracks nothing either.
+    os.environ["WT_TRACKING"] = "0"
 
     from . import dataset, evaluate, export, fleurs, train
     from .app import find_app

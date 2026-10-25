@@ -1,17 +1,16 @@
-//! The OS secret store (SEC-09, SEC-10, DESK-81): device keys, pair keys and cleanup API keys.
-//! Counters and other non-secret state belong in a plain file, not here.
+//! The Windows secret store (SEC-09, SEC-10, DESK-81): device keys, pair keys and cleanup API
+//! keys in Credential Manager. Counters and other non-secret state belong in a plain file.
 //!
-//! - **macOS**: generic passwords in the login Keychain through the `SecItem` API. Every item
-//!   is written and looked up with `kSecAttrSynchronizable = false`, so it never syncs to
-//!   iCloud Keychain and never leaves this Mac.
 //! - **Windows**: generic credentials in Credential Manager through the keyring store
 //!   (`windows-native-keyring-store`) with its `persistence=local` modifier, which writes
 //!   `CRED_PERSIST_LOCAL_MACHINE`. The store's default, Enterprise, roams to the user's other
 //!   computers in a company domain, and two computers must never share a device identity.
 //!   [`set`] reads the persistence back after writing and refuses anything but local. The
 //!   target name is `"{account}.{service}"`, the keyring crate's convention. One secret is at
-//!   most 2,560 bytes (`CRED_MAX_CREDENTIAL_BLOB_SIZE`).
-//! - Elsewhere every call returns [`SecretError::Unsupported`].
+//!   most 2,560 bytes (`CRED_MAX_CREDENTIAL_BLOB_SIZE`). Credential Manager never asks the user.
+//! - **macOS and everywhere else**: every call returns [`SecretError::Unsupported`]. The Mac uses
+//!   [`crate::secret_file`] instead (run 5): the login keychain asked for the login password
+//!   after every update of an app without an Apple Team ID, so WalkieTalkey never calls it.
 //!
 //! Calls are serialised by a process-wide lock: Credential Manager does not reliably order
 //! operations on one entry from several threads.
@@ -72,61 +71,6 @@ pub fn delete(service: &str, account: &str) -> Result<(), SecretError> {
 /// The keyring-store modifiers every Windows entry is built with (SEC-10).
 #[cfg_attr(not(windows), allow(dead_code))]
 const WINDOWS_MODIFIERS: [(&str, &str); 1] = [("persistence", "Local")];
-
-#[cfg(target_os = "macos")]
-mod imp {
-    use super::SecretError;
-    use security_framework::base::Error;
-    use security_framework::passwords::{
-        delete_generic_password_options, generic_password, set_generic_password_options,
-        PasswordOptions,
-    };
-    use zeroize::Zeroizing;
-
-    const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
-    const ERR_SEC_AUTH_FAILED: i32 = -25293;
-    const ERR_SEC_INTERACTION_NOT_ALLOWED: i32 = -25308;
-    const ERR_SEC_USER_CANCELED: i32 = -128;
-
-    fn options(service: &str, account: &str) -> PasswordOptions {
-        let mut options = PasswordOptions::new_generic_password(service, account);
-        // SEC-09: this device only. Also scopes lookups to non-synchronizable items.
-        options.set_access_synchronized(Some(false));
-        options
-    }
-
-    fn map(err: Error) -> SecretError {
-        let text = err
-            .message()
-            .unwrap_or_else(|| format!("OSStatus {}", err.code()));
-        match err.code() {
-            ERR_SEC_AUTH_FAILED | ERR_SEC_INTERACTION_NOT_ALLOWED | ERR_SEC_USER_CANCELED => {
-                SecretError::Denied(text)
-            }
-            _ => SecretError::Platform(text),
-        }
-    }
-
-    pub fn set(service: &str, account: &str, secret: &[u8]) -> Result<(), SecretError> {
-        set_generic_password_options(secret, options(service, account)).map_err(map)
-    }
-
-    pub fn get(service: &str, account: &str) -> Result<Option<Zeroizing<Vec<u8>>>, SecretError> {
-        match generic_password(options(service, account)) {
-            Ok(bytes) => Ok(Some(Zeroizing::new(bytes))),
-            Err(err) if err.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(None),
-            Err(err) => Err(map(err)),
-        }
-    }
-
-    pub fn delete(service: &str, account: &str) -> Result<(), SecretError> {
-        match delete_generic_password_options(options(service, account)) {
-            Ok(()) => Ok(()),
-            Err(err) if err.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(()),
-            Err(err) => Err(map(err)),
-        }
-    }
-}
 
 #[cfg(windows)]
 mod imp {
@@ -195,7 +139,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(not(windows))]
 mod imp {
     use super::SecretError;
     use zeroize::Zeroizing;
@@ -231,9 +175,8 @@ mod tests {
     }
 
     /// Writes, reads, overwrites and deletes a real item under a test service name that is
-    /// unique per run, so a rebuilt test binary never touches an item an older build created
-    /// (which could make the Keychain ask for access).
-    #[cfg(any(target_os = "macos", windows))]
+    /// unique per run.
+    #[cfg(windows)]
     #[test]
     fn round_trip_in_the_os_store() {
         let nanos = std::time::SystemTime::now()
@@ -275,7 +218,8 @@ mod tests {
         assert!(get(&service, account).unwrap().is_none());
     }
 
-    #[cfg(not(any(target_os = "macos", windows)))]
+    /// The Mac never reaches the keychain (run 5): this module has no macOS code at all.
+    #[cfg(not(windows))]
     #[test]
     fn unsupported_elsewhere() {
         assert!(matches!(get("s", "a"), Err(SecretError::Unsupported)));

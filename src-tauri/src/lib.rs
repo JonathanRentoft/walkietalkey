@@ -442,6 +442,17 @@ mod headless_guard_tests {
     }
 }
 
+/// WalkieTalkey (run 5): a headless file's samples as the bench transcribes
+/// them: as they are, or with `--key-recording` as a key recording captures
+/// them.
+fn as_recorded(app: &AppHandle, args: &CliArgs, samples: Vec<f32>) -> Result<Vec<f32>, String> {
+    if !args.key_recording {
+        return Ok(samples);
+    }
+    let vad = crate::managers::audio::recording_vad(app).map_err(|e| e.to_string())?;
+    Ok(crate::walkietalkey::bench::as_key_recording(vad, &samples))
+}
+
 /// Headless one-shot transcription for the `--transcribe-file` / `--list-devices`
 /// path. Drives the same `TranscriptionManager::transcribe` the app uses; no
 /// mic, no VAD, no download. Returns a process exit code (0 ok, 1 runtime
@@ -561,6 +572,7 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
             args.device_index,
             &files,
             args.json,
+            &|samples| as_recorded(app, args, samples),
         );
     }
 
@@ -568,7 +580,9 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         return 0;
     };
 
-    let samples = match crate::walkietalkey::bench::read_dictation_wav(&wav) {
+    let samples = match crate::walkietalkey::bench::read_dictation_wav(&wav)
+        .and_then(|samples| as_recorded(app, args, samples))
+    {
         Ok(s) => s,
         Err(e) => {
             eprintln!("error: {}", e);
@@ -813,6 +827,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_check_updates,
             walkietalkey::commands::wt_measure_speed,
             walkietalkey::commands::wt_notification_permission,
+            walkietalkey::commands::wt_microphone_access,
             walkietalkey::commands::wt_request_notification_permission,
             walkietalkey::commands::wt_globe_key_status,
             walkietalkey::commands::wt_globe_key_fix,
@@ -960,6 +975,9 @@ pub fn run(cli_args: CliArgs) {
                 signal_handle::send_transcription_input(app, "transcribe_with_post_process", "CLI");
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
+            } else if let Some(url) = walkietalkey::relay::training::session_arg(&args) {
+                // WalkieTalkey: a `wt-train record` session (the fine-tuning workbench).
+                walkietalkey::relay::training::start(app, url);
             } else {
                 // A second process was launched without remote-control flags
                 // (e.g. the binary run from a shell). On macOS, relaunching the
@@ -991,6 +1009,14 @@ pub fn run(cli_args: CliArgs) {
         ))
         .manage(cli_args.clone())
         .setup(move |app| {
+            // WalkieTalkey: `--training-session` only reaches a running app (the
+            // single-instance plugin forwards it and exits before this); this process is the
+            // first, so no WalkieTalkey is running. Starting one from the recorder's terminal
+            // would make macOS count that terminal as the app using the microphone.
+            if cli_args.training_session.is_some() {
+                eprintln!("WalkieTalkey is not running; start it, then connect again");
+                std::process::exit(walkietalkey::relay::training::NOT_RUNNING_EXIT);
+            }
             #[cfg(target_os = "windows")]
             log::info!(
                 "Vulkan layer policy: VK_LOADER_LAYERS_DISABLE={:?}, WALKIETALKEY_KEEP_VULKAN_IMPLICIT_LAYERS={}",
@@ -1168,6 +1194,9 @@ pub fn run(cli_args: CliArgs) {
             if should_force_show || !should_hide || !tray_available {
                 show_main_window(&app_handle);
             }
+
+            // WalkieTalkey (run 5): dictations may start once setup is done.
+            walkietalkey::mark_ready();
 
             Ok(())
         })

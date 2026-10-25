@@ -54,6 +54,8 @@ export {
   payloadTypeOf,
   type DevicePayload,
   type DevicePayloadType,
+  type TrainingItem,
+  type TrainingLast,
 } from "./payload.ts";
 export {
   parseControlMessage,

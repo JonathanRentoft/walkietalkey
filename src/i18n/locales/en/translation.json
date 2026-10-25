@@ -1181,6 +1181,11 @@
       "none": "{{name}} gives no sound, and neither do the other microphones. Check that the microphone is plugged in and on.",
       "use": "Use {{name}}",
       "recheck": "Check again"
+    },
+    "phoneOffer": {
+      "pairAgain": "Pair your phone again after the update.",
+      "pairAgainWhy": "This version has new keys, so your Mac no longer asks for your password when it updates.",
+      "later": "Not now"
     }
   }
 }

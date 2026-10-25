@@ -2,7 +2,7 @@
 import type { PhoneAppLabels, PhoneAppState } from "@walkietalkey/ui";
 import type { ComputerView } from "../core/controller";
 import type { MachineState } from "../core/machine";
-import { T } from "../lib/strings";
+import { T, fill } from "../lib/strings";
 
 export interface ViewState {
   state: PhoneAppState;
@@ -75,11 +75,18 @@ export type StatusKind = "online" | "away" | "connecting" | "lost";
  * label then says "Ingen forbindelse. Prøver igen."), "away" the computer's.
  */
 export function statusLine(
-  target: Pick<ComputerView, "online" | "connected">,
+  target: Pick<ComputerView, "online" | "connected"> &
+    Partial<Pick<ComputerView, "stale" | "daysAway">>,
   noConnection: boolean,
 ): { kind: StatusKind; text: string } {
   if (noConnection) return { kind: "lost", text: T.statusLost };
   if (target.online) return { kind: "online", text: T.statusOnline };
+  // Run 5: away for days, so maybe reset or reinstalled (core/stale.ts).
+  if (target.stale && target.daysAway !== null && target.daysAway !== undefined)
+    return {
+      kind: "away",
+      text: fill(T.statusGone, { days: String(target.daysAway) }),
+    };
   if (target.connected) return { kind: "away", text: T.statusAway };
   return { kind: "connecting", text: T.statusConnecting };
 }
@@ -99,4 +106,17 @@ export function countdownSeconds(
 ): number | null {
   if (elapsedMs < fromMs) return null;
   return Math.max(0, Math.ceil((maxMs - elapsedMs) / 1000));
+}
+
+/**
+ * Run 5: "Par igen" under the button, for a pairing whose computer may never come back: after a
+ * dictation that never arrived (PHONE-24's "Nåede ikke frem"), and while the computer has been
+ * away for days. Never for one that is only asleep, and never while recording or sending.
+ */
+export function offerPairAgain(
+  m: Pick<MachineState, "phase">,
+  target: Pick<ComputerView, "stale"> | undefined,
+): boolean {
+  if (m.phase === "failed") return true;
+  return !!target?.stale && (m.phase === "idle" || m.phase === "offline");
 }

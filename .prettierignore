@@ -41,3 +41,5 @@ relay/worker-configuration.d.ts
 # Licence texts are kept byte-exact (they travel with the models and the app).
 licenses/
 models/*/licenses/
+# The website's hero variants, built by site/test/variants.test.ts and site/scripts/deploy-previews.ts
+site/.variants

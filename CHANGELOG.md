@@ -4,10 +4,30 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 <!-- TODO(copy): the Danish release notes -->
+
+**På dansk**
+
+- Første gang er let: Mac'en beder kun om Mikrofon og Tilgængelighed, og WalkieTalkey spørger aldrig om din adgangskode til nøgleringen, heller ikke efter en opdatering.
+- Én gang efter denne opdatering: par telefonen igen. Nøglerne ligger nu i en privat mappe på din Mac i stedet for i nøgleringen. Bruger du AI-oprydning, skal du indtaste din nøgle igen.
+- Færre ord, som ingen har sagt: et klik, et åndedrag eller et par ord efter en pause bliver nu skrevet sammen med sætningen ved siden af. På den danske FLEURS-test falder fejlraten gennem appen fra 8,44 % til 7,63 %.
+- Ingen store bogstaver midt i en sætning, hvor en lang diktering blev delt ved en pause, og ingen ødelagte tegn i teksten.
+- Telefonens lyd kommer 15 dB kraftigere frem. Kommer computeren ikke tilbage, siger telefonen "Par igen" i stedet for bare at vente.
+- Giver mikrofonen ingen lyd, siger pillen det og foreslår en mikrofon, der virker.
+- Telefonen tilbydes først efter din første diktering, der virker.
 
 **In English**
 
+- A first run as light as it gets: a new Mac asks for two permissions, Microphone and Accessibility, and nothing else, ever.
+- No more keychain dialog on the Mac, neither on a fresh install nor after an update. The app's keys now live in a private folder only WalkieTalkey writes (excluded from Time Machine and bound to this Mac) instead of the keychain, which asked for your password after every update of an app without an Apple Developer ID, and froze the app until you answered. **Once after updating:** pair your phone again (the app says so), and enter your AI cleanup API key again. The old keychain items "WalkieTalkey relay" and "WalkieTalkey AI cleanup" are never read again; you can delete them in Nøgleringsadgang (Keychain Access) if you like.
+- A remote-control flag during start-up can no longer stop the key for good: nothing starts before the app is ready, and one failed step never ends the dictation coordinator.
+- Mikrofon: after you have said no once, the one button opens the right pane in System Settings at the first click.
+- Pairing a phone comes after your first dictation that works, never before: Telefon follows Prøv det only when it worked, and otherwise the window offers it once, after the first dictation that works.
+- On the phone, a pairing whose computer never comes back no longer just waits: a computer away for days says so and offers "Par igen", so does a dictation that never arrived, and pairing the same computer again replaces its old pairing. An old pairing code no longer breaks a pairing that works.
+- No more invented words after a pause: a click, a breath or a few words on their own after a pause are now transcribed together with the sentence next to them, where Edda used to write words nobody said ("Tester en to tre fire fem seks syv otte."). On the Danish FLEURS test, the error rate through the app falls from 8.44 % to 7.63 %, and the same recording always gives the same text.
+- For developers: `walkietalkey --transcribe-list <file> --key-recording` (or `--transcribe-file`) measures files as a key recording captures them, after the recorder's own silence removal.
 - On a Mac, "Sådan løser du det" in the Secure Input warning opens WalkieTalkey's own answer on walkietalkey.com.
 - The About screen lists third-party code and models with their licences.
 - Up to date: Tauri 2.12 and its plugins, and p256 0.14 in the encryption between phone and computer (RUSTSEC-2026-0387). Nothing changes on the wire, so paired phones keep working.
@@ -20,6 +40,8 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - No more broken characters ("mødet��") or letters from other scripts in the text: a piece that comes back with them is transcribed again without the developer vocabulary, and any left are removed.
 - No more capital letters in the middle of a sentence where a long dictation was cut at a pause ("og ikke bare Kaster mig"): each joint is read again by the punctuation model, which also removes a full stop that does not belong there.
 - For developers: a fine-tuning workbench in `training/` (`wt-train`): about 1,000 sentences with English developer terms, a recorder, LoRA training on Edda, evaluation like the accuracy job, and export to the app.
+- For developers: the workbench tracks every training, evaluation and export in a local MLflow store (`wt-train ui`), and `wt-train card <run>` starts a lab-journal page from a run.
+- For developers: `wt-train record` records training sentences on the paired phone (whispered or in a normal voice) or on the Mac, through exactly the audio path of a dictation; the phone shows the sentence in large text, and the takes never reach the clipboard or the history.
 - A fine-tuned Edda from the training workbench (`training/`) appears in the model list and is decoded like Edda; it can no longer be "downloaded again", which deleted it.
 - `walkietalkey --transcribe-list <file> --json` transcribes many WAV files with the model loaded once.
 - Up to date: TypeScript 6, Tauri 2.12.5, openssl 0.10.81 and pytest 9.

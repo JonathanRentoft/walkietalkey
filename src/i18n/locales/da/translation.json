@@ -1181,6 +1181,11 @@
       "none": "{{name}} giver ingen lyd, og det gør de andre mikrofoner heller ikke. Tjek, at mikrofonen er sluttet til og tændt.",
       "use": "Brug {{name}}",
       "recheck": "Tjek igen"
+    },
+    "phoneOffer": {
+      "pairAgain": "Telefonen skal parres igen efter opdateringen.",
+      "pairAgainWhy": "Denne udgave har nye nøgler, så din Mac ikke længere spørger om din adgangskode, når den opdaterer.",
+      "later": "Ikke nu"
     }
   }
 }

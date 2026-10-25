@@ -48,6 +48,23 @@ pub mod vocabulary;
 
 static APP: once_cell::sync::OnceCell<AppHandle> = once_cell::sync::OnceCell::new();
 
+/// Set once `setup` has run to its end: every manager and every piece of
+/// state a dictation touches exists (run 5).
+static READY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The end of `setup` (lib.rs): dictations may start from now on.
+pub fn mark_ready() {
+    READY.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// Whether a dictation may start. Run 4: a remote-control flag arrived while
+/// setup was still waiting for the keychain dialog, its start reached state
+/// that did not exist yet, and the panic ended the coordinator thread. A
+/// start before setup is done is now refused (and logged) instead.
+pub fn is_ready() -> bool {
+    READY.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 /// The app handle, for the few places Handy's code reaches us without one.
 pub fn app() -> Option<&'static AppHandle> {
     APP.get()
@@ -185,6 +202,103 @@ mod tests {
             !settings.post_process_enabled,
             "cleanup is WalkieTalkey's own mode"
         );
+    }
+
+    /// Every source file under `dir` with one of `exts`, as (path, text).
+    fn sources(dir: &std::path::Path, exts: &[&str], out: &mut Vec<(String, String)>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                sources(&path, exts, out);
+            } else if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| exts.contains(&e))
+            {
+                let text = std::fs::read_to_string(&path).unwrap_or_default();
+                out.push((path.display().to_string(), text));
+            }
+        }
+    }
+
+    /// Run 5: a new Mac user grants two permissions, Microphone and Accessibility (the active
+    /// event tap for fn and pasting), and nothing else is ever asked for: no Input Monitoring,
+    /// Screen Recording, system audio, Automation or keychain.
+    #[test]
+    fn only_microphone_and_accessibility_are_ever_asked_for() {
+        // The usage strings macOS shows in its prompts: the microphone's only.
+        let info = include_str!("../../Info.plist");
+        assert!(info.contains("NSMicrophoneUsageDescription"));
+        assert_eq!(info.matches("UsageDescription</key>").count(), 1, "{info}");
+        // Entitlements: the microphone, nothing for Apple Events, keychain groups or more.
+        let entitlements = include_str!("../../Entitlements.plist");
+        assert_eq!(entitlements.matches("<key>").count(), 2, "{entitlements}");
+        assert!(entitlements.contains("com.apple.security.device.microphone"));
+        assert!(entitlements.contains("com.apple.security.device.audio-input"));
+
+        // The calls that would make macOS ask for something else. Spelled in pieces, so this
+        // test does not find itself.
+        let forbidden = [
+            concat!("CGRequest", "ListenEventAccess"),
+            concat!("IOHID", "RequestAccess"),
+            concat!("CGRequest", "ScreenCaptureAccess"),
+            concat!("CGWindowList", "CreateImage"),
+            concat!("SCShareable", "Content"),
+            concat!("AudioHardware", "CreateProcessTap"),
+            concat!("NSApple", "Script"),
+            concat!("tell ", "application"),
+            concat!("ListenOnly", "EventTap"),
+            concat!("OPTION_", "LISTEN_ONLY"),
+            concat!("request", "InputMonitoringPermission"),
+            concat!("request_input_", "monitoring_permission"),
+            concat!("request", "ScreenRecordingPermission"),
+            concat!("request_screen_", "recording_permission"),
+            // The keychain has its own checks (secrets.rs, wt-native's lib.rs).
+        ];
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = Vec::new();
+        sources(&root.join("src"), &["rs"], &mut files);
+        sources(&root.join("../crates/wt-native/src"), &["rs"], &mut files);
+        sources(&root.join("../src"), &["ts", "tsx"], &mut files);
+        assert!(files.len() > 100, "the sources were found");
+        for (path, text) in &files {
+            for word in forbidden {
+                assert!(!text.contains(word), "{path} uses {word}");
+            }
+            // The only osascript calls are Handy's mute ("set volume", a Standard Additions
+            // command with no target app, so no Automation prompt), behind a setting
+            // WalkieTalkey does not show.
+            if text.contains("\"osascript\"") {
+                assert!(path.ends_with("managers/audio.rs"), "{path} runs osascript");
+            }
+        }
+    }
+
+    /// DESK-11, run 5: the speech model starts downloading in `setup` (through `startup`),
+    /// before the window is shown, so before the first click; and `relay::start`, which once
+    /// waited for a keychain dialog, comes after it and no longer blocks (it reads on a worker).
+    #[test]
+    fn the_model_download_starts_before_the_window_shows() {
+        let lib = include_str!("../lib.rs");
+        let setup = lib.find(".setup(move |app| {").expect("setup");
+        let core = setup
+            + lib[setup..]
+                .find("initialize_core_logic(&app_handle);")
+                .unwrap();
+        let shown = setup + lib[setup..].find("show_main_window(&app_handle);").unwrap();
+        assert!(
+            core < shown,
+            "the core (and startup) runs before the window shows"
+        );
+
+        let this = include_str!("mod.rs");
+        let startup = this.find("pub fn startup(app: &AppHandle) {").unwrap();
+        let body = &this[startup..];
+        let download = body
+            .find("models::download_default_at_first_launch(app);")
+            .unwrap();
+        let relay = body.find("relay::start(app);").unwrap();
+        assert!(download < relay);
     }
 
     #[test]

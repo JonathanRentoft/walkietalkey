@@ -255,6 +255,17 @@ pub fn wt_notification_permission() -> String {
     .to_string()
 }
 
+/// The Mikrofon step's one button (DESK-12, run 5): "not_determined" (macOS
+/// asks), "denied" or "restricted" (only System Settings can change it, so
+/// the button opens the pane at once), "granted", or "unknown".
+#[tauri::command]
+#[specta::specta]
+pub fn wt_microphone_access() -> String {
+    wt_native::microphone::access()
+        .map_or("unknown", |a| a.as_str())
+        .to_string()
+}
+
 /// Asks for notification permission (DESK-15); true when granted.
 #[tauri::command]
 #[specta::specta]

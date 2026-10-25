@@ -9,6 +9,7 @@ pub mod headless;
 pub mod keystore;
 pub mod levels;
 pub mod session;
+pub mod training;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -89,36 +90,59 @@ fn client_config(settings: &super::settings::WtSettings) -> ClientConfig {
     config
 }
 
-/// Opens the key store: keys in the keychain, the rest in the data folder.
+/// Where the relay state lives, and where v0.1 kept it if that differs. On
+/// macOS it sits in the private secret folder with the keys (run 5); v0.1's
+/// `relay/` in the data folder is retired by the key store.
+fn state_dirs(app: &AppHandle) -> anyhow::Result<(std::path::PathBuf, Option<std::path::PathBuf>)> {
+    let data = crate::portable::app_data_dir(app)?;
+    #[cfg(unix)]
+    {
+        let secrets = super::secrets::secret_dir().map_err(|e| anyhow::anyhow!("{e}"))?;
+        Ok((secrets.join("relay"), Some(data.join("relay"))))
+    }
+    #[cfg(not(unix))]
+    {
+        Ok((data.join("relay"), None))
+    }
+}
+
+/// Opens the key store: the keys in the app's secret store (never the
+/// keychain on macOS, run 5), the room and counters beside them.
 fn open_store(app: &AppHandle) -> anyhow::Result<Arc<dyn KeyStore>> {
-    let dir = crate::portable::app_data_dir(app)?.join("relay");
-    let store = keystore::DesktopKeyStore::open(&dir).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let secrets = super::secrets::store().map_err(|e| anyhow::anyhow!("{e}"))?;
+    let (dir, legacy) = state_dirs(app)?;
+    let store = keystore::DesktopKeyStore::open(&dir, secrets, legacy.as_deref())
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(Arc::new(store))
 }
 
 /// Starts the relay connection when a phone is paired. Without one, nothing
 /// connects (spec 5.3, PRIV-04): "Par en telefon" connects and creates the
 /// room. Nothing connects when the phone feature is turned off (managed
-/// `AllowPhonePairing`).
+/// `AllowPhonePairing`). Called from `setup` on the main thread, so the store
+/// is read on a worker: nothing at startup waits on the main thread (run 5).
 pub fn start(app: &AppHandle) {
     let settings = super::store::get(app);
     if !settings.allow_phone_pairing {
         info!("Phone pairing is turned off; no relay connection");
         return;
     }
-    let paired = match open_store(app) {
-        Ok(store) => store.load_phones().map(|p| !p.is_empty()).unwrap_or(false),
-        Err(e) => {
-            error!("Relay key store unavailable: {e}");
-            return;
-        }
-    };
-    if !paired {
-        info!("No phone is paired; the relay connects when one is");
-        return;
-    }
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
+        let reader = app.clone();
+        let paired = tauri::async_runtime::spawn_blocking(move || match open_store(&reader) {
+            Ok(store) => store.load_phones().map(|p| !p.is_empty()).unwrap_or(false),
+            Err(e) => {
+                error!("Relay key store unavailable: {e}");
+                false
+            }
+        })
+        .await
+        .unwrap_or(false);
+        if !paired {
+            info!("No phone is paired; the relay connects when one is");
+            return;
+        }
         if let Err(e) = ensure_client(&app).await {
             error!("Relay client did not start: {e}");
         }
@@ -210,6 +234,11 @@ async fn event_loop(
     let dictations = Arc::new(Dictations::default());
     watch_dictations(app.clone(), client.clone(), Arc::downgrade(&dictations));
     while let Some(event) = events.recv().await {
+        // Training takes (the fine-tuning workbench) are handled before anything else and never
+        // become dictations: no model, pill, transcription, clipboard or history.
+        if training_event(&app, &event) {
+            continue;
+        }
         match event {
             RelayEvent::Connected { .. } | RelayEvent::RoomCreated { .. } => {
                 let _ = app.emit("wt-relay-status", true);
@@ -318,6 +347,8 @@ async fn event_loop(
                     let_go(&app, &dictations, showed_pill);
                 }
             }
+            // Handled by training_event above.
+            RelayEvent::TrainingStart { .. } => {}
             RelayEvent::PresenceQuery { query, .. } => {
                 let (seconds, locked) = super::presence::current();
                 if let Err(e) = client.answer_presence(query, seconds, locked).await {
@@ -326,6 +357,58 @@ async fn event_loop(
             }
             RelayEvent::RelayError { code, message } => warn!("Relay error {code}: {message}"),
         }
+    }
+}
+
+/// WalkieTalkey (training): hands a relay event to the training session first; `true` when it
+/// was a training take's (PROTOCOL.md 8.4). Phone status also reaches it, so the phone gets
+/// its prompt again when it is back.
+fn training_event(app: &AppHandle, event: &RelayEvent) -> bool {
+    use RelayEvent as E;
+    if let E::TrainingStart {
+        phone,
+        session,
+        training: id,
+        prompt,
+        microphone,
+    } = event
+    {
+        let trainer = training::trainer_for(app);
+        trainer.on_start(*phone, *session, *id, prompt.clone(), microphone.clone());
+        return true;
+    }
+    let Some(trainer) = training::trainer() else {
+        return false;
+    };
+    match event {
+        E::AudioChunk {
+            phone,
+            session,
+            index,
+            pcm,
+        } => trainer.on_chunk(&(*phone, *session), *index, pcm),
+        E::AudioEnd {
+            phone,
+            session,
+            chunks,
+            ..
+        } => trainer.on_end((*phone, *session), *chunks),
+        E::AudioCancel { phone, session } => trainer.on_cancel(&(*phone, *session)),
+        E::PeerStatus { phone, online } => {
+            trainer.on_phone(*phone, *online);
+            false
+        }
+        E::Connected { members, .. } => {
+            for m in members {
+                trainer.on_phone(m.id, m.online);
+            }
+            false
+        }
+        E::PhoneLeft { phone } | E::PhoneRemoved { phone } => {
+            trainer.forget_phone(phone);
+            false
+        }
+        _ => false,
     }
 }
 
@@ -687,20 +770,31 @@ pub struct RelayView {
     pub connected: bool,
     pub phones: Vec<PhoneView>,
     pub pairing_active: bool,
+    /// Phones paired before v0.2.0 must pair again: this computer has a new
+    /// identity, because v0.1's keys were in the keychain (run 5).
+    pub pair_again: bool,
+}
+
+/// Whether the phones paired with the previous identity still have to pair again.
+fn must_pair_again(app: &AppHandle) -> bool {
+    state_dirs(app).is_ok_and(|(dir, _)| keystore::pair_again(&dir))
 }
 
 pub async fn status(app: &AppHandle) -> RelayView {
     let enabled = super::store::get(app).allow_phone_pairing;
+    let pair_again = enabled && must_pair_again(app);
     let Some(client) = client() else {
         return RelayView {
             enabled,
             connected: false,
             phones: Vec::new(),
             pairing_active: false,
+            pair_again,
         };
     };
     match client.status().await {
         Ok(status) => RelayView {
+            pair_again: pair_again && status.phones.is_empty(),
             enabled,
             connected: status.connected,
             phones: status
@@ -727,6 +821,7 @@ pub async fn status(app: &AppHandle) -> RelayView {
                 connected: false,
                 phones: Vec::new(),
                 pairing_active: false,
+                pair_again,
             }
         }
     }

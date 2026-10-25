@@ -67,3 +67,24 @@ def test_find_app_prefers_a_binary_with_the_batch_interface(tmp_path, monkeypatc
     monkeypatch.setenv("WT_APP_BIN", str(tmp_path / "nowhere"))
     with pytest.raises(FileNotFoundError):
         find_app()
+
+
+def test_the_recorder_hands_its_session_to_the_running_app(tmp_path, monkeypatch):
+    # wt-train record: `walkietalkey --training-session <url>` reaches the running app through
+    # the single-instance handoff; with no app running the binary exits 3 instead of starting one.
+    from wt_train.app import NOT_RUNNING_EXIT, handoff_training
+
+    binary, log = fake_app.install(tmp_path, monkeypatch, batch=True)
+    url = "http://127.0.0.1:8765/app/v1#token"
+    monkeypatch.setenv("FAKE_APP_TRAINING_EXIT", "0")
+    assert handoff_training(url, binary)[0] == "ok"
+    assert json.loads(log.read_text().splitlines()[-1]) == ["--training-session", url]
+    monkeypatch.setenv("FAKE_APP_TRAINING_EXIT", str(NOT_RUNNING_EXIT))
+    status, detail = handoff_training(url, binary)
+    assert status == "not_running" and "not running" in detail
+    monkeypatch.setenv("FAKE_APP_TRAINING_EXIT", "1")
+    assert handoff_training(url, binary)[0] == "failed"
+    monkeypatch.delenv("FAKE_APP_TRAINING_EXIT")
+    status, detail = handoff_training(url, binary)
+    assert status == "unsupported" and "too old" in detail
+    assert handoff_training(url, tmp_path / "nowhere")[0] == "missing"

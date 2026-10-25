@@ -12,14 +12,33 @@ import {
   FrameType,
   MAX_BLOCKS_PER_FRAME,
   MAX_DEVICE_NAME_BYTES,
+  MAX_MICROPHONE_NAME_BYTES,
   MAX_PLATFORM_BYTES,
+  MAX_PROMPT_ID_BYTES,
+  MAX_TRAINING_TEXT_BYTES,
   MAX_U32,
   RESULT_REASONS,
   SAMPLE_RATE,
   SESSION_ID_LEN,
+  TRAINING_CHECKS,
+  TRAINING_ID_LEN,
+  TRAINING_STYLES,
   type ResultReason,
+  type TrainingCheck,
+  type TrainingStyle,
 } from "./constants.ts";
 import { ProtocolError } from "./errors.ts";
+
+/** A sentence (or paragraph) of a training session: its prompt id and the text to read. */
+export interface TrainingItem {
+  prompt: string;
+  text: string;
+}
+
+/** The take just made of a prompt, and how the computer judged it. */
+export interface TrainingLast extends TrainingItem {
+  check: TrainingCheck;
+}
 
 /** Decrypted device frame payloads (Appendix C.2). */
 export type DevicePayload =
@@ -45,8 +64,33 @@ export type DevicePayload =
       durationMs: number;
     }
   | { type: "audio_cancel"; sessionId: Uint8Array }
+  | {
+      type: "audio_start_training";
+      sessionId: Uint8Array;
+      sampleRate: 16000;
+      codec: "pcm16";
+      /** The training session the prompt came from. */
+      training: Uint8Array;
+      /** The prompt this take is a reading of. */
+      prompt: string;
+      /** The microphone's name as the phone's browser reports it, when it is known. */
+      microphone?: string;
+    }
   | { type: "result"; sessionId: Uint8Array; ok: true }
-  | { type: "result"; sessionId: Uint8Array; ok: false; reason: ResultReason };
+  | { type: "result"; sessionId: Uint8Array; ok: false; reason: ResultReason }
+  | {
+      type: "training_prompt";
+      training: Uint8Array;
+      style: TrainingStyle;
+      /** Progress in this session's condition. */
+      done: number;
+      total: number;
+      /** What to read now; absent when the condition is complete. */
+      next?: TrainingItem;
+      /** The take just made; absent before the first. */
+      last?: TrainingLast;
+    }
+  | { type: "training_end"; training: Uint8Array };
 
 export type DevicePayloadType = DevicePayload["type"];
 
@@ -58,7 +102,10 @@ export const PAYLOAD_FRAME_TYPE: Record<DevicePayloadType, number> = {
   audio_chunk: FrameType.AudioChunk,
   audio_end: FrameType.AudioEnd,
   audio_cancel: FrameType.AudioCancel,
+  audio_start_training: FrameType.AudioStartTraining,
   result: FrameType.Result,
+  training_prompt: FrameType.TrainingPrompt,
+  training_end: FrameType.TrainingEnd,
 };
 
 /** Who may send each payload type. */
@@ -70,7 +117,10 @@ export const PAYLOAD_DIRECTION: Record<DevicePayloadType, "p2c" | "c2p"> = {
   audio_chunk: "p2c",
   audio_end: "p2c",
   audio_cancel: "p2c",
+  audio_start_training: "p2c",
   result: "c2p",
+  training_prompt: "c2p",
+  training_end: "c2p",
 };
 
 const TYPE_BY_FRAME = new Map<number, DevicePayloadType>(
@@ -106,6 +156,34 @@ function checkString(s: unknown, maxBytes: number, what: string): string {
   if (utf8Encode(s).length > maxBytes)
     bad(`${what} longer than ${maxBytes} bytes`);
   return s;
+}
+
+function checkTrainingId(id: Uint8Array): void {
+  if (!(id instanceof Uint8Array) || id.length !== TRAINING_ID_LEN)
+    bad("training must be 16 bytes");
+}
+
+/** A non-empty string of at most `maxBytes` UTF-8 bytes. */
+function checkNonEmpty(s: unknown, maxBytes: number, what: string): string {
+  checkString(s, maxBytes, what);
+  if ((s as string).length === 0) bad(`${what} must not be empty`);
+  return s as string;
+}
+
+function checkStyle(s: unknown): TrainingStyle {
+  if (!(TRAINING_STYLES as readonly unknown[]).includes(s))
+    bad("style must be normal or whisper");
+  return s as TrainingStyle;
+}
+
+function trainingItem(o: unknown, what: string): TrainingItem {
+  if (typeof o !== "object" || o === null || Array.isArray(o))
+    bad(`${what} must be an object`);
+  const r = o as Record<string, unknown>;
+  return {
+    prompt: checkNonEmpty(r.prompt, MAX_PROMPT_ID_BYTES, `${what}.prompt`),
+    text: checkNonEmpty(r.text, MAX_TRAINING_TEXT_BYTES, `${what}.text`),
+  };
 }
 
 function checkPcm(pcm: Uint8Array): void {
@@ -180,6 +258,55 @@ export function encodePayload(p: DevicePayload): {
     case "audio_cancel":
       checkSessionId(p.sessionId);
       return { frameType, bytes: json({ sessionId: b64uEncode(p.sessionId) }) };
+    case "audio_start_training":
+      checkSessionId(p.sessionId);
+      if (p.sampleRate !== SAMPLE_RATE || p.codec !== "pcm16")
+        bad("only 16 kHz pcm16 is supported");
+      checkTrainingId(p.training);
+      checkNonEmpty(p.prompt, MAX_PROMPT_ID_BYTES, "prompt");
+      if (p.microphone !== undefined)
+        checkNonEmpty(p.microphone, MAX_MICROPHONE_NAME_BYTES, "microphone");
+      return {
+        frameType,
+        bytes: json({
+          sessionId: b64uEncode(p.sessionId),
+          sampleRate: SAMPLE_RATE,
+          codec: "pcm16",
+          training: b64uEncode(p.training),
+          prompt: p.prompt,
+          microphone: p.microphone,
+        }),
+      };
+    case "training_prompt": {
+      checkTrainingId(p.training);
+      checkStyle(p.style);
+      checkU32(p.done, "done");
+      checkU32(p.total, "total");
+      const out: Record<string, unknown> = {
+        training: b64uEncode(p.training),
+        style: p.style,
+        done: p.done,
+        total: p.total,
+      };
+      if (p.next !== undefined) {
+        const next = trainingItem(p.next, "next");
+        out.next = { prompt: next.prompt, text: next.text };
+      }
+      if (p.last !== undefined) {
+        const last = trainingItem(p.last, "last");
+        if (!TRAINING_CHECKS.includes(p.last.check))
+          bad("last.check is not a known check");
+        out.last = {
+          prompt: last.prompt,
+          text: last.text,
+          check: p.last.check,
+        };
+      }
+      return { frameType, bytes: json(out) };
+    }
+    case "training_end":
+      checkTrainingId(p.training);
+      return { frameType, bytes: json({ training: b64uEncode(p.training) }) };
     case "result":
       checkSessionId(p.sessionId);
       if (p.ok === true)
@@ -212,6 +339,15 @@ function parseObject(bytes: Uint8Array): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     bad("not a JSON object");
   return value as Record<string, unknown>;
+}
+
+function trainingField(o: Record<string, unknown>): Uint8Array {
+  if (typeof o.training !== "string") bad("training missing");
+  try {
+    return b64uDecode(o.training, TRAINING_ID_LEN);
+  } catch {
+    return bad("training must be 16 bytes base64url");
+  }
 }
 
 function sessionIdField(o: Record<string, unknown>): Uint8Array {
@@ -276,6 +412,51 @@ export function decodePayload(
       };
     case "audio_cancel":
       return { type, sessionId: sessionIdField(o) };
+    case "audio_start_training": {
+      const sessionId = sessionIdField(o);
+      if (o.sampleRate !== SAMPLE_RATE || o.codec !== "pcm16")
+        bad("only 16 kHz pcm16 is supported");
+      const start: DevicePayload = {
+        type,
+        sessionId,
+        sampleRate: SAMPLE_RATE,
+        codec: "pcm16",
+        training: trainingField(o),
+        prompt: checkNonEmpty(o.prompt, MAX_PROMPT_ID_BYTES, "prompt"),
+      };
+      if (o.microphone !== undefined)
+        start.microphone = checkNonEmpty(
+          o.microphone,
+          MAX_MICROPHONE_NAME_BYTES,
+          "microphone",
+        );
+      return start;
+    }
+    case "training_prompt": {
+      const p: DevicePayload = {
+        type,
+        training: trainingField(o),
+        style: checkStyle(o.style),
+        done: checkU32(o.done, "done"),
+        total: checkU32(o.total, "total"),
+      };
+      if (o.next !== undefined) p.next = trainingItem(o.next, "next");
+      if (o.last !== undefined) {
+        const last = trainingItem(o.last, "last");
+        const check = (o.last as Record<string, unknown>).check;
+        if (typeof check !== "string") bad("last.check must be a string");
+        p.last = {
+          ...last,
+          // Forward compatibility, as with result reasons: a newer computer's check is "error".
+          check: (TRAINING_CHECKS as readonly string[]).includes(check)
+            ? (check as TrainingCheck)
+            : "error",
+        };
+      }
+      return p;
+    }
+    case "training_end":
+      return { type, training: trainingField(o) };
     case "result": {
       const sessionId = sessionIdField(o);
       if (o.ok === true) {

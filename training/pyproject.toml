@@ -15,6 +15,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "matplotlib>=3.10",
     "huggingface-hub>=1.0",
+    "mlflow>=3.17,<4",
 ]
 
 [project.scripts]

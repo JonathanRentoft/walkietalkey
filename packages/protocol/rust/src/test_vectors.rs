@@ -16,7 +16,10 @@ use crate::derive::{
 use crate::frame::{seal_frame_with_nonce, SealHeader};
 use crate::keys::{challenge_message, AgreementKeyPair, ChallengeLabel, SigningKeyPair};
 use crate::pairing::{encode_pairing_url, ComputerOs, PairingPayload};
-use crate::payload::{DevicePayload, ResultOutcome, ResultReason};
+use crate::payload::{
+    DevicePayload, ResultOutcome, ResultReason, TrainingCheck, TrainingItem, TrainingLast,
+    TrainingStyle,
+};
 use crate::sha256;
 
 pub fn hex(bytes: &[u8]) -> String {
@@ -99,6 +102,45 @@ pub fn describe_payload(p: &DevicePayload) -> Value {
         }),
         DevicePayload::AudioCancel { session_id } => {
             json!({"type": "audio_cancel", "sessionId": hex(session_id.as_bytes())})
+        }
+        DevicePayload::AudioStartTraining {
+            session_id,
+            training,
+            prompt,
+            microphone,
+        } => {
+            let mut out = json!({
+                "type": "audio_start_training", "sessionId": hex(session_id.as_bytes()), "sampleRate": 16000,
+                "codec": "pcm16", "training": hex(training.as_bytes()), "prompt": prompt
+            });
+            if let Some(m) = microphone {
+                out["microphone"] = json!(m);
+            }
+            out
+        }
+        DevicePayload::TrainingPrompt {
+            training,
+            style,
+            done,
+            total,
+            next,
+            last,
+        } => {
+            let mut out = json!({
+                "type": "training_prompt", "training": hex(training.as_bytes()), "style": style.as_str(),
+                "done": done, "total": total
+            });
+            if let Some(n) = next {
+                out["next"] = json!({"prompt": n.prompt, "text": n.text});
+            }
+            if let Some(l) = last {
+                out["last"] =
+                    json!({"prompt": l.prompt, "text": l.text, "check": l.check.as_str()});
+            }
+            out
+        }
+        DevicePayload::TrainingEnd { training } => {
+            json!({"type": "training_end", "training": hex(training.as_bytes())})
         }
         DevicePayload::Result {
             session_id,
@@ -448,6 +490,116 @@ pub fn generate() -> Value {
                 "frame": hex(&frame),
             }));
         }
+    }
+
+    // Training frames (PROTOCOL.md 8.4), added after the others so that every earlier vector
+    // keeps its nonce and bytes.
+    let training = SessionId::from_slice(&fixed("training")[..16]).unwrap();
+    let training_frames: Vec<(&str, &str, u64, DevicePayload)> = vec![
+        (
+            "audio_start_training",
+            "p2c",
+            9,
+            DevicePayload::AudioStartTraining {
+                session_id: session,
+                training,
+                prompt: "s0042".into(),
+                microphone: Some("iPhone-mikrofon".into()),
+            },
+        ),
+        (
+            "training_prompt first",
+            "c2p",
+            8,
+            DevicePayload::TrainingPrompt {
+                training,
+                style: TrainingStyle::Whisper,
+                done: 0,
+                total: 416,
+                next: Some(TrainingItem {
+                    prompt: "s0042".into(),
+                    text: "Vi merger PR'en, når buildet er grønt.".into(),
+                }),
+                last: None,
+            },
+        ),
+        (
+            "training_prompt after a quiet take",
+            "c2p",
+            9,
+            DevicePayload::TrainingPrompt {
+                training,
+                style: TrainingStyle::Whisper,
+                done: 1,
+                total: 416,
+                next: Some(TrainingItem {
+                    prompt: "s0043".into(),
+                    text: "Kan du deploye til staging?".into(),
+                }),
+                last: Some(TrainingLast {
+                    prompt: "s0042".into(),
+                    text: "Vi merger PR'en, når buildet er grønt.".into(),
+                    check: TrainingCheck::Quiet,
+                }),
+            },
+        ),
+        (
+            "training_prompt complete",
+            "c2p",
+            10,
+            DevicePayload::TrainingPrompt {
+                training,
+                style: TrainingStyle::Normal,
+                done: 208,
+                total: 208,
+                next: None,
+                last: Some(TrainingLast {
+                    prompt: "s1041".into(),
+                    text: "Jeg har fået influenza og ligger i sengen.".into(),
+                    check: TrainingCheck::Ok,
+                }),
+            },
+        ),
+        (
+            "training_end",
+            "c2p",
+            11,
+            DevicePayload::TrainingEnd { training },
+        ),
+    ];
+    for (name, dir, counter, p) in training_frames.iter() {
+        let (sender, recipient, key, sname, rname) = if *dir == "p2c" {
+            (phone_id, computer_id, &keys.p2c, "phone", "computer")
+        } else {
+            (computer_id, phone_id, &keys.c2p, "computer", "phone")
+        };
+        let plaintext = p.encode().unwrap();
+        let n = nonce(i);
+        i += 1;
+        let frame = seal_frame_with_nonce(
+            key,
+            &SealHeader {
+                frame_type: p.frame_type(),
+                sender,
+                recipient,
+                counter: *counter,
+            },
+            &plaintext,
+            &n,
+        )
+        .unwrap();
+        frames.push(json!({
+            "name": name,
+            "key": dir,
+            "sender": sname,
+            "recipient": rname,
+            "frameType": p.frame_type(),
+            "counter": counter.to_string(),
+            "nonce": hex(&n),
+            "decoded": describe_payload(p),
+            "plaintext": hex(&plaintext),
+            "frame": hex(&frame),
+        }));
     }
 
     // Invalid frames, derived from the audio_start frame (phone -> computer).

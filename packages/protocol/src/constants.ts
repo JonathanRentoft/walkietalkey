@@ -56,7 +56,12 @@ export const FrameType = {
   AudioChunk: 0x21,
   AudioEnd: 0x22,
   AudioCancel: 0x23,
+  /** A take for the fine-tuning workbench: audio_start plus the training session and prompt. */
+  AudioStartTraining: 0x24,
   Result: 0x30,
+  /** The sentence to read, only while a training session runs (spec 12.1, PRIV-05). */
+  TrainingPrompt: 0x31,
+  TrainingEnd: 0x32,
 } as const;
 export type FrameTypeValue = (typeof FrameType)[keyof typeof FrameType];
 
@@ -107,6 +112,25 @@ export const RESULT_REASONS = [
   "error",
 ] as const;
 export type ResultReason = (typeof RESULT_REASONS)[number];
+
+/** Training sessions (the fine-tuning workbench's phone takes, PROTOCOL.md 8.4). */
+export const TRAINING_ID_LEN = 16;
+export const MAX_PROMPT_ID_BYTES = 64;
+export const MAX_TRAINING_TEXT_BYTES = 4096;
+export const MAX_MICROPHONE_NAME_BYTES = 128;
+export const TRAINING_STYLES = ["normal", "whisper"] as const;
+export type TrainingStyle = (typeof TRAINING_STYLES)[number];
+/** How the computer judged the last take; a decoder maps any other value to "error". */
+export const TRAINING_CHECKS = [
+  "ok",
+  "quiet",
+  "clipped",
+  "short",
+  "silent",
+  "gaps",
+  "error",
+] as const;
+export type TrainingCheck = (typeof TRAINING_CHECKS)[number];
 
 export type Role = "owner" | "phone";
 export type Intent = "auth" | "create" | "join";

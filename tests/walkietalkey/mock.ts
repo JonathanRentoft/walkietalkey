@@ -30,6 +30,9 @@ export interface MockOptions {
   permissions?: Record<string, boolean>;
   /** Requests leave the permission as it was. */
   denyRequests?: boolean;
+  /** The microphone was answered before (run 5): macOS asks no more, only
+   *  System Settings can change it. */
+  micAnswered?: "denied" | "restricted";
   notification?: string;
   relay?: {
     enabled: boolean;
@@ -42,6 +45,8 @@ export interface MockOptions {
       last_seen_day?: number | null;
     }[];
     pairing_active: boolean;
+    /** Phones paired before v0.2.0 must pair again (run 5). */
+    pair_again?: boolean;
   };
   pairingExpiresInMs?: number;
   /** wt_mic_check_status (DESK-59): the silent-microphone notice. */
@@ -169,6 +174,7 @@ function mockBackend(options: MockOptions) {
         auto_update: true,
         update_channel: "stable",
         onboarding_resume_step: null,
+        phone_offer_pending: false,
       },
       options.wt ?? {},
     ),
@@ -184,12 +190,17 @@ function mockBackend(options: MockOptions) {
       suggestion: null,
       probing: false,
     },
-    relay: options.relay ?? {
-      enabled: true,
-      connected: true,
-      phones: [],
-      pairing_active: false,
-    },
+    relay: Object.assign(
+      {
+        enabled: true,
+        connected: true,
+        phones: [],
+        pairing_active: false,
+        pair_again: false,
+      },
+      options.relay ?? {},
+    ),
+    micAsked: false,
     history: options.history ?? [],
     keys: options.keys ?? [],
     restarts: 0,
@@ -207,6 +218,12 @@ function mockBackend(options: MockOptions) {
   } catch {
     state = freshState();
   }
+
+  /** wt_microphone_access (run 5): the three answers macOS knows. */
+  const micAccess = () =>
+    state.permissions.microphone
+      ? "granted"
+      : (options.micAnswered ?? (state.micAsked ? "denied" : "not_determined"));
 
   const calls: { cmd: string; args: any }[] = [];
   const callbacks = new Map<number, (data: any) => void>();
@@ -463,6 +480,7 @@ function mockBackend(options: MockOptions) {
     // Resets the app's own entry and shows macOS's dialog; trusted only once
     // the user switches it on (the tests do that with the permissions).
     wt_accessibility_repair: () => !!state.permissions.accessibility,
+    wt_microphone_access: () => micAccess(),
     wt_globe_key_status: () => state.globeKey,
     wt_globe_key_fix: () => {
       state.globeKey = { ...state.globeKey, usage: 0, needs_fix: false };
@@ -510,6 +528,9 @@ function mockBackend(options: MockOptions) {
       return null;
     },
     "plugin:macos-permissions|request_microphone_permission": () => {
+      // macOS asks only once (run 5): an answered question shows nothing.
+      if (micAccess() !== "not_determined") return null;
+      state.micAsked = true;
       if (!options.denyRequests) state.permissions.microphone = true;
       return null;
     },

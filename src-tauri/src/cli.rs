@@ -76,6 +76,13 @@ pub struct CliArgs {
     #[arg(long)]
     pub live: bool,
 
+    /// WalkieTalkey bench (run 5): pass each WAV of --transcribe-file or
+    /// --transcribe-list through the recorder's own silence removal first,
+    /// as a key recording is, then transcribe what it keeps. A phone
+    /// dictation, like a plain file, keeps its silence.
+    #[arg(long)]
+    pub key_recording: bool,
+
     /// WalkieTalkey end-to-end test (DESK-61): receive phone dictations
     /// headlessly. Prints the pairing URL as a JSON line, then each
     /// transcript, and exits after --count dictations.
@@ -97,4 +104,10 @@ pub struct CliArgs {
     /// Give up after this many seconds (--phone-receive, default 300).
     #[arg(long, value_name = "SECONDS")]
     pub timeout_secs: Option<u64>,
+
+    /// WalkieTalkey (training workbench): hand a `wt-train record` session to the
+    /// running app, which connects to the recorder on 127.0.0.1 (sent to the
+    /// running instance). Exits 3 when WalkieTalkey is not running.
+    #[arg(long, value_name = "URL")]
+    pub training_session: Option<String>,
 }

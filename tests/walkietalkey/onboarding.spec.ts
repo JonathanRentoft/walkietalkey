@@ -57,8 +57,9 @@ test.describe("onboarding", () => {
     expect((await mockState(page)).wt.onboarding_resume_step).toBe(
       "microphone",
     );
-    // Six steps on a Mac.
-    await expect(page.getByRole("list", { name: "Trin 2 af 6" })).toBeVisible();
+    // Five steps on a Mac until a dictation works; Telefon only comes after
+    // one (run 5).
+    await expect(page.getByRole("list", { name: "Trin 2 af 5" })).toBeVisible();
   });
 
   test("the model downloads in the background from the first launch and shows as one line", async ({
@@ -195,6 +196,35 @@ test.describe("onboarding", () => {
     await expect(heading(page, "Tilgængelighed")).toBeVisible();
   });
 
+  test("Mikrofon: answered no before (run 5), the one click opens the exact pane at once", async ({
+    page,
+  }) => {
+    await startAt(page, "microphone", { micAnswered: "denied" });
+    const button = page
+      .locator(".wt-onb-card")
+      .getByRole("button", { name: "Åbn Systemindstillinger" });
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect
+      .poll(async () =>
+        (await calls(page, "plugin:opener|open_url")).map((c) => c.args.url),
+      )
+      .toContain(MICROPHONE_PANE);
+    expect(await calls(page, "show_main_window_command")).toHaveLength(0);
+    // macOS would show nothing for a question it has had its answer to.
+    expect(
+      await calls(
+        page,
+        "plugin:macos-permissions|request_microphone_permission",
+      ),
+    ).toHaveLength(0);
+    await grant(page, "microphone");
+    await expect(heading(page, "Tilgængelighed")).toBeVisible();
+    expect(
+      (await calls(page, "show_main_window_command")).length,
+    ).toBeGreaterThan(0);
+  });
+
   test("Tilgængelighed: one button repairs a stale entry, opens the exact pane, and the grant moves on with no restart", async ({
     page,
   }) => {
@@ -228,10 +258,15 @@ test.describe("onboarding", () => {
     await expect(
       page.getByText("Slå WalkieTalkey til. Så går vi videre af os selv."),
     ).toBeVisible();
+    expect(await calls(page, "show_main_window_command")).toHaveLength(0);
     await grant(page, "accessibility");
     // "Tilgængelighed er slået til" shows for ADVANCE_DELAY_MS only, shorter than
     // Playwright's polling interval under load; the step moving on is what counts.
     await expect(heading(page, "Prøv det")).toBeVisible();
+    // Run 5: System Settings is in front now; WalkieTalkey comes back by itself.
+    expect(
+      (await calls(page, "show_main_window_command")).length,
+    ).toBeGreaterThan(0);
     const state = await mockState(page);
     expect(state.restarts).toBe(0);
   });
@@ -247,6 +282,7 @@ test.describe("onboarding", () => {
     await page.getByRole("button", { name: "Kom i gang" }).click();
     // Both permissions are already there: straight to Prøv det.
     await expect(heading(page, "Prøv det")).toBeVisible();
+    await emit(page, "wt-pill-end", { state: "pasted", shortcut: "⌘V" });
     await page.getByRole("button", { name: "Næste" }).click();
     await expect(heading(page, "Telefon")).toBeVisible();
     await page.getByRole("button", { name: "Spring over" }).click();
@@ -274,7 +310,7 @@ test.describe("onboarding", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Kom i gang" }).click();
     await expect(heading(page, "Prøv det")).toBeVisible();
-    await expect(page.getByRole("list", { name: "Trin 3 af 5" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Trin 3 af 4" })).toBeVisible();
     await expect(
       page.getByText(
         "Hold Ctrl nede og sig: Hej, det her er min første diktering.",
@@ -479,6 +515,113 @@ test.describe("onboarding", () => {
     ).toHaveCount(0);
   });
 
+  test("run 5: Telefon comes only after a dictation that worked", async ({
+    page,
+  }) => {
+    await startAt(page, "try", {
+      permissions: { microphone: true, accessibility: true },
+    });
+    await expect(page.getByRole("list", { name: "Trin 4 af 5" })).toBeVisible();
+    // Heard nothing: still no phone.
+    await emit(page, "wt-pill-end", { state: "no_speech", shortcut: "⌘V" });
+    await expect(page.getByRole("list", { name: "Trin 4 af 5" })).toBeVisible();
+    // It worked: Telefon is next.
+    await emit(page, "wt-pill-end", { state: "pasted", shortcut: "⌘V" });
+    await expect(page.getByRole("list", { name: "Trin 4 af 6" })).toBeVisible();
+    await page.getByRole("button", { name: "Næste" }).click();
+    await expect(heading(page, "Telefon")).toBeVisible();
+  });
+
+  test("run 5: without a dictation that worked, Prøv det goes on to Klar, and the main window offers pairing once after the first one", async ({
+    page,
+  }) => {
+    await startAt(page, "try", {
+      permissions: { microphone: true, accessibility: true },
+    });
+    await page.getByRole("button", { name: "Næste" }).click();
+    await expect(heading(page, "Klar")).toBeVisible();
+    expect(await calls(page, "wt_pairing_start")).toHaveLength(0);
+    await page.getByRole("button", { name: "Færdig" }).click();
+    await expect(page.getByRole("navigation")).toBeVisible();
+    expect((await mockState(page)).wt.phone_offer_pending).toBe(true);
+    const offer = page.getByText("Vil du også kunne tale ind i telefonen?");
+    // Not before a dictation has worked.
+    await page.waitForTimeout(300);
+    await expect(offer).toHaveCount(0);
+    await emit(page, "wt-pill-end", { state: "no_speech", shortcut: "⌘V" });
+    await page.waitForTimeout(200);
+    await expect(offer).toHaveCount(0);
+    await emit(page, "wt-pill-end", { state: "pasted", shortcut: "⌘V" });
+    await expect(offer).toBeVisible();
+    await page.getByRole("button", { name: "Par en telefon" }).first().click();
+    await expect(
+      page.getByRole("img", { name: "Kode til at parre en telefon" }),
+    ).toBeVisible();
+    // Offered once.
+    await expect
+      .poll(async () => (await mockState(page)).wt.phone_offer_pending)
+      .toBe(false);
+  });
+
+  test("run 5: Ikke nu ends the phone offer for good", async ({ page }) => {
+    await installMock(page, {
+      downloaded: [EDDA],
+      app: { selected_model: EDDA, onboarding_completed: true },
+      wt: { onboarding_resume_step: "finished", phone_offer_pending: true },
+      history: [
+        {
+          id: 1,
+          timestamp: Math.floor(Date.now() / 1000) - 60,
+          source: "tast",
+          text: "Hej, det her er min første diktering.",
+          cleaned: false,
+          cleanup: null,
+          has_audio: false,
+        },
+      ],
+    });
+    await page.goto("/");
+    // A dictation worked before this window opened (the history has one).
+    const offer = page.getByText("Vil du også kunne tale ind i telefonen?");
+    await expect(offer).toBeVisible();
+    await page.getByRole("button", { name: "Ikke nu" }).click();
+    await expect(offer).toHaveCount(0);
+    expect((await mockState(page)).wt.phone_offer_pending).toBe(false);
+    expect(await calls(page, "wt_pairing_start")).toHaveLength(0);
+  });
+
+  test("run 5: an updated Mac says once that the phone must pair again", async ({
+    page,
+  }) => {
+    await installMock(page, {
+      downloaded: [EDDA],
+      app: { selected_model: EDDA, onboarding_completed: true },
+      wt: { onboarding_resume_step: "finished" },
+      relay: {
+        enabled: true,
+        connected: false,
+        phones: [],
+        pairing_active: false,
+        pair_again: true,
+      },
+    });
+    await page.goto("/");
+    const notice = page.getByText(
+      "Telefonen skal parres igen efter opdateringen.",
+    );
+    await expect(notice).toBeVisible();
+    await page.getByRole("button", { name: "Ikke nu" }).click();
+    await expect(notice).toHaveCount(0);
+    // Under Telefon it stays until a phone is paired.
+    await page.getByRole("button", { name: "Telefon" }).click();
+    await expect(notice).toBeVisible();
+    // And the window does not say it again after a reload.
+    await page.reload();
+    await expect(page.getByRole("navigation")).toBeVisible();
+    await page.getByRole("button", { name: "Generelt" }).click();
+    await expect(notice).toHaveCount(0);
+  });
+
   test("Telefon shows the pairing code with a countdown, asks for notifications, and cancels the code on leaving", async ({
     page,
   }) => {
@@ -528,6 +671,8 @@ test.describe("onboarding", () => {
     const state = await mockState(page);
     expect(state.app.autostart_enabled).toBe(true);
     expect(state.wt.onboarding_resume_step).toBe("finished");
+    // Telefon was not shown, so pairing is offered after a dictation works.
+    expect(state.wt.phone_offer_pending).toBe(true);
   });
 
   test("a finished onboarding without a model yet stays finished", async ({

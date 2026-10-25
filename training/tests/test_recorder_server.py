@@ -1,28 +1,37 @@
-"""The recorder's local server: 127.0.0.1 only, the page, the takes API and its guards."""
+"""The recorder's local server: 127.0.0.1 only, the page and its API, and the app's API behind a
+per-session token."""
 
+import base64
 import json
 import threading
 import urllib.error
 import urllib.request
 
-import numpy as np
 import pytest
-import soundfile as sf
-from fake_audio import take
+from fake_audio import app_take, pcm16
+from wt_train.conditions import condition
 from wt_train.recorder import main as recorder_main
 from wt_train.recorder.server import HOST, STATIC, make_server
-from wt_train.recorder.takes import Takes
+from wt_train.recorder.session import Session
 from wt_train.sentences import Sentence
 
 ROWS = [
     Sentence("s0001", "Vi merger PR'en i dag.", "terms"),
     Sentence("s0002", "Det regner i Aarhus.", "plain"),
 ]
+TOKEN = "dGVzdC10b2tlbi1mb3ItdGhlLXJlY29yZGVyLWFwcA"
+PHONE = {"id": "cGhvbmUtaWQtMTIzNDU2Nw", "name": "Jonathans iPhone", "platform": "ios", "online": True}
+
+
+def make(tmp_path, cid="phone-whisper"):
+    texts = {s.id: s.text for s in ROWS}
+    session = Session(root=tmp_path / "recordings", condition=condition(cid), items=ROWS, texts=texts)
+    return make_server(session, token=TOKEN, port=0)
 
 
 @pytest.fixture
 def server(tmp_path):
-    srv = make_server(Takes(ROWS, tmp_path / "recordings"), port=0)
+    srv = make(tmp_path)
     thread = threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
     thread.start()
     yield srv
@@ -35,8 +44,7 @@ def url(srv, path: str) -> str:
 
 
 def request(srv, method: str, path: str, body: bytes | None = None, headers: dict | None = None):
-    base = {"X-WT-Recorder": "1"} if method == "POST" else {}
-    req = urllib.request.Request(url(srv, path), data=body, method=method, headers={**base, **(headers or {})})
+    req = urllib.request.Request(url(srv, path), data=body, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return r.status, r.headers, r.read()
@@ -44,12 +52,27 @@ def request(srv, method: str, path: str, body: bytes | None = None, headers: dic
         return e.code, e.headers, e.read()
 
 
-def float32(x: np.ndarray) -> bytes:
-    return x.astype("<f4").tobytes()
+def page(srv, method, path, body=b"", headers=None):
+    return request(srv, method, path, body if method == "POST" else None, {"X-WT-Recorder": "1", **(headers or {})})
 
 
-def speech(rate=48000) -> bytes:
-    return float32(take(rate, [("silence", 0.5), ("speech", 1.2), ("silence", 0.5)]))
+def app(srv, method, path, body=None, headers=None):
+    return request(srv, method, path, body, {"Authorization": f"Bearer {TOKEN}", **(headers or {})})
+
+
+def hello(srv, phones=(PHONE,)):
+    body = json.dumps({"app": "walkietalkey", "version": "0.3.0", "os": "mac", "phones": list(phones),
+                       "input": "MacBook Pro-mikrofon"}).encode()
+    return app(srv, "POST", "/app/v1/hello", body, {"Content-Type": "application/json"})
+
+
+def take_headers(meta: dict) -> dict:
+    encoded = base64.urlsafe_b64encode(json.dumps(meta).encode()).rstrip(b"=").decode()
+    return {"Content-Type": "application/octet-stream", "X-WT-Take": encoded}
+
+
+def good() -> bytes:
+    return pcm16(app_take([("silence", 0.5), ("speech", 2.0), ("silence", 0.4)], style="whisper")).tobytes()
 
 
 def test_binds_127_0_0_1_only(server):
@@ -62,14 +85,14 @@ def test_there_is_no_option_to_listen_elsewhere(capsys):
         recorder_main(["--help"])
     out = capsys.readouterr().out
     assert "--host" not in out and "--bind" not in out
-    assert "--port" in out and "--no-browser" in out
+    assert "--port" in out and "--no-browser" in out and "--condition" in out
 
 
 def test_serves_the_page_and_its_files(server):
     status, headers, body = request(server, "GET", "/")
     assert status == 200 and headers["Content-Type"].startswith("text/html")
     assert b'lang="da"' in body
-    for name, kind in [("app.js", "text/javascript"), ("capture-worklet.js", "text/javascript"), ("style.css", "text/css")]:
+    for name, kind in [("app.js", "text/javascript"), ("style.css", "text/css")]:
         status, headers, _ = request(server, "GET", f"/{name}")
         assert status == 200 and headers["Content-Type"].startswith(kind), name
 
@@ -84,64 +107,85 @@ def test_the_page_can_only_talk_to_this_server(server):
 
 @pytest.mark.parametrize(
     "path",
-    ["/../pyproject.toml", "/%2e%2e/pyproject.toml", "/static/../../pyproject.toml", "/nope.js", "/api/takes/s0001.txt"],
+    ["/../pyproject.toml", "/%2e%2e/pyproject.toml", "/static/../../pyproject.toml", "/nope.js",
+     "/api/takes/s0001.txt", "/api/takes/s0001.json", "/app/v1/nope"],
 )
 def test_nothing_else_is_served(server, path):
-    assert request(server, "GET", path)[0] == 404
+    assert request(server, "GET", path, headers={"Authorization": f"Bearer {TOKEN}"})[0] == 404
 
 
-def test_state_lists_the_sentences_and_where_to_resume(server):
-    status, _, body = request(server, "GET", "/api/state")
-    state = json.loads(body)
-    assert status == 200
-    assert state["total"] == 2 and state["recorded"] == 0 and state["first_open"] == 0
-    assert state["sentences"][0] == {"id": "s0001", "text": "Vi merger PR'en i dag.", "kind": "terms", "status": "missing"}
+def test_the_app_api_needs_the_token(server):
+    assert request(server, "POST", "/app/v1/hello", b"{}")[0] == 401
+    assert request(server, "POST", "/app/v1/hello", b"{}", {"Authorization": "Bearer nope"})[0] == 401
+    assert request(server, "GET", "/app/v1/next?after=0", headers={"Authorization": f"Bearer {TOKEN}x"})[0] == 401
 
 
-def test_a_take_is_processed_saved_and_played_back(server, tmp_path):
-    status, _, body = request(server, "POST", "/api/takes/s0001?rate=48000", speech())
+def test_browsers_cannot_use_the_app_api(server):
+    # A web page in the browser always sends an Origin; the app never does.
+    status, _, _ = app(server, "POST", "/app/v1/hello", b"{}", {"Origin": f"http://127.0.0.1:{server.server_address[1]}"})
+    assert status == 403
+    assert app(server, "POST", "/app/v1/hello", b"{}", {"Host": "evil.example"})[0] == 403
+
+
+def test_hello_then_the_first_prompt(server):
+    status, _, body = hello(server)
+    answer = json.loads(body)
+    assert status == 200 and answer["device"] == "phone" and answer["phone"] == PHONE["id"]
+    status, _, body = app(server, "GET", "/app/v1/next?after=0&wait=0")
+    cmds = json.loads(body)["commands"]
+    assert cmds[0]["type"] == "prompt" and cmds[0]["next"]["prompt"] == "s0001"
+
+
+def test_no_phone_is_a_clear_refusal(server):
+    status, _, body = hello(server, phones=())
+    assert status == 409 and json.loads(body)["error"] == "no_phone"
+
+
+def test_a_take_is_checked_saved_and_played_back(server, tmp_path):
+    hello(server)
+    meta = {"prompt": "s0001", "source": "phone", "session": "c2Vzc2lvbi1pZC0xMjM0NQ", "chunks": 12,
+            "missing": 0, "microphone": "iPhone-mikrofon", "phone": PHONE["id"]}
+    status, _, body = app(server, "POST", "/app/v1/takes", good(), take_headers(meta))
     result = json.loads(body)
-    assert status == 200, result
-    assert result["id"] == "s0001" and result["status"] == "recorded" and result["replaced"] is False
-    assert result["seconds"] == pytest.approx(1.2 + 0.35, abs=0.05)
-    wav = tmp_path / "recordings" / "s0001.wav"
-    assert sf.info(str(wav)).samplerate == 16000
-    state = json.loads(request(server, "GET", "/api/state")[2])
-    assert state["recorded"] == 1 and state["first_open"] == 1
+    assert status == 200 and result["saved"] and result["check"] == "ok"
+    wav = tmp_path / "recordings" / "phone-whisper" / "s0001.wav"
+    assert wav.is_file()
+    state = json.loads(page(server, "GET", "/api/state")[2])
+    assert state["session"]["done"] == 1 and state["session"]["index"] == 1
     status, headers, audio = request(server, "GET", "/api/takes/s0001.wav")
     assert status == 200 and headers["Content-Type"] == "audio/wav" and audio == wav.read_bytes()
-    # A redo replaces it and keeps the old one.
-    result = json.loads(request(server, "POST", "/api/takes/s0001?rate=44100", speech(44100))[2])
-    assert result["replaced"] is True
-    assert len(list((tmp_path / "recordings" / ".replaced").glob("s0001.*.wav"))) == 1
 
 
-def test_a_silent_take_is_refused_and_nothing_is_saved(server, tmp_path):
-    status, _, body = request(server, "POST", "/api/takes/s0001?rate=48000", float32(np.zeros(96000)))
-    assert status == 422 and json.loads(body)["error"] == "silent"
-    assert not (tmp_path / "recordings" / "s0001.wav").exists()
-
-
-def test_warnings_come_back_with_the_take(server):
-    loud = np.clip(take(48000, [("silence", 0.3), ("speech", 1.0), ("silence", 0.3)], speech_dbfs=-3) * 3, -1, 1)
-    result = json.loads(request(server, "POST", "/api/takes/s0002?rate=48000", float32(loud))[2])
-    assert result["warnings"] == ["clipping"]
-
-
-@pytest.mark.parametrize("path", ["/api/takes/s9999?rate=48000", "/api/takes/..%2Fx?rate=48000", "/api/takes/?rate=48000"])
-def test_only_ids_from_the_csv(server, path, tmp_path):
-    assert request(server, "POST", path, speech())[0] == 404
-    assert not (tmp_path / "x.wav").exists()
-
-
-@pytest.mark.parametrize("query", ["", "?rate=abc", "?rate=1000"])
-def test_needs_a_sample_rate(server, query):
-    assert request(server, "POST", f"/api/takes/s0001{query}", speech())[0] == 400
+def test_a_take_needs_its_metadata_and_whole_samples(server):
+    hello(server)
+    assert app(server, "POST", "/app/v1/takes", good(), {"Content-Type": "application/octet-stream"})[0] == 400
+    meta = take_headers({"prompt": "s0001", "source": "phone"})
+    assert app(server, "POST", "/app/v1/takes", good() + b"x", meta)[0] == 400
 
 
 def test_refuses_takes_that_are_too_long(server):
-    status, _, _ = request(server, "POST", "/api/takes/s0001?rate=48000", b"", {"Content-Length": str(10**9)})
-    assert status == 413
+    hello(server)
+    headers = {**take_headers({"prompt": "s0001", "source": "phone"}), "Content-Length": str(10**9)}
+    assert app(server, "POST", "/app/v1/takes", b"", headers)[0] == 413
+
+
+def test_the_long_poll_returns_when_the_page_moves(server):
+    hello(server)
+    seq = json.loads(app(server, "GET", "/app/v1/next?after=0&wait=0")[2])["commands"][-1]["seq"]
+    got = {}
+    t = threading.Thread(target=lambda: got.update(json.loads(app(server, "GET", f"/app/v1/next?after={seq}")[2])))
+    t.start()
+    assert page(server, "POST", "/api/next")[0] == 200
+    t.join(5)
+    assert got["commands"][0]["next"]["prompt"] == "s0002"
+
+
+def test_events_reach_the_page(server):
+    hello(server)
+    body = json.dumps({"type": "phone", "id": PHONE["id"], "online": False}).encode()
+    assert app(server, "POST", "/app/v1/events", body, {"Content-Type": "application/json"})[0] == 200
+    state = json.loads(page(server, "GET", "/api/state")[2])
+    assert state["session"]["phone"]["online"] is False
 
 
 @pytest.mark.parametrize(
@@ -152,9 +196,9 @@ def test_refuses_takes_that_are_too_long(server):
         {"Host": "evil.example:80"},  # DNS rebinding
     ],
 )
-def test_requests_from_other_pages_are_refused(server, headers, tmp_path):
-    assert request(server, "POST", "/api/takes/s0001?rate=48000", speech(), headers)[0] == 403
-    assert not (tmp_path / "recordings" / "s0001.wav").exists()
+def test_page_posts_from_other_pages_are_refused(server, headers):
+    hello(server)
+    assert page(server, "POST", "/api/next", b"", headers)[0] == 403
 
 
 def test_reads_from_other_hosts_are_refused(server):
@@ -163,6 +207,23 @@ def test_reads_from_other_hosts_are_refused(server):
 
 def test_the_page_may_be_opened_as_localhost(server):
     port = server.server_address[1]
-    status, _, _ = request(server, "POST", "/api/takes/s0001?rate=48000", speech(),
-                           {"Host": f"localhost:{port}", "Origin": f"http://localhost:{port}"})  # fmt: skip
+    status, _, _ = page(server, "POST", "/api/next", b"",
+                        {"Host": f"localhost:{port}", "Origin": f"http://localhost:{port}"})  # fmt: skip
     assert status == 200
+
+
+def test_the_page_starts_and_stops_a_mac_take(tmp_path):
+    srv = make(tmp_path, "mac-normal")
+    thread = threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
+    thread.start()
+    try:
+        hello(srv, phones=())
+        assert page(srv, "POST", "/api/mac/start")[0] == 200
+        cmds = json.loads(app(srv, "GET", "/app/v1/next?after=0&wait=0")[2])["commands"]
+        assert cmds[-1]["type"] == "mac_start" and cmds[-1]["prompt"] == "s0001"
+        assert page(srv, "POST", "/api/mac/stop")[0] == 200
+        cmds = json.loads(app(srv, "GET", f"/app/v1/next?after={cmds[-1]['seq']}&wait=0")[2])["commands"]
+        assert cmds[-1]["type"] == "mac_stop"
+    finally:
+        srv.shutdown()
+        srv.server_close()

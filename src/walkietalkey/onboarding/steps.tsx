@@ -13,14 +13,17 @@ import {
 } from "@walkietalkey/ui";
 import { commands } from "@/bindings";
 import { useSettingsStore } from "@/stores/settingsStore";
-import type { WtPlatform } from "../lib/helpers";
+import { dictationWorked, type WtPlatform } from "../lib/helpers";
 import { useTauriEvent } from "../lib/hooks";
 import {
+  comeBack,
   hasPermission,
+  microphoneAccess,
   openSettingsPage,
   repairAccessibilityAndOpenPane,
   requestPermission,
   windowsMicrophoneAllowed,
+  type MicAccess,
 } from "../lib/system";
 import type { PillEndEvent } from "../lib/types";
 import { rememberAccessGranted } from "../ui/accessNotice";
@@ -49,18 +52,18 @@ function StepTitle(props: { children: ReactNode }) {
   );
 }
 
-/** Polls a permission while the step is shown, because macOS grants arrive
+/** Polls a value while the step is shown, because macOS grants arrive
  *  from System Settings without telling the app. */
-function usePermission(check: () => Promise<boolean>, active = true) {
-  const [granted, setGranted] = useState<boolean | null>(null);
+function usePolled<T>(check: () => Promise<T>, active = true) {
+  const [value, setValue] = useState<T | null>(null);
   const checkRef = useRef(check);
   checkRef.current = check;
   useEffect(() => {
     if (!active) return;
     let stop = false;
     const tick = async () => {
-      const g = await checkRef.current();
-      if (!stop) setGranted(g);
+      const v = await checkRef.current();
+      if (!stop) setValue(v);
     };
     void tick();
     const id = setInterval(tick, PERMISSION_POLL_MS);
@@ -69,7 +72,11 @@ function usePermission(check: () => Promise<boolean>, active = true) {
       clearInterval(id);
     };
   }, [active]);
-  return [granted, setGranted] as const;
+  return [value, setValue] as const;
+}
+
+function usePermission(check: () => Promise<boolean>, active = true) {
+  return usePolled(check, active);
 }
 
 /** Moves on once a permission turns granted while the step is shown. A
@@ -85,6 +92,7 @@ function useAdvanceOnGrant(granted: boolean | null, onGranted: () => void) {
       return;
     }
     if (!granted || first.current) return;
+    comeBack();
     const id = setTimeout(() => next.current(), ADVANCE_DELAY_MS);
     return () => clearTimeout(id);
   }, [granted]);
@@ -123,22 +131,32 @@ export function MicrophoneStep(props: {
 }) {
   const { t } = useTranslation();
   const mac = props.platform === "macos";
-  const [granted, setGranted] = usePermission(() =>
-    mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
+  const [access, setAccess] = usePolled<MicAccess>(async () =>
+    mac
+      ? microphoneAccess()
+      : (await windowsMicrophoneAllowed())
+        ? "granted"
+        : "denied",
   );
+  const granted = access === null ? null : access === "granted";
   const [asked, setAsked] = useState(false);
   useAdvanceOnGrant(granted, props.onGranted);
+  // macOS asks only once; after a no, the pane is the only way (run 5).
+  const settingsOnly = access === "denied" || access === "restricted";
 
-  // One button: the first press shows macOS's own question; if macOS has
-  // been answered before, it opens the exact pane instead.
+  // One button, one click: macOS's own question while it has never been
+  // answered, else the exact pane at once.
   const allow = async () => {
+    setAsked(true);
     if (!mac) {
       await commands.openMicrophonePrivacySettings().catch(() => {});
       return;
     }
-    if (!asked) {
-      setAsked(true);
-      setGranted(await requestPermission("microphone"));
+    const now = await microphoneAccess();
+    const ask = now === "not_determined" || (now === "unknown" && !asked);
+    if (ask) {
+      await requestPermission("microphone");
+      setAccess(await microphoneAccess());
       void useSettingsStore.getState().refreshAudioDevices();
     } else {
       await openSettingsPage("microphone");
@@ -164,7 +182,7 @@ export function MicrophoneStep(props: {
           <Button variant="primary" onClick={() => void allow()}>
             {!mac
               ? t("wt.onboarding.microphone.openSettingsWindows")
-              : asked
+              : settingsOnly || (access === "unknown" && asked)
                 ? t("wt.onboarding.microphone.openSettings")
                 : t("wt.onboarding.microphone.allow")}
           </Button>
@@ -269,7 +287,11 @@ function useKeyListener(): boolean | null {
   return running;
 }
 
-export function TryStep(props: { platform: WtPlatform }) {
+export function TryStep(props: {
+  platform: WtPlatform;
+  /** A dictation worked (run 5: Telefon comes only after one). */
+  onDictated?: () => void;
+}) {
   const { t } = useTranslation();
   const key = useKeyName(props.platform);
   const binding = useBinding(props.platform);
@@ -286,7 +308,12 @@ export function TryStep(props: { platform: WtPlatform }) {
     // once Accessibility is granted and reports wt-key-listener).
     void commands.initializeEnigo().catch(() => {});
   }, []);
-  useTauriEvent<PillEndEvent>("wt-pill-end", setEnd);
+  const onDictated = useRef(props.onDictated);
+  onDictated.current = props.onDictated;
+  useTauriEvent<PillEndEvent>("wt-pill-end", (e) => {
+    setEnd(e);
+    if (dictationWorked(e?.state)) onDictated.current?.();
+  });
   useTauriEvent<boolean>("wt-key-state", (d) => {
     setDown(!!d);
     if (d) setEnd(null);

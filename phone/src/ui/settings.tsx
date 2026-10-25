@@ -233,7 +233,7 @@ export function NoticeDialog(props: {
             className="wt-pill-btn wt-pill-btn--ink"
             onClick={props.onPair}
           >
-            {T.pairTitle}
+            {T.pairAgain}
           </button>
           <button type="button" className="wt-pill-btn" onClick={props.onClose}>
             {T.ok}

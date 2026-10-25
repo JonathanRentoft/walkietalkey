@@ -27,6 +27,12 @@ def write_wav(path: Path, seed: int, seconds: float = 0.5, rate: int = 16000, ch
     return path
 
 
+@pytest.fixture(autouse=True)
+def untracked(monkeypatch):
+    """No test writes an MLflow store unless it asks for one (test_tracking*.py, test_journal.py)."""
+    monkeypatch.setenv("WT_TRACKING", "0")
+
+
 @pytest.fixture
 def make_wav():
     return write_wav

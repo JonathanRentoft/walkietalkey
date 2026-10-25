@@ -63,6 +63,8 @@ export interface RecorderLike {
   stop(): Promise<void>;
   /** Ends the dictation without delivering anything more. The microphone stays open. */
   abort(): void;
+  /** The open microphone's name as the browser reports it (for training takes), if known. */
+  microphoneName?(): string | null;
 }
 
 type AudioContextCtor = typeof AudioContext;
@@ -187,6 +189,12 @@ export class Recorder implements RecorderLike {
     this.giveUp?.();
     this.giveUp = null;
     this.capture?.sink.drop();
+  }
+
+  /** The open microphone's track label (for example "iPhone-mikrofon" or "AirPods"). */
+  microphoneName(): string | null {
+    const track = this.capture?.stream.getAudioTracks()[0];
+    return track?.label || null;
   }
 
   /** The open microphone, opening it once if needed. */

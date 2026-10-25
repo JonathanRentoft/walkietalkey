@@ -10,13 +10,16 @@ import importlib
 import sys
 
 STEPS = {
-    "record": ("wt_train.recorder", "read the sentences aloud in the browser"),
+    "plan": ("wt_train.plan", "give every sentence its recording condition"),
+    "record": ("wt_train.recorder", "record the sentences through the app, on the phone or the Mac"),
     "fetch": ("wt_train.fleurs", "download FLEURS da_dk train and test"),
     "build": ("wt_train.dataset", "build train/validation/test splits"),
     "train": ("wt_train.train", "train a LoRA adapter from a YAML config"),
     "eval": ("wt_train.evaluate", "score a model and append to results.csv"),
     "export": ("wt_train.export", "merge, convert to GGUF Q8_0 and install in the app"),
     "smoke": ("wt_train.smoke", "run the whole chain on 20 FLEURS clips"),
+    "ui": ("wt_train.ui", "open the MLflow UI for the tracked runs"),
+    "card": ("wt_train.journal", "write a lab-journal page for a run"),
 }
 
 

@@ -47,6 +47,84 @@ pub enum ResultOutcome {
     Failed(ResultReason),
 }
 
+/// How a training take is spoken (the session's condition, with the device).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TrainingStyle {
+    Normal,
+    Whisper,
+}
+
+impl TrainingStyle {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TrainingStyle::Normal => "normal",
+            TrainingStyle::Whisper => "whisper",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "normal" => Some(TrainingStyle::Normal),
+            "whisper" => Some(TrainingStyle::Whisper),
+            _ => None,
+        }
+    }
+}
+
+/// How the computer judged a training take (shown on the phone with a redo).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TrainingCheck {
+    Ok,
+    Quiet,
+    Clipped,
+    Short,
+    Silent,
+    Gaps,
+    Error,
+}
+
+impl TrainingCheck {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TrainingCheck::Ok => "ok",
+            TrainingCheck::Quiet => "quiet",
+            TrainingCheck::Clipped => "clipped",
+            TrainingCheck::Short => "short",
+            TrainingCheck::Silent => "silent",
+            TrainingCheck::Gaps => "gaps",
+            TrainingCheck::Error => "error",
+        }
+    }
+
+    /// Unknown checks from a newer peer read as `Error`.
+    pub fn parse_lenient(s: &str) -> Self {
+        match s {
+            "ok" => TrainingCheck::Ok,
+            "quiet" => TrainingCheck::Quiet,
+            "clipped" => TrainingCheck::Clipped,
+            "short" => TrainingCheck::Short,
+            "silent" => TrainingCheck::Silent,
+            "gaps" => TrainingCheck::Gaps,
+            _ => TrainingCheck::Error,
+        }
+    }
+}
+
+/// A sentence (or paragraph) of a training session: its prompt id and the text to read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TrainingItem {
+    pub prompt: String,
+    pub text: String,
+}
+
+/// The take just made of a prompt, and how the computer judged it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrainingLast {
+    pub prompt: String,
+    pub text: String,
+    pub check: TrainingCheck,
+}
+
 /// Which way a payload type travels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
@@ -81,9 +159,31 @@ pub enum DevicePayload {
     AudioCancel {
         session_id: SessionId,
     },
+    /// audio_start for a training take; `training` is the session's id (16 random bytes, like
+    /// a session id), `prompt` the prompt this take reads, and `microphone` the phone's
+    /// microphone as its browser names it, when known.
+    AudioStartTraining {
+        session_id: SessionId,
+        training: SessionId,
+        prompt: String,
+        microphone: Option<String>,
+    },
     Result {
         session_id: SessionId,
         outcome: ResultOutcome,
+    },
+    TrainingPrompt {
+        training: SessionId,
+        style: TrainingStyle,
+        done: u32,
+        total: u32,
+        /// What to read now; `None` when the session's condition is complete.
+        next: Option<TrainingItem>,
+        /// The take just made; `None` before the first.
+        last: Option<TrainingLast>,
+    },
+    TrainingEnd {
+        training: SessionId,
     },
 }
 
@@ -94,8 +194,11 @@ pub fn direction_of(frame_type: u8) -> Option<Direction> {
         | ft::AUDIO_START
         | ft::AUDIO_CHUNK
         | ft::AUDIO_END
-        | ft::AUDIO_CANCEL => Some(Direction::PhoneToComputer),
-        ft::PRESENCE | ft::RESULT => Some(Direction::ComputerToPhone),
+        | ft::AUDIO_CANCEL
+        | ft::AUDIO_START_TRAINING => Some(Direction::PhoneToComputer),
+        ft::PRESENCE | ft::RESULT | ft::TRAINING_PROMPT | ft::TRAINING_END => {
+            Some(Direction::ComputerToPhone)
+        }
         _ => None,
     }
 }
@@ -109,6 +212,18 @@ fn check_str(s: &str, max: usize, what: &str) -> Result<()> {
         return bad(format!("{what} longer than {max} bytes"));
     }
     Ok(())
+}
+
+fn check_non_empty(s: &str, max: usize, what: &str) -> Result<()> {
+    if s.is_empty() {
+        return bad(format!("{what} must not be empty"));
+    }
+    check_str(s, max, what)
+}
+
+fn check_item(prompt: &str, text: &str, what: &str) -> Result<()> {
+    check_non_empty(prompt, MAX_PROMPT_ID_BYTES, &format!("{what}.prompt"))?;
+    check_non_empty(text, MAX_TRAINING_TEXT_BYTES, &format!("{what}.text"))
 }
 
 fn check_pcm(pcm: &[u8]) -> Result<()> {
@@ -165,6 +280,42 @@ struct SessionOnlyJson {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct AudioStartTrainingJson<'a> {
+    session_id: SessionId,
+    sample_rate: u32,
+    codec: &'static str,
+    training: SessionId,
+    prompt: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    microphone: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+struct TrainingLastJson<'a> {
+    prompt: &'a str,
+    text: &'a str,
+    check: &'static str,
+}
+
+#[derive(Serialize)]
+struct TrainingPromptJson<'a> {
+    training: SessionId,
+    style: &'static str,
+    done: u32,
+    total: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next: Option<&'a TrainingItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last: Option<TrainingLastJson<'a>>,
+}
+
+#[derive(Serialize)]
+struct TrainingOnlyJson {
+    training: SessionId,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ResultJson {
     session_id: SessionId,
     ok: bool,
@@ -182,7 +333,10 @@ impl DevicePayload {
             DevicePayload::AudioChunk { .. } => ft::AUDIO_CHUNK,
             DevicePayload::AudioEnd { .. } => ft::AUDIO_END,
             DevicePayload::AudioCancel { .. } => ft::AUDIO_CANCEL,
+            DevicePayload::AudioStartTraining { .. } => ft::AUDIO_START_TRAINING,
             DevicePayload::Result { .. } => ft::RESULT,
+            DevicePayload::TrainingPrompt { .. } => ft::TRAINING_PROMPT,
+            DevicePayload::TrainingEnd { .. } => ft::TRAINING_END,
         }
     }
 
@@ -234,6 +388,55 @@ impl DevicePayload {
             }),
             DevicePayload::AudioCancel { session_id } => to_json(&SessionOnlyJson {
                 session_id: *session_id,
+            }),
+            DevicePayload::AudioStartTraining {
+                session_id,
+                training,
+                prompt,
+                microphone,
+            } => {
+                check_non_empty(prompt, MAX_PROMPT_ID_BYTES, "prompt")?;
+                if let Some(m) = microphone {
+                    check_non_empty(m, MAX_MICROPHONE_NAME_BYTES, "microphone")?;
+                }
+                to_json(&AudioStartTrainingJson {
+                    session_id: *session_id,
+                    sample_rate: SAMPLE_RATE,
+                    codec: "pcm16",
+                    training: *training,
+                    prompt,
+                    microphone: microphone.as_deref(),
+                })
+            }
+            DevicePayload::TrainingPrompt {
+                training,
+                style,
+                done,
+                total,
+                next,
+                last,
+            } => {
+                if let Some(n) = next {
+                    check_item(&n.prompt, &n.text, "next")?;
+                }
+                if let Some(l) = last {
+                    check_item(&l.prompt, &l.text, "last")?;
+                }
+                to_json(&TrainingPromptJson {
+                    training: *training,
+                    style: style.as_str(),
+                    done: *done,
+                    total: *total,
+                    next: next.as_ref(),
+                    last: last.as_ref().map(|l| TrainingLastJson {
+                        prompt: &l.prompt,
+                        text: &l.text,
+                        check: l.check.as_str(),
+                    }),
+                })
+            }
+            DevicePayload::TrainingEnd { training } => to_json(&TrainingOnlyJson {
+                training: *training,
             }),
             DevicePayload::Result {
                 session_id,
@@ -312,6 +515,73 @@ impl DevicePayload {
             ft::AUDIO_CANCEL => DevicePayload::AudioCancel {
                 session_id: session_field(&o)?,
             },
+            ft::AUDIO_START_TRAINING => {
+                let session_id = session_field(&o)?;
+                let rate_ok = matches!(o.get("sampleRate").and_then(as_uint), Some(r) if r == SAMPLE_RATE as u64);
+                let codec_ok = o.get("codec").and_then(Value::as_str) == Some("pcm16");
+                if !rate_ok || !codec_ok {
+                    return bad("only 16 kHz pcm16 is supported");
+                }
+                let training = training_field(&o)?;
+                let prompt = str_field(&o, "prompt")?;
+                check_non_empty(&prompt, MAX_PROMPT_ID_BYTES, "prompt")?;
+                let microphone = match o.get("microphone") {
+                    None => None,
+                    Some(Value::String(m)) => {
+                        check_non_empty(m, MAX_MICROPHONE_NAME_BYTES, "microphone")?;
+                        Some(m.clone())
+                    }
+                    Some(_) => return bad("microphone must be a string"),
+                };
+                DevicePayload::AudioStartTraining {
+                    session_id,
+                    training,
+                    prompt,
+                    microphone,
+                }
+            }
+            ft::TRAINING_PROMPT => {
+                let training = training_field(&o)?;
+                let style = o
+                    .get("style")
+                    .and_then(Value::as_str)
+                    .and_then(TrainingStyle::parse)
+                    .ok_or_else(|| {
+                        ProtocolError::BadPayload("style must be normal or whisper".into())
+                    })?;
+                let done = u32_field(&o, "done")?;
+                let total = u32_field(&o, "total")?;
+                let next = match o.get("next") {
+                    None => None,
+                    Some(v) => Some(item_field(v, "next")?),
+                };
+                let last = match o.get("last") {
+                    None => None,
+                    Some(v) => {
+                        let item = item_field(v, "last")?;
+                        let check = match v.get("check") {
+                            Some(Value::String(c)) => TrainingCheck::parse_lenient(c),
+                            _ => return bad("last.check must be a string"),
+                        };
+                        Some(TrainingLast {
+                            prompt: item.prompt,
+                            text: item.text,
+                            check,
+                        })
+                    }
+                };
+                DevicePayload::TrainingPrompt {
+                    training,
+                    style,
+                    done,
+                    total,
+                    next,
+                    last,
+                }
+            }
+            ft::TRAINING_END => DevicePayload::TrainingEnd {
+                training: training_field(&o)?,
+            },
             ft::RESULT => {
                 let session_id = session_field(&o)?;
                 match o.get("ok") {
@@ -371,6 +641,24 @@ fn u32_field(o: &Map<String, Value>, key: &str) -> Result<u32> {
         .and_then(as_uint)
         .and_then(|u| u32::try_from(u).ok())
         .ok_or_else(|| ProtocolError::BadPayload(format!("{key} must be a uint32")))
+}
+
+fn training_field(o: &Map<String, Value>) -> Result<SessionId> {
+    match o.get("training") {
+        Some(Value::String(s)) => SessionId::from_b64u(s)
+            .map_err(|_| ProtocolError::BadPayload("training must be 16 bytes".into())),
+        _ => bad("training missing"),
+    }
+}
+
+fn item_field(v: &Value, what: &str) -> Result<TrainingItem> {
+    let Value::Object(o) = v else {
+        return bad(format!("{what} must be an object"));
+    };
+    let prompt = str_field(o, "prompt")?;
+    let text = str_field(o, "text")?;
+    check_item(&prompt, &text, what)?;
+    Ok(TrainingItem { prompt, text })
 }
 
 fn session_field(o: &Map<String, Value>) -> Result<SessionId> {
@@ -441,6 +729,189 @@ mod tests {
             assert_eq!(std::str::from_utf8(&bytes).unwrap(), json);
             assert_eq!(DevicePayload::decode(p.frame_type(), &bytes).unwrap(), p);
         }
+    }
+
+    #[test]
+    fn training_payloads_match_typescript() {
+        // PROTOCOL.md 8.4: the same bytes as packages/protocol/test/training.test.ts.
+        let sid = SessionId([0xab; 16]);
+        let tid = SessionId([0xcd; 16]);
+        let (s, t) = (sid.to_b64u(), tid.to_b64u());
+        let cases = vec![
+            (
+                DevicePayload::AudioStartTraining {
+                    session_id: sid,
+                    training: tid,
+                    prompt: "s0042".into(),
+                    microphone: Some("iPhone-mikrofon".into()),
+                },
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"s0042","microphone":"iPhone-mikrofon"}}"#
+                ),
+            ),
+            (
+                DevicePayload::AudioStartTraining {
+                    session_id: sid,
+                    training: tid,
+                    prompt: "e01".into(),
+                    microphone: None,
+                },
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"e01"}}"#
+                ),
+            ),
+            (
+                DevicePayload::TrainingPrompt {
+                    training: tid,
+                    style: TrainingStyle::Whisper,
+                    done: 12,
+                    total: 416,
+                    next: Some(TrainingItem {
+                        prompt: "s0043".into(),
+                        text: "Vi merger PR'en, når buildet er grønt.".into(),
+                    }),
+                    last: Some(TrainingLast {
+                        prompt: "s0042".into(),
+                        text: "Kan du deploye til staging?".into(),
+                        check: TrainingCheck::Quiet,
+                    }),
+                },
+                format!(
+                    r#"{{"training":"{t}","style":"whisper","done":12,"total":416,"next":{{"prompt":"s0043","text":"Vi merger PR'en, når buildet er grønt."}},"last":{{"prompt":"s0042","text":"Kan du deploye til staging?","check":"quiet"}}}}"#
+                ),
+            ),
+            (
+                DevicePayload::TrainingPrompt {
+                    training: tid,
+                    style: TrainingStyle::Normal,
+                    done: 0,
+                    total: 3,
+                    next: None,
+                    last: None,
+                },
+                format!(r#"{{"training":"{t}","style":"normal","done":0,"total":3}}"#),
+            ),
+            (
+                DevicePayload::TrainingEnd { training: tid },
+                format!(r#"{{"training":"{t}"}}"#),
+            ),
+        ];
+        for (p, json) in cases {
+            let bytes = p.encode().unwrap();
+            assert_eq!(std::str::from_utf8(&bytes).unwrap(), json);
+            assert_eq!(DevicePayload::decode(p.frame_type(), &bytes).unwrap(), p);
+        }
+        assert_eq!(direction_of(0x24), Some(Direction::PhoneToComputer));
+        assert_eq!(direction_of(0x31), Some(Direction::ComputerToPhone));
+        assert_eq!(direction_of(0x32), Some(Direction::ComputerToPhone));
+    }
+
+    #[test]
+    fn training_payloads_refuse_what_does_not_fit() {
+        let s = SessionId([3; 16]).to_b64u();
+        let t = SessionId([4; 16]).to_b64u();
+        // Unknown checks from a newer computer read as error; unknown keys are ignored.
+        let p = DevicePayload::decode(
+            0x31,
+            format!(r#"{{"total":5,"x":1,"done":5,"style":"normal","training":"{t}","last":{{"check":"later","text":"Hej","prompt":"e01"}}}}"#).as_bytes(),
+        )
+        .unwrap();
+        assert!(matches!(
+            p,
+            DevicePayload::TrainingPrompt {
+                last: Some(TrainingLast {
+                    check: TrainingCheck::Error,
+                    ..
+                }),
+                next: None,
+                ..
+            }
+        ));
+        let long_id = "x".repeat(MAX_PROMPT_ID_BYTES + 1);
+        let long_text = "ø".repeat(MAX_TRAINING_TEXT_BYTES / 2 + 1);
+        let bad = [
+            (
+                0x24,
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","prompt":"s1"}}"#
+                ),
+            ),
+            (
+                0x24,
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":""}}"#
+                ),
+            ),
+            (
+                0x24,
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":8000,"codec":"pcm16","training":"{t}","prompt":"s1"}}"#
+                ),
+            ),
+            (
+                0x24,
+                format!(
+                    r#"{{"sessionId":"{s}","sampleRate":16000,"codec":"pcm16","training":"{t}","prompt":"{long_id}"}}"#
+                ),
+            ),
+            (
+                0x31,
+                format!(r#"{{"training":"{t}","style":"loud","done":0,"total":1}}"#),
+            ),
+            (
+                0x31,
+                format!(r#"{{"training":"{t}","style":"normal","done":0}}"#),
+            ),
+            (
+                0x31,
+                format!(r#"{{"training":"{t}","style":"normal","done":0,"total":1,"next":"s1"}}"#),
+            ),
+            (
+                0x31,
+                format!(
+                    r#"{{"training":"{t}","style":"normal","done":0,"total":1,"next":{{"prompt":"s1"}}}}"#
+                ),
+            ),
+            (
+                0x31,
+                format!(
+                    r#"{{"training":"{t}","style":"normal","done":0,"total":1,"next":{{"prompt":"s1","text":""}}}}"#
+                ),
+            ),
+            (
+                0x31,
+                format!(
+                    r#"{{"training":"{t}","style":"normal","done":0,"total":1,"last":{{"prompt":"s1","text":"Hej"}}}}"#
+                ),
+            ),
+            (
+                0x31,
+                format!(
+                    r#"{{"training":"{t}","style":"normal","done":0,"total":1,"next":{{"prompt":"s1","text":"{long_text}"}}}}"#
+                ),
+            ),
+            (0x32, "{}".to_string()),
+        ];
+        for (ty, json) in bad {
+            assert!(
+                DevicePayload::decode(ty, json.as_bytes()).is_err(),
+                "{json}"
+            );
+        }
+        let empty_prompt = DevicePayload::AudioStartTraining {
+            session_id: SessionId([3; 16]),
+            training: SessionId([4; 16]),
+            prompt: String::new(),
+            microphone: None,
+        };
+        assert!(empty_prompt.encode().is_err());
+        let empty_mic = DevicePayload::AudioStartTraining {
+            session_id: SessionId([3; 16]),
+            training: SessionId([4; 16]),
+            prompt: "s1".into(),
+            microphone: Some(String::new()),
+        };
+        assert!(empty_mic.encode().is_err());
     }
 
     #[test]

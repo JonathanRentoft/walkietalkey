@@ -17,6 +17,9 @@ Datasets (``--dataset``)
                                      models/eval picks for the same N);
     ``test``, ``validation``, ``train``  a split of ``--run`` (its own copy) or of
                                      ``--build <name or folder>``;
+    ``exam``, ``exam:<condition>``    the long-form exam takes (``recordings/exam/``),
+                                     never trained on; with ``--live`` (gguf) each
+                                     paragraph goes through the app's live path;
     a ``.jsonl`` manifest, or a folder of ``<name>.wav`` + ``<name>.txt``.
 
 Metrics: WER, CER and English-term accuracy (strict and lenient), defined in
@@ -27,10 +30,17 @@ check. The owner's references are re-spelled with spelling.yaml, like the
 training data; FLEURS references are scored as they are, exactly as the
 accuracy job scores them, so its WER is comparable to models/eval's.
 
+Per condition: clips that carry a recording condition (the owner's takes,
+``conditions.py``) are also scored per condition, device x style, with term
+accuracy (``per_condition.py``).
+
 Every run appends one row to ``training/results.csv`` (``--results`` for
-another file); the header is fixed (``RESULT_COLUMNS``) and a file with another
-header is refused rather than mixed. Per-clip rows go to
-``<work>/runs/eval/<timestamp>-<backend>-<model>/``.
+another file), and one more per condition, named ``<dataset>@<condition>``; the
+header is fixed (``RESULT_COLUMNS``) and a file with another header is refused
+rather than mixed. Per-clip rows and ``summary.json`` (with ``by_condition`` and
+``metrics``, the flat numbers ``per_condition.for_logging`` makes for a tracker)
+go to ``<work>/runs/eval/<timestamp>-<backend>-<model>/``; ``run()`` returns the
+same report.
 """
 
 from __future__ import annotations
@@ -46,7 +56,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import audio, console, paths
+from . import audio, console, paths, per_condition, tracking
+from .conditions import IDS
 from .config import config_from_dict, config_hash, key_knobs
 from .dataset import SPLITS, read_manifest
 from .metrics import score_clip, summarize
@@ -67,6 +78,7 @@ class EvalClip:
     id: str
     wav: Path
     reference: str
+    condition: str = ""
 
 
 # --- datasets ----------------------------------------------------------------------
@@ -89,20 +101,52 @@ def fleurs_test(limit: int | None = None) -> list[EvalClip]:
     return [EvalClip(c.id, c.wav, c.reference) for c in load_fleurs(root, limit)]
 
 
-def clips_from_folder(folder: Path) -> list[EvalClip]:
+def _condition_of(wav: Path) -> str:
+    try:
+        meta = json.loads(wav.with_suffix(".json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return ""
+    cid = meta.get("condition") if isinstance(meta, dict) else None
+    return cid if cid in IDS else ""
+
+
+def clips_from_folder(folder: Path, suffix: str = "") -> list[EvalClip]:
+    """``<name>.wav`` + ``<name>.txt`` pairs; a ``<name>.json`` beside them names the condition."""
     clips = []
     for wav in sorted(Path(folder).glob("*.wav")):
         txt = wav.with_suffix(".txt")
         if txt.is_file():
-            clips.append(EvalClip(wav.stem, wav.resolve(), txt.read_text(encoding="utf-8").strip()))
+            clips.append(EvalClip(wav.stem + suffix, wav.resolve(), txt.read_text(encoding="utf-8").strip(),
+                                  _condition_of(wav)))
+    return clips
+
+
+def exam_clips(recordings: Path, only: str | None = None) -> list[EvalClip]:
+    """The exam takes, condition by condition (``recordings/exam/<condition>/``)."""
+    from .exam import EXAM_FOLDER
+
+    clips = []
+    for cid in IDS:
+        if only and cid != only:
+            continue
+        clips += [EvalClip(c.id, c.wav, c.reference, cid)
+                  for c in clips_from_folder(Path(recordings) / EXAM_FOLDER / cid, f".{cid}")]
     return clips
 
 
 def load_dataset(spec: str, *, run: Path | None = None, build: str | None = None,
-                 limit: int | None = None) -> tuple[str, list[EvalClip]]:
+                 limit: int | None = None, recordings: Path | None = None) -> tuple[str, list[EvalClip]]:
     """(dataset label, clips) for a ``--dataset`` value."""
     if spec in ("fleurs-test", FLEURS_TEST):
         return FLEURS_TEST, fleurs_test(limit)
+    if spec == "exam" or spec.startswith("exam:"):
+        only = spec.partition(":")[2] or None
+        if only and only not in IDS:
+            raise ValueError(f"unknown condition {only!r} in {spec!r}; one of {', '.join(IDS)}")
+        clips = exam_clips(recordings if recordings is not None else paths.RECORDINGS, only)
+        if not clips:
+            raise ValueError("no exam takes yet; record them with: wt-train record --condition <c> --exam")
+        return ("exam@" + only if only else "exam"), spread(clips, limit)
     if spec in SPLITS:
         if run is not None:
             manifest, label = run / "dataset" / f"{spec}.jsonl", f"{run.name}:{spec}"
@@ -112,16 +156,18 @@ def load_dataset(spec: str, *, run: Path | None = None, build: str | None = None
         else:
             raise ValueError(f"--dataset {spec} needs --run or --build to say whose {spec} split")
         items = read_manifest(manifest)
-        return label, spread([EvalClip(i.id, Path(i.audio), i.text) for i in items], limit)
+        return label, spread([EvalClip(i.id, Path(i.audio), i.text, i.condition) for i in items], limit)
     path = Path(spec)
     if path.suffix == ".jsonl" and path.is_file():
-        return path.stem, spread([EvalClip(i.id, Path(i.audio), i.text) for i in read_manifest(path)], limit)
+        items = read_manifest(path)
+        return path.stem, spread([EvalClip(i.id, Path(i.audio), i.text, i.condition) for i in items], limit)
     if path.is_dir():
         clips = clips_from_folder(path)
         if not clips:
             raise ValueError(f"no <name>.wav + <name>.txt pairs in {path}")
         return path.name, spread(clips, limit)
-    raise ValueError(f"unknown dataset {spec!r}: use fleurs-test, test, validation, train, a .jsonl or a folder")
+    raise ValueError(f"unknown dataset {spec!r}: use fleurs-test, test, validation, train, exam, a .jsonl "
+                     "or a folder")
 
 
 # --- transcribers --------------------------------------------------------------------
@@ -157,13 +203,14 @@ class AppTranscriber:
     """The app's batch pipeline. It reads 16 kHz mono 16-bit PCM WAV only, so other
     clips (FLEURS ships 32-bit float) are converted once into ``<work>/cache/pcm16``."""
 
-    def __init__(self, app, model_id: str, cache: Path | None = None):
-        self.app, self.model_id = app, model_id
+    def __init__(self, app, model_id: str, cache: Path | None = None, live: bool = False):
+        self.app, self.model_id, self.live = app, model_id, live
         self.cache = cache if cache is not None else paths.pcm16_cache_dir()
 
     def transcribe(self, wavs: list[Path], progress=None) -> list[tuple[str, str | None]]:
         readable = [audio.pcm16_copy(w, self.cache) for w in wavs]
-        return [(r.text, r.error) for r in self.app.transcribe(readable, self.model_id, progress=progress)]
+        how = self.app.transcribe_live if self.live else self.app.transcribe
+        return [(r.text, r.error) for r in how(readable, self.model_id, progress=progress)]
 
 
 def merged_lora_model(run: Path, base, dtype, device: str):
@@ -197,8 +244,8 @@ def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: 
     else:
         def reference(text: str) -> str:
             return text
-    rows = [{**score_clip(c.id, reference(c.reference), text, spelling, error), "wav": str(c.wav)}
-            for c, (text, error) in zip(clips, results)]
+    rows = [{**score_clip(c.id, reference(c.reference), text, spelling, error), "wav": str(c.wav),
+             "condition": c.condition} for c, (text, error) in zip(clips, results)]
     summary = summarize(rows)
     summary["seconds"] = round(time.time() - started, 1)
     return rows, summary
@@ -282,6 +329,37 @@ def format_table(entries: list[tuple[str, dict]]) -> str:
     return "\n".join(lines)
 
 
+def term_table(rows: list[dict], spelling: Spelling) -> str:
+    """Per English term: how often the references hold it, how often the hypothesis had the
+    same form (strict), and the accuracy; the most missed first."""
+    seen: dict[str, int] = {}
+    missed: dict[str, int] = {}
+    for r in rows:
+        for hit in spelling.find_terms(r["reference"]):
+            seen[hit.term] = seen.get(hit.term, 0) + 1
+        for form in r.get("terms_missed") or []:
+            for hit in spelling.find_terms(form)[:1]:
+                missed[hit.term] = missed.get(hit.term, 0) + 1
+    lines = ["| term | in references | right | missed | accuracy |", "|---|---:|---:|---:|---:|"]
+    for term in sorted(seen, key=lambda t: (-missed.get(t, 0), t)):
+        n, m = seen[term], min(missed.get(term, 0), seen[term])
+        lines.append(f"| {term} | {n} | {n - m} | {m} | {(n - m) / n * 100:.1f} % |")
+    return "\n".join(lines) + "\n"
+
+
+def side_by_side(rows: list[dict], n: int = 8) -> str:
+    """The ``n`` clips with the most word errors, reference beside hypothesis."""
+
+    def cell(text: str) -> str:
+        return (text or "").replace("|", "\\|").replace("\n", " ")
+
+    worst = sorted(rows, key=lambda r: (-(r["sub"] + r["del"] + r["ins"]), str(r["id"])))[:n]
+    lines = ["| id | condition | errors | reference | hypothesis |", "|---|---|---:|---|---|"]
+    lines += [f"| {cell(str(r['id']))} | {cell(r.get('condition') or '')} | {r['sub'] + r['del'] + r['ins']} | "
+              f"{cell(r['reference'])} | {cell(r['hypothesis'])} |" for r in worst]
+    return "\n".join(lines) + "\n"
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60] or "model"
 
@@ -313,13 +391,26 @@ def gguf_model_id(model: str | None, run: Path | None) -> str:
 
 
 def main(argv: list[str], log=console.log) -> int:
+    report = run(argv, log)
+    tracking.log_eval(report)
+    return report["exit_code"]
+
+
+def run(argv: list[str], log=console.log) -> dict:
+    """Runs one evaluation; returns its report: ``exit_code``, ``results`` (dataset ->
+    summary), ``by_condition`` (the dataset's conditions), ``metrics`` (flat numbers for a
+    tracker) and ``out`` (the run folder)."""
     p = argparse.ArgumentParser(prog="wt-train eval", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--backend", choices=["hf", "lora", "gguf"], required=True)
     p.add_argument("--run", help="training run: a folder, its name, or latest (lora; gguf: its export)")
     p.add_argument("--model", help="hf: an HF model folder (default: the pinned Edda); gguf: an app model id")
     p.add_argument("--dataset", default="fleurs-test",
-                   help="fleurs-test (default), test, validation, train, a .jsonl manifest or a wav+txt folder")
+                   help="fleurs-test (default), test, validation, train, exam, exam:<condition>, a .jsonl "
+                        "manifest or a wav+txt folder")
+    p.add_argument("--recordings", type=Path, default=paths.RECORDINGS, help="the takes folder (for exam)")
+    p.add_argument("--live", action="store_true",
+                   help="gguf: each clip through the app's live path at real-time speed (the exam)")
     p.add_argument("--build", help="a dataset build (name or folder) for --dataset test/validation/train")
     p.add_argument("--limit", type=int, help="evenly spread subset of N clips of the dataset")
     p.add_argument("--fleurs-limit", type=int, help="FLEURS test clips for the regression check (default all 930)")
@@ -337,6 +428,8 @@ def main(argv: list[str], log=console.log) -> int:
     run = resolve_run(a.run) if a.run else None
     if a.backend == "lora" and run is None:
         p.error("--backend lora needs --run")
+    if a.live and a.backend != "gguf":
+        p.error("--live goes through the app: --backend gguf")
     spelling = load_spelling(a.spelling) if a.spelling and Path(a.spelling).is_file() else None
     run_config = _load_run_config(run) if run is not None else None
 
@@ -348,7 +441,7 @@ def main(argv: list[str], log=console.log) -> int:
         app.check_model(model_id)
         log(f"gguf through the app: {app.bin} ({'batch' if app.supports_batch else 'one call per file'}), "
             f"model {model_id}")
-        transcriber, label = AppTranscriber(app, model_id), model_id
+        transcriber, label = AppTranscriber(app, model_id, live=a.live), model_id
     else:
         from . import whisper
 
@@ -371,10 +464,14 @@ def main(argv: list[str], log=console.log) -> int:
 
     out = paths.eval_runs_dir() / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{a.backend}-{_slug(label)}"
     out.mkdir(parents=True, exist_ok=True)
-    name, clips = load_dataset(a.dataset, run=run, build=a.build, limit=a.limit)
+    name, clips = load_dataset(a.dataset, run=run, build=a.build, limit=a.limit, recordings=a.recordings)
     rows, main_summary = score(transcriber, clips, spelling, name, log, respell_references=name != FLEURS_TEST)
+    by_condition = per_condition.summaries(rows)
     entries = [(name, main_summary)]
     _write_rows(out / f"{_slug(name)}.jsonl", rows)
+    if spelling is not None:
+        (out / "terms.md").write_text(term_table(rows, spelling), encoding="utf-8")
+    (out / "side-by-side.md").write_text(side_by_side(rows), encoding="utf-8")
     fleurs_summary = None
     if name == FLEURS_TEST:
         fleurs_summary = main_summary
@@ -383,17 +480,27 @@ def main(argv: list[str], log=console.log) -> int:
                                       respell_references=False)
         entries.append((FLEURS_TEST, fleurs_summary))
         _write_rows(out / f"{FLEURS_TEST}.jsonl", frows)
+    metrics = per_condition.for_logging(main_summary, by_condition, name)
+    if fleurs_summary is not None and name != FLEURS_TEST:
+        metrics.update(per_condition.for_logging(fleurs_summary, {}, FLEURS_TEST))
     (out / "summary.json").write_text(json.dumps(
-        {"backend": a.backend, "model": label, "results": dict(entries)}, indent=2, ensure_ascii=False) + "\n")
+        {"backend": a.backend, "model": label, "results": dict(entries), "by_condition": by_condition,
+         "metrics": metrics}, indent=2, ensure_ascii=False) + "\n")
 
     row = result_row(backend=a.backend, model=label, dataset=name, main=main_summary, fleurs=fleurs_summary,
                      run_config=run_config, notes=a.notes)
     append_result(a.results, row)
+    for cid, summary in by_condition.items():
+        append_result(a.results, result_row(backend=a.backend, model=label, dataset=f"{name}@{cid}", main=summary,
+                                            fleurs=None, run_config=run_config, notes=a.notes))
     log("")
-    log(format_table(entries))
+    log(format_table(entries + [(f"{name}@{cid}", s) for cid, s in by_condition.items()]))
     log(f"per-clip rows: {out}")
     log(f"appended to {a.results}")
-    return 0 if all(s["failed"] == 0 for _, s in entries) else 1
+    code = 0 if all(s["failed"] == 0 for _, s in entries) else 1
+    return {"exit_code": code, "results": dict(entries), "by_condition": by_condition, "metrics": metrics,
+            "out": out, "backend": a.backend, "model": label, "dataset": name,
+            "train_run": run.name if run is not None else None}
 
 
 def _write_rows(path: Path, rows: list[dict]) -> None:

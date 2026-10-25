@@ -805,6 +805,14 @@ async wtNotificationPermission() : Promise<string> {
     return await TAURI_INVOKE("wt_notification_permission");
 },
 /**
+ * The Mikrofon step's one button (DESK-12, run 5): "not_determined" (macOS
+ * asks), "denied" or "restricted" (only System Settings can change it, so
+ * the button opens the pane at once), "granted", or "unknown".
+ */
+async wtMicrophoneAccess() : Promise<string> {
+    return await TAURI_INVOKE("wt_microphone_access");
+},
+/**
  * Asks for notification permission (DESK-15); true when granted.
  */
 async wtRequestNotificationPermission() : Promise<boolean> {
@@ -1568,7 +1576,12 @@ export type PunctuationMode =
  */
 "never"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
-export type RelayView = { enabled: boolean; connected: boolean; phones: PhoneView[]; pairing_active: boolean }
+export type RelayView = { enabled: boolean; connected: boolean; phones: PhoneView[]; pairing_active: boolean; 
+/**
+ * Phones paired before v0.2.0 must pair again: this computer has a new
+ * identity, because v0.1's keys were in the keychain (run 5).
+ */
+pair_again: boolean }
 /**
  * "Når jeg siger X, skriv Y".
  */
@@ -1739,6 +1752,12 @@ model_base_url: string | null; history_retention: HistoryRetention;
  * "Gem lyd til fejlfinding" (DESK-92), at most 7 days.
  */
 keep_audio_for_debugging: boolean; auto_update: boolean; update_channel: UpdateChannel; onboarding_resume_step: string | null; 
+/**
+ * Phone pairing is offered after the first successful dictation, never
+ * before (run 5): onboarding finished without one, so the main window
+ * offers it once, after the first dictation that works.
+ */
+phone_offer_pending: boolean; 
 /**
  * Which defaults the stored settings were migrated to (`migrate`). A
  * store written before the field existed reads as 0 (v1).

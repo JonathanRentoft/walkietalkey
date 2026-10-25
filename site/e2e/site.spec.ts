@@ -114,63 +114,162 @@ test("the footer reaches every page", async ({ page }) => {
   }
 });
 
-test("the homepage has exactly one WebGL surface once everything has hydrated", async ({
+/* Run 5: one signature animation, the product itself (words appear on the Mac while someone talks into the phone),
+   over the hero's slow liquid gradient. Everything else stands still. SITE-06: fast on a phone, reduced motion
+   respected. */
+const HOME_JS_BUDGET = 6 * 1024;
+
+/** the running animations and transitions, with whether each one is inside the hero */
+function running(page: Page) {
+  return page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter((a) => a.playState === "running")
+      .map((a) => {
+        const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+        return {
+          name:
+            (a as CSSAnimation).animationName ??
+            (a as CSSTransition).transitionProperty,
+          where: t ? t.className.toString() : "",
+          inHero: !!t?.closest('[data-section="hero"]'),
+        };
+      }),
+  );
+}
+
+test("the front page loads little JavaScript, no React and nothing from another origin", async ({
   page,
 }) => {
   const w = await watch(page);
+  const js: { url: string; bytes: number }[] = [];
+  page.on("response", async (r) => {
+    if (r.request().resourceType() === "script")
+      js.push({ url: r.url(), bytes: (await r.body()).length });
+  });
   await page.goto("/");
   await scrollThrough(page);
-  await page.locator(".privacy").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(500);
+  const inline = await page.evaluate(() =>
+    [...document.scripts]
+      .filter((s) => !s.src)
+      .reduce((n, s) => n + new TextEncoder().encode(s.text).length, 0),
+  );
+  const total = js.reduce((n, f) => n + f.bytes, inline);
+  expect(total).toBeLessThanOrEqual(HOME_JS_BUDGET);
+  expect(js.map((f) => f.url).join(" ")).not.toMatch(/client|react/);
+  expect(await page.locator("astro-island").count()).toBe(0);
   expect(
     await page.evaluate(() => (window as unknown as { __gl: number }).__gl),
-  ).toBe(1);
+  ).toBe(0);
+  expect(w.foreign).toEqual([]);
   expect(w.errors).toEqual([]);
 });
 
-test("the hero plays, and stands still with reduced motion (SITE-06)", async ({
-  browser,
+test("the words appear on the Mac while the phone records, then the text is ready", async ({
+  page,
 }) => {
-  for (const reducedMotion of ["no-preference", "reduce"] as const) {
-    const ctx = await browser.newContext({ reducedMotion });
-    const page = await ctx.newPage();
-    await page.goto("/");
-    const relay = page.locator(".wt-relay");
-    await relay.scrollIntoViewIfNeeded();
-    await expect(relay.locator(".wt-relay-stage")).toHaveCSS(
-      "visibility",
-      "visible",
-    );
-    if (reducedMotion === "reduce") {
-      await expect(relay).toHaveClass(/wt-relay--still/);
-      await expect(relay).toHaveClass(/wt-relay--paste/);
-      expect(
-        await page
-          .locator(".wt-blob")
-          .first()
-          .evaluate((e) => getComputedStyle(e).animationName),
-      ).toBe("none");
-    } else {
-      await expect(relay).not.toHaveClass(/wt-relay--still/);
-      await expect(relay).toHaveClass(
-        /wt-relay--tap|wt-relay--open|wt-relay--idle/,
-        { timeout: 5000 },
-      );
-    }
-    await ctx.close();
-  }
+  await page.goto("/");
+  const stage = page.locator("[data-stage]");
+  const words = stage.locator("[data-words] .w");
+  /* it starts from the beginning: phone idle, no words yet */
+  await expect(stage).toHaveAttribute("data-step", /idle|rec/);
+  await expect(stage).toHaveAttribute("data-step", "rec", { timeout: 4000 });
+  await expect(stage.locator(".wt-phone .wt-app")).toHaveClass(/wt-app--rec/);
+  /* the first word shows before the last one, while the phone still records */
+  await expect
+    .poll(() => words.first().evaluate((e) => +getComputedStyle(e).opacity))
+    .toBeGreaterThan(0.3);
+  expect(
+    await words.last().evaluate((e) => +getComputedStyle(e).opacity),
+  ).toBeLessThan(0.3);
+  await expect(stage.locator(".wt-pill-time").first()).not.toHaveText("0:00", {
+    timeout: 3000,
+  });
+  await expect(stage).toHaveAttribute("data-step", "ready", { timeout: 8000 });
+  await expect(stage.locator(".wt-phone .wt-app")).toHaveClass(/wt-app--ready/);
+  await expect
+    .poll(() => words.last().evaluate((e) => +getComputedStyle(e).opacity))
+    .toBe(1);
+  /* and round again */
+  await expect(stage).toHaveAttribute("data-step", "idle", { timeout: 6000 });
 });
 
-test("the pairing code is drawn as a small 21 by 21 grid", async ({ page }) => {
+test("with reduced motion the hero shows the finished text and nothing moves (SITE-06)", async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await ctx.newPage();
   await page.goto("/");
-  const qr = page.locator(".qr");
-  await qr.scrollIntoViewIfNeeded();
-  const [box, cell] = await Promise.all([
-    qr.boundingBox(),
-    qr.locator("i").first().boundingBox(),
-  ]);
-  expect(box!.width).toBeLessThan(160);
-  expect(cell!.width).toBeLessThan(8);
+  const stage = page.locator("[data-stage]");
+  await page.waitForTimeout(2500);
+  await expect(stage).toHaveAttribute("data-step", "ready");
+  await expect(stage.locator(".wt-phone .wt-app")).toHaveClass(/wt-app--ready/);
+  for (const o of await stage
+    .locator("[data-words] .w")
+    .evaluateAll((ws) => ws.map((w) => getComputedStyle(w).opacity)))
+    expect(o).toBe("1");
+  await scrollThrough(page);
+  expect(await running(page)).toEqual([]);
+  await ctx.close();
+});
+
+test("only the hero moves, and it rests when it is out of sight", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("[data-stage]")).toHaveAttribute(
+    "data-step",
+    "rec",
+    { timeout: 4000 },
+  );
+  const top = await running(page);
+  expect(top.length).toBeGreaterThan(0);
+  expect(top.filter((a) => !a.inHero)).toEqual([]);
+  /* scrolled past the hero: the stage and the liquid gradient pause */
+  await page.locator('[data-section="faq"]').scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await expect(page.locator('[data-section="hero"]')).toHaveAttribute(
+    "data-paused",
+    "",
+  );
+  await page.waitForTimeout(800);
+  expect(await running(page)).toEqual([]);
+  /* and plays again when it comes back */
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('[data-section="hero"]')).not.toHaveAttribute(
+    "data-paused",
+    "",
+  );
+  await expect(page.locator("[data-stage]")).toHaveAttribute(
+    "data-step",
+    "rec",
+    { timeout: 6000 },
+  );
+});
+
+test("nothing on the front page shifts while the animation plays", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __cls: number };
+    w.__cls = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as (PerformanceEntry & {
+        value: number;
+        hadRecentInput: boolean;
+      })[])
+        if (!e.hadRecentInput) w.__cls += e.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.goto("/");
+  await expect(page.locator("[data-stage]")).toHaveAttribute(
+    "data-step",
+    "ready",
+    { timeout: 12000 },
+  );
+  expect(
+    await page.evaluate(() => (window as unknown as { __cls: number }).__cls),
+  ).toBeLessThan(0.01);
 });
 
 /* SITE-02, run 2 Phase 7.4: the visitor's own download first and largest, the other one small, phones to the phone app. */

@@ -1,73 +1,38 @@
-// The recorder page: one sentence at a time, the chosen Mac input recorded raw (no echo
-// cancellation, noise suppression or automatic gain, like the app's microphone path). A take is
-// sent to the local server (wt_train/recorder/server.py) as float32 mono at the input's rate;
-// the server trims, resamples to 16 kHz and saves it. Nothing goes anywhere else.
+// The recorder page (wt-train record): the sentence to read, the progress per condition, the link
+// to the WalkieTalkey app and the last take's check. The audio never passes this page: the app
+// records it (on the phone through the pairing, or on the Mac's own input) and hands it to the
+// local server (wt_train/recorder/server.py). The page only polls that server and asks it to move
+// on, go back or start and stop a Mac take.
+//
+// TODO(copy): every Danish string below is a draft for the owner to approve.
 
-// Below -60 dBFS for this long while recording counts as "no sound from the input".
-const FLOOR = 0.001;
-const SILENCE_MS = 1500;
-const MIN_TAKE_S = 0.3;
-const DEVICE_KEY = "wt-recorder-device";
-const ADVANCE_KEY = "wt-recorder-advance";
+const POLL_MS = 400;
 
 const $ = (id) => document.getElementById(id);
 const ui = {
+  condition: $("condition"),
   progress: $("progress"),
-  device: $("device"),
-  level: $("level"),
-  peak: $("peak"),
-  db: $("db"),
-  warning: $("warning"),
+  linkText: $("link-text"),
+  connect: $("connect"),
+  conditions: document.querySelector("#conditions tbody"),
   sid: $("sid"),
   badge: $("badge"),
   sentence: $("sentence"),
+  hint: $("hint"),
+  last: $("last"),
+  lastText: $("last-text"),
   record: $("record"),
   redo: $("redo"),
   play: $("play"),
   prev: $("prev"),
   next: $("next"),
   message: $("message"),
-  advance: $("advance"),
+  keys: $("keys"),
 };
 
-const state = {
-  sentences: [],
-  index: 0,
-  recorded: 0,
-  total: 0,
-  lastSaved: null,
-  stream: null,
-  deviceId: "",
-  ctx: null,
-  node: null,
-  source: null,
-  recording: false,
-  saving: false,
-  chunks: [],
-  recordStart: 0,
-  lastBlockAt: 0,
-  lastNonZeroAt: 0,
-  lastSoundAt: 0,
-  rms: 0,
-  peak: 0,
-  player: null,
-};
-
-// Per-browser conveniences; the page works without them.
-function remember(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* private window or blocked storage */
-  }
-}
-function recall(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
+let state = null;
+let player = null;
+let busy = false;
 
 const number = (n) => n.toLocaleString("da-DK");
 const seconds = (s) =>
@@ -75,10 +40,6 @@ const seconds = (s) =>
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   });
-const current = () => state.sentences[state.index];
-const hasTake = (s) => s && s.status !== "missing";
-
-// Rendering ----------------------------------------------------------------
 
 const BADGES = {
   recorded: "Indtalt",
@@ -86,430 +47,251 @@ const BADGES = {
   stale: "Teksten er ændret, optag igen",
 };
 
-function render() {
-  const s = current();
-  ui.progress.textContent = `${number(state.recorded)} af ${number(state.total)} indtalt`;
-  if (!s) {
-    ui.sentence.textContent = "Der er ingen sætninger i listen.";
-    return;
-  }
-  ui.sid.textContent = `${s.id} · ${number(state.index + 1)} af ${number(state.total)}`;
-  ui.badge.textContent = BADGES[s.status];
-  ui.badge.className = s.status;
-  ui.sentence.textContent = s.text;
-  const busy = state.recording || state.saving;
-  ui.record.textContent = state.recording ? "Stop" : "Optag";
-  ui.record.disabled = state.saving || !state.node;
-  ui.redo.disabled = busy || !state.node;
-  ui.play.disabled = busy || !(hasTake(s) || state.lastSaved);
-  ui.prev.disabled = busy || state.index === 0;
-  ui.next.disabled = busy || state.index >= state.total - 1;
-  document.body.classList.toggle("recording", state.recording);
-}
+// The check of the last take (wt_train/recorder/checks.py); the phone shows the same words.
+const CHECKS = {
+  ok: "Gemt.",
+  quiet:
+    "Optagelsen er svag. Tal lidt tættere på mikrofonen, og optag den igen.",
+  clipped:
+    "Lyden er for kraftig og forvrænget. Hold lidt mere afstand, og optag den igen.",
+  short: "Optagelsen ser ud til at være skåret af. Optag den igen.",
+  silent: "Hørte ikke noget. Optag den igen.",
+  gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
+  error: "Optagelsen kunne ikke gemmes.",
+};
+
+const LINK = {
+  connecting: "Forbinder til WalkieTalkey på denne Mac",
+  waiting: "Venter på WalkieTalkey på denne Mac",
+  not_running:
+    "WalkieTalkey kører ikke på denne Mac. Start appen, og tryk Forbind.",
+  unsupported: "WalkieTalkey skal opdateres, før den kan optage til træning.",
+  missing: "WalkieTalkey er ikke installeret på denne Mac.",
+  no_phone:
+    "Der er ingen telefon parret med WalkieTalkey. Par en telefon i appen, og tryk Forbind.",
+  gone: "WalkieTalkey har lukket forbindelsen. Tryk Forbind for at fortsætte.",
+  failed: "WalkieTalkey kunne ikke tage imod indtalingen.",
+  lost: "Forbindelsen til WalkieTalkey er væk. Tryk Forbind for at fortsætte.",
+};
 
 function say(text, kind = "") {
   ui.message.textContent = text;
   ui.message.className = kind;
 }
 
-function warn(text) {
-  if (text) {
-    ui.warning.textContent = text;
-    ui.warning.hidden = false;
-  } else {
-    ui.warning.hidden = true;
+function current() {
+  const s = state?.session;
+  return s && s.index !== null ? s.items[s.index] : null;
+}
+
+function isMac() {
+  return state?.session.condition.device === "mac";
+}
+
+function connected() {
+  return !!state?.session.app.connected;
+}
+
+function linkLine() {
+  const s = state.session;
+  if (connected()) {
+    if (isMac()) {
+      const input = s.app.input ? `, mikrofon: ${s.app.input}` : "";
+      return { text: `Forbundet til WalkieTalkey${input}.`, problem: false };
+    }
+    const phone = s.phone;
+    if (phone && !phone.online)
+      return {
+        text: `${phone.name} er ikke online. Åbn WalkieTalkey på telefonen.`,
+        problem: true,
+      };
+    return {
+      text: `Forbundet. Sætningerne vises på ${phone ? phone.name : "telefonen"}.`,
+      problem: false,
+    };
   }
-}
-
-function go(index, { keepMessage = false } = {}) {
-  if (state.recording || state.saving) return;
-  state.index = Math.max(0, Math.min(state.total - 1, index));
-  if (!keepMessage) say("");
-  render();
-}
-
-// Microphone -----------------------------------------------------------------
-
-function deviceLabel(id) {
-  const option = [...ui.device.options].find((o) => o.value === id);
-  return option ? option.textContent : "Mikrofonen";
-}
-
-function otherDevice() {
-  const option = [...ui.device.options].find(
-    (o) =>
-      o.value !== state.deviceId &&
-      o.value !== "default" &&
-      o.value !== "communications",
-  );
-  return option
-    ? ` Prøv en anden i listen, for eksempel ${option.textContent}.`
-    : " Prøv en anden i listen.";
-}
-
-async function refreshDevices() {
-  const all = await navigator.mediaDevices.enumerateDevices();
-  const inputs = all.filter((d) => d.kind === "audioinput");
-  ui.device.replaceChildren(
-    ...inputs.map((d, i) => {
-      const option = document.createElement("option");
-      option.value = d.deviceId;
-      option.textContent = d.label || `Mikrofon ${i + 1}`;
-      return option;
-    }),
-  );
-  if (inputs.some((d) => d.deviceId === state.deviceId))
-    ui.device.value = state.deviceId;
-}
-
-function closeInput() {
-  if (state.source) state.source.disconnect();
-  if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
-  state.source = null;
-  state.stream = null;
-}
-
-async function openInput(deviceId) {
-  closeInput();
-  const audio = {
-    echoCancellation: false,
-    noiseSuppression: false,
-    autoGainControl: false,
+  const status = state.link.status;
+  const wasConnected = status === "connected";
+  return {
+    text: (wasConnected ? LINK.lost : LINK[status]) || LINK.waiting,
+    problem: !["connecting", "waiting"].includes(status) || wasConnected,
   };
-  const supported = navigator.mediaDevices.getSupportedConstraints?.() || {};
-  if (supported.voiceIsolation) audio.voiceIsolation = false;
-  if (deviceId) audio.deviceId = { exact: deviceId };
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio });
-  } catch (e) {
-    if (
-      deviceId &&
-      (e.name === "OverconstrainedError" || e.name === "NotFoundError")
-    ) {
-      say(
-        "Den gemte mikrofon findes ikke længere, så standardmikrofonen bruges.",
-        "warn",
-      );
-      return openInput(null);
-    }
-    if (e.name === "NotAllowedError") {
-      warn(
-        "Siden har ikke adgang til mikrofonen. Giv adgang i browseren, og genindlæs siden.",
-      );
-    } else {
-      warn(`Mikrofonen kunne ikke åbnes (${e.name}).${otherDevice()}`);
-    }
-    render();
-    return;
-  }
-  state.stream = stream;
-  const track = stream.getAudioTracks()[0];
-  state.deviceId = track.getSettings().deviceId || deviceId || "";
-  track.addEventListener("ended", () =>
-    warn(`Forbindelsen til mikrofonen blev afbrudt.${otherDevice()}`),
-  );
-
-  if (!state.ctx) {
-    state.ctx = new AudioContext();
-    await state.ctx.audioWorklet.addModule("/capture-worklet.js");
-    state.node = new AudioWorkletNode(state.ctx, "capture", {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-    });
-    state.node.port.onmessage = (e) => onBlock(e.data);
-    state.node.connect(state.ctx.destination);
-  }
-  state.source = state.ctx.createMediaStreamSource(stream);
-  state.source.connect(state.node);
-  // A fresh input gets the full grace period before it counts as silent.
-  const now = performance.now();
-  state.lastBlockAt = state.lastNonZeroAt = state.lastSoundAt = now;
-  await refreshDevices();
-  warn("");
-  if (state.ctx.state !== "running")
-    say("Klik på siden, eller tryk på en tast, for at starte lyden.");
-  render();
 }
 
-function onBlock(block) {
-  let peak = 0;
-  let sum = 0;
-  let nonZero = false;
-  for (let i = 0; i < block.length; i++) {
-    const v = block[i];
-    const a = v < 0 ? -v : v;
-    if (a > peak) peak = a;
-    if (v !== 0) nonZero = true;
-    sum += v * v;
-  }
-  const now = performance.now();
-  state.lastBlockAt = now;
-  if (nonZero) state.lastNonZeroAt = now;
-  if (peak >= FLOOR) state.lastSoundAt = now;
-  state.rms = Math.max(Math.sqrt(sum / block.length), state.rms * 0.8);
-  state.peak = Math.max(peak, state.peak * 0.95);
-  if (state.recording) state.chunks.push(block);
+function renderConditions() {
+  const rows = state.conditions.map((c) => {
+    const p = state.progress[c.id];
+    const tr = document.createElement("tr");
+    if (c.id === state.session.condition.id) tr.className = "current";
+    const name = document.createElement("th");
+    name.scope = "row";
+    name.textContent = c.label;
+    const sentences = document.createElement("td");
+    sentences.textContent = p
+      ? `${number(p.done)} af ${number(p.total)} sætninger`
+      : "";
+    const exam = document.createElement("td");
+    exam.textContent = p
+      ? `${number(p.exam_done)} af ${number(p.exam_total)} afsnit til eksamen`
+      : "";
+    tr.append(name, sentences, exam);
+    return tr;
+  });
+  ui.conditions.replaceChildren(...rows);
 }
 
-const dbfs = (x) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
+function render() {
+  if (!state) return;
+  const s = state.session;
+  const item = current();
+  const mac = isMac();
+  const whisper = s.condition.style === "whisper";
+  ui.condition.textContent = `· ${s.condition.label}${s.exam ? " · eksamen" : ""}`;
+  ui.progress.textContent = `${number(s.done)} af ${number(s.total)} indtalt`;
+  const link = linkLine();
+  ui.linkText.textContent = link.text;
+  ui.linkText.className = link.problem ? "problem" : "";
+  ui.connect.hidden = connected() || !link.problem;
+  renderConditions();
 
-function drawMeter() {
-  const width = (x) =>
-    `${Math.max(0, Math.min(100, ((dbfs(x) + 60) / 60) * 100))}%`;
-  ui.level.style.width = width(state.rms);
-  ui.peak.style.left = width(state.peak);
-  ui.level.classList.toggle("hot", state.peak >= 0.98);
-  const db = dbfs(state.peak);
-  ui.db.textContent = Number.isFinite(db) ? `${Math.round(db)} dB` : "-∞ dB";
-  state.rms *= 0.9;
-  state.peak *= 0.97;
-  requestAnimationFrame(drawMeter);
-}
-
-function checkSilence() {
-  if (!state.stream || !state.ctx || state.ctx.state !== "running") return;
-  const now = performance.now();
-  const name = deviceLabel(state.deviceId);
-  const dead =
-    now - state.lastBlockAt > SILENCE_MS ||
-    now - state.lastNonZeroAt > SILENCE_MS;
-  const quiet =
-    state.recording &&
-    now - Math.max(state.recordStart, state.lastSoundAt) > SILENCE_MS;
-  if (dead) {
-    warn(
-      `${name} sender kun stilhed. Er der sat en mikrofon til, og er den tændt?${otherDevice()}`,
-    );
-  } else if (quiet) {
-    warn(
-      `Ingen lyd fra ${name}. Er der skruet op for indgangen?${otherDevice()}`,
-    );
+  if (item) {
+    ui.sid.textContent = `${item.id} · ${number(s.index + 1)} af ${number(s.total)}`;
+    ui.badge.textContent = BADGES[item.status];
+    ui.badge.className = item.status;
+    ui.sentence.textContent = item.text;
   } else {
-    warn("");
+    ui.sid.textContent = "";
+    ui.badge.textContent = "";
+    ui.sentence.textContent = s.total
+      ? "Alle er indtalt i denne betingelse. Tak."
+      : "Der er intet at indtale her.";
   }
-}
+  const voice = whisper ? "Hvisk" : "Tal med almindelig stemme";
+  const rec = s.recording;
+  if (rec && rec.source === "phone")
+    ui.hint.textContent = "Optager på telefonen";
+  else if (rec && rec.stopping) ui.hint.textContent = "Gemmer ...";
+  else if (rec)
+    ui.hint.textContent = `Optager. ${voice}, og tryk mellemrum, når du er færdig.`;
+  else if (mac) ui.hint.textContent = `${voice}. Tryk mellemrum for at optage.`;
+  else
+    ui.hint.textContent = `${voice} i telefonen. Hold knappen på telefonen nede, mens du læser.`;
 
-async function wake() {
-  if (state.ctx && state.ctx.state === "suspended") {
-    await state.ctx.resume();
-    if (ui.message.textContent.startsWith("Klik på siden")) say("");
+  const last = s.last;
+  ui.last.hidden = !last;
+  if (last) {
+    ui.lastText.textContent = `${last.prompt}: ${CHECKS[last.check] || CHECKS.error}`;
+    ui.last.className = last.check === "ok" ? "ok" : "problem";
   }
+  document.body.classList.toggle("recording", !!rec);
+  ui.record.hidden = !mac;
+  ui.record.textContent = rec ? "Stop" : "Optag";
+  ui.record.disabled =
+    busy || !connected() || (!rec && !item) || !!rec?.stopping;
+  ui.redo.disabled = busy || !!rec || !last;
+  ui.play.disabled =
+    busy || !!rec || !(last?.saved || item?.status === "recorded");
+  ui.prev.disabled = busy || !!rec || s.total === 0;
+  ui.next.disabled = busy || !!rec || s.total === 0;
+  ui.keys.textContent = mac
+    ? "Mellemrum: optag og stop. Esc: annuller. R: optag forrige igen. P: afspil. Pile: forrige og næste."
+    : "R: optag forrige igen. P: afspil. Pile: forrige og næste.";
 }
 
-// Takes ------------------------------------------------------------------------
-
-async function startRecording() {
-  if (state.recording || state.saving || !state.node || !current()) return;
-  await wake();
-  if (state.player) state.player.pause();
-  state.chunks = [];
-  state.recordStart = performance.now();
-  state.recording = true;
-  say("Optager. Tryk på mellemrum, når du er færdig.");
-  render();
-}
-
-function cancelRecording() {
-  if (!state.recording) return;
-  state.recording = false;
-  state.chunks = [];
-  say("Optagelsen er annulleret.");
-  render();
-}
-
-async function stopRecording() {
-  if (!state.recording) return;
-  state.recording = false;
-  const chunks = state.chunks;
-  state.chunks = [];
-  const length = chunks.reduce((n, c) => n + c.length, 0);
-  const rate = state.ctx.sampleRate;
-  if (length / rate < MIN_TAKE_S) {
-    say("Optagelsen var for kort og blev ikke gemt.", "warn");
-    render();
-    return;
-  }
-  const samples = new Float32Array(length);
-  let at = 0;
-  for (const c of chunks) {
-    samples.set(c, at);
-    at += c.length;
-  }
-  await upload(current(), samples, rate);
-}
-
-const WARNINGS = {
-  clipping: "Lyden klipper. Skru ned for indgangsniveauet, og optag igen (R).",
-  quiet:
-    "Lyden er svag. Skru op for indgangsniveauet, eller tal tættere på mikrofonen.",
-};
-
-async function upload(sentence, samples, rate) {
-  state.saving = true;
-  say("Gemmer ...");
-  render();
-  let response;
-  let result = {};
+async function poll() {
   try {
-    response = await fetch(
-      `/api/takes/${encodeURIComponent(sentence.id)}?rate=${rate}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "X-WT-Recorder": "1",
-        },
-        body: samples,
-      },
-    );
-    result = await response.json();
+    const response = await fetch("/api/state", { cache: "no-store" });
+    state = await response.json();
+    if (ui.message.dataset.lost) say("");
+    delete ui.message.dataset.lost;
   } catch {
-    state.saving = false;
     say("Serveren svarer ikke. Kører wt-train record stadig?", "error");
-    render();
-    return;
+    ui.message.dataset.lost = "1";
   }
-  state.saving = false;
-  if (response.status === 422) {
-    say(
-      "Optagelsen er tavs og blev ikke gemt. Tjek mikrofonen, og prøv igen.",
-      "error",
-    );
-    render();
-    return;
-  }
-  if (!response.ok) {
-    say(
-      `Optagelsen kunne ikke gemmes: ${result.message || response.status}`,
-      "error",
-    );
-    render();
-    return;
-  }
-  sentence.status = result.status;
-  state.recorded = result.recorded;
-  state.lastSaved = sentence.id;
-  const notes = result.warnings.map((w) => WARNINGS[w] || w);
-  const saved = `${sentence.id} er gemt (${seconds(result.seconds)} s${result.replaced ? ", den gamle er gemt til side" : ""}).`;
-  if (notes.length) {
-    say(`${saved} ${notes.join(" ")}`, "warn");
-    render();
-    return;
-  }
-  say(saved);
-  if (state.recorded === state.total)
-    say(`${saved} Alle sætninger er indtalt. Tak!`);
-  if (ui.advance.checked && state.index < state.total - 1)
-    go(state.index + 1, { keepMessage: true });
-  else render();
+  render();
 }
 
-async function toggleRecording() {
-  if (state.recording) await stopRecording();
-  else await startRecording();
+async function post(path) {
+  busy = true;
+  render();
+  try {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "X-WT-Recorder": "1" },
+    });
+    if (response.ok) state = await response.json();
+  } catch {
+    say("Serveren svarer ikke. Kører wt-train record stadig?", "error");
+  } finally {
+    busy = false;
+    render();
+  }
 }
 
-// R: record the current sentence again, or, right after a take moved on, the one just saved.
-async function redo() {
-  if (state.recording || state.saving) return;
-  if (!hasTake(current()) && state.lastSaved) {
-    go(state.sentences.findIndex((s) => s.id === state.lastSaved));
-  }
-  await startRecording();
+async function toggleMac() {
+  if (!isMac() || busy) return;
+  if (state.session.recording) await post("/api/mac/stop");
+  else await post("/api/mac/start");
 }
 
 function play() {
-  if (state.recording || state.saving) return;
-  const id = hasTake(current()) ? current().id : state.lastSaved;
+  const s = state?.session;
+  if (!s || s.recording) return;
+  const id = s.last?.saved
+    ? s.last.prompt
+    : current()?.status === "recorded"
+      ? current().id
+      : null;
   if (!id) {
     say("Der er ingen optagelse at afspille endnu.");
     return;
   }
-  if (state.player) state.player.pause();
-  state.player = new Audio(
+  if (player) player.pause();
+  player = new Audio(
     `/api/takes/${encodeURIComponent(id)}.wav?v=${Date.now()}`,
   );
-  state.player
-    .play()
-    .catch(() => say("Optagelsen kunne ikke afspilles.", "error"));
+  player.play().catch(() => say("Optagelsen kunne ikke afspilles.", "error"));
   say(`Afspiller ${id}.`);
 }
-
-// Wiring -------------------------------------------------------------------------
 
 function onButton(button, action) {
   button.addEventListener("click", async () => {
     button.blur(); // so the space bar does not press it again
-    await wake();
     await action();
   });
 }
 
-onButton(ui.record, toggleRecording);
-onButton(ui.redo, redo);
+onButton(ui.record, toggleMac);
+onButton(ui.redo, () => post("/api/redo"));
 onButton(ui.play, play);
-onButton(ui.prev, () => go(state.index - 1));
-onButton(ui.next, () => go(state.index + 1));
+onButton(ui.prev, () => post("/api/prev"));
+onButton(ui.next, () => post("/api/next"));
+onButton(ui.connect, () => post("/api/connect"));
 
 document.addEventListener("keydown", async (e) => {
-  if (e.metaKey || e.ctrlKey || e.altKey || e.target === ui.device) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (e.code === "Space" || key === " ") {
     e.preventDefault();
-    if (!e.repeat) await toggleRecording();
-  } else if (key === "r" && !e.repeat) {
-    await redo();
-  } else if (key === "p" && !e.repeat) {
+    await toggleMac();
+  } else if (key === "r") {
+    await post("/api/redo");
+  } else if (key === "p") {
     play();
   } else if (key === "ArrowRight") {
     e.preventDefault();
-    go(state.index + 1);
+    await post("/api/next");
   } else if (key === "ArrowLeft") {
     e.preventDefault();
-    go(state.index - 1);
+    await post("/api/prev");
   } else if (key === "Escape") {
-    cancelRecording();
+    await post("/api/mac/cancel");
   }
-  await wake();
 });
-document.addEventListener("pointerdown", wake);
-
-ui.device.addEventListener("change", async () => {
-  remember(DEVICE_KEY, ui.device.value);
-  ui.device.blur();
-  await openInput(ui.device.value);
-});
-navigator.mediaDevices.addEventListener?.("devicechange", () =>
-  refreshDevices().catch(() => {}),
-);
-
-ui.advance.checked = recall(ADVANCE_KEY) !== "0";
-ui.advance.addEventListener("change", () =>
-  remember(ADVANCE_KEY, ui.advance.checked ? "1" : "0"),
-);
 
 window.addEventListener("beforeunload", (e) => {
-  if (state.recording || state.saving) e.preventDefault();
+  if (state?.session.recording) e.preventDefault();
 });
 
-async function start() {
-  try {
-    const response = await fetch("/api/state");
-    const data = await response.json();
-    state.sentences = data.sentences;
-    state.total = data.total;
-    state.recorded = data.recorded;
-    state.index = data.first_open ?? 0;
-    if (data.first_open === null && data.total > 0)
-      say("Alle sætninger er indtalt. Du kan stadig optage dem igen.");
-  } catch {
-    say("Sætningerne kunne ikke hentes. Kører wt-train record?", "error");
-  }
-  render();
-  requestAnimationFrame(drawMeter);
-  setInterval(checkSilence, 250);
-  await openInput(recall(DEVICE_KEY));
-}
-
-start();
+poll();
+setInterval(poll, POLL_MS);
