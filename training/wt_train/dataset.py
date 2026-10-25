@@ -12,7 +12,8 @@ Inputs
     (terms or plain). Every transcript is re-spelled with ``Spelling.apply`` so
     the model learns one spelling per term form. Takes without a text, or whose
     id is not in sentences.csv, are skipped and listed in the summary. The exam
-    (``recordings/exam/``) is never read here.
+    (``recordings/exam/``) is never read here, nor the pilot (``training/data/pilot/``,
+    run 7): a recordings folder inside the pilot's is refused.
 
 Splits are by sentence
     A sentence is its text after the accuracy job's normaliser (case,
@@ -42,7 +43,11 @@ Leakage check (fails loudly, the build is not written)
       check of ``wt-train eval`` and must stay unseen;
     * any exam paragraph (``exam.yaml``) by its text, any exam take by its
       audio, or any file under ``recordings/exam/``, in any split. The exam
-      tests the app path only and is never trained on.
+      tests the app path only and is never trained on;
+    * any pilot sentence (``pilot.csv``) by its text, any pilot take (current or
+      replaced) by its audio, or any file under ``training/data/pilot/``, in any
+      split. The pilot compares recording setups and is never trained on either.
+      Rehearsal never draws a FLEURS sentence that is a pilot sentence.
 
 Output, in ``<work>/builds/<config name>/``: ``train.jsonl``,
 ``validation.jsonl``, ``test.jsonl`` (one clip per line: id, audio path,
@@ -113,10 +118,15 @@ def sentence_key(text: str) -> str:
 # --- the owner's takes ---------------------------------------------------------
 
 
-def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling) -> tuple[list[Item], list[dict]]:
+def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
+                    pilot_dir: Path | None = None) -> tuple[list[Item], list[dict]]:
     """(usable takes, skipped takes with a reason): run 4's browser takes in the top folder,
-    then each condition's folder."""
+    then each condition's folder. The pilot's folder (``pilot_dir``) is never read."""
     folder = Path(folder)
+    pilot_dir = Path(pilot_dir) if pilot_dir is not None else paths.PILOT
+    if folder.resolve().is_relative_to(pilot_dir.resolve()):
+        raise ValueError(f"{folder} is the pilot's folder ({pilot_dir}): pilot takes compare recording setups "
+                         "and never enter a split; build from the recordings (training/data/recordings)")
     if not folder.is_dir():
         raise FileNotFoundError(f"no recordings folder at {folder}; record takes with: wt-train record")
     kinds = {s.id: s.kind for s in load_sentences(sentences_csv)}
@@ -250,6 +260,25 @@ def exam_held_out(recordings: Path, exam_yaml: Path | None = None) -> Exam:
     return Exam(keys=keys, hashes=hashes, folder=(recordings / EXAM_FOLDER).resolve())
 
 
+@dataclass(frozen=True)
+class Pilot:
+    """Run 7: the pilot is never trained on either: its sentences, its takes' audio, its folder."""
+
+    keys: frozenset[str]
+    hashes: frozenset[str]
+    folder: Path
+
+
+def pilot_held_out(pilot_dir: Path | None = None, pilot_csv: Path | None = None) -> Pilot:
+    """The pilot sentences (pilot.csv) and the audio of every pilot take, current and replaced."""
+    pilot_dir = Path(pilot_dir) if pilot_dir is not None else paths.PILOT
+    pilot_csv = Path(pilot_csv) if pilot_csv is not None else paths.PILOT_CSV
+    keys = frozenset(sentence_key(s.text) for s in load_sentences(pilot_csv)) if pilot_csv.is_file() else frozenset()
+    hashes = frozenset(audio.content_sha256(w) for w in sorted(pilot_dir.rglob("*.wav"))) if pilot_dir.is_dir() \
+        else frozenset()
+    return Pilot(keys=keys, hashes=hashes, folder=pilot_dir.resolve())
+
+
 def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
     root = Path(root) if root is not None else paths.fleurs_dir()
     clips = fleurs.load_split("test", root)
@@ -263,7 +292,8 @@ def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
                    hashes=frozenset(known.values()), folder=(root / "test").resolve())
 
 
-def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None) -> dict:
+def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None,
+                  pilot: Pilot | None = None) -> dict:
     """Raise LeakageError listing every problem; otherwise a short report."""
     problems: list[str] = []
 
@@ -304,6 +334,13 @@ def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam |
                 problems.append(f"exam audio in {name}: {where}")
             if Path(item.audio).resolve().is_relative_to(exam.folder):
                 problems.append(f"an exam file in {name}: {item.audio}")
+        if pilot is not None:
+            if item.key in pilot.keys:
+                problems.append(f"a pilot sentence in {name}: {where}: {item.text!r}")
+            if item.audio_sha256 in pilot.hashes:
+                problems.append(f"pilot audio in {name}: {where}")
+            if Path(item.audio).resolve().is_relative_to(pilot.folder):
+                problems.append(f"a pilot file in {name}: {item.audio}")
 
     if problems:
         raise LeakageError("leakage check failed:\n  " + "\n  ".join(problems))
@@ -317,11 +354,13 @@ def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam |
         "passed": True,
         "checks": ["no sentence in two splits", "every recording of a sentence in one split", "no audio twice",
                    "no FLEURS test text in train or validation", "no FLEURS test audio in any split",
-                   "no exam paragraph in any split"],
+                   "no exam paragraph in any split"] + (["no pilot sentence or take in any split"] if pilot else []),
         "fleurs_test_sentences": len(held_out.keys),
         "sentences_recorded_more_than_once": sum(1 for ids in recordings.values() if len(ids) > 1),
         "exam_paragraphs": len(exam.keys) if exam is not None else 0,
         "exam_takes": len(exam.hashes) if exam is not None else 0,
+        "pilot_sentences": len(pilot.keys) if pilot is not None else 0,
+        "pilot_takes": len(pilot.hashes) if pilot is not None else 0,
     }
 
 
@@ -368,10 +407,13 @@ def _split_summary(items: list[Item], manifest: Path) -> dict:
 
 
 def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None = None,
-          exam_yaml: Path | None = None, log=console.log) -> Build:
-    """Build, check and write the splits for one experiment config."""
+          exam_yaml: Path | None = None, pilot_dir: Path | None = None, pilot_csv: Path | None = None,
+          log=console.log) -> Build:
+    """Build, check and write the splits for one experiment config. The pilot (``pilot_dir``,
+    ``pilot_csv``: training/data/pilot/ and pilot.csv by default) is held out."""
     spelling = load_spelling(cfg.data.path("spelling"))
-    own, skipped = load_recordings(cfg.data.path("recordings"), cfg.data.path("sentences"), spelling)
+    own, skipped = load_recordings(cfg.data.path("recordings"), cfg.data.path("sentences"), spelling, pilot_dir)
+    pilot = pilot_held_out(pilot_dir, pilot_csv)
     if not own:
         raise ValueError(f"no usable takes in {cfg.data.path('recordings')}; record with: wt-train record")
     splits = split_by_sentence(own, cfg.data.validation_fraction, cfg.data.test_fraction, cfg.data.seed)
@@ -391,13 +433,13 @@ def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None 
     if n_train or n_val:
         if not fleurs.is_ready("train", fleurs_root):
             fleurs.ensure("train", fleurs_root)
-        exclude = {i.key for i in own} | set(held_out.keys)
+        exclude = {i.key for i in own} | set(held_out.keys) | set(pilot.keys)
         reh_train, reh_val = sample_rehearsal(fleurs.load_split("train", fleurs_root), n_train, n_val,
                                               exclude, cfg.data.seed, spelling)
         splits["train"] = sorted(splits["train"] + reh_train, key=lambda i: i.id)
         splits["validation"] = sorted(splits["validation"] + reh_val, key=lambda i: i.id)
 
-    report = check_leakage(splits, held_out, exam_held_out(cfg.data.path("recordings"), exam_yaml))
+    report = check_leakage(splits, held_out, exam_held_out(cfg.data.path("recordings"), exam_yaml), pilot)
 
     out = Path(out_dir) if out_dir is not None else paths.builds_dir() / cfg.name
     out.mkdir(parents=True, exist_ok=True)

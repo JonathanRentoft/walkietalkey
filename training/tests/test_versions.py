@@ -101,7 +101,7 @@ def test_every_run_says_whether_the_pipeline_or_the_model_changed(store):
         pass
     tags = {r.info.run_name: r.data.tags["wt.change"] for r in tracking.find_runs()}
     assert tags == {"t": "model", "e": "pipeline", "x": "model"}
-    with pytest.raises(ValueError, match="pipeline or model"):
+    with pytest.raises(ValueError, match="pipeline, model or data"):
         with tracking.run("eval", "bad", change="weights"):
             pass
 

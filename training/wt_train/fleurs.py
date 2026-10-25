@@ -108,6 +108,42 @@ def fetch(split: str, root: Path | None = None, *, keep_archive: bool = False,
     return root
 
 
+def _audio_hash(wav: Path) -> str:
+    """SHA-256 of the decoded samples as 16-bit PCM, so a copy under another name or format matches."""
+    import hashlib
+
+    import numpy as np
+    import soundfile as sf
+
+    x, _ = sf.read(str(wav), dtype="float32", always_2d=False)
+    return hashlib.sha256(np.round(np.clip(x, -1, 1) * 32767).astype("<i2").tobytes()).hexdigest()
+
+
+def overlap(train: list[FleursClip], test: list[FleursClip]) -> dict:
+    """Run 7: whether any test clip is in train, by FLEURS sentence id, by normalised text
+    (the accuracy job's normaliser), by file name and by audio. Edda's model card lists
+    2,463 FLEURS da_dk *train* clips in its training data, so a clean result means our
+    FLEURS test regression check is held out from Edda as well as from our own training."""
+    from .harness import normalize
+
+    train_ids = {c.sentence_id for c in train}
+    train_texts = {normalize(c.text) for c in train}
+    train_files = {c.wav.name for c in train}
+    train_audio = {_audio_hash(c.wav) for c in train}
+    shared = {
+        "sentence_ids": sorted(c.id for c in test if c.sentence_id in train_ids),
+        "texts": sorted(c.id for c in test if normalize(c.text) in train_texts),
+        "files": sorted(c.id for c in test if c.wav.name in train_files),
+        "audio": sorted(c.id for c in test if _audio_hash(c.wav) in train_audio),
+    }
+    return {
+        "clips": {"train": len(train), "test": len(test)},
+        "sentences": {"train": len(train_ids), "test": len({c.sentence_id for c in test})},
+        "shared": shared,
+        "clean": not any(shared.values()),
+    }
+
+
 def ensure(split: str, root: Path | None = None) -> Path:
     return fetch(split, root)
 
@@ -121,8 +157,16 @@ def main(argv: list[str]) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--split", choices=[*SPLITS, "all"], default="all")
     p.add_argument("--keep-archive", action="store_true", help="keep the downloaded .tar.gz")
+    p.add_argument("--overlap", action="store_true",
+                   help="check that no test clip is in train (Edda was trained on train), then exit")
     a = p.parse_args(argv)
     root = paths.fleurs_dir()
+    if a.overlap:
+        import json
+
+        result = overlap(load_split("train", root), load_split("test", root))
+        print(json.dumps(result, indent=2))
+        return 0 if result["clean"] else 1
     for split in SPLITS if a.split == "all" else (a.split,):
         fetch(split, root, keep_archive=a.keep_archive)
         clips = load_split(split, root)

@@ -48,9 +48,10 @@ _METRIC_BATCH = 1000
 _PARAM_BATCH = 100
 _PARAM_MAX = 6000
 
-# Run 6: what a run changed or measured.
-CHANGES = ("pipeline", "model")
-DEFAULT_CHANGE = {"train": "model", "export": "model", "eval": "model"}
+# Run 6: what a run changed or measured. Run 7 adds ``data``: a pilot compares recording setups
+# (the audio going in), with the model and the pipeline unchanged.
+CHANGES = ("pipeline", "model", "data")
+DEFAULT_CHANGE = {"train": "model", "export": "model", "eval": "model", "pilot": "data"}
 
 
 def store_dir() -> Path:
@@ -238,7 +239,7 @@ def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | N
     exports change the model, and an eval measures a model unless it says otherwise."""
     change = change or DEFAULT_CHANGE.get(kind)
     if change not in CHANGES:
-        raise ValueError(f"a run changes the pipeline or model, not {change!r}")
+        raise ValueError(f"a run changes the pipeline, model or data, not {change!r}")
     if not enabled():
         yield NO_RUN
         return
@@ -255,6 +256,20 @@ def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | N
         current.finish("FAILED")
         raise
     current.finish("FINISHED")
+
+
+def attach(run_id: str, path: Path, folder: str | None = None) -> bool:
+    """Run 7: adds a file (a report page) to a run that already exists, finished or not.
+    False when tracking is off, the run is unknown or the file is missing."""
+    if not enabled() or not run_id or not Path(path).is_file():
+        return False
+    c, _ = client()
+    try:
+        c.get_run(run_id)
+    except Exception:
+        return False
+    c.log_artifact(run_id, str(path), folder)
+    return True
 
 
 def find_runs(*, kind: str | None = None, name: str | None = None) -> list:
@@ -285,18 +300,21 @@ def log_training_inputs(tracked: Run, config: dict, config_hash: str, splits: di
                     "dataset": {"fingerprint": fingerprint["fingerprint"], "counts": fingerprint["counts"]}})
 
 
-def log_eval(report: dict) -> None:
+def log_eval(report: dict) -> str:
     """One ``wt-train eval``: every metric (overall, per condition, the FLEURS regression)
-    and its files, under its training run when it scored one."""
+    and its files, under its training run when it scored one. Run 7: tagged ``wt.eval_dir``
+    with its folder, and returns the run's id ("" when tracking is off) for its report page."""
     if not enabled():
-        return
+        return ""
     out = Path(report["out"])
-    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report)) as r:
+    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report),
+             tags={"wt.eval_dir": str(out.resolve())}) as r:
         r.params({"backend": report.get("backend", ""), "model": report.get("model", ""),
                   "dataset": report.get("dataset", ""), "train_run": report.get("train_run") or ""})
         r.metrics(report.get("metrics") or {})
         for name in ("summary.json", "terms.md", "side-by-side.md"):
             r.artifact(out / name)
+    return r.id
 
 
 def eval_change(report: dict) -> str:

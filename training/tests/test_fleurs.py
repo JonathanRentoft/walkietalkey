@@ -70,3 +70,30 @@ def test_fetch_refuses_archive_paths_outside_the_folder(tmp_path):
     with pytest.raises(tarfile.TarError):
         fleurs.fetch("test", tmp_path / "root", download=fake_download)
     assert not (tmp_path / "outside.txt").exists()
+
+
+def test_train_and_test_share_no_sentence_text_file_or_audio(fleurs_root):
+    """Run 7: Edda was trained on FLEURS da_dk train (its model card); our regression check is
+    FLEURS test, so the two must share nothing: no sentence, no text, no file, no audio."""
+    from wt_train.fleurs import load_split, overlap
+
+    result = overlap(load_split("train", fleurs_root), load_split("test", fleurs_root))
+    assert result["clips"] == {"train": 14, "test": 4}
+    assert result["sentences"] == {"train": 12, "test": 4}
+    assert result["shared"] == {"sentence_ids": [], "texts": [], "files": [], "audio": []}
+    assert result["clean"] is True
+
+
+def test_a_test_clip_inside_train_is_found_by_text_file_and_audio(fleurs_root):
+    import shutil
+
+    from wt_train.fleurs import load_split, overlap
+
+    train, test = load_split("train", fleurs_root), load_split("test", fleurs_root)
+    # the same audio under another name, and the same text under another sentence id
+    shutil.copyfile(train[0].wav, test[0].wav)
+    moved = [*test[1:], test[0].__class__(**{**test[0].__dict__, "text": train[3].text})]
+    result = overlap(train, moved)
+    assert result["shared"]["audio"] == [test[0].id]
+    assert result["shared"]["texts"] == [test[0].id]
+    assert result["clean"] is False

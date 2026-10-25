@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/* End-to-end check of the recorder page (wt-train record, training/wt_train/recorder/). Two
-   recorder servers run on 127.0.0.1, one for a phone condition and one for the Mac's, each with
-   its own temporary sentence list, plan and recordings folder; nothing touches
-   training/data/recordings/. The spec plays the WalkieTalkey app: the recorder writes the app's
+/* End-to-end check of the recorder page (wt-train record, training/wt_train/recorder/). Three
+   recorder servers run on 127.0.0.1, one for a phone condition, one for the Mac's and one for a
+   pilot setup (wt-train pilot record), each with its own temporary sentence list, plan and
+   recordings folder; nothing touches training/data/recordings/ or training/data/pilot/. The spec plays the WalkieTalkey app: the recorder writes the app's
    link with its token to a file (--app-url-file) instead of handing it to a running app, and the
    spec talks to the recorder's app API the way the desktop module does (e2e/fake-app.ts),
    uploading a Danish FLEURS clip as the take.
@@ -45,10 +45,25 @@ writeFileSync(
   "paragraphs:\n  - id: e01\n    title: Mandag\n    text: God morgen allesammen, vi starter standuppen nu.\n",
 );
 
-const PORTS = { phone: 8791, mac: 8792 } as const;
-const CONDITIONS = { phone: "phone-whisper", mac: "mac-normal" } as const;
+const PILOT = [
+  ["pilot-01", "Buildet fejler på CI'en i dag.", "terms"],
+  ["pilot-02", "Mødet med kunden er flyttet til torsdag.", "plain"],
+] as const;
+const pilotCsv = join(work, "pilot.csv");
+writeFileSync(
+  pilotCsv,
+  [
+    "id,text,kind",
+    ...PILOT.map(([id, text, kind]) => `${id},"${text}",${kind}`),
+  ].join("\n") + "\n",
+);
 
-const server = (name: keyof typeof PORTS) => ({
+const PORTS = { phone: 8791, mac: 8792, pilot: 8793 } as const;
+const CONDITIONS = { phone: "phone-whisper", mac: "mac-normal" } as const;
+// A Mac setup, whispered: the AirPods picked in the app.
+const PILOT_SETUP = "airpods-whisper";
+
+const server = (name: keyof typeof CONDITIONS) => ({
   command: [
     "uv run --project",
     JSON.stringify(join(repo, "training")),
@@ -72,6 +87,26 @@ const server = (name: keyof typeof PORTS) => ({
   timeout: 300_000,
 });
 
+const pilotServer = {
+  command: [
+    "uv run --project",
+    JSON.stringify(join(repo, "training")),
+    "wt-train pilot record --no-browser --port",
+    PORTS.pilot,
+    "--setup",
+    PILOT_SETUP,
+    "--sentences",
+    JSON.stringify(pilotCsv),
+    "--pilot-dir",
+    JSON.stringify(join(work, "pilot")),
+    "--app-url-file",
+    JSON.stringify(join(work, "pilot-app-url")),
+  ].join(" "),
+  url: `http://127.0.0.1:${PORTS.pilot}/`,
+  reuseExistingServer: false,
+  timeout: 300_000,
+};
+
 const project = (name: keyof typeof PORTS) => ({
   name,
   grep: new RegExp(`@${name}`),
@@ -85,10 +120,10 @@ export default defineConfig({
   testDir: ".",
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  workers: 2,
+  workers: 3,
   reporter: [["list"]],
   globalTeardown: "./teardown.ts",
   use: { trace: "retain-on-failure" },
-  projects: [project("phone"), project("mac")],
-  webServer: [server("phone"), server("mac")],
+  projects: [project("phone"), project("mac"), project("pilot")],
+  webServer: [server("phone"), server("mac"), pilotServer],
 });

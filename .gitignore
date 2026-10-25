@@ -65,5 +65,6 @@ CLAUDE.local.md
 # Fine-tuning workbench (training/): the owner's recordings never leave this Mac, and
 # downloads, caches, runs and exported models stay in the work folder.
 training/data/recordings/
+training/data/pilot/
 training/work/
 training/.venv/

@@ -134,3 +134,20 @@ def test_a_busy_port_is_skipped():
         s.listen()
         busy = s.getsockname()[1]
         assert ui.free_port(busy, tries=5) != busy
+
+
+def test_a_file_can_be_attached_to_a_finished_run(store, tmp_path):
+    """Run 7: a report page goes onto its evaluation's run afterwards."""
+    with tracking.run("eval", "e") as r:
+        pass
+    page = tmp_path / "report.html"
+    page.write_text("<!doctype html>", encoding="utf-8")
+    assert tracking.attach(r.id, page, "report")
+    c, _ = tracking.client()
+    assert [a.path for a in c.list_artifacts(r.id, "report")] == ["report/report.html"]
+    assert not tracking.attach("0" * 32, page)
+    assert not tracking.attach(r.id, tmp_path / "missing.html")
+
+
+def test_a_pilot_run_changes_the_data():
+    assert tracking.DEFAULT_CHANGE["pilot"] == "data"

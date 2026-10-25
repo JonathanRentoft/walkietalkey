@@ -14,14 +14,22 @@ Layout::
     <id>.wav, <id>.txt            run 4's browser takes (Mac, normal voice), still read by
     .replaced/<id>.<time>.*       the dataset builder as condition mac-normal
 
+Run 7, the pilot (``wt-train pilot record``), in training/data/pilot/ (git-ignored too,
+and never read by the dataset builder): one folder per recording setup instead of per
+condition, the same three files::
+
+    <setup>/<id>.wav|txt|json     the twelve pilot sentences read in one setup
+    .replaced/<setup>/...         every earlier take
+    sessions.jsonl
+
 A redo moves the previous trio into ``.replaced/``, so a slip never loses a take;
 the dataset builder reads only the current one. A take counts as recorded while
 its ``.txt`` matches the text; if the owner edits a sentence (a spelling
 convention changed), the old take is "stale" and the recorder comes back to it.
 
 Paths are built only from ids in the sentence list (or the exam), and those must
-be plain (letters, digits, ``_`` and ``-``), so nothing outside the folder is
-touched.
+be plain (letters, digits, ``_`` and ``-``), and from setup names, which must be
+lower-case letters, digits and ``-``, so nothing outside the folder is touched.
 """
 
 from __future__ import annotations
@@ -40,6 +48,9 @@ from ..exam import EXAM_FOLDER
 from .audio import write_wav
 
 SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+# A pilot setup's folder name: lower-case letters, digits and "-", starting and ending with
+# a letter or digit (so never ".replaced", "sessions.jsonl" or "..").
+SAFE_SETUP = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?")
 STATUSES = ("missing", "recorded", "stale")
 REPLACED = ".replaced"
 SESSIONS_LOG = "sessions.jsonl"
@@ -56,18 +67,30 @@ def condition_folder(root: Path, condition: str, exam: bool = False) -> Path:
 
 
 class TakeStore:
-    """The takes of one condition (or of its exam) for the texts in ``texts`` (id -> text)."""
+    """The takes of one condition (or of its exam) for the texts in ``texts`` (id -> text).
+    With ``setup`` (run 7's pilot), the takes of that recording setup, in ``<root>/<setup>/``."""
 
-    def __init__(self, root: Path, condition: str, texts: dict[str, str], exam: bool = False):
+    def __init__(self, root: Path, condition: str, texts: dict[str, str], exam: bool = False,
+                 setup: str | None = None):
         for item_id in texts:
             if not SAFE_ID.fullmatch(item_id):
                 raise ValueError(f"id {item_id!r} must be letters, digits, '_' or '-' (at most 64)")
         self.root = Path(root)
         self.condition = condition
         self.exam = exam
+        self.setup = setup
         self.texts = dict(texts)
-        self.folder = condition_folder(root, condition, exam)
-        sub = Path(EXAM_FOLDER) / condition if exam else Path(condition)
+        if setup is not None:
+            if exam:
+                raise ValueError("a pilot setup has no exam")
+            if not SAFE_SETUP.fullmatch(setup):
+                raise ValueError(f"setup {setup!r} must be lower-case letters, digits and '-' (at most 40)")
+            if condition not in IDS:
+                raise ValueError(f"unknown condition {condition!r}")
+            self.folder, sub = self.root / setup, Path(setup)
+        else:
+            self.folder = condition_folder(root, condition, exam)
+            sub = Path(EXAM_FOLDER) / condition if exam else Path(condition)
         self.replaced = self.root / REPLACED / sub
 
     def text(self, item_id: str) -> str:

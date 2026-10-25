@@ -28,7 +28,8 @@ with ``walkietalkey --training-session <url>`` (the single-instance handoff, lik
                                     -> saved, check, problems, replaced
     POST /app/v1/events             recording, cancelled, mac_failed, phone, bye, error
 
-Takes are written to training/data/recordings/ (git-ignored) and nowhere else;
+Takes are written to training/data/recordings/ (git-ignored) and nowhere else (the
+pilot's, ``wt-train pilot record``, to training/data/pilot/, which :func:`serve` runs too);
 the server makes no outbound connections, and the page's Content-Security-Policy
 lets it talk to this server only. Requests must name this server as their Host
 (no DNS rebinding). The page's posts need its own header and origin, so another
@@ -84,10 +85,16 @@ CSP = (
 _TAKE_WAV = re.compile(r"/api/takes/([^/]+)\.wav")
 
 
+def condition_rows(conditions=CONDITIONS) -> list[dict]:
+    """The page's progress table: one row per condition (``progress`` is keyed by its id)."""
+    return [{"id": c.id, "label": c.label, "device": c.device, "style": c.style} for c in conditions]
+
+
 class RecorderServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, session: Session, token: str, port: int, progress=None, connect=None):
+    def __init__(self, session: Session, token: str, port: int, progress=None, connect=None,
+                 rows: list[dict] | None = None):
         super().__init__((HOST, port), _Handler)
         self.session = session
         self.token = token
@@ -95,6 +102,8 @@ class RecorderServer(ThreadingHTTPServer):
         self._progress_cache: tuple[int, dict] | None = None
         self.connect = connect
         self.link = {"status": "waiting", "detail": ""}
+        # The rows of the page's progress table (the conditions, or the pilot's setups).
+        self.rows = rows if rows is not None else condition_rows()
 
     @property
     def origins(self) -> set[str]:
@@ -112,9 +121,9 @@ class RecorderServer(ThreadingHTTPServer):
 
 
 def make_server(session: Session, token: str, port: int = DEFAULT_PORT, progress=None,
-                connect=None) -> RecorderServer:
+                connect=None, rows: list[dict] | None = None) -> RecorderServer:
     """A server for ``session`` on 127.0.0.1:``port`` (0 picks a free port)."""
-    return RecorderServer(session, token, port, progress=progress, connect=connect)
+    return RecorderServer(session, token, port, progress=progress, connect=connect, rows=rows)
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -257,8 +266,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _state(self) -> dict:
         return {"session": self.server.session.state(), "progress": self.server.progress(),
-                "link": self.server.link, "conditions": [
-                    {"id": c.id, "label": c.label, "device": c.device, "style": c.style} for c in CONDITIONS]}
+                "link": self.server.link, "conditions": self.server.rows}
 
     # The app ----------------------------------------------------------------
 
@@ -343,9 +351,9 @@ def progress_of(root: Path, sentences, plan: dict[str, str], exam) -> dict:
     return out
 
 
-def progress_table(progress: dict) -> str:
+def progress_table(progress: dict, shown=CONDITIONS) -> str:
     lines = [f"{'condition':<15} {'sentences':>14} {'exam':>8}"]
-    for c in CONDITIONS:
+    for c in shown:
         p = progress[c.id]
         extra = f" (+{p['extra']})" if p["extra"] else ""
         lines.append(f"{c.id:<15} {p['done']:>6} of {p['total']:<4}{extra} {p['exam_done']:>3} of {p['exam_total']}")
@@ -365,7 +373,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--condition", choices=IDS,
-                        help="phone-whisper, phone-normal or mac-normal; without it, the progress is shown")  # fmt: skip
+                        help="a condition with a share in the mix (mix.yaml beside the plan; by default "
+                             "phone-whisper, phone-normal or mac-normal); the exam takes any condition. "
+                             "Without it, the progress is shown")  # fmt: skip
     parser.add_argument("--exam", action="store_true", help="read the exam paragraphs instead of the sentences")
     parser.add_argument("--phone", help="part of the phone's name, when several phones are paired")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT,
@@ -381,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     from ..exam import load_exam
-    from ..plan import ensure
+    from ..plan import ensure, format_mix, mix_path, read_mix
     from ..sentences import load_sentences
 
     sentences = load_sentences(args.sentences)
@@ -389,13 +399,25 @@ def main(argv: list[str] | None = None) -> int:
     plan, changes = ensure(sentences, args.plan)
     if changes["added"] or changes["removed"]:
         print(f"plan: {changes['added']} sentence(s) added, {changes['removed']} removed ({args.plan})")
+    mix = read_mix(mix_path(args.plan))
     progress = lambda: progress_of(args.recordings, sentences, plan, exam)  # noqa: E731
+    # The conditions in the mix, and any other the owner has takes in or chose for this session.
+    def shown(p: dict | None = None) -> list:
+        return [c for c in CONDITIONS if mix[c.id] > 0 or c.id == args.condition
+                or (p is not None and (p[c.id]["done"] or p[c.id]["extra"] or p[c.id]["exam_done"]))]
+
     if not args.condition:
-        print(progress_table(progress()))
-        print("\nRecord one condition per session, for example: wt-train record --condition phone-whisper")
+        p = progress()
+        print(progress_table(p, shown(p)))
+        print(f"\nmix: {format_mix(mix)} ({mix_path(args.plan)})")
+        print("Record one condition per session, for example: wt-train record --condition phone-whisper")
         return 0
 
     c = condition(args.condition)
+    if mix[c.id] == 0 and not args.exam:
+        print(f"{c.id} has no share in the mix ({format_mix(mix)}; {mix_path(args.plan)}), so no sentence is "
+              f"planned in it. Give it one with: wt-train plan --mix ...,{c.id}=<percent>", file=sys.stderr)
+        return 2
     if args.exam:
         items, texts = exam, {p.id: p.text for p in exam}
     else:
@@ -403,38 +425,47 @@ def main(argv: list[str] | None = None) -> int:
         texts = {s.id: s.text for s in sentences}
     session = Session(root=args.recordings, condition=c, items=items, texts=texts, exam=args.exam,
                       phone=args.phone)
+    what = "the exam" if args.exam else "sentences"
+    return serve(session, port=args.port, progress=progress, rows=condition_rows(shown()),
+                 app_bin=args.app_bin, app_url_file=args.app_url_file, no_browser=args.no_browser,
+                 describe=f"{c.id}, {what}: {session.state()['done']} of {len(items)} recorded; "
+                          f"takes in {args.recordings}")  # fmt: skip
+
+
+def serve(session: Session, *, port: int, progress, rows: list[dict] | None, app_bin: Path | None,
+          app_url_file: Path | None, no_browser: bool, describe: str) -> int:
+    """Run the page and the app's API for ``session`` until Ctrl+C, handing the session to the
+    running app (or writing its link to ``app_url_file``); the session ends on the way out."""
     token = secrets.token_urlsafe(32)
     try:
-        server = make_server(session, token, args.port, progress=progress)
+        server = make_server(session, token, port, progress=progress, rows=rows)
     except OSError as e:
-        print(f"cannot listen on {HOST}:{args.port}: {e.strerror}. Is the recorder already running? "
+        print(f"cannot listen on {HOST}:{port}: {e.strerror}. Is the recorder already running? "
               "Try another --port.", file=sys.stderr)  # fmt: skip
         return 1
 
     def connect() -> None:
         url = server.app_url()
-        if args.app_url_file:
-            args.app_url_file.write_text(url + "\n", encoding="utf-8")
-            args.app_url_file.chmod(0o600)
+        if app_url_file:
+            app_url_file.write_text(url + "\n", encoding="utf-8")
+            app_url_file.chmod(0o600)
             server.link = {"status": "waiting", "detail": "manual"}
             return
         from ..app import handoff_training
 
         server.link = {"status": "connecting", "detail": ""}
-        status, detail = handoff_training(url, args.app_bin)
+        status, detail = handoff_training(url, app_bin)
         server.link = {"status": "waiting" if status == "ok" else status, "detail": detail}
         if status != "ok":
             print(f"WalkieTalkey: {detail}", file=sys.stderr, flush=True)
 
     server.connect = connect
     page = f"http://{HOST}:{server.server_address[1]}/"
-    what = "the exam" if args.exam else "sentences"
-    print(f"Recorder: {page}  ({c.id}, {what}: {session.state()['done']} of {len(items)} recorded; "
-          f"takes in {args.recordings})")
+    print(f"Recorder: {page}  ({describe})")
     print("Ctrl+C stops it.", flush=True)
     threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True).start()
     connect()
-    if not args.no_browser:
+    if not no_browser:
         webbrowser.open(page)
     try:
         while True:
