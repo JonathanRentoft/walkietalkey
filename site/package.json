@@ -17,7 +17,10 @@
     "deploy": "WRANGLER_SEND_METRICS=false wrangler pages deploy dist --project-name walkietalkey-site --branch main",
     "deploy:previews": "bun scripts/deploy-previews.ts",
     "deploy:domain": "WRANGLER_SEND_METRICS=false wrangler deploy --config wrangler.domain.jsonc",
-    "deploy:www": "WRANGLER_SEND_METRICS=false wrangler deploy --config www/wrangler.jsonc"
+    "deploy:www": "WRANGLER_SEND_METRICS=false wrangler deploy --config www/wrangler.jsonc",
+    "build:concepts": "bun scripts/concepts.ts",
+    "test:concepts": "bun scripts/concepts.ts && playwright test -c playwright.concepts.config.ts",
+    "shots:concepts": "bun scripts/concept-shots.ts"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.1",

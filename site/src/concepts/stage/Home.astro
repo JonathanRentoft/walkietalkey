@@ -1,0 +1,165 @@
+---
+/* Run 6, concept B: Product stage. The front page as a calm product film. A cinematic hero puts a laptop and a phone
+   on a soft silver stage, lit by the liquid gradient; then the scroll is the timeline. Every feature is a shot of the
+   same set from its own camera (Shot.astro, World.astro): the fn key goes down and the words land when it comes up;
+   the phone records, sends on release and the laptop receives; the notification waits on the computer you sit at; a
+   self-correction is cleaned up; English words stay English; the word list fixes a name. Then the lights go down
+   for privacy and the open code (Night.astro), the product stands alone on a pedestal for the price, three frames
+   show how to start, and the questions close it.
+
+   Static HTML first: every shot's finished state is its base style, so without JavaScript or with reduced motion the
+   page stands finished and reads in full. The one script (film.ts) only pauses what is out of sight and, in browsers
+   without scroll-driven animations, plays each shot once when it comes into view. No React runs on this page. */
+import { AppIcon, DictationPill, Grain, Keycap, LiquidBackground, ShinyButton } from "@walkietalkey/ui";
+import Header from "../../components/Header.astro";
+import Claim from "../../components/home/Claim.astro";
+import { Check } from "../../components/home/Icons";
+import { CTA, FAQ, FEATURES, FINE_PRINT, ONE_LINER, PLANS, SLOGAN, STEPS } from "../../lib/features";
+import { CONTACT_URL, PAGES } from "../../lib/site";
+import Night from "./Night.astro";
+import Shot from "./Shot.astro";
+import World from "./World.astro";
+import { FILM, SHOTS, STAGE } from "./scenes";
+import "./stage.css";
+
+const plans = [
+  { p: PLANS.free, cta: { label: CTA.download, href: PAGES.hent.path, variant: "ink" as const } },
+  { p: PLANS.help, cta: { label: CTA.contact, href: CONTACT_URL, variant: "glass" as const } },
+];
+---
+<script is:inline>document.documentElement.classList.add("ps-js")</script>
+<Header current="home" />
+<main id="indhold" class="ps-main">
+  <section class="ps-hero" data-ps-live aria-labelledby="ps-h1">
+    <div class="ps-hero-panel">
+      <LiquidBackground className="ps-hero-bg" palette="morgengry" />
+      <Grain />
+      <div class="ps-hero-copy">
+        <h1 class="ps-h1" id="ps-h1">{SLOGAN}</h1>
+        <p class="ps-lead">{ONE_LINER}</p>
+        <div class="ps-ctas">
+          <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+          <ShinyButton variant="glass" size="lg" icon={false} href="#saadan">{CTA.how}</ShinyButton>
+        </div>
+        <p class="ps-fine">{FINE_PRINT}</p>
+      </div>
+      <div class="ps-view ps-view--hero" role="img" aria-label={SHOTS.hero.label}>
+        <div class="ps-rig"><World shot="hero" /></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-film" id="saadan" aria-label={CTA.how}>
+    {FILM.map((s) => <Shot shot={s} />)}
+  </section>
+
+  <Night />
+
+  <section class="ps-price" data-ps-live aria-labelledby="ps-gratis">
+    <article class="ps-free" data-feature="free">
+      <div class="ps-free-panel">
+        <div class="ps-light ps-light--price" aria-hidden="true"><i></i><i></i><i></i></div>
+        <Grain />
+        <div class="ps-ped" aria-hidden="true">
+          <span class="ps-ped-halo"></span>
+          <span class="ps-ped-icon"><AppIcon size={136} /></span>
+          <span class="ps-ped-body"></span>
+          <span class="ps-ped-top"></span>
+          <span class="ps-ped-shade"></span>
+        </div>
+        <div class="ps-free-copy">
+          <h2 class="ps-h2" id="ps-gratis">{FEATURES.free.title}</h2>
+          <p class="ps-zero">{PLANS.free.price}</p>
+          <p class="ps-text">{FEATURES.free.body}</p>
+        </div>
+      </div>
+      <div class="ps-plans">
+        {plans.map(({ p, cta }) => (
+          <div class="ps-plan">
+            <h3>{p.title}</h3>
+            <p class="ps-plan-price">{p.price}</p>
+            <p class="ps-plan-note">{p.note}</p>
+            <ul>{p.items.map((s) => <li><Check s={16} />{s}</li>)}</ul>
+            <div class="ps-plan-cta">
+              <ShinyButton variant={cta.variant} href={cta.href}>{cta.label}</ShinyButton>
+              {p === PLANS.help && <a class="ps-plan-link" href={PAGES.business.path}>{CTA.business}</a>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p class="ps-plans-foot">{PLANS.footnote}</p>
+    </article>
+  </section>
+
+  <section class="ps-start" data-ps-live aria-labelledby="ps-kom-i-gang">
+    <article data-feature="start">
+      <header class="ps-start-head">
+        <h2 class="ps-h2" id="ps-kom-i-gang">{FEATURES.start.title}</h2>
+        <p class="ps-text">{FEATURES.start.body}</p>
+      </header>
+      <ol class="ps-reel">
+        {STEPS.map((s, i) => (
+          <li class={`ps-frame ps-frame--${i + 1}`}>
+            <div class="ps-frame-pic" aria-hidden="true">
+              {i === 0 && (
+                <div class="ps-f-get">
+                  <AppIcon size={64} />
+                  <span class="ps-f-bar"><i></i></span>
+                  <span class="ps-f-cap">{STAGE.model}</span>
+                </div>
+              )}
+              {i === 1 && (
+                <div class="ps-f-perm">
+                  {[STAGE.mic, STAGE.access].map((t, k) => (
+                    <span class="ps-f-row" style={`--k:${k}`}><span>{t}</span><i class="ps-f-switch"><b></b></i></span>
+                  ))}
+                </div>
+              )}
+              {i === 2 && (
+                <div class="ps-f-talk">
+                  <Keycap size={64} pressed>fn</Keycap>
+                  <DictationPill state="listening" seconds={2} mark />
+                </div>
+              )}
+            </div>
+            <span class="ps-frame-n">{i + 1}</span>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+          </li>
+        ))}
+      </ol>
+    </article>
+  </section>
+
+  <section class="ps-faq" aria-labelledby="ps-spoergsmaal">
+    <article class="ps-faq-in" data-feature="faq">
+      <div class="ps-faq-head">
+        <h2 class="ps-h2" id="ps-spoergsmaal">{FEATURES.faq.title}</h2>
+        <p class="ps-text">{FEATURES.faq.short}</p>
+        <p class="ps-more"><a href={PAGES.faq.path}>{CTA.allQuestions}</a></p>
+      </div>
+      <div class="ps-faq-list">
+        {FAQ.map((q, i) =>
+          q.claim ? (
+            <Claim as="div" what={q.claim}>
+              <details><summary>{q.q}</summary><p>{q.a}</p></details>
+            </Claim>
+          ) : (
+            <details open={i === 0}><summary>{q.q}</summary><p>{q.a}</p></details>
+          ),
+        )}
+      </div>
+    </article>
+  </section>
+
+  <section class="ps-end" aria-labelledby="ps-slut">
+    <AppIcon size={88} className="ps-end-icon" />
+    <p class="ps-end-title" id="ps-slut">{SLOGAN}</p>
+    <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+    <p class="ps-fine">{FINE_PRINT}</p>
+  </section>
+</main>
+<script>
+  import { start } from "./film";
+  start();
+</script>

@@ -152,6 +152,11 @@ class App:
     def supports_training(self) -> bool:
         return b"--training-session" in self.help_text
 
+    @cached_property
+    def supports_use(self) -> bool:
+        """Run 6: ``--use-model`` selects an installed model (``wt-train use``)."""
+        return b"--use-model" in self.help_text
+
     def transcribe_live(self, wavs: list[Path], model_id: str, progress=None) -> list[AppResult]:
         """Each file through the live path at real-time speed (``-f <wav> --live``): the
         chunker and its joints as in a dictation (DESK-43, DESK-46). Slow by design."""

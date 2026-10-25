@@ -1,0 +1,219 @@
+---
+/* Run 6, concept A: Editorial. Typography first, set like a magazine spread on a twelve-column grid.
+     Cover   the slogan as an oversized italic headline (the W mark's lean), stepped down the page, over the page's
+             one living surface: a slow liquid gradient in silver and brown.
+     Fig. 1  one minimal computer window, where a line lands the moment fn is let go (Plate.astro).
+     01-06   the product features as a numbered list, each with a small inline demo in the margin (Demo.astro).
+     07-11   privacy with open source as its colophon, the price, three steps and the questions, each a spread of its
+             own, numbered on from the list.
+   Every feature sits in a [data-feature] block under its shared title (lib/features.ts); unmeasured claims sit in
+   <Claim> (TODO(claim)). Static HTML first: the page reads completely without JavaScript, and motion.ts only
+   enhances. Every class here starts with ed- (lib/build.ts). */
+import { Logo, LiquidBackground, ShinyButton } from "@walkietalkey/ui";
+import Header from "../../components/Header.astro";
+import Claim from "../../components/home/Claim.astro";
+import {
+  CTA,
+  FAQ,
+  FEATURES,
+  FINE_PRINT,
+  ONE_LINER,
+  PLANS,
+  PRIVACY_FACTS,
+  SLOGAN,
+  STEPS,
+  type FeatureKey,
+} from "../../lib/features";
+import { CONTACT_URL, PAGES, REPO_URL } from "../../lib/site";
+import { ED } from "./copy";
+import Demo from "./Demo.astro";
+import Plate from "./Plate.astro";
+import "./editorial.css";
+
+/** the numbered list: the six features you feel in the first minute */
+const LISTED: FeatureKey[] = ["fn", "phone", "corrections", "mixed", "words", "notify"];
+const num = (n: number) => String(n).padStart(2, "0");
+/* the chapters after the list are numbered on from it */
+const CH = { privacy: 7, oss: 8, free: 9, start: 10, faq: 11 };
+
+/* "fn" in the standfirst becomes a key */
+const [deckBefore, deckAfter] = ONE_LINER.split(" fn ");
+const repoText = REPO_URL.replace(/^https:\/\//, "");
+---
+<script is:inline>
+  /* Motion is allowed: the small demos may wait for their moment (editorial.css, motion.ts). */
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: no-preference)").matches && "IntersectionObserver" in window)
+    document.documentElement.classList.add("ed-motion");
+</script>
+<div class="ed-backdrop" data-ed-backdrop aria-hidden="true">
+  <LiquidBackground palette="morgengry" speed={0.55} className="ed-liquid" />
+</div>
+<Header current="home" />
+<main id="indhold" class="ed-page">
+  <!-- Cover -->
+  <section class="ed-cover ed-grid" data-ed-cover aria-labelledby="ed-h1">
+    <h1 id="ed-h1" class="ed-h1">{SLOGAN.split(" ").map((w) => <span>{w}</span>)}</h1>
+    <p class="ed-deck">{deckBefore} <kbd class="ed-kbd">fn</kbd> {deckAfter}</p>
+    <div class="ed-cover-cta">
+      <div class="ed-ctas">
+        <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+        <ShinyButton variant="glass" size="lg" icon={false} href={PAGES.how.path}>{CTA.how}</ShinyButton>
+      </div>
+      <p class="ed-fine">{FINE_PRINT}</p>
+    </div>
+  </section>
+
+  <!-- Fig. 1 -->
+  <section class="ed-sec ed-sec--plate" aria-label={ED.plateLabel}>
+    <Plate />
+  </section>
+
+  <!-- 01 to 06 -->
+  <section class="ed-sec ed-features" aria-labelledby="ed-features-h">
+    <p class="ed-head"><span class="ed-head-num">{ED.featuresRange}</span><span>{ED.heads.features}</span></p>
+    <h2 id="ed-features-h" class="ed-h2">{ED.featuresTitle}</h2>
+    <ol class="ed-list" data-ed-list role="list">
+      {LISTED.map((key, i) => {
+        const f = FEATURES[key];
+        return (
+          <li class="ed-item" data-feature={key}>
+            <span class="ed-num" data-ed-num aria-hidden="true">{num(i + 1)}</span>
+            <div class="ed-item-text">
+              <h3 class="ed-h3">{f.title}</h3>
+              <p>
+                {f.body}
+                {f.claim && <> <Claim what={f.claim.what}>{f.claim.text}</Claim></>}
+              </p>
+            </div>
+            <Demo feature={key} />
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+
+  <!-- 07 privacy, 08 open source -->
+  <section class="ed-sec ed-privacy" aria-labelledby="ed-privacy-h">
+    <div class="ed-priv" data-feature="privacy">
+      <p class="ed-head"><span class="ed-head-num">{num(CH.privacy)}</span><span>{ED.heads.privacy}</span></p>
+      <h2 id="ed-privacy-h" class="ed-h2 ed-h2--quote">{FEATURES.privacy.title}</h2>
+      <p class="ed-standfirst">{FEATURES.privacy.body}</p>
+      <ul class="ed-facts" role="list">
+        {PRIVACY_FACTS.map((f, i) => (
+          <li>
+            <span class="ed-fact-n" aria-hidden="true">{String.fromCharCode(97 + i)}</span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+          </li>
+        ))}
+      </ul>
+      <p class="ed-links">
+        <a href={PAGES.privacy.path}>{ED.privacyMore}</a>
+        <a href={PAGES.security.path}>{ED.securityMore}</a>
+      </p>
+    </div>
+    <div class="ed-oss" data-feature="oss">
+      <span class="ed-num" aria-hidden="true">{num(CH.oss)}</span>
+      <div class="ed-oss-text">
+        <h3 class="ed-h3">{FEATURES.oss.title}</h3>
+        <p>{FEATURES.oss.body}</p>
+        <p class="ed-links"><a href={REPO_URL}>{CTA.repo}</a></p>
+      </div>
+      <dl class="ed-colophon">
+        <div><dt>{ED.colophon.licence}</dt><dd>Apache-2.0</dd></div>
+        <div><dt>{ED.colophon.code}</dt><dd>{repoText.split("/").map((part, i) => <>{i > 0 && <>/<wbr /></>}{part}</>)}</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 09 price -->
+  <section class="ed-sec ed-free" data-feature="free" aria-labelledby="ed-free-h">
+    <p class="ed-head"><span class="ed-head-num">{num(CH.free)}</span><span>{ED.heads.free}</span></p>
+    <div class="ed-free-top">
+      <p class="ed-zero" aria-hidden="true">{PLANS.free.price}</p>
+      <div class="ed-free-intro">
+        <h2 id="ed-free-h" class="ed-h2">{FEATURES.free.title}</h2>
+        <p class="ed-standfirst">{FEATURES.free.body}</p>
+      </div>
+    </div>
+    <div class="ed-plans">
+      <article class="ed-plan">
+        <h3>{PLANS.free.title}</h3>
+        <p class="ed-price">{PLANS.free.price}</p>
+        <p class="ed-plan-note">{PLANS.free.note}</p>
+        <ul role="list">{PLANS.free.items.map((s) => <li>{s}</li>)}</ul>
+        <div class="ed-plan-act">
+          <ShinyButton variant="ink" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+        </div>
+      </article>
+      <article class="ed-plan">
+        <h3>{PLANS.help.title}</h3>
+        <p class="ed-price">{PLANS.help.price}</p>
+        <p class="ed-plan-note">{PLANS.help.note}</p>
+        <ul role="list">{PLANS.help.items.map((s) => <li>{s}</li>)}</ul>
+        <div class="ed-plan-act">
+          <ShinyButton variant="glass" icon={false} href={CONTACT_URL}>{CTA.contact}</ShinyButton>
+          <a class="ed-more" href={PAGES.business.path}>{CTA.business}</a>
+        </div>
+      </article>
+    </div>
+    <p class="ed-footnote">{PLANS.footnote}</p>
+  </section>
+
+  <!-- 10 getting started -->
+  <section class="ed-sec ed-start" data-feature="start" aria-labelledby="ed-start-h">
+    <p class="ed-head"><span class="ed-head-num">{num(CH.start)}</span><span>{ED.heads.start}</span></p>
+    <h2 id="ed-start-h" class="ed-h2">{FEATURES.start.title}</h2>
+    <div class="ed-start-side">
+      <p class="ed-standfirst">{FEATURES.start.body}</p>
+      <div class="ed-start-cta">
+        <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+        <p class="ed-fine">{FINE_PRINT}</p>
+      </div>
+    </div>
+    <ol class="ed-steps" role="list">
+      {STEPS.map((s, i) => (
+        <li>
+          <span class="ed-step-n" aria-hidden="true">{i + 1}</span>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <!-- 11 questions -->
+  <section class="ed-sec ed-faq" data-feature="faq" aria-labelledby="ed-faq-h">
+    <p class="ed-head"><span class="ed-head-num">{num(CH.faq)}</span><span>{ED.heads.faq}</span></p>
+    <div class="ed-faq-grid">
+      <div class="ed-faq-intro">
+        <h2 id="ed-faq-h" class="ed-h2">{FEATURES.faq.title}</h2>
+        <p class="ed-links"><a href={PAGES.faq.path}>{CTA.allQuestions}</a></p>
+      </div>
+      <div class="ed-qa">
+        {FAQ.map((q) => {
+          const item = (
+            <details>
+              <summary>{q.q}</summary>
+              <p>{q.a}</p>
+            </details>
+          );
+          return q.claim ? <Claim as="div" what={q.claim}>{item}</Claim> : item;
+        })}
+      </div>
+    </div>
+    <p class="ed-end" aria-hidden="true"><Logo variant="mark" tone="ink" size={18} decorative /></p>
+  </section>
+</main>
+<script>
+  import { playPlate, restOutOfSight, revealOnce } from "./motion";
+
+  if (typeof IntersectionObserver !== "undefined") {
+    const backdrop = document.querySelector<HTMLElement>("[data-ed-backdrop]");
+    const cover = document.querySelector<HTMLElement>("[data-ed-cover]");
+    const plate = document.querySelector<HTMLElement>("[data-ed-plate]");
+    if (backdrop && cover) restOutOfSight(backdrop, cover);
+    if (plate) playPlate(plate);
+    revealOnce(document.querySelectorAll<HTMLElement>("[data-ed-demo]"));
+  }
+</script>

@@ -1,0 +1,2456 @@
+/* Run 6, concept B: Product stage. A calm product film on soft silver stages, lit by slow liquid light in silver and
+   brown. Every rule here starts with ps- (lib/build.ts). Design system tokens only; text is ink, ink-muted or on-night,
+   tone colours are surfaces. The film (Shot.astro) plays on each shot's view timeline; the finished state of every
+   element is its base style, so reduced motion, no JavaScript and old browsers all show every scene finished. */
+
+/* ===================================================================== Type */
+.ps-main {
+  overflow-x: clip;
+}
+.ps-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 500 13px/1.4 var(--font-sans);
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.ps-kicker::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--line-control);
+}
+.ps-h2 {
+  margin: 14px 0 0;
+  font-size: clamp(32px, 3.3vw, 48px);
+  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.ps-text {
+  margin: 18px 0 0;
+  max-width: 40ch;
+  font: 400 17px/1.6 var(--font-sans);
+  color: var(--ink-muted);
+  text-wrap: pretty;
+}
+.ps-more {
+  margin: 22px 0 0;
+  font: 500 15px/1.4 var(--font-sans);
+}
+.ps-more a,
+.ps-plan-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-control);
+  text-underline-offset: 4px;
+}
+.ps-more a:hover,
+.ps-plan-link:hover {
+  text-decoration-color: var(--ink);
+}
+.ps-more a::after {
+  content: " →";
+}
+.ps-fine {
+  margin: 14px 0 0;
+  font: 500 13px/1.4 var(--font-sans);
+  color: var(--on-gradient-muted);
+}
+.ps-main .wt-shiny-ring,
+.ps-main .wt-shiny-sheen {
+  animation: none;
+}
+
+/* TODO(claim) in the draft previews: visibly not a fact yet (as on the current front page) */
+.ps-main .claim {
+  outline: 1.5px dashed var(--rav-dyb);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.ps-main div.claim {
+  display: block;
+  position: relative;
+}
+.ps-main .claim-tag {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--on-ink);
+  font: 600 11px/1.5 var(--font-mono);
+  vertical-align: 0.15em;
+}
+.ps-main div.claim > .claim-tag {
+  position: absolute;
+  right: 0;
+  top: -10px;
+}
+
+/* ================================================== The silver stage (cyc) */
+.ps-hero-panel,
+.ps-panel,
+.ps-free-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(58% 30% at 50% 86%, #ffffffb3 0%, #ffffff00 72%),
+    linear-gradient(
+      180deg,
+      var(--surface-100) 0%,
+      color-mix(in oklab, var(--perle) 55%, var(--surface-100)) 48%,
+      color-mix(in oklab, var(--perle) 88%, var(--platin)) 76%,
+      color-mix(in oklab, var(--perle) 70%, var(--platin)) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px #1b1a190a,
+    inset 0 1px 0 #ffffffcc;
+}
+.ps-hero-panel > .wt-grain,
+.ps-panel > .wt-grain,
+.ps-free-panel > .wt-grain,
+.ps-night-panel > .wt-grain {
+  z-index: 1;
+}
+
+/* the light: a few soft pools of silver and brown that drift, each blurred on its own so moving it is cheap */
+.ps-light {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.ps-light > i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.85;
+  animation: ps-drift-1 var(--duration-drift) var(--ease-glide) infinite
+    alternate;
+}
+.ps-light > i:nth-child(1) {
+  left: 16%;
+  top: -10%;
+  width: 54%;
+  height: 58%;
+  background: var(--sand);
+}
+.ps-light > i:nth-child(2) {
+  left: 46%;
+  top: 2%;
+  width: 46%;
+  height: 54%;
+  background: var(--platin);
+  animation-name: ps-drift-2;
+  animation-duration: calc(var(--duration-drift) * 1.24);
+}
+.ps-light > i:nth-child(3) {
+  left: 34%;
+  top: 22%;
+  width: 32%;
+  height: 34%;
+  background: var(--rav);
+  opacity: 0.42;
+  animation-name: ps-drift-3;
+  animation-duration: calc(var(--duration-drift) * 0.86);
+}
+@keyframes ps-drift-1 {
+  to {
+    transform: translate3d(10%, 8%, 0) scale(1.12);
+  }
+}
+@keyframes ps-drift-2 {
+  to {
+    transform: translate3d(-12%, 6%, 0) scale(0.92);
+  }
+}
+@keyframes ps-drift-3 {
+  to {
+    transform: translate3d(14%, -10%, 0) scale(1.2);
+  }
+}
+
+/* ===================================================================== Hero */
+.ps-hero {
+  padding: 0 12px;
+}
+.ps-hero-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100svh - 100px);
+  min-height: 640px;
+  max-height: 1080px;
+}
+.ps-hero-bg.wt-liquid {
+  position: absolute;
+  inset: 0 0 30%;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(#000 30%, #0000 100%);
+  mask-image: linear-gradient(#000 30%, #0000 100%);
+}
+.ps-hero-copy {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(32px, 5svh, 64px) 24px 0;
+  text-align: center;
+}
+.ps-h1 {
+  margin: 0;
+  font-size: clamp(54px, 6.9vw, 104px);
+  line-height: 0.94;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  color: var(--on-gradient);
+  text-wrap: balance;
+}
+.ps-lead {
+  margin: 20px 0 0;
+  max-width: 46ch;
+  font: 500 clamp(17px, 1.4vw, 20px)/1.45 var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--on-gradient);
+  text-wrap: balance;
+}
+.ps-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 26px;
+}
+@media (min-width: 1200px) {
+  .ps-lead {
+    max-width: none;
+  }
+}
+.ps-hero .ps-view--hero {
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* the stage comes up once, as if the light were switched on; the copy never waits */
+.ps-hero .ps-rig {
+  position: absolute;
+  inset: 0;
+  animation: ps-rise 1.6s var(--ease-flow) 0.15s both;
+}
+@keyframes ps-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+}
+
+/* ============================================================ View, camera */
+.ps-view {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  container: ps-view / size;
+}
+.ps-world {
+  --bx: 50cqw;
+  --by: 50cqh;
+  --bw: 92cqw;
+  --bh: 88cqh;
+  /* the camera: the rectangle --w* (wide) or --t* (tall), and --w1* / --t1* after the pan, fitted to the box */
+  --c0: translate(var(--bx), var(--by))
+    scale(
+      min(tan(atan2(var(--bw), var(--ww))), tan(atan2(var(--bh), var(--wh))))
+    )
+    translate(calc(var(--wx) * -1px), calc(var(--wy) * -1px));
+  --c1: translate(var(--bx), var(--by))
+    scale(
+      min(
+        tan(atan2(var(--bw), var(--w1w, var(--ww)))),
+        tan(atan2(var(--bh), var(--w1h, var(--wh))))
+      )
+    )
+    translate(
+      calc(var(--w1x, var(--wx)) * -1px),
+      calc(var(--w1y, var(--wy)) * -1px)
+    );
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1800px;
+  height: 1000px;
+  transform-origin: 0 0;
+  transform: var(--c1);
+}
+.ps-shot .ps-rig {
+  position: absolute;
+  inset: 0;
+  transform: var(--ps-tilt, none);
+}
+.ps-shot--sub .ps-world {
+  --by: 45cqh;
+  --bh: 74cqh;
+}
+.ps-shot--mixed .ps-rig {
+  --ps-tilt: perspective(1600px) rotateY(-13deg) rotateX(3deg);
+}
+.ps-world--hero {
+  --bh: 92cqh;
+  --bw: 96cqw;
+}
+
+/* the set: contact shadows on the floor, the laptop, the phone in front of it, the props */
+.ps-shade {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #1b1a1966, #1b1a1900);
+}
+.ps-shade--laptop {
+  left: 440px;
+  top: 752px;
+  width: 1120px;
+  height: 70px;
+}
+.ps-shade--phone {
+  left: 300px;
+  top: 846px;
+  width: 320px;
+  height: 52px;
+}
+.ps-shade--key {
+  left: calc(var(--x) - var(--w, 170px) / 2);
+  top: 940px;
+  width: var(--w, 170px);
+  height: 46px;
+}
+.ps-laptop {
+  position: absolute;
+  left: 560px;
+  top: 200px;
+  z-index: 2;
+}
+.ps-phone {
+  position: absolute;
+  left: 330px;
+  top: 336px;
+  z-index: 3;
+}
+.ps-key {
+  position: absolute;
+  top: 820px;
+  z-index: 4;
+}
+.ps-key--fn {
+  left: 1210px;
+}
+.ps-key--cmd {
+  left: 1016px;
+}
+.ps-key--v {
+  left: 1246px;
+}
+
+/* a second screen far back, out of focus: it gets nothing */
+.ps-mon {
+  position: absolute;
+  left: 1500px;
+  top: 236px;
+  z-index: 1;
+  width: 300px;
+  filter: blur(2.6px);
+  opacity: 0.9;
+}
+.ps-mon-screen {
+  position: relative;
+  display: block;
+  height: 190px;
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 70% at 20% 30%, var(--sand) 0%, #ffffff00 72%),
+    radial-gradient(55% 60% at 80% 80%, var(--platin) 0%, #ffffff00 70%),
+    var(--perle);
+  box-shadow:
+    0 0 0 8px #0e0e0f,
+    0 24px 50px -24px #1b1a1980;
+}
+.ps-mon-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 14px;
+  background: #ffffff8c;
+}
+.ps-mon-win {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  width: 150px;
+  height: 110px;
+  border-radius: 8px;
+  background: var(--surface-200);
+  box-shadow: 0 10px 20px -12px #1b1a1966;
+}
+.ps-mon-neck {
+  display: block;
+  width: 46px;
+  height: 64px;
+  margin: 8px auto 0;
+  background: linear-gradient(
+    90deg,
+    var(--platin-dyb),
+    var(--perle),
+    var(--platin-dyb)
+  );
+}
+.ps-mon-foot {
+  display: block;
+  width: 150px;
+  height: 10px;
+  margin: 0 auto;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, var(--perle), var(--platin-dyb));
+}
+
+/* ====================================================== The laptop's screen */
+.ps-win.wt-win {
+  left: 14.3em;
+  top: 4.6em;
+  width: 45em;
+  height: 34em;
+}
+.ps-world--phone .ps-win.wt-win,
+.ps-world--words .ps-win.wt-win {
+  left: 5.4em;
+}
+.ps-world--words .ps-pills {
+  left: 27.9em;
+}
+.ps-body.wt-win-body {
+  --px: 2em;
+  --py: 1.2em;
+  position: relative;
+  padding: var(--py) var(--px);
+  font-size: 1.6em;
+  line-height: 1.5;
+}
+.ps-win--big .ps-body.wt-win-body {
+  --px: 1.05em;
+  --py: 0.8em;
+  font-size: 2.2em;
+  line-height: 1.36;
+  letter-spacing: -0.005em;
+}
+.ps-caret.wt-caret {
+  position: absolute;
+  left: var(--px);
+  top: calc(var(--py) + 0.18em);
+  margin: 0;
+}
+.ps-line {
+  --ps-paste: color-mix(in oklab, var(--sand) 92%, #ffffff00);
+  border-radius: 0.18em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.ps-en {
+  padding: 0 0.1em;
+  border-radius: 0.16em;
+  background: color-mix(in oklab, var(--sand) 80%, #ffffff00);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.ps-name {
+  box-shadow: inset 0 -0.3em 0 color-mix(in oklab, var(--rav) 60%, #ffffff00);
+}
+.ps-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  width: max-content;
+  margin-top: 1em;
+  padding: 0.45em 0.85em 0.45em 0.65em;
+  border-radius: var(--radius-pill);
+  background: var(--surface-300);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: 600 0.52em/1 var(--font-sans);
+  letter-spacing: 0.01em;
+  color: var(--ink-muted);
+}
+.ps-chip svg,
+.ps-list-ok {
+  width: 1.25em;
+  height: 1.25em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ps-pills {
+  position: absolute;
+  left: 50%;
+  bottom: 2.4em;
+  z-index: 4;
+  display: grid;
+  transform: translateX(-50%) scale(0.92);
+  transform-origin: 50% 100%;
+}
+.ps-notice.wt-notice {
+  font-size: 1.12em;
+}
+.ps-pills > .wt-pill {
+  grid-area: 1 / 1;
+  justify-self: center;
+}
+/* the recording time counts while the key or the button is held (--ps-sec, stage timeline) */
+.ps-pills .wt-pill-time,
+.ps-ph .wt-app-time {
+  font-size: 0;
+  counter-reset: ps-s var(--ps-sec);
+}
+.ps-pills .wt-pill-time::after {
+  content: "0:0" counter(ps-s);
+  font-size: 14px;
+}
+.ps-ph .wt-app-time::after {
+  content: "0:0" counter(ps-s);
+  font-size: 11.3px;
+}
+.ps-live {
+  position: absolute;
+  inset: -0.2em;
+  border-radius: 0.6em;
+  background: #1b1a1914;
+  box-shadow: 0 0 0 0.12em var(--rav-dyb);
+}
+
+/* the word list, the user's own (DESK-66) */
+.ps-list {
+  position: absolute;
+  right: 1.6em;
+  top: 13.6em;
+  z-index: 3;
+  width: 24em;
+  box-sizing: border-box;
+  padding: 1.2em 1em 1em;
+  border-radius: 1.3em;
+  color: var(--ink);
+  background: color-mix(in oklab, var(--surface-200) 94%, #ffffff00);
+  box-shadow:
+    0 0.2em 0.6em #1b1a191f,
+    0 2.4em 5em -1.6em #1b1a1973,
+    inset 0 0 0 0.1em var(--line);
+}
+.ps-list-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0 0.6em 0.9em;
+  font: 600 1.35em/1 var(--font-sans);
+}
+.ps-list-head .wt-logo {
+  width: 1em;
+  height: auto;
+}
+.ps-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.75em 0.8em;
+  border-radius: 0.8em;
+  font: 500 1.5em/1.1 var(--font-sans);
+}
+.ps-list-row + .ps-list-row {
+  margin-top: 0.2em;
+}
+.ps-list-row--hit {
+  background: color-mix(in oklab, var(--sand) 62%, #ffffff00);
+}
+.ps-list-said {
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.ps-list-word {
+  white-space: nowrap;
+}
+.ps-list-said::after {
+  content: "→";
+  margin-left: 0.6em;
+}
+.ps-list-ok {
+  margin-left: auto;
+  color: var(--ink-muted);
+}
+
+/* ========================================================= The phone's face */
+.ps-ph .wt-app-label,
+.ps-ph .wt-app-sub {
+  visibility: hidden;
+}
+.ps-ph-say {
+  position: absolute;
+  left: 1em;
+  right: 1em;
+  top: 39.4em;
+  z-index: 2;
+  display: grid;
+  color: var(--ink);
+}
+.ps-ph-say > span {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7em;
+  font: 600 1.75em/1.2 var(--font-sans);
+  letter-spacing: -0.012em;
+  text-align: center;
+}
+.ps-ph-say .wt-wait i {
+  background: var(--ink-muted);
+}
+.ps-ph-sub {
+  position: absolute;
+  left: 1em;
+  right: 1em;
+  top: 43.4em;
+  z-index: 2;
+  text-align: center;
+}
+.ps-ph-sub > span {
+  font: 400 1.3em/1.3 var(--font-sans);
+  color: var(--ink-muted);
+}
+.ps-ph-face {
+  position: absolute;
+  left: 50%;
+  top: 25.5em;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 13.6em;
+  height: 13.6em;
+  margin: -6.8em 0 0 -6.8em;
+  border-radius: 50%;
+  color: var(--on-tone);
+  background: radial-gradient(
+    90% 90% at 35% 25%,
+    var(--perle),
+    var(--sand) 75%
+  );
+  box-shadow:
+    inset 0 0.2em 0.6em #ffffff40,
+    inset 0 -0.4em 1em #1b1a1926;
+}
+.ps-ph-face svg {
+  width: 3.2em;
+  height: 3.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* the meter talks while the button is held (the app's own meter, which rests when idle) */
+.ps-ph .wt-app-meter .wt-bar {
+  animation: wt-bar-talk calc(var(--d) / var(--wt-speed, 1)) var(--ease-glide)
+    infinite alternate;
+  animation-delay: var(--delay);
+}
+
+/* the words' way from the phone to the computer */
+.ps-arc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  overflow: visible;
+  fill: none;
+}
+.ps-arc path {
+  stroke: var(--rav-dyb);
+  stroke-width: 3;
+  stroke-dasharray: 2 12;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.ps-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  offset-rotate: 0deg;
+  offset-distance: 100%;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    #ffffff 0 22%,
+    color-mix(in oklab, var(--rav) 80%, #ffffff00) 48%,
+    #ffffff00 72%
+  );
+  box-shadow: var(--shadow-glow);
+}
+
+/* ============================================================ The scrubber
+   Tal, Slip, Indsæt: the slogan as the film's timeline, lit phase by phase while the shot plays. */
+.ps-scrub {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  z-index: 4;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--surface-200) 72%, #ffffff00);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px #ffffffb3;
+  pointer-events: none;
+}
+.ps-scrub-w {
+  position: relative;
+  overflow: hidden;
+  padding: 7px 13px 8px;
+  border-radius: var(--radius-pill);
+  font: 500 13px/1 var(--font-sans);
+  letter-spacing: 0.01em;
+  color: var(--ink-muted);
+}
+.ps-scrub-w--3 {
+  color: var(--ink);
+  background: var(--surface-200);
+  box-shadow: 0 1px 2px #1b1a1914;
+}
+/* how far the phase has come: a hairline that fills under its word */
+.ps-scrub-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--rav-dyb);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.ps-scrub-bar--1,
+.ps-scrub-bar--2,
+.ps-scrub-bar--3 {
+  transform: none;
+}
+
+/* ================================================================ Subtitles */
+.ps-sub {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: min(86%, 34em);
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+.ps-sub-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 12px/1 var(--font-sans);
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.ps-sub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal-rec);
+}
+.ps-sub-text {
+  padding: 11px 18px 12px;
+  border-radius: 16px;
+  font: 500 clamp(15px, 1.35vw, 19px)/1.42 var(--font-sans);
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  background: color-mix(in oklab, var(--surface-200) 80%, #ffffff00);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px #ffffffb3;
+  text-wrap: balance;
+}
+/* words appear as they are said (--ps-p: 0 to 1 while the key or button is held) */
+.ps-w {
+  opacity: clamp(0.1, (var(--ps-p) * var(--n) - var(--i)) * 1.6, 1);
+}
+.ps-w--x {
+  position: relative;
+  opacity: calc(
+    clamp(0.1, (var(--ps-p) * var(--n) - var(--i)) * 1.6, 1) *
+      (1 - var(--ps-x) * 0.55)
+  );
+}
+.ps-w--x::after {
+  content: "";
+  position: absolute;
+  left: -0.06em;
+  right: 0.12em;
+  top: 0.68em;
+  height: 0.08em;
+  border-radius: 1em;
+  background: currentColor;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--ps-x));
+}
+
+/* ====================================================================== Film */
+.ps-film {
+  padding-top: 12px;
+}
+.ps-shot {
+  view-timeline: --ps-shot block;
+  display: grid;
+  grid-template-columns: minmax(0, 37fr) minmax(0, 63fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: 170svh;
+  padding: 12px;
+  box-sizing: border-box;
+}
+/* the words and the stage pin side by side on a wide screen; on a narrow one they pin together (below) */
+.ps-pin {
+  display: contents;
+}
+.ps-copy {
+  grid-area: 1 / 1;
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  height: 100svh;
+  align-self: start;
+  margin-top: -12px;
+}
+.ps-copy-in {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 clamp(28px, 4vw, 72px) 0 auto;
+  padding-left: 24px;
+  box-sizing: border-box;
+}
+.ps-panel {
+  grid-area: 1 / 2;
+  position: sticky;
+  top: 12px;
+  height: calc(100svh - 24px);
+  align-self: start;
+}
+
+/* ================================================================ Sequence
+   Every shot plays the same four phases, in percent of its sequence: idle (0 to 8), hold (10 to 54: the key or the
+   button is down, you talk), release (56 to 70: Renskriver, or Sender til MacBook) and land (72 to 100: the text is
+   there). Without a timeline (reduced motion) every element keeps its base style, the land state. */
+@property --ps-sec {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 3;
+}
+@property --ps-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --ps-x {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+.ps-k {
+  animation-duration: 5.4s;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+.ps-k-idle,
+.ps-k-hold,
+.ps-k-rel,
+.ps-k-pre {
+  opacity: 0;
+}
+.ps-k-idle {
+  animation-name: ps-idle;
+}
+.ps-k-hold {
+  animation-name: ps-hold;
+}
+.ps-k-rel {
+  animation-name: ps-rel;
+}
+.ps-k-land {
+  animation-name: ps-land;
+}
+.ps-k-pre {
+  animation-name: ps-pre;
+}
+.ps-k-paste {
+  animation-name: ps-paste;
+}
+.ps-world.ps-k {
+  animation-name: ps-pan, ps-clock;
+}
+.ps-sub.ps-k {
+  opacity: 0;
+  animation-name: ps-holdrel, ps-say;
+}
+.ps-sub--stay.ps-k {
+  opacity: 1;
+  animation-name: ps-fromhold, ps-say, ps-strike;
+}
+.ps-key--fn .wt-keycap {
+  animation: ps-press 5.4s linear both;
+}
+.ps-key--cmd .wt-keycap,
+.ps-key--v .wt-keycap {
+  animation: ps-tap 5.4s linear both;
+}
+.ps-shot--notify .ps-k-paste {
+  animation-name: ps-paste-early;
+}
+.ps-shot--notify .ps-caret.ps-k-pre {
+  animation-name: ps-pre-early;
+}
+.ps-shot--notify .ps-caret-end.ps-k-land {
+  animation-name: ps-land-early;
+}
+.ps-notice.ps-k {
+  animation-name: ps-notice-in;
+}
+.ps-spark.ps-k {
+  animation-name: ps-spark;
+}
+.ps-list-row--hit.ps-k {
+  animation-name: ps-hit;
+}
+.ps-scrub-w--1.ps-k {
+  animation-name: ps-on-hold;
+}
+.ps-scrub-w--2.ps-k {
+  animation-name: ps-on-rel;
+}
+.ps-scrub-w--3.ps-k {
+  animation-name: ps-on-land;
+}
+.ps-scrub-bar--1.ps-k {
+  animation-name: ps-fill-hold;
+}
+.ps-scrub-bar--2.ps-k {
+  animation-name: ps-fill-rel;
+}
+.ps-scrub-bar--3.ps-k {
+  animation-name: ps-fill-land;
+}
+.ps-ph .wt-app-rec,
+.ps-ph .wt-app-meter {
+  animation: ps-hold 5.4s linear both;
+}
+.ps-ph .wt-app-glow {
+  animation: ps-glow 5.4s linear both;
+}
+.ps-ph .wt-app-btn {
+  animation: ps-btn 5.4s linear both;
+}
+.ps-shot--phone .ps-laptop {
+  animation: ps-focus 5.4s linear both;
+}
+
+@keyframes ps-idle {
+  0%,
+  8% {
+    opacity: 1;
+  }
+  10%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-hold {
+  0%,
+  8% {
+    opacity: 0;
+  }
+  10%,
+  54% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-rel {
+  0%,
+  54% {
+    opacity: 0;
+  }
+  56%,
+  70% {
+    opacity: 1;
+  }
+  72%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-land {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translateY(0.25em);
+  }
+  76%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ps-pre {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  72%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-paste {
+  0%,
+  70% {
+    opacity: 0;
+    background-color: var(--ps-paste);
+  }
+  73% {
+    opacity: 1;
+    background-color: var(--ps-paste);
+  }
+  92%,
+  100% {
+    opacity: 1;
+    background-color: #ffffff00;
+  }
+}
+@keyframes ps-holdrel {
+  0%,
+  8% {
+    opacity: 0;
+  }
+  10%,
+  66% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-fromhold {
+  0%,
+  8% {
+    opacity: 0;
+  }
+  10%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes ps-say {
+  0%,
+  11% {
+    --ps-p: 0;
+  }
+  50%,
+  100% {
+    --ps-p: 1;
+  }
+}
+@keyframes ps-strike {
+  0%,
+  57% {
+    --ps-x: 0;
+  }
+  66%,
+  100% {
+    --ps-x: 1;
+  }
+}
+@keyframes ps-clock {
+  0%,
+  10% {
+    --ps-sec: 0;
+  }
+  54%,
+  100% {
+    --ps-sec: 4;
+  }
+}
+@keyframes ps-pan {
+  0%,
+  56% {
+    transform: var(--c0);
+  }
+  78%,
+  100% {
+    transform: var(--c1);
+  }
+}
+@keyframes ps-press {
+  0%,
+  8%,
+  56%,
+  100% {
+    transform: none;
+  }
+  10%,
+  54% {
+    transform: translateY(0.34em);
+    box-shadow:
+      0 0.08em 0 color-mix(in oklab, var(--surface-200) 72%, var(--ink)),
+      0 0.3em 0.7em -0.3em #1b1a1966,
+      inset 0 0 0 0.08em var(--line);
+  }
+}
+@keyframes ps-tap {
+  0%,
+  30%,
+  50%,
+  100% {
+    transform: none;
+  }
+  34%,
+  46% {
+    transform: translateY(0.34em);
+    box-shadow:
+      0 0.08em 0 color-mix(in oklab, var(--surface-200) 72%, var(--ink)),
+      0 0.3em 0.7em -0.3em #1b1a1966,
+      inset 0 0 0 0.08em var(--line);
+  }
+}
+@keyframes ps-paste-early {
+  0%,
+  44% {
+    opacity: 0;
+    background-color: var(--ps-paste);
+  }
+  47% {
+    opacity: 1;
+    background-color: var(--ps-paste);
+  }
+  70%,
+  100% {
+    opacity: 1;
+    background-color: #ffffff00;
+  }
+}
+@keyframes ps-pre-early {
+  0%,
+  44% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ps-land-early {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  48%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes ps-notice-in {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  80%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ps-spark {
+  0%,
+  56% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  58% {
+    opacity: 1;
+  }
+  69% {
+    offset-distance: 100%;
+    opacity: 1;
+  }
+  72%,
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@keyframes ps-hit {
+  0%,
+  56% {
+    background-color: #ffffff00;
+  }
+  62%,
+  100% {
+    background-color: color-mix(in oklab, var(--sand) 62%, #ffffff00);
+  }
+}
+@keyframes ps-on-hold {
+  0%,
+  8%,
+  56%,
+  100% {
+    color: var(--ink-muted);
+    background-color: #ffffff00;
+  }
+  10%,
+  54% {
+    color: var(--ink);
+    background-color: var(--surface-200);
+  }
+}
+@keyframes ps-on-rel {
+  0%,
+  54%,
+  72%,
+  100% {
+    color: var(--ink-muted);
+    background-color: #ffffff00;
+  }
+  56%,
+  70% {
+    color: var(--ink);
+    background-color: var(--surface-200);
+  }
+}
+@keyframes ps-on-land {
+  0%,
+  70% {
+    color: var(--ink-muted);
+    background-color: #ffffff00;
+    box-shadow: none;
+  }
+  72%,
+  100% {
+    color: var(--ink);
+    background-color: var(--surface-200);
+  }
+}
+@keyframes ps-fill-hold {
+  0%,
+  10% {
+    transform: scaleX(0);
+  }
+  54%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes ps-fill-rel {
+  0%,
+  56% {
+    transform: scaleX(0);
+  }
+  70%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes ps-fill-land {
+  0%,
+  72% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ps-glow {
+  0%,
+  8%,
+  56%,
+  100% {
+    opacity: 0.3;
+    transform: none;
+  }
+  10%,
+  54% {
+    opacity: 0.85;
+    transform: scale(1.12);
+  }
+}
+@keyframes ps-focus {
+  0%,
+  56% {
+    filter: blur(3px);
+  }
+  78%,
+  100% {
+    filter: none;
+  }
+}
+@keyframes ps-btn {
+  0%,
+  8%,
+  56%,
+  100% {
+    transform: none;
+  }
+  10%,
+  54% {
+    transform: scale(0.93);
+  }
+}
+
+/* ===================================================================== Night */
+.ps-night {
+  margin-top: 12px;
+  padding: 0 12px;
+}
+.ps-night-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(72px, 10vw, 128px) clamp(20px, 5vw, 72px)
+    clamp(56px, 8vw, 104px);
+  border-radius: var(--radius-xl);
+  color: var(--on-night);
+  background:
+    radial-gradient(70% 40% at 50% 0%, #2a2724 0%, #17161500 70%), var(--night);
+}
+.ps-light--night > i {
+  opacity: 0.32;
+}
+.ps-light--night > i:nth-child(1) {
+  background: var(--rav-dyb);
+  top: -18%;
+}
+.ps-light--night > i:nth-child(2) {
+  background: var(--platin-dyb);
+  top: -8%;
+}
+.ps-light--night > i:nth-child(3) {
+  background: var(--mokka-dyb);
+  top: 48%;
+  opacity: 0.22;
+}
+.ps-night .ps-kicker,
+.ps-night .ps-text,
+.ps-night .ps-fact p {
+  color: var(--on-night-muted);
+}
+.ps-night .ps-kicker::before {
+  background: var(--night-line);
+}
+.ps-night .ps-h2,
+.ps-night .ps-more a {
+  color: var(--on-night);
+}
+.ps-night .ps-more a {
+  text-decoration-color: var(--on-night-muted);
+}
+.ps-night a:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--night),
+    0 0 0 4px var(--on-night);
+}
+.ps-priv,
+.ps-oss {
+  position: relative;
+  z-index: 2;
+}
+.ps-priv-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.ps-priv-head .ps-text {
+  max-width: 52ch;
+}
+.ps-priv-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "f1 dia f3"
+    "f2 dia f4";
+  gap: 40px clamp(20px, 3vw, 48px);
+  align-items: center;
+  max-width: 1320px;
+  margin: clamp(48px, 6vw, 80px) auto 0;
+}
+.ps-dia {
+  grid-area: dia;
+  position: relative;
+  aspect-ratio: 1100 / 470;
+  container-type: inline-size;
+}
+.ps-dia-in {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1100px;
+  height: 470px;
+  transform-origin: 0 0;
+  transform: scale(tan(atan2(100cqw, 1100px)));
+}
+.ps-dia-shade {
+  position: absolute;
+  left: calc(var(--x) - var(--w) / 2);
+  top: var(--y, 400px);
+  width: var(--w);
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #000000b3, #00000000);
+}
+.ps-dia-phone {
+  position: absolute;
+  left: 46px;
+  top: 52px;
+  z-index: 2;
+}
+.ps-dia-laptop {
+  position: absolute;
+  left: 530px;
+  top: 64px;
+  z-index: 2;
+}
+.ps-dia-laptop .wt-laptop-lid {
+  box-shadow:
+    inset 0 0 0 0.12em #3a3a3c,
+    0 3em 6em -3em #000000cc;
+}
+.ps-dia-pill {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+}
+.ps-dia-arc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  overflow: visible;
+  fill: none;
+}
+.ps-dia-arc--tall {
+  display: none;
+}
+.ps-dia-arc path {
+  stroke: var(--on-night-muted);
+  stroke-width: 1.6;
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.ps-packet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: 16px;
+  height: 9px;
+  border-radius: 6px;
+  offset-rotate: auto;
+  offset-distance: calc(18% + var(--k) * 21%);
+  background: linear-gradient(90deg, var(--rav), var(--sand));
+  box-shadow: 0 0 14px #dcbc9b80;
+  animation: ps-packet 3.6s linear infinite;
+  animation-delay: calc(var(--k) * -0.9s);
+}
+@keyframes ps-packet {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+.ps-relay {
+  position: absolute;
+  left: 318px;
+  top: 30px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 132px;
+  padding: 14px 10px 12px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  color: var(--on-night);
+  background: color-mix(in oklab, var(--surface-200) 88%, #00000000);
+  box-shadow:
+    inset 0 0 0 1px var(--night-line),
+    0 18px 40px -16px #000000cc;
+}
+.ps-relay svg,
+.ps-fact svg,
+.ps-plan svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ps-relay b {
+  font: 600 14px/1 var(--font-sans);
+}
+.ps-relay code {
+  font: 400 11px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--on-night-muted);
+}
+.ps-fact {
+  max-width: 300px;
+}
+.ps-fact--1 {
+  grid-area: f1;
+}
+.ps-fact--2 {
+  grid-area: f2;
+}
+.ps-fact--3 {
+  grid-area: f3;
+}
+.ps-fact--4 {
+  grid-area: f4;
+}
+.ps-fact--l {
+  justify-self: end;
+}
+.ps-fact svg {
+  display: block;
+  margin-bottom: 14px;
+  color: var(--on-night-muted);
+}
+.ps-fact h3 {
+  margin: 0;
+  font: 600 19px/1.3 var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--on-night);
+  text-wrap: balance;
+}
+.ps-fact p {
+  margin: 8px 0 0;
+  font: 400 15px/1.55 var(--font-sans);
+}
+.ps-priv > .ps-more {
+  text-align: center;
+  margin-top: 48px;
+}
+
+.ps-oss {
+  display: grid;
+  grid-template-columns: minmax(0, 37fr) minmax(0, 63fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 64px);
+  max-width: 1320px;
+  margin: clamp(96px, 12vw, 160px) auto 0;
+}
+.ps-oss-copy {
+  max-width: 420px;
+  justify-self: end;
+}
+.ps-oss-stage {
+  container-type: inline-size;
+}
+.ps-oss-box {
+  position: relative;
+  aspect-ratio: 860 / 600;
+}
+.ps-oss-in {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 860px;
+  height: 600px;
+  padding: 10px 50px 0;
+  box-sizing: border-box;
+  transform-origin: 0 0;
+  transform: scale(tan(atan2(100cqw, 860px)));
+}
+.ps-oss-in .wt-laptop-lid {
+  box-shadow:
+    inset 0 0 0 0.12em #3a3a3c,
+    0 3em 6em -3em #000000cc;
+}
+.ps-code {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 15em 1fr;
+  background: #1a1918;
+  color: var(--on-night-muted);
+  font: 400 1.15em/1 var(--font-sans);
+}
+.ps-code-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  padding: 1.4em 0.8em;
+  background: #131211;
+  border-right: 1px solid var(--night-line);
+}
+.ps-code-repo {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0 0.6em 0.8em;
+  font-weight: 600;
+  color: var(--on-night);
+}
+.ps-code-dir,
+.ps-code-file {
+  padding: 0.42em 0.6em 0.42em 1.7em;
+  border-radius: 0.4em;
+  position: relative;
+}
+.ps-code-dir::before {
+  content: "";
+  position: absolute;
+  left: 0.6em;
+  top: 0.58em;
+  width: 0.7em;
+  height: 0.55em;
+  border-radius: 0.12em;
+  background: var(--mokka-dyb);
+}
+.ps-code-file--on {
+  color: var(--on-night);
+  background: #ffffff12;
+}
+.ps-code-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ps-code-tabs {
+  display: flex;
+  height: 2.8em;
+  background: #131211;
+  border-bottom: 1px solid var(--night-line);
+}
+.ps-code-tab {
+  display: flex;
+  align-items: center;
+  padding: 0 1.2em;
+  color: var(--on-night);
+  background: #1a1918;
+  border-right: 1px solid var(--night-line);
+}
+.ps-code-text {
+  flex: 1;
+  margin: 0;
+  padding: 1em 0;
+  overflow: hidden;
+  font: 400 0.92em/1.75 var(--font-mono);
+  color: var(--on-night);
+  white-space: pre;
+}
+.ps-code-ln {
+  display: block;
+}
+.ps-code-ln i {
+  display: inline-block;
+  width: 3em;
+  padding-right: 1.2em;
+  text-align: right;
+  font-style: normal;
+  color: #948e84;
+}
+.ps-code-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.55em 1.2em;
+  font-size: 0.9em;
+  background: #131211;
+  border-top: 1px solid var(--night-line);
+}
+
+/* ===================================================================== Price */
+.ps-price {
+  margin-top: 12px;
+  padding: 0 12px;
+}
+.ps-free-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(56px, 8vw, 96px) 24px clamp(64px, 8vw, 104px);
+  text-align: center;
+}
+.ps-light--price > i:nth-child(1) {
+  left: 24%;
+  top: -16%;
+}
+.ps-light--price > i:nth-child(2) {
+  left: 40%;
+}
+.ps-ped {
+  position: relative;
+  z-index: 2;
+  width: 260px;
+  height: 300px;
+}
+.ps-ped-icon {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 3;
+  margin-left: -68px;
+  animation: ps-float var(--duration-float) var(--ease-glide) infinite alternate;
+}
+.ps-ped-icon .wt-appicon {
+  box-shadow:
+    inset 0 0 0 1px #ffffff1f,
+    0 30px 50px -24px #1b1a1999,
+    0 10px 20px -10px #1b1a1966;
+}
+@keyframes ps-float {
+  to {
+    transform: translateY(-10px);
+  }
+}
+.ps-ped-halo {
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  width: 300px;
+  height: 220px;
+  margin-left: -150px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #ffffffcc, #ffffff00);
+}
+.ps-ped-body {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 196px;
+  bottom: 34px;
+  border-radius: 0 0 50% 50% / 0 0 36px 36px;
+  background: linear-gradient(
+    90deg,
+    var(--platin-dyb) 0%,
+    var(--perle) 34%,
+    var(--surface-200) 50%,
+    var(--perle) 66%,
+    var(--platin-dyb) 100%
+  );
+}
+.ps-ped-top {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 176px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(
+    70% 90% at 50% 40%,
+    var(--surface-200),
+    var(--perle) 70%,
+    var(--platin) 100%
+  );
+  box-shadow: inset 0 -2px 0 #ffffff;
+}
+.ps-ped-shade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  height: 46px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #1b1a1959, #1b1a1900);
+}
+.ps-free-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 28px;
+}
+.ps-zero {
+  margin: 8px 0 0;
+  font-size: clamp(96px, 14vw, 200px);
+  line-height: 0.9;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.ps-free-copy .ps-text {
+  max-width: 52ch;
+  margin-top: 24px;
+}
+.ps-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1040px;
+  margin: clamp(48px, 6vw, 80px) auto 0;
+  padding: 0 24px;
+}
+.ps-plan {
+  display: flex;
+  flex-direction: column;
+  padding: 8px clamp(24px, 4vw, 56px) 0;
+}
+.ps-plan + .ps-plan {
+  border-left: 1px solid var(--line);
+}
+.ps-plan h3 {
+  margin: 0;
+  font: 600 24px/1.25 var(--font-sans);
+  letter-spacing: -0.015em;
+}
+.ps-plan-price {
+  margin: 6px 0 0;
+  font: 600 34px/1.1 var(--font-sans);
+  letter-spacing: -0.02em;
+}
+.ps-plan-note {
+  margin: 6px 0 0;
+  font: 400 15px/1.5 var(--font-sans);
+  color: var(--ink-muted);
+}
+.ps-plan ul {
+  flex: 1;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ps-plan li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+  font: 400 16px/1.45 var(--font-sans);
+}
+.ps-plan li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-muted);
+}
+.ps-plan-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 24px;
+}
+.ps-plan-link {
+  font: 500 15px/1.4 var(--font-sans);
+}
+.ps-plans-foot {
+  max-width: 1040px;
+  margin: 40px auto 0;
+  padding: 0 24px;
+  font: 400 15px/1.5 var(--font-sans);
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* ===================================================================== Start */
+.ps-start {
+  max-width: 1240px;
+  margin: clamp(112px, 14vw, 176px) auto 0;
+  padding: 0 24px;
+}
+.ps-start-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.ps-reel {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 40px);
+  margin: 56px 0 0;
+  padding: 0;
+  list-style: none;
+}
+/* the strip that runs through the three frames */
+.ps-reel::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: calc(var(--ps-frame-h, 210px) + 33px);
+  height: 1px;
+  background: var(--line);
+}
+.ps-frame {
+  position: relative;
+}
+.ps-frame-pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: var(--ps-frame-h, 210px);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(
+      70% 60% at 50% 0%,
+      color-mix(in oklab, var(--sand) 70%, #ffffff00),
+      #ffffff00 70%
+    ),
+    linear-gradient(
+      180deg,
+      var(--surface-100),
+      color-mix(in oklab, var(--perle) 80%, var(--platin))
+    );
+  box-shadow:
+    inset 0 0 0 1px #1b1a190d,
+    inset 0 1px 0 #ffffffcc;
+}
+.ps-frame-n {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 18px 0 0;
+  border-radius: 50%;
+  font: 600 13px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink);
+  background: var(--ink);
+}
+.ps-frame h3 {
+  margin: 18px 0 0;
+  font: 600 22px/1.3 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+.ps-frame p {
+  margin: 8px 0 0;
+  max-width: 34ch;
+  font: 400 16px/1.55 var(--font-sans);
+  color: var(--ink-muted);
+}
+.ps-f-get {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.ps-f-bar {
+  width: 160px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--platin) 60%, var(--surface-200));
+}
+.ps-f-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--platin-dyb), var(--rav-dyb));
+  transform-origin: 0 50%;
+}
+.ps-f-cap {
+  font: 500 12px/1 var(--font-sans);
+  color: var(--ink-muted);
+}
+.ps-f-perm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(250px, 80%);
+}
+.ps-f-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-200);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px var(--line);
+  font: 500 14px/1 var(--font-sans);
+}
+.ps-f-switch {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  border-radius: 22px;
+  background: var(--ink);
+}
+.ps-f-switch b {
+  position: absolute;
+  top: 3px;
+  left: 17px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface-200);
+  box-shadow: 0 1px 2px #1b1a1940;
+}
+.ps-f-talk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+/* ======================================================================= FAQ */
+.ps-faq {
+  max-width: 1168px;
+  margin: clamp(112px, 14vw, 176px) auto 0;
+  padding: 0 24px;
+}
+.ps-faq-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+.ps-faq-head .ps-h2 {
+  margin-top: 0;
+}
+.ps-faq-list details {
+  border-bottom: 1px solid var(--line);
+}
+.ps-faq-list details:first-of-type,
+.ps-faq-list > :first-child details {
+  border-top: 1px solid var(--line);
+}
+.ps-faq-list summary {
+  position: relative;
+  padding: 22px 40px 22px 0;
+  list-style: none;
+  cursor: pointer;
+  font: 600 19px/1.35 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+.ps-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.ps-faq-list summary::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -7px;
+  border-right: 1.6px solid var(--ink-muted);
+  border-bottom: 1.6px solid var(--ink-muted);
+  transform: rotate(45deg);
+  transition: transform var(--duration-base) var(--ease-flow);
+}
+.ps-faq-list details[open] summary::after {
+  transform: translateY(4px) rotate(-135deg);
+}
+.ps-faq-list details p {
+  margin: -6px 0 0;
+  padding: 0 40px 24px 0;
+  font: 400 16px/1.6 var(--font-sans);
+  color: var(--ink-muted);
+}
+.ps-faq-list summary:focus-visible {
+  outline: 2px solid #ffffff00;
+  box-shadow: var(--focus-ring);
+  border-radius: 6px;
+}
+
+/* ===================================================================== Finale */
+.ps-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: clamp(112px, 14vw, 176px) auto 0;
+  padding: 0 24px;
+  text-align: center;
+}
+.ps-end-icon.wt-appicon {
+  box-shadow:
+    inset 0 0 0 1px #ffffff1f,
+    var(--shadow-float);
+}
+.ps-end-title {
+  margin: 28px 0 28px;
+  font-size: clamp(44px, 6vw, 80px);
+  line-height: 0.98;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.ps-end .ps-fine {
+  color: var(--ink-muted);
+}
+
+/* ==================================================================== Narrow */
+@media (max-width: 1100px) {
+  .ps-priv-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "dia dia"
+      "f1 f3"
+      "f2 f4";
+    gap: 32px 40px;
+    max-width: 760px;
+  }
+  .ps-fact,
+  .ps-fact--l {
+    justify-self: start;
+    max-width: none;
+  }
+}
+@media (max-width: 899px) {
+  .ps-hero {
+    padding: 0 8px;
+  }
+  .ps-hero-panel {
+    height: calc(100svh - 84px);
+    min-height: 680px;
+  }
+  .ps-world {
+    --c0: translate(var(--bx), var(--by))
+      scale(
+        min(tan(atan2(var(--bw), var(--tw))), tan(atan2(var(--bh), var(--th))))
+      )
+      translate(calc(var(--tx) * -1px), calc(var(--ty) * -1px));
+    --c1: translate(var(--bx), var(--by))
+      scale(
+        min(
+          tan(atan2(var(--bw), var(--t1w, var(--tw)))),
+          tan(atan2(var(--bh), var(--t1h, var(--th))))
+        )
+      )
+      translate(
+        calc(var(--t1x, var(--tx)) * -1px),
+        calc(var(--t1y, var(--ty)) * -1px)
+      );
+  }
+  .ps-ctas .wt-shiny--lg {
+    height: 50px;
+    padding: 0 22px;
+    font-size: 15px;
+  }
+  .ps-film {
+    padding-top: 8px;
+  }
+  .ps-shot {
+    display: flex;
+    flex-direction: column;
+    height: 165svh;
+    padding: 8px;
+  }
+  .ps-pin {
+    position: sticky;
+    top: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  .ps-panel {
+    order: -1;
+    flex: none;
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: 56svh;
+    border-radius: var(--radius-lg);
+  }
+  .ps-copy {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+    margin: 0;
+  }
+  .ps-hero-copy {
+    padding: 28px 16px 0;
+  }
+  .ps-fine {
+    font-size: 12.5px;
+    text-wrap: balance;
+  }
+  .ps-copy-in {
+    max-width: none;
+    margin: 0;
+    padding: 20px 12px 0;
+  }
+  .ps-h2 {
+    font-size: clamp(28px, 7.4vw, 34px);
+    margin-top: 10px;
+  }
+  .ps-text {
+    margin-top: 12px;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .ps-sub {
+    bottom: 4%;
+    gap: 6px;
+  }
+  .ps-shot--sub .ps-world {
+    --by: 37cqh;
+    --bh: 64cqh;
+  }
+  .ps-shot--phone .ps-world {
+    --by: 41cqh;
+    --bh: 74cqh;
+  }
+  /* the word list under the sentence, so the screen fits a phone */
+  .ps-world--words .ps-list {
+    top: 21.5em;
+    right: auto;
+    left: 21em;
+  }
+  .ps-scrub {
+    left: 12px;
+    top: 12px;
+    padding: 4px;
+  }
+  .ps-scrub-w {
+    padding: 6px 10px 7px;
+    font-size: 12px;
+  }
+  .ps-sub-text {
+    padding: 9px 14px 10px;
+    border-radius: 14px;
+    font-size: 14.5px;
+  }
+  .ps-night,
+  .ps-price {
+    margin-top: 8px;
+    padding: 0 8px;
+  }
+  .ps-night-panel,
+  .ps-free-panel {
+    border-radius: var(--radius-lg);
+  }
+  .ps-oss {
+    grid-template-columns: 1fr;
+  }
+  .ps-oss-copy {
+    justify-self: start;
+  }
+  .ps-plans {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 0 12px;
+  }
+  .ps-plan {
+    padding: 0;
+  }
+  .ps-plan + .ps-plan {
+    border-left: 0;
+  }
+  .ps-reel {
+    grid-template-columns: 1fr;
+    gap: 44px;
+  }
+  .ps-reel::before {
+    display: none;
+  }
+  .ps-faq-in {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  /* the diagram folds up: the phone in front of the laptop, the relay above them */
+  .ps-dia {
+    aspect-ratio: 640 / 470;
+  }
+  .ps-dia-in {
+    width: 640px;
+    transform: scale(tan(atan2(100cqw, 640px)));
+  }
+  .ps-dia-phone {
+    left: 6px;
+    top: 112px;
+    z-index: 4;
+  }
+  .ps-dia-laptop {
+    left: 96px;
+    top: 96px;
+  }
+  .ps-relay {
+    left: 236px;
+    top: 0;
+  }
+  .ps-dia-arc--wide {
+    display: none;
+  }
+  .ps-dia-arc--tall {
+    display: block;
+  }
+  .ps-packet {
+    offset-path: var(--tall);
+  }
+  .ps-dia-shade:first-child {
+    --x: 92px !important;
+    --y: 430px !important;
+  }
+  .ps-dia-shade:nth-child(2) {
+    --x: 366px !important;
+    --y: 430px !important;
+  }
+  .ps-priv-stage {
+    grid-template-columns: 1fr;
+    grid-template-areas: "dia" "f1" "f2" "f3" "f4";
+    gap: 28px;
+  }
+  .ps-start,
+  .ps-faq,
+  .ps-end {
+    padding: 0 20px;
+  }
+  .ps-faq-list summary {
+    font-size: 17px;
+  }
+}
+
+/* ======================================================= Out of sight, rest */
+[data-paused] .wt-blob,
+[data-paused] .wt-band,
+[data-paused] .wt-bar,
+[data-paused] .wt-pill-halo,
+[data-paused] .wt-rec,
+[data-paused] .wt-wait i,
+[data-paused] .wt-shimmer,
+[data-paused] .wt-app-halo,
+[data-paused] .wt-app-ring,
+[data-paused] .wt-caret,
+[data-paused] .ps-packet,
+[data-paused] .ps-ped-icon {
+  animation-play-state: paused !important;
+}
+[data-paused] .ps-light > i {
+  animation: none;
+}
+
+/* ========================================= The timeline: scroll plays the film */
+@supports (animation-timeline: view()) {
+  .ps-shot .ps-k,
+  .ps-shot--phone .ps-laptop,
+  .ps-shot .ps-key .wt-keycap,
+  .ps-ph .wt-app-rec,
+  .ps-ph .wt-app-meter,
+  .ps-ph .wt-app-glow,
+  .ps-ph .wt-app-btn {
+    animation-timeline: --ps-shot;
+    animation-range: entry 90% contain 75%;
+  }
+  /* a slow push-in while the shot passes */
+  .ps-shot .ps-rig {
+    animation: ps-push linear both;
+    animation-timeline: --ps-shot;
+    animation-range: entry 40% contain 60%;
+  }
+  /* the hero: the camera moves in a little as the page starts to scroll */
+  .ps-hero .ps-rig {
+    animation:
+      ps-rise 1.6s var(--ease-flow) 0.15s both,
+      ps-dolly linear both;
+    animation-timeline: auto, scroll(root);
+    animation-range:
+      normal,
+      0 90svh;
+  }
+}
+@keyframes ps-push {
+  from {
+    transform: var(--ps-tilt, translate(0)) scale(0.94);
+  }
+  to {
+    transform: var(--ps-tilt, translate(0)) scale(1);
+  }
+}
+@keyframes ps-dolly {
+  to {
+    transform: translateY(-4%) scale(1.07);
+  }
+}
+/* Without scroll-driven animations a shot plays by time, once it is in view (film.ts sets data-on). */
+@supports not (animation-timeline: view()) {
+  .ps-js .ps-shot:not([data-on]) * {
+    animation-play-state: paused !important;
+  }
+}
+
+/* ===================================== Reduced motion: every scene stands finished */
+@media (prefers-reduced-motion: reduce) {
+  .ps-main *,
+  .ps-main *::before,
+  .ps-main *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ps-shot {
+    height: auto;
+  }
+  .ps-copy,
+  .ps-panel {
+    position: relative;
+    top: 0;
+  }
+  .ps-copy {
+    min-height: calc(100svh - 24px);
+    height: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 899px) {
+  .ps-copy {
+    min-height: 0;
+  }
+  .ps-pin {
+    position: relative;
+    top: 0;
+  }
+  .ps-shot {
+    padding-bottom: 40px;
+  }
+}

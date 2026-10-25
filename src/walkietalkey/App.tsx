@@ -15,6 +15,7 @@ import {
   type OnboardingStepId,
 } from "./lib/helpers";
 import { currentPlatform } from "./lib/system";
+import { useUi } from "./lib/uiStore";
 import { useWtStore } from "./lib/wtStore";
 import { Onboarding } from "./onboarding/Onboarding";
 import { useModelSetup } from "./onboarding/modelSetup";
@@ -34,6 +35,9 @@ type Mode =
 export default function WalkieTalkeyApp() {
   const platform = currentPlatform();
   const [mode, setMode] = useState<Mode>({ kind: "loading" });
+  // Run 6: the first-run screens again, from Generelt; nothing is saved.
+  const replay = useUi((s) => s.replayIntro);
+  const endReplay = () => useUi.getState().setReplayIntro(false);
   useHandyToasts();
   useAccessLostEvents();
 
@@ -92,6 +96,13 @@ export default function WalkieTalkeyApp() {
           platform={platform}
           initialStep={mode.step}
           onDone={() => setMode({ kind: "main" })}
+        />
+      ) : mode.kind === "main" && replay ? (
+        <Onboarding
+          platform={platform}
+          initialStep="welcome"
+          replay
+          onDone={endReplay}
         />
       ) : mode.kind === "main" ? (
         <MainWindow platform={platform} />

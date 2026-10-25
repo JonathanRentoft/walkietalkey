@@ -15,6 +15,12 @@ One experiment, ``wt-train``, holds every run, tagged ``wt.kind``: ``train``,
 ``eval``, ``export`` or ``baseline`` (a ``training/results.csv`` row, so run
 4's FLEURS baselines are the first runs). An eval or export of a trained
 adapter is a child of its training run, so the UI shows them together.
+
+Run 6: every run is also tagged ``wt.change``, what it changed or measured:
+``pipeline`` (the app around the model: chunking, punctuation, finishing) or
+``model`` (the weights). So the history shows that run 5's 8.44 % to 7.63 %
+on FLEURS came from the pipeline, with the same model file. Every export is a
+new version of the registered model ``edda-da`` (``wt_train.versions``).
 """
 
 from __future__ import annotations
@@ -41,6 +47,10 @@ os.environ.update(ENVIRONMENT)
 _METRIC_BATCH = 1000
 _PARAM_BATCH = 100
 _PARAM_MAX = 6000
+
+# Run 6: what a run changed or measured.
+CHANGES = ("pipeline", "model")
+DEFAULT_CHANGE = {"train": "model", "export": "model", "eval": "model"}
 
 
 def store_dir() -> Path:
@@ -220,15 +230,20 @@ def git_tags() -> dict[str, str]:
 
 
 @contextmanager
-def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | None = None) -> Iterator[Run]:
+def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | None = None,
+        change: str | None = None) -> Iterator[Run]:
     """A run of ``kind`` named ``name`` (the workbench's own run name), finished
     when the block ends, FAILED if it raises. ``parent`` (a run or a run id) nests it
-    under a training run."""
+    under a training run. ``change`` is ``pipeline`` or ``model`` (run 6); training and
+    exports change the model, and an eval measures a model unless it says otherwise."""
+    change = change or DEFAULT_CHANGE.get(kind)
+    if change not in CHANGES:
+        raise ValueError(f"a run changes the pipeline or model, not {change!r}")
     if not enabled():
         yield NO_RUN
         return
     c, experiment = client()
-    all_tags = {"wt.kind": kind, **git_tags(), **(tags or {})}
+    all_tags = {"wt.kind": kind, "wt.change": change, **git_tags(), **(tags or {})}
     parent_id = parent if isinstance(parent, str) else (parent.id if parent is not None else "")
     if parent_id:
         all_tags["mlflow.parentRunId"] = parent_id
@@ -276,7 +291,7 @@ def log_eval(report: dict) -> None:
     if not enabled():
         return
     out = Path(report["out"])
-    with run("eval", out.name, parent=train_run_id(report.get("train_run"))) as r:
+    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report)) as r:
         r.params({"backend": report.get("backend", ""), "model": report.get("model", ""),
                   "dataset": report.get("dataset", ""), "train_run": report.get("train_run") or ""})
         r.metrics(report.get("metrics") or {})
@@ -284,17 +299,35 @@ def log_eval(report: dict) -> None:
             r.artifact(out / name)
 
 
-def log_export(result: dict) -> None:
-    """One ``wt-train export``: the installed model, the same-text check and the model
-    card, under its training run."""
+def eval_change(report: dict) -> str:
+    """An eval of the shipped Edda measures the pipeline around it; anything else a model."""
+    model = str(report.get("model") or "")
+    shipped = model == paths.SHIPPED_EDDA_ID or model.endswith(paths.SHIPPED_EDDA_FILE)
+    return "pipeline" if shipped and not report.get("train_run") else "model"
+
+
+def log_export(result: dict) -> int:
+    """One ``wt-train export``: the installed model, the same-text check, the model card and
+    the config, under its training run, registered as the next version of ``edda-da``
+    (run 6). Returns the version number (0 when tracking is off)."""
     if not enabled():
-        return
+        return 0
+    from . import versions
+
     with run("export", result["model_id"], parent=train_run_id(result.get("run"))) as r:
-        r.params({k: result.get(k, "") for k in ("model_id", "name", "path", "sha256", "run")})
+        r.params({k: result.get(k, "") for k in ("model_id", "name", "path", "sha256", "run", "version",
+                                                 "config_hash")})
         r.metrics({"size_bytes": result.get("size_bytes"), "verify": result.get("verify") or {},
-                   "seconds": result.get("seconds") or {}})
+                   "seconds": result.get("seconds") or {}, "validation_wer": result.get("validation_wer")})
         if result.get("card"):
-            r.artifact(Path(result["card"]))
+            r.artifact(Path(result["card"]), "model")
+        with tempfile.TemporaryDirectory() as tmp:
+            exported = Path(tmp) / "export.json"
+            exported.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            r.artifact(exported, "model")
+        number = versions.register(r.id, result)
+        r.tags({"wt.registered_model": versions.REGISTERED_MODEL, "wt.version": str(number)})
+    return number
 
 
 # results.csv columns that are numbers (logged as metrics) and the rest (params).
@@ -310,28 +343,81 @@ def _ci_bounds(text: str) -> tuple[float, float] | None:
         return None
 
 
+def _row_key(row: dict) -> str:
+    return hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def _row_name(row: dict) -> str:
+    return f"{row.get('backend', '')}-{row.get('dataset', '')}-{row.get('timestamp', '')[:10]}"
+
+
+def row_change(row: dict) -> str:
+    """Run 6: a results.csv row changed or measured the model (Transformers, or any LoRA or
+    config), or the pipeline around the shipped model (the app path)."""
+    if row.get("backend") == "hf" or row.get("lora") or row.get("config"):
+        return "model"
+    return "pipeline"
+
+
+def _row_plan(rows: list[dict]) -> list[dict]:
+    """What each row becomes: its kind, change, and for a pipeline eval the row it improves on
+    (the previous pipeline row with the same model and dataset) with the difference in WER."""
+    plans = []
+    for i, row in enumerate(rows):
+        kind = "baseline" if (row.get("notes") or "").lower().startswith("baseline") else "eval"
+        change = row_change(row)
+        plan = {"row": row, "key": _row_key(row), "name": _row_name(row), "kind": kind, "change": change,
+                "note": row.get("notes", ""), "tags": {}, "metrics": {}}
+        if kind == "eval" and change == "pipeline":
+            before = next((p for p in reversed(plans) if p["change"] == "pipeline"
+                           and p["row"].get("model") == row.get("model")
+                           and p["row"].get("dataset") == row.get("dataset")), None)
+            if before is not None:
+                try:
+                    a, b = float(before["row"]["wer_pct"]), float(row["wer_pct"])
+                except (KeyError, ValueError):
+                    a = b = None
+                plan["tags"]["wt.compared_to"] = before["name"]
+                if a is not None:
+                    plan["metrics"]["wer_pct_delta"] = round(b - a, 2)
+                    plan["note"] = (f"Pipeline change only: the same model file ({Path(row.get('model', '')).name}) "
+                                    f"as {before['name']}; WER {a:.2f} % to {b:.2f} % without touching the model. "
+                                    + plan["note"])
+        plans.append(plan)
+    return plans
+
+
 def import_results(path: Path = paths.RESULTS_CSV) -> int:
-    """Logs every ``results.csv`` row not tracked yet as a finished ``baseline`` run
-    (tag ``wt.results_row``, a hash of the row), so the UI shows them; returns how
-    many were added. Rows already imported are skipped, so it is safe to call often."""
+    """Logs every ``results.csv`` row not tracked yet as a finished run (tag
+    ``wt.results_row``, a hash of the row), so the UI shows them; returns how many were
+    added. Rows marked "baseline" in their notes are ``baseline`` runs, the rest ``eval``
+    runs; every one says what it changed (run 6), and a pipeline eval names the run it
+    improves on. Rows tracked before run 6 get those tags too. Safe to call often."""
     if not enabled() or not Path(path).exists():
         return 0
     with Path(path).open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
-    known = {r.data.tags.get("wt.results_row") for r in find_runs(kind="baseline")}
+    known = {r.data.tags.get("wt.results_row"): r for r in find_runs()}
     c, experiment = client()
     added = 0
-    for row in rows:
-        key = hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()[:16]
-        if key in known:
+    for plan in _row_plan(rows):
+        row = plan["row"]
+        tags = {"wt.kind": plan["kind"], "wt.change": plan["change"], "wt.results_row": plan["key"],
+                "wt.git_commit": row.get("git_commit", ""), "wt.source": "results.csv",
+                "mlflow.note.content": plan["note"], **plan["tags"]}
+        existing = known.get(plan["key"])
+        if existing is not None:
+            # Tracked before run 6: add what is missing (kind, change, comparison), nothing else.
+            if existing.data.tags.get("wt.change") is None:
+                for k, v in tags.items():
+                    c.set_tag(existing.info.run_id, k, v)
+                for k, v in plan["metrics"].items():
+                    c.log_metric(existing.info.run_id, k, v)
             continue
-        name = f"{row.get('backend', '')}-{row.get('dataset', '')}-{row.get('timestamp', '')[:10]}"
-        tags = {"wt.kind": "baseline", "wt.results_row": key, "wt.git_commit": row.get("git_commit", ""),
-                "wt.source": "results.csv", "mlflow.note.content": row.get("notes", "")}
-        created = c.create_run(experiment, run_name=name, tags=tags)
+        created = c.create_run(experiment, run_name=plan["name"], tags=tags)
         imported = Run(c, created.info.run_id)
         imported.params({k: v for k, v in row.items() if k not in _RESULT_METRICS and k != "notes"})
-        numbers: dict[str, float] = {}
+        numbers: dict[str, float] = dict(plan["metrics"])
         for k in _RESULT_METRICS:
             try:
                 numbers[k] = float(row[k])
@@ -344,4 +430,27 @@ def import_results(path: Path = paths.RESULTS_CSV) -> int:
         imported.metrics(numbers)
         imported.finish()
         added += 1
+    tag_changes()
     return added
+
+
+def tag_changes() -> int:
+    """Run 6: tags every run tracked before ``wt.change`` existed; returns how many."""
+    if not enabled():
+        return 0
+    c, _ = client()
+    done = 0
+    for r in find_runs():
+        if r.data.tags.get("wt.change"):
+            continue
+        kind = r.data.tags.get("wt.kind")
+        params = r.data.params
+        if kind == "baseline":
+            change = row_change(params)
+        elif kind == "eval":
+            change = eval_change({"model": params.get("model"), "train_run": params.get("train_run")})
+        else:
+            change = "model"
+        c.set_tag(r.info.run_id, "wt.change", change)
+        done += 1
+    return done

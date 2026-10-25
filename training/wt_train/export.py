@@ -19,11 +19,16 @@ Steps, each in ``<work>/exports/edda-ft-<slug>/``:
    job's normalisation, otherwise the export fails and nothing is installed.
    Q8_0 rounding can flip a word now and then (the shipped Edda matched 10 of
    10); more than that means the conversion went wrong.
-5. **Install** the Q8_0 file as ``<app models folder>/edda-ft-<slug>.gguf``: the
-   app lists any GGUF there under its file stem as id and its ``general.name``
+5. **Install** the Q8_0 file as ``<app models folder>/edda-ft-<slug>-v<N>.gguf``:
+   the app lists any GGUF there under its file stem as id and its ``general.name``
    as name, and decodes ``edda-`` ids like Edda. Next to it goes
-   ``edda-ft-<slug>.README.md``, the model card from
-   ``training/model-card/TEMPLATE.md``.
+   ``edda-ft-<slug>-v<N>.README.md``, the model card from
+   ``training/model-card/TEMPLATE.md``, and ``edda-ft-<slug>-v<N>.json``, the
+   version's sidecar the app lists versions from (run 6, ``wt_train.versions``).
+6. **Register** it as version N of the model ``edda-da`` in MLflow's registry
+   (run 6): N is one more than the highest version in the registry or the
+   folder, so every export is a file of its own and earlier versions stay
+   installed. Rolling back is ``wt-train use <N|edda>``.
 
 Refusals: a slug that is not ``[a-z0-9-]+``; the shipped Edda file; an existing
 file unless ``--force``, and even then only a file an earlier export wrote
@@ -45,7 +50,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import console, paths, tracking
+from . import console, paths, tracking, versions
 from .audio import file_sha256
 from .config import SLUG_RE, config_from_dict, key_knobs
 from .dataset import SOURCE_RECORDING, read_manifest
@@ -63,10 +68,10 @@ class ExportError(RuntimeError):
     pass
 
 
-def model_id(slug: str) -> str:
+def model_id(slug: str, version: int | None = None) -> str:
     if not SLUG_RE.fullmatch(slug or ""):
         raise ExportError(f"slug {slug!r} must be lower-case letters, digits and -")
-    return MODEL_PREFIX + slug
+    return MODEL_PREFIX + slug + (f"-v{version}" if version else "")
 
 
 def install_paths(mid: str, models_dir: Path) -> tuple[Path, Path]:
@@ -188,7 +193,8 @@ def _gguf_texts(tools: Tools, gguf: Path, wavs: list[Path]) -> list[str]:
 def export_run(run: Path, *, slug: str | None = None, name: str | None = None, force: bool = False,
                keep_intermediate: bool = False, n_verify: int | None = None, max_differing: int | None = None,
                reference_device: str = "cpu", tools: Tools | None = None, base=None, run_cmd=subprocess.run,
-               reference_texts: Callable | None = None, gguf_texts: Callable | None = None, log=console.log) -> dict:
+               reference_texts: Callable | None = None, gguf_texts: Callable | None = None, log=console.log,
+               version: int | None = None) -> dict:
     run = Path(run)
     saved = json.loads((run / "config.json").read_text(encoding="utf-8"))
     cfg = config_from_dict(saved["config"])
@@ -198,7 +204,9 @@ def export_run(run: Path, *, slug: str | None = None, name: str | None = None, f
     max_differing = cfg.export.max_differing_clips if max_differing is None else max_differing
     if not (run / "adapter" / "adapter_config.json").is_file():
         raise ExportError(f"{run} has no adapter/ (the run did not finish)")
-    mid = model_id(slug)
+    mid = model_id(slug, version)
+    if version and f"v{version}" not in name.split():
+        name = f"{name} v{version}"
     models_dir = paths.app_models_dir()
     target, card_path = install_paths(mid, models_dir)
     check_install_target(target, mid, force)
@@ -285,7 +293,10 @@ def export_run(run: Path, *, slug: str | None = None, name: str | None = None, f
         "size_bytes": size, "run": run.name, "verify": {k: report[k] for k in
                                                         ("n", "exact_matches", "normalized_matches", "passed")},
         "seconds": timings, "intermediate_kept": keep_intermediate, "work": str(work),
+        "version": version, "config_hash": saved["hash"], "validation_wer": best["validation_wer"],
+        "created": fields["created"], "base_repo": cfg.base_model.repo,
     }
+    versions.write_sidecar(models_dir, result)
     if not keep_intermediate:
         shutil.rmtree(hf_dir, ignore_errors=True)
         f16.unlink(missing_ok=True)
@@ -307,19 +318,25 @@ def main(argv: list[str]) -> int:
                    help="where the merged model runs for the same-text check (cpu: float32, the reference)")
     p.add_argument("--force", action="store_true", help="replace an earlier export of the same id")
     p.add_argument("--keep-intermediate", action="store_true", help="keep the merged folder and the F16 GGUF")
+    p.add_argument("--no-version", action="store_true",
+                   help="install as edda-ft-<slug> without a version number (replaces nothing unless --force)")
     a = p.parse_args(argv)
     from .train import resolve_run
 
     try:
         result = export_run(resolve_run(a.run), slug=a.slug, name=a.name, force=a.force,
                             keep_intermediate=a.keep_intermediate, n_verify=a.verify_clips,
-                            reference_device=a.reference_device)
+                            reference_device=a.reference_device,
+                            version=None if a.no_version else versions.next_version())
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
-    tracking.log_export(result)
-    print(f"select \"{result['name']}\" in WalkieTalkey, or: wt-train eval --backend gguf --model {result['model_id']}"
-          " --dataset test --run " + result["run"])
+    number = tracking.log_export(result)
+    if number:
+        print(f"registered as version {number} of {versions.REGISTERED_MODEL} in MLflow")
+    spec = result.get("version") or result["model_id"]
+    print(f"use it: wt-train use {spec}   (back to the base model: wt-train use edda)\n"
+          f"score it: wt-train eval --backend gguf --model {result['model_id']} --dataset test --run {result['run']}")
     return 0
 
 

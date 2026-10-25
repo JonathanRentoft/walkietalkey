@@ -19,6 +19,18 @@ export interface MockOptions {
   downloaded?: string[];
   /** Custom model files in the models folder (a workbench fine-tune): id and name. */
   customModels?: { id: string; name: string }[];
+  /** Run 6: the app runs from its disk image (wt_runs_from_disk_image). */
+  fromDiskImage?: boolean;
+  /** Run 6: the workbench's sidecars for versions of Edda, by model id. */
+  versions?: Record<
+    string,
+    {
+      version?: number;
+      created?: string;
+      validation_wer?: number;
+      run?: string;
+    }
+  >;
   /** download_model fails with this message. */
   downloadError?: string | null;
   /** The backend started the Edda download at launch (Phase 3). Default
@@ -389,6 +401,34 @@ function mockBackend(options: MockOptions) {
       );
     },
     cancel_download: () => null,
+    wt_runs_from_disk_image: () => options.fromDiskImage ?? false,
+    // Run 6: the base Edda and the installed versions of it (versions.rs).
+    wt_model_versions: () => {
+      const all = models();
+      const row = (m: any, base: boolean) => {
+        const side = options.versions?.[m.id] ?? {};
+        return {
+          id: m.id,
+          name: m.name,
+          version: base ? null : (side.version ?? null),
+          base,
+          selected: state.app.selected_model === m.id,
+          created: side.created ?? null,
+          run: side.run ?? null,
+          validation_wer: side.validation_wer ?? null,
+        };
+      };
+      return [
+        row(
+          all.find((m: any) => m.id === edda),
+          true,
+        ),
+        ...all
+          .filter((m: any) => m.id.startsWith("edda-ft-") && m.is_downloaded)
+          .map((m: any) => row(m, false))
+          .sort((a: any, b: any) => (a.version ?? 1e9) - (b.version ?? 1e9)),
+      ];
+    },
     delete_model: (a) => {
       state.downloaded = state.downloaded.filter(
         (id: string) => id !== a.modelId,

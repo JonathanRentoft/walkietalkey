@@ -110,4 +110,10 @@ pub struct CliArgs {
     /// running instance). Exits 3 when WalkieTalkey is not running.
     #[arg(long, value_name = "URL")]
     pub training_session: Option<String>,
+
+    /// WalkieTalkey (run 6, `wt-train use`): select this installed model, in
+    /// the running app (handed over like --toggle-transcription), or, with
+    /// none running, in the settings for the next start.
+    #[arg(long, value_name = "ID")]
+    pub use_model: Option<String>,
 }

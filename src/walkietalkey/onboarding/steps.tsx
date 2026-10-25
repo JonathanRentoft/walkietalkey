@@ -79,6 +79,17 @@ function usePermission(check: () => Promise<boolean>, active = true) {
   return usePolled(check, active);
 }
 
+/** Run 6, the replay from Generelt: a permission step shows its first-run
+ *  face, and its button only says that nothing is changed. */
+function ReplayNote(props: { shown: boolean }) {
+  const { t } = useTranslation();
+  return props.shown ? (
+    <p className="wt-onb-hint" role="status">
+      {t("wt.onboarding.replayNote")}
+    </p>
+  ) : null;
+}
+
 /** Moves on once a permission turns granted while the step is shown. A
  *  step that was already granted when it opened (the user went back) stays. */
 function useAdvanceOnGrant(granted: boolean | null, onGranted: () => void) {
@@ -128,26 +139,35 @@ export function WelcomeStep(props: { onStart: () => void }) {
 export function MicrophoneStep(props: {
   platform: WtPlatform;
   onGranted: () => void;
+  /** run 6: shown again from the settings; asks for nothing */
+  replay?: boolean;
 }) {
   const { t } = useTranslation();
   const mac = props.platform === "macos";
-  const [access, setAccess] = usePolled<MicAccess>(async () =>
-    mac
-      ? microphoneAccess()
-      : (await windowsMicrophoneAllowed())
-        ? "granted"
-        : "denied",
+  const replay = !!props.replay;
+  const [access, setAccess] = usePolled<MicAccess>(
+    async () =>
+      replay
+        ? "not_determined"
+        : mac
+          ? microphoneAccess()
+          : (await windowsMicrophoneAllowed())
+            ? "granted"
+            : "denied",
+    !replay,
   );
-  const granted = access === null ? null : access === "granted";
+  const shownAccess: MicAccess | null = replay ? "not_determined" : access;
+  const granted = shownAccess === null ? null : shownAccess === "granted";
   const [asked, setAsked] = useState(false);
   useAdvanceOnGrant(granted, props.onGranted);
   // macOS asks only once; after a no, the pane is the only way (run 5).
-  const settingsOnly = access === "denied" || access === "restricted";
+  const settingsOnly = shownAccess === "denied" || shownAccess === "restricted";
 
   // One button, one click: macOS's own question while it has never been
   // answered, else the exact pane at once.
   const allow = async () => {
     setAsked(true);
+    if (replay) return;
     if (!mac) {
       await commands.openMicrophonePrivacySettings().catch(() => {});
       return;
@@ -182,11 +202,13 @@ export function MicrophoneStep(props: {
           <Button variant="primary" onClick={() => void allow()}>
             {!mac
               ? t("wt.onboarding.microphone.openSettingsWindows")
-              : settingsOnly || (access === "unknown" && asked)
+              : settingsOnly || (shownAccess === "unknown" && asked)
                 ? t("wt.onboarding.microphone.openSettings")
                 : t("wt.onboarding.microphone.allow")}
           </Button>
-          {asked ? (
+          {replay ? (
+            <ReplayNote shown={asked} />
+          ) : asked ? (
             <p className="wt-onb-hint">{t("wt.onboarding.waitingHint")}</p>
           ) : null}
         </div>
@@ -197,27 +219,85 @@ export function MicrophoneStep(props: {
 
 /* ------------------------------------------------- 3. Tilgængelighed */
 
-/** What the user will see in System Settings: the app with its switch. */
-function SwitchPreview(props: { on: boolean }) {
+/** Run 6: the other apps in the picture of System Settings' list. No real
+ *  names: a neutral icon, a grey bar of its own length, and whether its
+ *  switch is on. Sorted the way macOS sorts by name, so WalkieTalkey's W puts
+ *  it near the bottom (ACCESS_LIST_MINE). */
+export const ACCESS_LIST_OTHERS: { bar: number; on: boolean }[] = [
+  { bar: 46, on: true },
+  { bar: 64, on: false },
+  { bar: 38, on: true },
+  { bar: 56, on: true },
+  { bar: 70, on: false },
+  { bar: 42, on: true },
+  { bar: 52, on: false },
+];
+export const ACCESS_LIST_MINE = 6;
+
+function AxSwitch(props: { on: boolean; mine?: boolean }) {
+  return (
+    <span
+      className={[
+        "wt-onb-ax-switch",
+        props.on ? "wt-onb-ax-switch--on" : "",
+        props.mine ? "wt-onb-ax-switch--mine" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span />
+    </span>
+  );
+}
+
+/** What the user will see in System Settings › Anonymitet og sikkerhed ›
+ *  Tilgængelighed: a rounded list of apps with switches and the + and −
+ *  buttons under it, WalkieTalkey's row highlighted. */
+function AccessList(props: { on: boolean }) {
+  const rows = [...ACCESS_LIST_OTHERS.map((r) => ({ ...r, mine: false }))];
+  rows.splice(ACCESS_LIST_MINE, 0, { bar: 0, on: props.on, mine: true });
   return (
     <div
-      className={
-        props.on ? "wt-onb-preview wt-onb-preview--on" : "wt-onb-preview"
-      }
-      aria-hidden
+      className={props.on ? "wt-onb-ax wt-onb-ax--on" : "wt-onb-ax"}
+      aria-hidden="true"
     >
-      <AppIcon size={28} />
-      <span className="wt-onb-preview-name">{APP_NAME}</span>
-      <span className="wt-onb-preview-switch">
-        <span />
-      </span>
+      <ul className="wt-onb-ax-list">
+        {rows.map((r, i) =>
+          r.mine ? (
+            <li key={i} className="wt-onb-ax-row wt-onb-ax-row--mine">
+              <AppIcon size={22} className="wt-onb-ax-icon" />
+              <span className="wt-onb-ax-name">{APP_NAME}</span>
+              <AxSwitch on={r.on} mine />
+            </li>
+          ) : (
+            <li key={i} className="wt-onb-ax-row">
+              <span
+                className="wt-onb-ax-icon wt-onb-ax-icon--blank"
+                data-tone={i % 4}
+              />
+              <span className="wt-onb-ax-bar" style={{ width: `${r.bar}%` }} />
+              <AxSwitch on={r.on} />
+            </li>
+          ),
+        )}
+      </ul>
+      <div className="wt-onb-ax-tools">
+        <span>+</span>
+        <span>−</span>
+      </div>
     </div>
   );
 }
 
-export function AccessibilityStep(props: { onGranted: () => void }) {
+export function AccessibilityStep(props: {
+  onGranted: () => void;
+  /** run 6: shown again from the settings; opens and repairs nothing */
+  replay?: boolean;
+}) {
   const { t } = useTranslation();
-  const [granted] = usePermission(() => hasPermission("accessibility"));
+  const replay = !!props.replay;
+  const [polled] = usePermission(() => hasPermission("accessibility"), !replay);
+  const granted = replay ? false : polled;
   const [opened, setOpened] = useState(false);
   useAdvanceOnGrant(granted, props.onGranted);
   useEffect(() => {
@@ -232,6 +312,7 @@ export function AccessibilityStep(props: { onGranted: () => void }) {
   // switch on while macOS does not trust the app), then opens the pane.
   const open = async () => {
     setOpened(true);
+    if (replay) return;
     await repairAccessibilityAndOpenPane();
   };
 
@@ -240,7 +321,7 @@ export function AccessibilityStep(props: { onGranted: () => void }) {
       <StepTitle>{t("wt.onboarding.accessibility.title")}</StepTitle>
       <p className="wt-onb-lead">{t("wt.onboarding.accessibility.lead")}</p>
       <p className="wt-onb-text">{t("wt.onboarding.accessibility.why")}</p>
-      <SwitchPreview on={!!granted} />
+      <AccessList on={!!granted} />
       {granted ? (
         <Status tone="ok" className="wt-onb-granted">
           {t("wt.onboarding.accessibility.granted")}
@@ -250,7 +331,9 @@ export function AccessibilityStep(props: { onGranted: () => void }) {
           <Button variant="primary" onClick={() => void open()}>
             {t("wt.onboarding.accessibility.open")}
           </Button>
-          {opened ? (
+          {replay ? (
+            <ReplayNote shown={opened} />
+          ) : opened ? (
             <p className="wt-onb-hint">{t("wt.onboarding.waitingHint")}</p>
           ) : null}
         </div>
@@ -291,6 +374,8 @@ export function TryStep(props: {
   platform: WtPlatform;
   /** A dictation worked (run 5: Telefon comes only after one). */
   onDictated?: () => void;
+  /** run 6: shown again from the settings; repairs nothing */
+  replay?: boolean;
 }) {
   const { t } = useTranslation();
   const key = useKeyName(props.platform);
@@ -402,9 +487,11 @@ export function TryStep(props: {
       {listener === false && props.platform === "macos" ? (
         <div className="wt-onb-actions">
           <Status tone="warn">{t("wt.onboarding.try.keyNotRunning")}</Status>
-          <Button onClick={() => void repairAccessibilityAndOpenPane()}>
-            {t("wt.onboarding.accessibility.open")}
-          </Button>
+          {props.replay ? null : (
+            <Button onClick={() => void repairAccessibilityAndOpenPane()}>
+              {t("wt.onboarding.accessibility.open")}
+            </Button>
+          )}
         </div>
       ) : null}
       <GlobeFix platform={props.platform} variant="block" />

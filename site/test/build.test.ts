@@ -19,7 +19,7 @@ import {
   WINDOWS_DOWNLOAD_URL,
   type PageKey,
 } from "../src/lib/site";
-import { DEFAULT_HERO, HERO } from "../src/lib/hero";
+import { HERO } from "../src/lib/hero";
 import { STAGE_WORDS } from "../src/lib/stage";
 
 /** Run 5: the front page's whole JavaScript, inline and from files with their imports, uncompressed. */
@@ -343,12 +343,17 @@ describe("Forside: five calm sections (run 5)", () => {
     for (const s of ["how", "privacy", "free", "faq"])
       expect(section(s).querySelectorAll("h2"), s).toHaveLength(1);
   });
-  it("builds the fn-led hero when no variant is chosen", () => {
+  /* Run 6: without SITE_CONCEPT the build is the current front page, so production stays as it is until the owner
+     picks one of the three concepts (lib/build.ts). */
+  it("builds the current front page, the fn-led hero, when no concept is chosen", () => {
+    expect(d.querySelector("body")!.getAttribute("data-concept")).toBe(
+      "current",
+    );
     const hero = section("hero");
-    expect(hero.getAttribute("data-hero")).toBe(DEFAULT_HERO);
-    expect(hero.querySelector("h1")!.textContent).toBe(HERO.fn.title);
+    expect(hero.getAttribute("data-hero")).toBe("fn");
+    expect(hero.querySelector("h1")!.textContent).toBe(HERO.title);
     expect(textOf(hero.querySelector(".hero-lead")!).trim()).toBe(
-      HERO.fn.lead.replace("{fn}", "fn"),
+      HERO.lead.replace("{fn}", "fn"),
     );
   });
   it("shows the italic W mark in the hero, in liquid metal on night", () => {
@@ -582,26 +587,43 @@ describe("Hent (SITE-02)", () => {
     );
   });
   /* Run 5: macOS 26 blocks the first open of an app without a Developer ID. Three short steps, the way macOS words
-     them; the button in System Settings shows only for a while after the first try, and only the first open asks. */
-  it("guides the Mac's first open past Gatekeeper in three short steps", () => {
+     them; the button in System Settings shows only for a while after the first try, and only the first open asks.
+     Run 6: every macOS name in both Danish and English, because many Macs (the owner's too) run in English. */
+  it("guides the Mac's first open past Gatekeeper in three steps, naming macOS's buttons in Danish and English", () => {
     const card = d.querySelector('.platforms [data-platform="mac"]')!;
-    const steps = card
-      .querySelectorAll(".gatekeeper li")
-      .map((li) => textOf(li).trim());
-    expect(steps).toEqual([
-      "Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.",
-      "Åbn den, og luk advarslen.",
-      "Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel. Bekræft med Touch ID eller adgangskoden.",
-    ]);
-    const words = steps
-      .join(" ")
-      .split(/\s+/)
-      .filter((w) => w !== "›");
-    expect(words.length).toBeLessThanOrEqual(30);
+    const items = card.querySelectorAll(".gatekeeper > li");
+    expect(items).toHaveLength(3);
+    const steps = items.map((li) => textOf(li).trim());
+    expect(steps[0]).toContain("WalkieTalkey-mac.dmg");
+    expect(steps[0]).toContain("Programmer");
+    expect(steps[0]).toContain("Applications");
+    expect(steps[1]).toMatch(/luk advarslen/i);
+    /* opened from the disk image, macOS runs a read-only copy that cannot update itself (run 6) */
+    expect(steps[1]).toContain("fra Programmer, ikke fra diskbilledet");
+    expect(steps[1]).toContain("Done");
+    expect(steps[2]).toContain(
+      "Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel",
+    );
+    expect(steps[2]).toContain(
+      "System Settings › Privacy & Security › Open Anyway",
+    );
+    expect(steps[2]).toContain("Touch ID");
+    /* the English names are marked as English for screen readers */
+    const en = card
+      .querySelectorAll('.gatekeeper [lang="en"]')
+      .map((e) => e.textContent);
+    expect(en).toEqual(
+      expect.arrayContaining([
+        "Applications",
+        "Done",
+        "System Settings › Privacy & Security › Open Anyway",
+      ]),
+    );
     const note = textOf(card.querySelector(".gatekeeper-note")!);
     expect(note).toContain("Kun første gang.");
     expect(note).toContain("Åbn alligevel");
-    expect(note).not.toMatch(/papirkurv/i);
+    expect(note).toContain("Open Anyway");
+    expect(note).not.toMatch(/papirkurv|Trash/i);
     /* the hero sends a Mac visitor straight to those steps */
     expect(
       d.querySelector('header [data-platform="mac"] a[href="#foerste-gang"]'),
@@ -633,6 +655,21 @@ describe("Hent (SITE-02)", () => {
     const text = textOf(d.querySelector(".phone-get")!);
     expect(text).toContain("Scan koden med telefonens kamera.");
     expect(text).toContain("hjemmeskærmen");
+    /* Run 6: Safari's exact steps for each iOS, the buttons in Danish and English (phone/src/lib/install.ts) */
+    const ios = d
+      .querySelectorAll(".ios-steps > li")
+      .map((li) => textOf(li).trim());
+    expect(ios).toHaveLength(2);
+    expect(ios[0]).toMatch(/^iOS 26 og nyere/);
+    expect(ios[0]).toContain(
+      "••• › Del › Vis mere › Føj til hjemmeskærm › Tilføj",
+    );
+    expect(ios[0]).toContain(
+      "••• › Share › View More › Add to Home Screen › Add",
+    );
+    expect(ios[1]).toMatch(/^Ældre iOS/);
+    expect(ios[1]).toContain("Del › Føj til hjemmeskærm › Tilføj");
+    expect(ios[1]).toContain("Share › Add to Home Screen › Add");
     // Not yet confirmed on a real iPhone that iOS keeps the link (spec 5.3): the honest fallback.
     expect(text).toContain(IPHONE_FALLBACK);
   });

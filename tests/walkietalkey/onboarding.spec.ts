@@ -271,6 +271,125 @@ test.describe("onboarding", () => {
     expect(state.restarts).toBe(0);
   });
 
+  /* Run 6: the picture looks like the real list in System Settings › Privacy & Security › Accessibility: a rounded
+     list of about eight apps with neutral icons and grey bars instead of names, sorted so WalkieTalkey sits near the
+     bottom where its W puts it, its switch highlighted, and the + and − buttons under the list. */
+  test("Tilgængelighed: the picture is System Settings' list, with WalkieTalkey near the bottom and its switch highlighted", async ({
+    page,
+  }) => {
+    await startAt(page, "accessibility", { permissions: { microphone: true } });
+    const list = page.locator(".wt-onb-ax");
+    await expect(list).toBeVisible();
+    await expect(list).toHaveAttribute("aria-hidden", "true");
+    const rows = list.locator(".wt-onb-ax-row");
+    await expect(rows).toHaveCount(8);
+    const names = await rows.evaluateAll((els) =>
+      els.map((el) => el.querySelector(".wt-onb-ax-name")?.textContent ?? ""),
+    );
+    // Only WalkieTalkey has a name; every other app is a grey bar, never a real app's name.
+    expect(names.filter(Boolean)).toEqual(["WalkieTalkey"]);
+    const at = names.indexOf("WalkieTalkey");
+    expect(at).toBeGreaterThanOrEqual(5);
+    expect(at).toBeLessThan(8);
+    await expect(list.locator(".wt-onb-ax-row .wt-onb-ax-bar")).toHaveCount(7);
+    const mine = rows.nth(at);
+    await expect(mine).toHaveClass(/wt-onb-ax-row--mine/);
+    await expect(mine.locator(".wt-onb-ax-switch--mine")).toHaveCount(1);
+    await expect(list.locator(".wt-onb-ax-switch--mine")).toHaveCount(1);
+    // the + and − bar comes right under the list
+    const bar = list.locator(".wt-onb-ax-tools");
+    await expect(bar).toContainText("+");
+    await expect(bar).toContainText("−");
+    const [listBox, barBox] = await Promise.all([
+      list.locator(".wt-onb-ax-list").boundingBox(),
+      bar.boundingBox(),
+    ]);
+    expect(barBox!.y).toBeGreaterThanOrEqual(listBox!.y + listBox!.height - 1);
+    // light and dark: the list follows the theme
+    const bg = () =>
+      list
+        .locator(".wt-onb-ax-list")
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const light = await bg();
+    // the app follows the system's appearance (lib/theme.ts)
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect.poll(bg).not.toBe(light);
+  });
+
+  /* Run 6: "Vis introduktionen igen" in Generelt replays the first-run screens so the owner can see them without a
+     reset. It never touches permissions, the login item or the saved onboarding state. */
+  test("Vis introduktionen igen replays every first-run screen without touching permissions", async ({
+    page,
+  }) => {
+    await installMock(page, {
+      downloaded: [EDDA],
+      permissions: { microphone: true, accessibility: true },
+      app: { selected_model: EDDA, onboarding_completed: true },
+      wt: { onboarding_resume_step: "finished" },
+    });
+    await page.goto("/");
+    await expect(page.getByRole("navigation")).toBeVisible();
+    const before = await mockState(page);
+    const earlier = (await calls(page)).length;
+    await page.getByRole("button", { name: "Vis introduktionen igen" }).click();
+    await expect(page.getByRole("heading", { name: welcome })).toBeVisible();
+    await page.getByRole("button", { name: "Kom i gang" }).click();
+    // Both permissions are granted, yet their screens are shown, as a new user sees them.
+    await expect(heading(page, "Mikrofon")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Giv adgang til mikrofonen" })
+      .click();
+    await expect(
+      page.getByText(
+        "I gennemgangen ændrer WalkieTalkey ikke dine tilladelser.",
+      ),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Næste" }).click();
+    await expect(heading(page, "Tilgængelighed")).toBeVisible();
+    await expect(page.locator(".wt-onb-ax")).toBeVisible();
+    await page.getByRole("button", { name: "Åbn Systemindstillinger" }).click();
+    await page.getByRole("button", { name: "Næste" }).click();
+    await expect(heading(page, "Prøv det")).toBeVisible();
+    await page.getByRole("button", { name: "Næste" }).click();
+    await expect(heading(page, "Telefon")).toBeVisible();
+    await page.getByRole("button", { name: "Spring over" }).click();
+    await expect(heading(page, "Klar")).toBeVisible();
+    await page.getByRole("button", { name: "Færdig" }).click();
+    await expect(page.getByRole("navigation")).toBeVisible();
+    // Nothing that asks for, repairs or opens a permission, or changes the login item, was called.
+    const touched = (await calls(page))
+      .slice(earlier)
+      .map((c) => c.cmd)
+      .filter((cmd) =>
+        /request_|accessibility_repair|open_url|open_microphone|autostart|reset/i.test(
+          cmd,
+        ),
+      );
+    expect(touched).toEqual([]);
+    const after = await mockState(page);
+    expect(after.wt.onboarding_resume_step).toBe("finished");
+    expect(after.wt.phone_offer_pending).toBe(before.wt.phone_offer_pending);
+    expect(after.app.autostart_enabled).toBe(before.app.autostart_enabled);
+  });
+
+  test("Vis introduktionen igen can be closed at any screen", async ({
+    page,
+  }) => {
+    await installMock(page, {
+      downloaded: [EDDA],
+      permissions: { microphone: true, accessibility: true },
+      app: { selected_model: EDDA, onboarding_completed: true },
+      wt: { onboarding_resume_step: "finished" },
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Vis introduktionen igen" }).click();
+    await page.getByRole("button", { name: "Kom i gang" }).click();
+    await expect(heading(page, "Mikrofon")).toBeVisible();
+    await page.getByRole("button", { name: "Luk introduktionen" }).click();
+    await expect(page.getByRole("navigation")).toBeVisible();
+    expect((await mockState(page)).wt.onboarding_resume_step).toBe("finished");
+  });
+
   test("no Input Monitoring, no restart, and no early key listener anywhere", async ({
     page,
   }) => {

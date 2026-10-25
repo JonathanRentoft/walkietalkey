@@ -193,6 +193,26 @@ pub fn install_pending_on_exit() {
     }
 }
 
+/// Run 6: macOS runs an app opened straight from its disk image (or any
+/// quarantined app it has not seen moved by Finder) from a read-only copy
+/// under AppTranslocation, and the updater cannot replace a read-only app. The
+/// owner's v0.2.0 ran like that. The screens then ask to open WalkieTalkey from
+/// Programmer.
+pub fn runs_from_disk_image(exe: &std::path::Path) -> bool {
+    let path = exe.to_string_lossy();
+    path.contains("/AppTranslocation/") || path.starts_with("/Volumes/")
+}
+
+/// Whether this app runs from a read-only copy that cannot update itself.
+#[tauri::command]
+#[specta::specta]
+pub fn wt_runs_from_disk_image() -> bool {
+    cfg!(target_os = "macos")
+        && std::env::current_exe()
+            .map(|exe| runs_from_disk_image(&exe))
+            .unwrap_or(false)
+}
+
 /// "Genstart nu": installs a pending update (Windows) and restarts.
 pub fn restart_now(app: &AppHandle) {
     if let Some((update, bytes)) = PENDING.lock().unwrap().take() {
@@ -206,6 +226,23 @@ pub fn restart_now(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_app_run_from_its_disk_image_is_noticed() {
+        use std::path::Path;
+        assert!(runs_from_disk_image(Path::new(
+            "/private/var/folders/18/x/T/AppTranslocation/9E50/d/WalkieTalkey.app/Contents/MacOS/walkietalkey"
+        )));
+        assert!(runs_from_disk_image(Path::new(
+            "/Volumes/WalkieTalkey/WalkieTalkey.app/Contents/MacOS/walkietalkey"
+        )));
+        assert!(!runs_from_disk_image(Path::new(
+            "/Applications/WalkieTalkey.app/Contents/MacOS/walkietalkey"
+        )));
+        assert!(!runs_from_disk_image(Path::new(
+            "/Users/me/Applications/WalkieTalkey.app/Contents/MacOS/walkietalkey"
+        )));
+    }
 
     #[test]
     fn channels_have_their_own_manifests() {

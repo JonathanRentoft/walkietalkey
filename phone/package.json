@@ -1,6 +1,6 @@
 {
   "name": "@walkietalkey/phone",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "license": "Apache-2.0",
   "description": "WalkieTalkey phone web app (PWA): hold the button, talk, and the audio goes end-to-end encrypted to your computer.",

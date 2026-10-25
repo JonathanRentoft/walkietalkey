@@ -65,17 +65,21 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <span class="badge-rec">Passer til din computer</span>
           <h3 id="mac">Mac</h3>
           <p>macOS 13 Ventura eller nyere, på Mac med Apple Silicon og Mac med Intel.</p>
-          <!-- TODO(copy), run 5: macOS 26 blocks the first open of an app without an Apple Developer ID. Three steps in
-               macOS's own Danish words; the dialog says "“WalkieTalkey” blev ikke åbnet" (close it, never "Flyt til
-               papirkurv"), and Åbn alligevel shows under Sikkerhed only for a while after that first try. Ctrl-click ›
-               Åbn no longer gets past it on macOS 15 and later. Change this with the first release signed by Apple. -->
+          <!-- TODO(copy), run 5 and 6: macOS 26 blocks the first open of an app without an Apple Developer ID. Three
+               steps with macOS's own names in Danish and English (run 6: the owner's Mac runs in English). The dialog
+               says "“WalkieTalkey” blev ikke åbnet" / "“WalkieTalkey” Not Opened"; close it with Done, never Move to
+               Trash. The Danish name of its Done button is not confirmed, so only the English one is named. Run 6:
+               opened from the disk image, macOS runs a read-only copy that cannot update itself, so step 2 says
+               "fra Programmer". Open
+               Anyway shows under Sikkerhed only for a while after that first try. Ctrl-click › Åbn no longer gets
+               past it on macOS 15 and later. Change this with the first release signed by Apple. -->
           <p>WalkieTalkey er endnu ikke signeret af Apple. Første gang gør du sådan:</p>
           <ol class="steps-list gatekeeper">
-            <li>Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer.</li>
-            <li>Åbn den, og luk advarslen.</li>
-            <li>Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel. Bekræft med Touch ID eller adgangskoden.</li>
+            <li>Åbn WalkieTalkey-mac.dmg, og træk WalkieTalkey over i Programmer <span class="gk-en">(<span lang="en">Applications</span>)</span>.</li>
+            <li>Åbn WalkieTalkey fra Programmer, ikke fra diskbilledet. macOS siger, at den ikke blev åbnet. Luk advarslen <span class="gk-en">(<span lang="en">Done</span>)</span>.</li>
+            <li>Systemindstillinger › Anonymitet og sikkerhed › Åbn alligevel <span class="gk-en">(<span lang="en">System Settings › Privacy &amp; Security › Open Anyway</span>)</span>. Tryk Åbn alligevel igen, og bekræft med Touch ID eller adgangskoden.</li>
           </ol>
-          <p class="gatekeeper-note">Kun første gang. Åbn alligevel står under Sikkerhed et stykke tid efter trin 2.</p>
+          <p class="gatekeeper-note">Kun første gang. Åbn alligevel <span class="gk-en">(<span lang="en">Open Anyway</span>)</span> står under Sikkerhed et stykke tid efter trin 2.</p>
           <DownloadButton href={MAC_DOWNLOAD_URL}>Hent til Mac</DownloadButton>
         </section>
         <section class="card" data-platform="win" aria-labelledby="win">
@@ -136,6 +140,13 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <!-- TODO(copy): spec 5.3; only a real iPhone confirms whether iOS keeps the link, hence the fallback -->
           <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. Ellers åbner appen kameraet, og du scanner koden igen. På Android parrer den med det samme.</li>
         </ol>
+        <!-- TODO(copy), run 6: Safari's steps for each iOS, as the phone app gives them (phone/src/lib/install.ts).
+             "Vis mere" (View More) must be checked on an iPhone set to Danish. -->
+        <p>Sådan føjer du WalkieTalkey til hjemmeskærmen i Safari:</p>
+        <ul class="ios-steps">
+          <li><strong>iOS 26 og nyere:</strong> ••• › Del › Vis mere › Føj til hjemmeskærm › Tilføj <span class="gk-en">(<span lang="en">••• › Share › View More › Add to Home Screen › Add</span>)</span></li>
+          <li><strong>Ældre iOS:</strong> Del › Føj til hjemmeskærm › Tilføj <span class="gk-en">(<span lang="en">Share › Add to Home Screen › Add</span>)</span></li>
+        </ul>
       </div>
       <figure class="phone-qr">
         <div class="qr-code" set:html={qr} />

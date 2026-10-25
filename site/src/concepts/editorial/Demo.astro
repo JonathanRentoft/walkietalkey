@@ -1,0 +1,89 @@
+---
+/* Run 6, concept A (editorial): the small demo beside each feature of the numbered list, set like a specimen in the
+   margin of a page. Each is a picture with a Danish description (role="img"); the feature's own text says the same in
+   words. Each plays once, the first time it comes into view (motion.ts adds ed-in); the HTML is the finished state. */
+import { Keycap, Notice } from "@walkietalkey/ui";
+import { PRODUCT, SAMPLES, type FeatureKey } from "../../lib/features";
+import { ED } from "./copy";
+
+interface Props {
+  feature: FeatureKey;
+}
+const { feature } = Astro.props;
+const label = ED.demoAria[feature as keyof typeof ED.demoAria];
+const D = ED.demo;
+const computer = (s: string) => s.replace("{computer}", D.computer);
+
+/* "Lad os mødes onsdag, nej, torsdag klokken ti.": the detour is what AI cleanup removes */
+const detour = "onsdag, nej, ";
+const [fixBefore, fixAfter] = SAMPLES.correctionSaid.split(detour);
+
+/* the English words in the mixed sentence, set in italic as foreign words are */
+const ENGLISH = ["merger", "pull request", "standup", "deployer", "staging"];
+const mixedParts = SAMPLES.mixed.split(new RegExp(`(${ENGLISH.join("|")})`));
+
+/* the word list: what you say, and what it writes */
+const GLOSSARY: [string, string][] = [
+  ["walkie talkey", "WalkieTalkey"],
+  ["mette holm", "Mette Holm"],
+  ["navigent", "Navigent"],
+];
+
+const MIC = "M8 1.8a2.3 2.3 0 0 1 2.3 2.3v3.5a2.3 2.3 0 0 1-4.6 0V4.1A2.3 2.3 0 0 1 8 1.8ZM3.6 7.3a4.4 4.4 0 0 0 8.8 0M8 11.8v2.4";
+const LOCK = "M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z";
+---
+<div class:list={["ed-demo", `ed-demo--${feature}`]} data-ed-demo role="img" aria-label={label}>
+  <div class="ed-demo-in" aria-hidden="true">
+    {feature === "fn" && (
+      <div class="ed-keys">
+        <span class="ed-keys-one"><Keycap size={60}>fn</Keycap><small>{D.mac}</small></span>
+        <span class="ed-keys-or">{D.or}</span>
+        <span class="ed-keys-one"><Keycap size={60} wide sub={D.rightCtrl}>ctrl</Keycap><small>{D.windows}</small></span>
+      </div>
+    )}
+
+    {feature === "phone" && (
+      <div class="ed-phone">
+        <span class="ed-phone-btn"><svg viewBox="0 0 16 16" width="26" height="26"><path d={MIC} /></svg></span>
+        <ol class="ed-phone-steps">
+          <li style="--i:0">{PRODUCT.phoneHold}</li>
+          <li style="--i:1">{PRODUCT.phoneRelease}</li>
+          <li style="--i:2">{computer(PRODUCT.phoneReady)}</li>
+        </ol>
+        <small class="ed-phone-lock"><svg viewBox="0 0 16 16" width="14" height="14"><path d={LOCK} /></svg>{PRODUCT.encrypted}</small>
+      </div>
+    )}
+
+    {feature === "corrections" && (
+      <div class="ed-pair">
+        <p class="ed-pair-row"><small>{D.said}</small><span>{fixBefore}<s class="ed-detour">{detour.trim()}</s> {fixAfter}</span></p>
+        <p class="ed-pair-row ed-pair-row--written"><small>{D.written}</small><span data-ed-written>{SAMPLES.correctionWritten}</span></p>
+        <span class="ed-tag">{D.cleanup}</span>
+      </div>
+    )}
+
+    {feature === "mixed" && (
+      <div class="ed-mixed">
+        <p>{mixedParts.map((p, i) => (ENGLISH.includes(p) ? <i style={`--i:${(i - 1) / 2}`}>{p}</i> : p))}</p>
+        <span class="ed-tag">{D.devWords}</span>
+      </div>
+    )}
+
+    {feature === "words" && (
+      <div class="ed-gloss">
+        <p class="ed-gloss-head"><small>{D.said}</small><small>{D.written}</small></p>
+        <dl>
+          {GLOSSARY.map(([said, written], i) => (
+            <div style={`--i:${i}`}><dt>{said}</dt><dd>{written}</dd></div>
+          ))}
+        </dl>
+      </div>
+    )}
+
+    {feature === "notify" && (
+      <div class="ed-notify">
+        <Notice show title={PRODUCT.ready} preview={SAMPLES.phone} className="ed-notice" />
+      </div>
+    )}
+  </div>
+</div>

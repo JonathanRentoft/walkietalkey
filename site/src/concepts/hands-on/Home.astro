@@ -1,0 +1,35 @@
+---
+/* Run 6, concept C: Hands-on (lib/build.ts). The visitor feels the product in the first second.
+     1. The hero is a live toy: hold the key (fn if the browser reports it, else the space bar) or the big button,
+        and the app's pill listens; let go, and a sample sentence lands in the note (Hero.astro, toy.ts).
+     2. The features are one bento grid where every tile is a small demo you can touch (Bento.astro, demos.ts).
+     3. Getting started and the price, side by side, both touchable (Get.astro).
+     4. The short FAQ and the last call to action (Faq.astro).
+   The motion is tactile, not scripted: keys go down, the pill grows and glows while it listens, text lands with a
+   short highlight, and nothing moves on its own except the slow liquid surfaces (one per screen). Every tile's HTML
+   is its finished state, so the page reads completely without JavaScript; with reduced motion nothing loops and every
+   change is a plain swap. The page runs no React: the design system's components render to static HTML here, and
+   two small vanilla modules make them react. Everything this concept adds is prefixed ho- (hands-on.css). */
+import Header from "../../components/Header.astro";
+import Bento from "./Bento.astro";
+import Faq from "./Faq.astro";
+import Get from "./Get.astro";
+import Hero from "./Hero.astro";
+import "./hands-on.css";
+---
+<script is:inline>document.documentElement.classList.add("ho-js")</script>
+<Header current="home" />
+<main id="indhold" class="ho">
+  <Hero />
+  <Bento />
+  <Get />
+  <Faq />
+</main>
+<script>
+  import { demos } from "./demos";
+  import { toy } from "./toy";
+
+  const root = document.querySelector<HTMLElement>("[data-toy]");
+  if (root) toy(root);
+  demos();
+</script>

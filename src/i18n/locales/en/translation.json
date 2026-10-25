@@ -782,7 +782,9 @@
         "fastTitle": "A faster model",
         "useFast": "Use Ekko v1 Tiny",
         "keepEdda": "Keep Edda"
-      }
+      },
+      "replayNote": "In this walkthrough WalkieTalkey does not change your permissions.",
+      "close": "Close the introduction"
     },
     "model": {
       "downloading": "Downloading the Danish speech model",
@@ -886,7 +888,10 @@
       "previewExample": "Remember to buy milk on the way home",
       "notificationsOff": "Notifications are off, so you will not see when text from the phone is ready.",
       "notificationsAllow": "Turn on notifications",
-      "notificationsOpen": "Open Notifications"
+      "notificationsOpen": "Open Notifications",
+      "intro": "Introduction",
+      "introDesc": "See the first screens again. Your permissions and settings stay as they are.",
+      "introButton": "Show the introduction again"
     },
     "key": {
       "key": "Key",
@@ -1035,7 +1040,14 @@
         "failed": "Could not download the punctuation model.",
         "unsupported": "Not available on an Intel Mac",
         "retry": "Try again"
-      }
+      },
+      "versions": "Versions of Edda",
+      "versionsDesc": "Each time you train Edda with the fine-tuning workbench, a new version appears. Switch back at any time.",
+      "baseNote": "The base model. It always stays on this computer.",
+      "versionLabel": "Version {{n}}",
+      "werLabel": "{{wer}} errors on validation",
+      "inUse": "In use",
+      "switchFailed": "Could not switch model. Try again."
     },
     "updates": {
       "auto": "Automatic updates",
@@ -1048,7 +1060,8 @@
       "checking": "Checking for updates",
       "upToDate": "You have the newest version",
       "downloading": "Downloading version {{version}}",
-      "failed": "Could not check for updates. Try again later."
+      "failed": "Could not check for updates. Try again later.",
+      "fromDiskImage": "WalkieTalkey runs from the disk image and cannot update itself. Quit it, drag it to Applications, and open it from there."
     },
     "advanced": {
       "intro": "Settings most people never need.",

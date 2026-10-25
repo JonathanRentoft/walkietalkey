@@ -114,17 +114,21 @@ fn onboarding_done(handy_completed: bool, resume_step: Option<&str>) -> bool {
     handy_completed || resume_step == Some(ONBOARDING_DONE)
 }
 
-/// The model to fetch by itself at the first launch: the selected one (a
-/// company may pin it) or the default (DESK-30), when it is not here yet.
+/// The model to fetch by itself at start: during onboarding the selected one
+/// (a company may pin it) or the default (DESK-30), when it is not here yet.
+/// Run 6: after onboarding, the base Edda, if it is missing, because every
+/// version of Edda rolls back to it (`versions`); the app never deletes it, so
+/// this only repairs a file removed by hand. A company that pins a model
+/// manages its models itself.
 fn first_launch_target(
     selected_model: &str,
     onboarding_completed: bool,
+    model_pinned: bool,
     is_downloaded: impl Fn(&str) -> Option<bool>,
 ) -> Option<String> {
-    // Once onboarding is done the user manages models (one deleted to free
-    // space is not fetched again by itself).
     if onboarding_completed {
-        return None;
+        let keep = super::catalog::DEFAULT_MODEL_ID;
+        return (!model_pinned && is_downloaded(keep) == Some(false)).then(|| keep.to_string());
     }
     let target = if selected_model.is_empty() {
         super::catalog::DEFAULT_MODEL_ID
@@ -148,13 +152,14 @@ pub fn download_default_at_first_launch(app: &AppHandle) {
     };
     let mm = Arc::clone(&mm);
     let settings = crate::settings::get_settings(app);
-    let wt = super::store::get(app);
+    let (wt, applied) = super::store::effective(app);
     let Some(model_id) = first_launch_target(
         &settings.selected_model,
         onboarding_done(
             settings.onboarding_completed,
             wt.onboarding_resume_step.as_deref(),
         ),
+        applied.locked.iter().any(|f| f == "selected_model"),
         |id| mm.get_model_info(id).map(|m| m.is_downloaded),
     ) else {
         return;
@@ -392,40 +397,59 @@ mod tests {
         // DESK-11, DESK-30.
         let missing = |_: &str| Some(false);
         assert_eq!(
-            first_launch_target("", false, missing).as_deref(),
+            first_launch_target("", false, false, missing).as_deref(),
             Some(DEFAULT_MODEL_ID)
         );
         // A selected (or company-pinned) catalog model during onboarding.
         let ekko = "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf";
         assert_eq!(
-            first_launch_target(ekko, false, missing).as_deref(),
+            first_launch_target(ekko, false, true, missing).as_deref(),
             Some(ekko)
         );
-        // Already there, or a user who finished onboarding with a model.
-        assert_eq!(first_launch_target("", false, |_| Some(true)), None);
-        assert_eq!(first_launch_target(ekko, true, missing), None);
+        // Already there.
+        assert_eq!(first_launch_target("", false, false, |_| Some(true)), None);
         // A custom file cannot be fetched.
-        assert_eq!(first_launch_target("custom/my.gguf", false, |_| None), None);
-        // After onboarding the user manages models.
-        assert_eq!(first_launch_target("", true, missing), None);
+        assert_eq!(
+            first_launch_target("custom/my.gguf", false, false, |_| None),
+            None
+        );
     }
 
     #[test]
-    fn a_model_deleted_after_onboarding_is_not_fetched_again_at_every_start() {
-        // DESK-11: WalkieTalkey's onboarding saves "finished" and never sets
-        // Handy's onboarding_completed; the 886 MB download is not repeated.
-        let missing = |_: &str| Some(false);
+    fn after_onboarding_only_a_missing_base_edda_is_fetched_again() {
+        // Run 6: every version rolls back to the base Edda, so it stays
+        // installed; other models the user removed are not fetched again.
+        let ekko = "walkietalkey/ekko-v1-tiny-gguf/ekko-v1-tiny-Q8_0.gguf";
+        let edda_gone = |id: &str| Some(id != DEFAULT_MODEL_ID);
         let done = onboarding_done(false, Some(ONBOARDING_DONE));
         assert!(done);
-        assert_eq!(first_launch_target("", done, missing), None);
+        assert_eq!(
+            first_launch_target("edda-ft-first-v2", done, false, edda_gone).as_deref(),
+            Some(DEFAULT_MODEL_ID)
+        );
+        assert_eq!(
+            first_launch_target(ekko, done, false, edda_gone).as_deref(),
+            Some(DEFAULT_MODEL_ID)
+        );
+        // Edda is there: nothing, whatever else is missing.
+        let others_gone = |id: &str| Some(id == DEFAULT_MODEL_ID);
+        assert_eq!(first_launch_target(ekko, done, false, others_gone), None);
+        // A company that pins a model manages its models.
+        assert_eq!(first_launch_target(ekko, done, true, edda_gone), None);
         // Handy's flag (a model picked in the model settings) counts too.
         assert!(onboarding_done(true, None));
-        // A first launch, or one resumed mid-onboarding, still fetches.
+        // A first launch, or one resumed mid-onboarding, fetches the selected one.
         for step in [None, Some("welcome"), Some("accessibility"), Some("try")] {
             assert!(!onboarding_done(false, step), "{step:?}");
         }
         assert_eq!(
-            first_launch_target("", onboarding_done(false, Some("microphone")), missing).as_deref(),
+            first_launch_target(
+                "",
+                onboarding_done(false, Some("microphone")),
+                false,
+                |_| Some(false)
+            )
+            .as_deref(),
             Some(DEFAULT_MODEL_ID)
         );
     }

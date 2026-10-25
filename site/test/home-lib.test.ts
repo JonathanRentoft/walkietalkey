@@ -1,12 +1,23 @@
-/* The front page's build-time choices and the signature animation's timeline (run 5: SITE-02, SITE-06, spec 2.6). */
+/* The front page's build-time choices, its shared copy and the run 5 signature animation's timeline (SITE-02, SITE-06,
+   spec 2.6). */
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_HERO,
-  HERO,
-  HERO_VARIANTS,
+  CONCEPTS,
+  CONCEPT_INFO,
+  PREVIEW_BRANCHES,
+  conceptDir,
   draftClaims,
-  pickHero,
-} from "../src/lib/hero";
+  pickConcept,
+  previewBranch,
+} from "../src/lib/build";
+import {
+  FAQ,
+  FEATURES,
+  FEATURE_ORDER,
+  PRIVACY_FACTS,
+  STEPS as START_STEPS,
+} from "../src/lib/features";
+import { HERO } from "../src/lib/hero";
 import {
   FINAL_STEP,
   LOOP_MS,
@@ -17,47 +28,96 @@ import {
   stepAt,
 } from "../src/lib/stage";
 
-describe("hero variants (chosen at build time)", () => {
-  it("has the three variants, fn-led by default", () => {
-    expect(HERO_VARIANTS).toEqual(["fn", "phone", "privacy"]);
-    expect(DEFAULT_HERO).toBe("fn");
+describe("front page concepts (run 6, chosen at build time)", () => {
+  it("has the three concepts of the brief, A, B and C", () => {
+    expect(CONCEPTS).toEqual(["editorial", "stage", "hands-on"]);
+    expect(CONCEPTS.map((c) => CONCEPT_INFO[c].letter)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    /* no two concepts share a class prefix, so no rule of one styles another */
+    expect(new Set(CONCEPTS.map((c) => CONCEPT_INFO[c].prefix)).size).toBe(3);
   });
-  it("picks the variant from SITE_HERO, and the default without one", () => {
-    expect(pickHero(undefined)).toBe("fn");
-    expect(pickHero("")).toBe("fn");
-    for (const v of HERO_VARIANTS) expect(pickHero(v)).toBe(v);
-    expect(pickHero(" Phone ")).toBe("phone");
+  it("builds the current front page, the one in production, without SITE_CONCEPT", () => {
+    expect(pickConcept(undefined)).toBeNull();
+    expect(pickConcept(" ")).toBeNull();
+    expect(conceptDir(null)).toBe("current");
   });
-  it("refuses an unknown variant instead of building the wrong page", () => {
-    expect(() => pickHero("main")).toThrow(/SITE_HERO/);
+  it("picks a concept by name or by letter", () => {
+    for (const c of CONCEPTS) {
+      expect(pickConcept(c)).toBe(c);
+      expect(pickConcept(CONCEPT_INFO[c].letter.toUpperCase())).toBe(c);
+      expect(conceptDir(c)).toBe(c);
+    }
+  });
+  it("refuses an unknown concept instead of building the wrong page", () => {
+    expect(() => pickConcept("main")).toThrow(/SITE_CONCEPT/);
   });
   it("shows unmeasured claims only in draft builds", () => {
     expect(draftClaims(undefined)).toBe(false);
     expect(draftClaims("0")).toBe(false);
     expect(draftClaims("1")).toBe(true);
   });
-  it.each(HERO_VARIANTS)(
-    "%s has a title, a lead and a line under the buttons, in Danish without em dashes or exclamation marks",
-    (v) => {
-      const h = HERO[v];
-      for (const s of [h.title, h.lead, h.fine])
-        expect(s.length).toBeGreaterThan(5);
-      for (const s of Object.values(h))
-        expect(String(s)).not.toMatch(/[—!]|direkte/i);
-    },
-  );
-  it("says free and open source under every variant's buttons", () => {
-    for (const v of HERO_VARIANTS)
-      expect(HERO[v].fine).toMatch(/^Gratis og open source · /);
+  it("deploys each concept to its own preview branch, never to production", () => {
+    expect(PREVIEW_BRANCHES).toEqual(["concept-a", "concept-b", "concept-c"]);
+    for (const c of CONCEPTS)
+      expect(previewBranch(c)).not.toMatch(/^(main|master|production)$/);
   });
-  it("gives each variant its own title", () => {
-    const titles = HERO_VARIANTS.map((v) => HERO[v].title);
-    expect(new Set(titles).size).toBe(3);
-    expect(HERO.fn.title).toBe("Tal. Slip. Indsæt.");
-    /* spec 2.6: the privacy-led title is one of the claims that hold, word for word */
-    expect(HERO.privacy.title).toBe(
-      "Talen bliver til tekst på din egen computer.",
-    );
+});
+
+describe("the front page's shared copy (run 6)", () => {
+  const strings = (v: unknown): string[] =>
+    typeof v === "string"
+      ? [v]
+      : Array.isArray(v)
+        ? v.flatMap(strings)
+        : v && typeof v === "object"
+          ? Object.values(v).flatMap(strings)
+          : [];
+  it("lists every feature of the brief once, in order", () => {
+    expect(FEATURE_ORDER).toEqual([
+      "fn",
+      "phone",
+      "corrections",
+      "mixed",
+      "words",
+      "notify",
+      "privacy",
+      "oss",
+      "free",
+      "start",
+      "faq",
+    ]);
+    expect(Object.keys(FEATURES).sort()).toEqual([...FEATURE_ORDER].sort());
+  });
+  it("is Danish copy without em dashes, exclamation marks or 'direkte' (spec 2.6, Appendix A)", () => {
+    for (const s of strings([FEATURES, FAQ, PRIVACY_FACTS, START_STEPS]))
+      expect(s, s).not.toMatch(/[—!]|direkte/i);
+  });
+  it("keeps whispering a claim until it is measured", () => {
+    expect(FEATURES.phone.body + FEATURES.phone.short).not.toMatch(/hvisk/i);
+    expect(FEATURES.phone.claim!.text).toMatch(/hvisk/i);
+    expect(FAQ.find((q) => /hvisk/i.test(q.q))!.claim).toBeTruthy();
+  });
+  it("ties self-corrections to the optional AI cleanup (spec 6.10, PRIV-04)", () => {
+    expect(FEATURES.corrections.short).toMatch(/AI-oprydning/);
+    expect(FEATURES.corrections.body).toMatch(/valgfri og slået fra/);
+  });
+  it("says privacy in four facts that hold, the first two word for word (spec 2.6)", () => {
+    expect(PRIVACY_FACTS.map((f) => f.title)).toEqual([
+      "Talen bliver til tekst på din egen computer",
+      "Krypteret fra telefon til computer",
+      "Ingen lyd gemmes",
+      "Ingen konto",
+    ]);
+  });
+  it("gets started in three steps", () => {
+    expect(START_STEPS).toHaveLength(3);
+  });
+  it("keeps the current front page's slogan", () => {
+    expect(HERO.title).toBe("Tal. Slip. Indsæt.");
+    for (const s of strings(HERO)) expect(s).not.toMatch(/[—!]|direkte/i);
   });
 });
 

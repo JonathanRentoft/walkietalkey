@@ -44,6 +44,7 @@ pub mod speed;
 pub mod store;
 pub mod tray;
 pub mod updates;
+pub mod versions;
 pub mod vocabulary;
 
 static APP: once_cell::sync::OnceCell<AppHandle> = once_cell::sync::OnceCell::new();

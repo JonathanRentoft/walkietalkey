@@ -3,7 +3,7 @@
 // settings), and a calm status card at its foot: the key, the pause, or the
 // speech model while it downloads. That card is the window's one living
 // surface (design system README).
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import SecureInputWarning from "@/components/SecureInputWarning";
@@ -61,6 +61,25 @@ function SectionView(props: { id: SectionId; platform: WtPlatform }) {
 }
 
 /** "Sæt på pause" from the tray (DESK-96) shown in the window. */
+/** Run 6: opened straight from the disk image, macOS runs a read-only copy
+ *  that cannot update itself (updates.rs). */
+function DiskImageBanner() {
+  const { t } = useTranslation();
+  const [fromImage, setFromImage] = useState(false);
+  useEffect(() => {
+    void commands
+      .wtRunsFromDiskImage()
+      .then(setFromImage)
+      .catch(() => setFromImage(false));
+  }, []);
+  if (!fromImage) return null;
+  return (
+    <div className="wt-banner" role="status" data-testid="disk-image-notice">
+      <p>{t("wt.updates.fromDiskImage")}</p>
+    </div>
+  );
+}
+
 function PausedBanner() {
   const { t } = useTranslation();
   const paused = useUi((s) => s.paused);
@@ -173,6 +192,7 @@ export function MainWindow(props: { platform: WtPlatform }) {
           <AccessNotice platform={props.platform} />
           {/* Avanceret shows it at the microphone setting itself. */}
           {section !== "advanced" ? <MicNotice variant="banner" /> : null}
+          <DiskImageBanner />
           <PausedBanner />
           <PhoneBanner />
           <SecureInputWarning />

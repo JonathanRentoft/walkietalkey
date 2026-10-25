@@ -750,6 +750,18 @@ async wtIsPaused() : Promise<boolean> {
 /**
  * Ekko PnC's state for Indstillinger › Model (DESK-41).
  */
+/**
+ * Whether this app runs from a read-only copy that cannot update itself.
+ */
+async wtRunsFromDiskImage() : Promise<boolean> {
+    return await TAURI_INVOKE("wt_runs_from_disk_image");
+},
+/**
+ * Indstillinger › Model › Versioner (run 6).
+ */
+async wtModelVersions() : Promise<ModelVersion[]> {
+    return await TAURI_INVOKE("wt_model_versions");
+},
 async wtPunctuationStatus() : Promise<PncStatus> {
     return await TAURI_INVOKE("wt_punctuation_status");
 },
@@ -1540,6 +1552,26 @@ export type PillRect = { x: number; y: number; width: number; height: number }
 /**
  * The punctuation model's state, for Indstillinger › Model.
  */
+/**
+ * One row of Indstillinger › Model › Versioner.
+ */
+export type ModelVersion = { id: string; name: string; 
+/**
+ * The workbench's version number; `None` for the base Edda.
+ */
+version: number | null; base: boolean; selected: boolean; 
+/**
+ * ISO date and time the version was exported.
+ */
+created: string | null; 
+/**
+ * The training run it came from.
+ */
+run: string | null; 
+/**
+ * Word error rate on the validation clips, 0 to 1.
+ */
+validation_wer: number | null }
 export type PncStatus = { state: "ready" } | { state: "missing" } | { state: "downloading" } | { state: "failed"; message: string } | 
 /**
  * An Intel Mac: punctuation is not available (deviation, docs/MODELS.md).

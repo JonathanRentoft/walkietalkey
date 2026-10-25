@@ -782,7 +782,9 @@
         "fastTitle": "En hurtigere model",
         "useFast": "Brug Ekko v1 Tiny",
         "keepEdda": "Behold Edda"
-      }
+      },
+      "replayNote": "I gennemgangen ændrer WalkieTalkey ikke dine tilladelser.",
+      "close": "Luk introduktionen"
     },
     "model": {
       "downloading": "Henter dansk talemodel",
@@ -886,7 +888,10 @@
       "previewExample": "Husk at købe mælk på vej hjem",
       "notificationsOff": "Notifikationer er ikke slået til, så du ser ikke, når tekst fra telefonen er klar.",
       "notificationsAllow": "Slå notifikationer til",
-      "notificationsOpen": "Åbn Notifikationer"
+      "notificationsOpen": "Åbn Notifikationer",
+      "intro": "Introduktionen",
+      "introDesc": "Se de første skærme igen. Dine tilladelser og indstillinger bliver, som de er.",
+      "introButton": "Vis introduktionen igen"
     },
     "key": {
       "key": "Tast",
@@ -1035,7 +1040,14 @@
         "failed": "Kunne ikke hente tegnsætningsmodellen.",
         "unsupported": "Ikke tilgængelig på en Mac med Intel-processor",
         "retry": "Prøv igen"
-      }
+      },
+      "versions": "Versioner af Edda",
+      "versionsDesc": "Hver gang du træner Edda med værktøjet til finjustering, kommer der en ny version. Skift tilbage når som helst.",
+      "baseNote": "Grundmodellen. Den bliver altid på computeren.",
+      "versionLabel": "Version {{n}}",
+      "werLabel": "{{wer}} fejl på valideringen",
+      "inUse": "I brug",
+      "switchFailed": "Kunne ikke skifte model. Prøv igen."
     },
     "updates": {
       "auto": "Automatiske opdateringer",
@@ -1048,7 +1060,8 @@
       "checking": "Søger efter opdateringer",
       "upToDate": "Du har den nyeste version",
       "downloading": "Henter version {{version}}",
-      "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere."
+      "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere.",
+      "fromDiskImage": "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra."
     },
     "advanced": {
       "intro": "Indstillinger, de fleste aldrig får brug for.",

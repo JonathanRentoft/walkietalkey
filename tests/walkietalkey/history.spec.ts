@@ -186,7 +186,7 @@ test.describe("history", () => {
       body: "Husk at købe mælk på vej hjem",
       history_id: 3,
     });
-    await page.getByRole("button", { name: "Vis" }).click();
+    await page.getByRole("button", { name: "Vis", exact: true }).click();
     await expect(list(page).locator('[aria-current="true"]')).toContainText(
       "Husk at købe mælk",
     );

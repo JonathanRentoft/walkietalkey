@@ -1,22 +1,25 @@
 ---
 /* Every page: <head> with title, description, Open Graph, favicon and the preloaded font (SITE-07), the skip link,
    the page itself and the shared footer. Nothing here loads from another origin (SITE-04). */
-/* One stylesheet for every page, in a fixed order: the design system, then the site, then the homepage
-   (as in the preview, where the page's <style> follows bundle.css). Pages import no CSS of their own, because
-   Astro would place a page's stylesheet before the shared one. */
+/* One stylesheet for every page, in a fixed order: the design system, then the site (as in the preview, where the
+   page's <style> follows bundle.css). Pages import no CSS of their own, because Astro would place a page's stylesheet
+   before the shared one. The front page's own CSS comes with its concept (src/concepts/<name>/Home.astro), which
+   pages/index.astro imports after this layout, so it lands after these rules. */
 import "@walkietalkey/ui/styles.css";
 import "../styles/site.css";
-import "../styles/home.css";
 import favicon from "@walkietalkey/ui/assets/App-ikoner/favicon.svg?url";
 import ogImage from "@walkietalkey/ui/assets/Baggrunde/og-image.jpg?url";
 import fontUrl from "@walkietalkey/ui/assets/fonts/albert-sans-latin-wght-normal.woff2?url";
 import Footer from "../components/Footer.astro";
+import type { Concept } from "../lib/build";
 import { PAGES, SITE_URL, type PageKey } from "../lib/site";
 
 interface Props {
   page: PageKey | "notFound";
+  /** the front page's concept (run 6), for its CSS and the tests: data-concept on <body> */
+  concept?: Concept | null;
 }
-const { page } = Astro.props;
+const { page, concept } = Astro.props;
 const info = page === "notFound"
   // TODO(copy)
   ? { path: "/404", title: "Siden findes ikke · WalkieTalkey", description: "Siden findes ikke. Gå til forsiden af WalkieTalkey." }
@@ -49,7 +52,7 @@ const og = new URL(ogImage, SITE_URL).href;
     <meta property="og:image:alt" content="WalkieTalkey. Tal. Slip. Indsæt." />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
-  <body>
+  <body data-concept={page === "home" ? (concept ?? "current") : undefined}>
     <!-- TODO(copy) -->
     <a class="skip" href="#indhold">Gå til indholdet</a>
     <slot />

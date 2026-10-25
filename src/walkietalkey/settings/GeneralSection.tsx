@@ -13,6 +13,7 @@ import {
   requestNotificationPermission,
   type NotificationPermission,
 } from "../lib/system";
+import { useUi } from "../lib/uiStore";
 import { useWtSettings, useWtStore } from "../lib/wtStore";
 import {
   Button,
@@ -222,6 +223,18 @@ export function GeneralSection(props: { platform: WtPlatform }) {
               </option>
             ))}
           </Select>
+        </SettingRow>
+      </Group>
+
+      {/* Run 6: the first-run screens again, without touching permissions. */}
+      <Group>
+        <SettingRow
+          title={t("wt.general.intro")}
+          description={t("wt.general.introDesc")}
+        >
+          <Button onClick={() => useUi.getState().setReplayIntro(true)}>
+            {t("wt.general.introButton")}
+          </Button>
         </SettingRow>
       </Group>
     </Page>
