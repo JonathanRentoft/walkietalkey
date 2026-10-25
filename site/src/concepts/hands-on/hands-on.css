@@ -413,6 +413,42 @@ button.ho-chip[aria-pressed="true"] {
 .ho-line {
   margin: 0 0 8px;
 }
+/* the finished example without JavaScript; with it the note starts empty, the hint as its placeholder */
+.ho-js .ho-line[data-example],
+.ho-js .ho-dock[data-example] {
+  display: none;
+}
+.ho-placeholder {
+  display: none;
+  align-items: center;
+  margin: 0;
+  color: var(--ink-muted);
+}
+.ho-js .ho-placeholder {
+  display: flex;
+}
+.ho-placeholder .ho-caret {
+  margin: 0 8px 0 0;
+}
+.ho-placeholder-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.ho-placeholder .ho-hint-key.wt-keycap {
+  font-size: 9.4px;
+}
+.ho-placeholder .ho-hint-key .wt-keycap-label {
+  font-size: 16px;
+  font-weight: 500;
+}
+.ho-placeholder-touch {
+  display: none;
+}
+/* the placeholder says it while the note is empty, so the hint under the key waits */
+.ho-toy[data-empty]:not([data-has-msg]) .ho-hint-idle {
+  visibility: hidden;
+}
 .ho-caret {
   display: inline-block;
   width: 2px;
@@ -2001,8 +2037,12 @@ button.ho-chip[aria-pressed="true"] {
 
 /* the hint matches the device: keys on a computer, the button on a touch screen */
 @media (hover: none) and (pointer: coarse) {
-  .ho-hint-keys {
+  .ho-hint-keys,
+  .ho-placeholder-keys {
     display: none;
+  }
+  .ho-placeholder-touch {
+    display: inline;
   }
   .ho-hint {
     min-height: 22px;

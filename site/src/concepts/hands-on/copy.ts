@@ -11,6 +11,7 @@ export const HO = {
     /** the hint under the button: "Hold [key] nede, og slip" */
     holdBefore: "Hold",
     holdAfter: "nede, og slip",
+    holdTouch: "Hold knappen nede, og slip",
     keySpace: "mellemrum",
     keyFn: "fn",
     /** while the key is held */

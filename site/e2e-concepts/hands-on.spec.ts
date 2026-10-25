@@ -1,12 +1,12 @@
 /* Run 6, concept C (hands-on): the hero toy and the bento's demos in a browser. Hold Space (or fn, if the browser
-   reports it), and the pill listens while nothing is written yet; at release the next sample lands at once and the
-   pill says "Indsat" (DESK-46, DESK-55). A tap under 300 ms dictates nothing (DESK-26), Esc cancels (DESK-25). On a
+   reports it), and the pill listens over a note that is still empty; at release the next sample lands at once and
+   the pill says "Indsat" (DESK-46, DESK-55). Without JavaScript the hero shows that finished example instead. A tap under 300 ms dictates nothing (DESK-26), Esc cancels (DESK-25). On a
    phone the big button does the same with a real touch. The tiles react: the phone sends to the computer you sit at,
    AI-oprydning flips, the word list spells your name, and so on. Runs only for the hands-on projects. */
 import { expect, test, type Page } from "@playwright/test";
 import { PLANS, SAMPLES } from "../src/lib/features";
 import { HO } from "../src/concepts/hands-on/copy";
-import { conceptOf, deviceOf } from "./helpers";
+import { conceptOf, deviceOf, endlessAnimations } from "./helpers";
 
 test.beforeEach(({}, info) => {
   test.skip(conceptOf(info) !== "hands-on", "concept C only");
@@ -18,12 +18,13 @@ const dock = (page: Page) => page.locator("[data-dock]");
 const pill = (page: Page) => page.locator("[data-dock] .wt-pill");
 const shown = (page: Page) => dock(page).evaluate((el) => el.hasAttribute("data-show"));
 
-/** The page as a visitor finds it: the first sentence in the note, the "Indsat" pill gone again (DESK-55). */
+/** The page as a visitor finds it with JavaScript: an empty note with the hint as its placeholder, no pill. */
 async function ready(page: Page) {
   await page.goto("/");
-  await expect(lines(page)).toHaveCount(1);
-  await expect(doc(page)).toContainText(SAMPLES.first);
-  await expect.poll(() => shown(page), { timeout: 4000 }).toBe(false);
+  await expect(page.locator("[data-placeholder]")).toBeVisible();
+  await expect(lines(page)).toHaveCount(0);
+  await expect(doc(page)).not.toContainText(SAMPLES.first);
+  expect(await shown(page)).toBe(false);
 }
 
 test.describe("the toy, with a keyboard", () => {
@@ -40,17 +41,18 @@ test.describe("the toy, with a keyboard", () => {
     await expect.poll(() => shown(page)).toBe(true);
     await expect(page.locator("[data-slogan]")).toHaveAttribute("data-at", "hold");
     await page.waitForTimeout(800);
-    /* nothing is written while you hold, and Space did not scroll the page */
-    await expect(lines(page)).toHaveCount(1);
-    await expect(doc(page)).not.toContainText(SAMPLES.mail);
+    /* nothing is written while you hold: the note is still empty, and Space did not scroll the page */
+    await expect(lines(page)).toHaveCount(0);
+    await expect(doc(page)).not.toContainText(SAMPLES.first);
     expect(await page.evaluate(() => scrollY)).toBe(0);
 
     await page.keyboard.up("Space");
     await expect(pill(page)).toContainText("Renskriver");
-    await expect(doc(page)).toContainText(SAMPLES.mail);
-    await expect(lines(page)).toHaveCount(2);
+    await expect(doc(page)).toContainText(SAMPLES.first);
+    await expect(lines(page)).toHaveCount(1);
+    await expect(page.locator("[data-placeholder]")).toHaveCount(0);
     await expect(pill(page)).toContainText("Indsat");
-    await expect(page.locator("[data-live]").first()).toContainText(SAMPLES.mail);
+    await expect(page.locator("[data-live]").first()).toContainText(SAMPLES.first);
     /* the pill hides about 1.5 s after the end */
     await expect.poll(() => shown(page), { timeout: 3500 }).toBe(false);
 
@@ -58,7 +60,8 @@ test.describe("the toy, with a keyboard", () => {
     await page.keyboard.down("Space");
     await page.waitForTimeout(450);
     await page.keyboard.up("Space");
-    await expect(doc(page)).toContainText(SAMPLES.mixed);
+    await expect(doc(page)).toContainText(SAMPLES.mail);
+    await expect(lines(page)).toHaveCount(2);
   });
 
   test("a tap under 300 ms dictates nothing, with a gentle hint to hold", async ({ page }) => {
@@ -68,7 +71,8 @@ test.describe("the toy, with a keyboard", () => {
     await page.keyboard.up("Space");
     await expect(page.locator("[data-msg]")).toHaveText(HO.hero.short);
     await page.waitForTimeout(1200);
-    await expect(lines(page)).toHaveCount(1);
+    await expect(lines(page)).toHaveCount(0);
+    await expect(page.locator("[data-placeholder]")).toBeVisible();
     expect(await shown(page)).toBe(false);
   });
 
@@ -80,19 +84,19 @@ test.describe("the toy, with a keyboard", () => {
     await page.keyboard.up("Space");
     await expect(page.locator("[data-msg]")).toHaveText(HO.hero.cancelled);
     await page.waitForTimeout(1200);
-    await expect(lines(page)).toHaveCount(1);
+    await expect(lines(page)).toHaveCount(0);
     expect(await shown(page)).toBe(false);
   });
 
   test("the fn key works the moment a browser reports it, and the hint says so", async ({ page }) => {
     await ready(page);
-    await expect(page.locator("[data-keyname]")).toHaveText(HO.hero.keySpace);
+    await expect(page.locator("[data-keyname]")).toHaveText([HO.hero.keySpace, HO.hero.keySpace]);
     await page.evaluate(() => dispatchEvent(new KeyboardEvent("keydown", { key: "Fn", code: "Fn" })));
-    await expect(page.locator("[data-keyname]")).toHaveText(HO.hero.keyFn);
+    await expect(page.locator("[data-keyname]")).toHaveText([HO.hero.keyFn, HO.hero.keyFn]);
     await expect(pill(page)).toHaveClass(/wt-pill--listening/);
     await page.waitForTimeout(450);
     await page.evaluate(() => dispatchEvent(new KeyboardEvent("keyup", { key: "Fn", code: "Fn" })));
-    await expect(doc(page)).toContainText(SAMPLES.mail);
+    await expect(doc(page)).toContainText(SAMPLES.first);
   });
 
   test("the button works from the keyboard, and Space still types in a text field", async ({ page }) => {
@@ -101,14 +105,14 @@ test.describe("the toy, with a keyboard", () => {
     await page.keyboard.down("Enter");
     await page.waitForTimeout(450);
     await page.keyboard.up("Enter");
-    await expect(doc(page)).toContainText(SAMPLES.mail);
+    await expect(doc(page)).toContainText(SAMPLES.first);
 
     const input = page.locator("#ho-word");
     await input.focus();
     await page.keyboard.type("Mette Holm");
     await expect(input).toHaveValue("Mette Holm");
     await page.waitForTimeout(1600);
-    await expect(lines(page)).toHaveCount(2);
+    await expect(lines(page)).toHaveCount(1);
   });
 
   test("Space belongs to the page again once the toy is out of sight", async ({ page }) => {
@@ -119,8 +123,36 @@ test.describe("the toy, with a keyboard", () => {
     await page.waitForTimeout(500);
     await page.keyboard.up("Space");
     await page.waitForTimeout(800);
-    await expect(lines(page)).toHaveCount(1);
+    await expect(lines(page)).toHaveCount(0);
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y);
+  });
+});
+
+test.describe("with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("the toy still works, and nothing loops while it listens", async ({ page }, info) => {
+    test.skip(deviceOf(info) !== "desktop", "keyboard on a computer");
+    await ready(page);
+    await page.keyboard.down("Space");
+    await expect(pill(page)).toHaveClass(/wt-pill--listening/);
+    await page.waitForTimeout(500);
+    expect(await endlessAnimations(page)).toEqual([]);
+    await expect(lines(page)).toHaveCount(0);
+    await page.keyboard.up("Space");
+    await expect(doc(page)).toContainText(SAMPLES.first);
+    await expect(pill(page)).toContainText("Indsat");
+  });
+});
+
+test.describe("without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+  test("the hero shows the finished example: the sentence in the note, the pill on Indsat", async ({ page }) => {
+    await page.goto("/");
+    await expect(lines(page)).toHaveCount(1);
+    await expect(doc(page)).toContainText(SAMPLES.first);
+    await expect(pill(page)).toBeVisible();
+    await expect(pill(page)).toContainText("Indsat");
+    await expect(page.locator("[data-placeholder]")).toBeHidden();
   });
 });
 
@@ -151,14 +183,15 @@ test.describe("the toy, on a phone", () => {
     await ready(page);
     const during = await touch(page, 700);
     expect(during.listening).toMatch(/wt-pill--listening/);
-    expect(during.lines).toBe(1);
-    await expect(doc(page)).toContainText(SAMPLES.mail);
+    expect(during.lines).toBe(0);
+    await expect(doc(page)).toContainText(SAMPLES.first);
+    await expect(lines(page)).toHaveCount(1);
     await expect(pill(page)).toContainText("Indsat");
     await expect.poll(() => shown(page), { timeout: 3500 }).toBe(false);
 
     await touch(page, 80);
     await page.waitForTimeout(1200);
-    await expect(lines(page)).toHaveCount(2);
+    await expect(lines(page)).toHaveCount(1);
     await expect(page.locator("[data-msg]")).toHaveText(HO.hero.short);
   });
 });

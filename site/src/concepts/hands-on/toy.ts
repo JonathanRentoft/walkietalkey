@@ -95,6 +95,8 @@ export function toy(root: HTMLElement) {
   /* ------------------------------------------------------------------ the text */
   function land(text: string) {
     const caret = doc!.querySelector(".ho-caret");
+    doc!.querySelector("[data-placeholder]")?.remove();
+    root!.removeAttribute("data-empty");
     const line = document.createElement("p");
     line.className = "ho-line";
     const span = document.createElement("span");
@@ -201,7 +203,9 @@ export function toy(root: HTMLElement) {
   });
 
 
-  /* the finished example in the HTML: the first sentence was just pasted, the pill says "Indsat" and goes */
-  setPill("pasted");
-  hideLater();
+  /* the finished example is for the page without JavaScript: here the note starts empty, the pill hidden */
+  doc.querySelector("[data-example]")?.remove();
+  dock.removeAttribute("data-example");
+  show(false);
+  root.setAttribute("data-empty", "");
 }

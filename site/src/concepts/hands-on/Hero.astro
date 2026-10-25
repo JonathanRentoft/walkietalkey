@@ -4,16 +4,18 @@
    ever reports it, otherwise the space bar, or the button itself), and the app's pill floats up at the bottom centre
    of the screen, listening. Let go, the pill says "Renskriver", the next sample sentence lands in the note at once,
    the pill says "Indsat" and fades (DESK-55). A tap under 300 ms does nothing (DESK-26), Esc cancels (DESK-25).
-   toy.ts drives it; the HTML holds the finished example (a sentence in the note, the pill on "Indsat"), so the page
-   reads the same without JavaScript. The h1 is the slogan, and its three words follow the toy: Tal while you hold,
+   Without JavaScript the HTML shows the finished example (a sentence in the note, the pill on "Indsat"). With it (and
+   with reduced motion too) the note starts empty, with the hint as its placeholder and the pill hidden, so the first
+   hold shows the pill listening over an empty note and the first sentence lands at release. Home.astro sets .ho-js
+   before the first paint, so the example never flashes; toy.ts then removes it. The h1 is the slogan, and its three words follow the toy: Tal while you hold,
    Slip when you let go, Indsæt when the text lands. */
 import { DictationPill, Keycap, LiquidBackground, ShinyButton } from "@walkietalkey/ui";
 import { CTA, FINE_PRINT, ONE_LINER, PRODUCT, SAMPLES, SLOGAN } from "../../lib/features";
 import { PAGES } from "../../lib/site";
 import { HO } from "./copy";
 
-/* each hold dictates the next of these; the first one is already in the note */
-const queue = [SAMPLES.mail, SAMPLES.mixed, SAMPLES.wordsWritten, SAMPLES.phone, SAMPLES.correctionWritten];
+/* each hold dictates the next of these */
+const queue = [SAMPLES.first, SAMPLES.mail, SAMPLES.mixed, SAMPLES.wordsWritten, SAMPLES.phone, SAMPLES.correctionWritten];
 const words = SLOGAN.split(" ");
 const text = {
   holding: HO.hero.holding,
@@ -48,10 +50,11 @@ const MIC = "M8 1.8a2.3 2.3 0 0 1 2.3 2.3v3.5a2.3 2.3 0 0 1-4.6 0V4.1A2.3 2.3 0 
             <span class="ho-dots ho-dots--ghost"><i></i><i></i><i></i></span>
           </div>
           <div class="ho-note-body" data-doc>
-            <p class="ho-line"><span class="ho-paste">{SAMPLES.first}</span><i class="ho-caret" aria-hidden="true"></i></p>
+            <p class="ho-line" data-example><span class="ho-paste">{SAMPLES.first}</span><i class="ho-caret" aria-hidden="true"></i></p>
+            <p class="ho-placeholder" data-placeholder aria-hidden="true"><i class="ho-caret"></i><span class="ho-placeholder-keys">{HO.hero.holdBefore} <Keycap size={34} className="ho-hint-key"><span data-keyname>{HO.hero.keySpace}</span></Keycap> {HO.hero.holdAfter}</span><span class="ho-placeholder-touch">{HO.hero.holdTouch}</span></p>
           </div>
         </div>
-        <div class="ho-dock" aria-hidden="true" data-dock data-show>
+        <div class="ho-dock" aria-hidden="true" data-dock data-show data-example>
           <DictationPill state="pasted" size="lg" className="ho-pill" />
         </div>
       </LiquidBackground>
