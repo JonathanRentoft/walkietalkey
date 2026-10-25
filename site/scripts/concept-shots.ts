@@ -47,8 +47,8 @@ try {
       await p1.waitForTimeout(2000);
       await p1.screenshot({ path: join(out, `${name(c)}-${w}-first.png`) });
       await live.close();
-      /* the whole page, calm */
-      const calm = await browser.newContext({ ...opts, reducedMotion: "reduce" });
+      /* the whole page, calm, at 1x: a long page at 2x passes Chrome's 16,384 px capture limit */
+      const calm = await browser.newContext({ ...opts, deviceScaleFactor: 1, reducedMotion: "reduce" });
       const p2 = await calm.newPage();
       await p2.goto(url + "/");
       await p2.evaluate(async () => {
