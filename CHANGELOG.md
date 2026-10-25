@@ -14,6 +14,8 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - Mikrofon: after you have said no once, the one button opens the right pane in System Settings at the first click.
 - Pairing a phone comes after your first dictation that works, never before: Telefon follows Prøv det only when it worked, and otherwise the window offers it once, after the first dictation that works.
 - On the phone, a pairing whose computer never comes back no longer just waits: a computer away for days says so and offers "Par igen", so does a dictation that never arrived, and pairing the same computer again replaces its old pairing. An old pairing code no longer breaks a pairing that works.
+- No more invented words after a pause: a click, a breath or a few words on their own after a pause are now transcribed together with the sentence next to them, where Edda used to write words nobody said ("Tester en to tre fire fem seks syv otte."). On the Danish FLEURS test, the error rate through the app falls from 8.44 % to 7.63 %, and the same recording always gives the same text.
+- For developers: `walkietalkey --transcribe-list <file> --key-recording` (or `--transcribe-file`) measures files as a key recording captures them, after the recorder's own silence removal.
 - On a Mac, "Sådan løser du det" in the Secure Input warning opens WalkieTalkey's own answer on walkietalkey.com.
 - The About screen lists third-party code and models with their licences.
 - Up to date: Tauri 2.12 and its plugins, and p256 0.14 in the encryption between phone and computer (RUSTSEC-2026-0387). Nothing changes on the wire, so paired phones keep working.

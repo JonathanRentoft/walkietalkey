@@ -209,6 +209,7 @@ The desktop app supports command-line parameters on all platforms for integratio
 | `--debug`                 | Enable debug mode with verbose (Trace) logging                                                                                            |
 | `-f`, `--transcribe-file` | Transcribe a 16 kHz mono WAV headlessly and exit                                                                                          |
 | `--live`                  | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46)                         |
+| `--key-recording`         | With `--transcribe-file` or `--transcribe-list`: pass each file through the recorder's silence removal first, as a key recording is       |
 | `--phone-receive`         | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
 | `--training-session`      | Hand a `wt-train record` session (its 127.0.0.1 link) to the running app; exits 3 when WalkieTalkey is not running                        |
 
