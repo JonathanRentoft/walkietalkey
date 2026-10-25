@@ -752,6 +752,7 @@ textarea.wt-input {
   min-height: 100vh;
 }
 .wt-onb {
+  position: relative;
   min-height: 100vh;
   box-sizing: border-box;
   display: flex;
@@ -875,6 +876,12 @@ textarea.wt-input {
   align-items: center;
   margin-top: var(--space-2);
 }
+/* Run 6: "Luk introduktionen" in the replay, top right of the window */
+.wt-onb-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
 .wt-onb-footer {
   width: min(660px, 100%);
   display: grid;
@@ -891,55 +898,136 @@ textarea.wt-input {
 }
 
 /* What the user will see in System Settings: the app and its switch. */
-.wt-onb-preview {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: min(380px, 100%);
-  box-sizing: border-box;
-  margin: var(--space-2) 0;
-  padding: var(--space-3) var(--space-4);
+/* Run 6, Tilgængelighed: a picture of System Settings › Anonymitet og
+   sikkerhed › Tilgængelighed as macOS draws it: a rounded list of apps with a
+   switch each, neutral icons and grey bars instead of names, the + and −
+   buttons under the list, and WalkieTalkey near the bottom (sorted by name)
+   with its switch highlighted. Tokens only, so light and dark follow. */
+.wt-onb-ax {
+  width: min(400px, 100%);
+  margin: var(--space-1) 0 var(--space-2);
+  font: var(--wt-label);
+}
+.wt-onb-ax-list {
+  margin: 0;
+  padding: 0 var(--space-3);
+  list-style: none;
   border-radius: var(--radius-md);
   background: var(--surface-100);
   border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
 }
-.wt-onb-preview-name {
-  flex: 1 1 auto;
-  font: var(--wt-label);
+.wt-onb-ax-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 30px;
 }
-.wt-onb-preview-switch {
-  position: relative;
-  width: 38px;
-  height: 22px;
+.wt-onb-ax-row + .wt-onb-ax-row {
+  border-top: 1px solid var(--line);
+}
+.wt-onb-ax-icon.wt-appicon {
+  flex: none;
+  font-size: 4px;
+}
+.wt-onb-ax-icon--blank {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: linear-gradient(160deg, var(--platin), var(--platin-dyb));
+  opacity: 0.55;
+}
+.wt-onb-ax-icon--blank[data-tone="1"] {
+  background: linear-gradient(160deg, var(--sand), var(--sand-dyb));
+}
+.wt-onb-ax-icon--blank[data-tone="2"] {
+  background: linear-gradient(160deg, var(--perle), var(--perle-dyb));
+}
+.wt-onb-ax-icon--blank[data-tone="3"] {
+  background: linear-gradient(160deg, var(--mokka), var(--mokka-dyb));
+}
+.wt-onb-ax-bar {
+  height: 7px;
+  max-width: 55%;
+  margin-right: auto;
   border-radius: var(--radius-pill);
-  background: var(--line-control);
-  animation: wt-preview-track 4.8s var(--ease-glide) infinite;
+  background: color-mix(in oklab, var(--ink-muted) 26%, transparent);
 }
-.wt-onb-preview-switch > span {
+.wt-onb-ax-name {
+  flex: 1 1 auto;
+  color: var(--ink);
+}
+.wt-onb-ax-row--mine {
+  margin: 0 calc(-1 * var(--space-3));
+  padding: 0 var(--space-3);
+  background: color-mix(in oklab, var(--sand) 34%, transparent);
+}
+.wt-onb-ax-switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--line-control) 55%, transparent);
+}
+.wt-onb-ax-switch > span {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--surface-200);
   box-shadow: 0 1px 2px #00000033;
+}
+.wt-onb-ax-switch--on {
+  background: var(--platin-dyb);
+}
+.wt-onb-ax-switch--on > span {
+  transform: translateX(12px);
+}
+/* WalkieTalkey's switch: ringed, and turning itself on until it is on */
+.wt-onb-ax-switch--mine {
+  box-shadow:
+    0 0 0 2px var(--surface-100),
+    0 0 0 4px var(--rav-dyb),
+    var(--shadow-glow);
+  animation: wt-preview-track 4.8s var(--ease-glide) infinite;
+}
+.wt-onb-ax-switch--mine > span {
   animation: wt-preview-thumb 4.8s var(--ease-glide) infinite;
 }
-.wt-onb-preview--on .wt-onb-preview-switch,
-.wt-onb-preview--on .wt-onb-preview-switch > span {
+.wt-onb-ax--on .wt-onb-ax-switch--mine,
+.wt-onb-ax--on .wt-onb-ax-switch--mine > span {
   animation: none;
 }
-.wt-onb-preview--on .wt-onb-preview-switch {
+.wt-onb-ax--on .wt-onb-ax-switch--mine {
   background: var(--ink);
 }
-.wt-onb-preview--on .wt-onb-preview-switch > span {
-  transform: translateX(16px);
+.wt-onb-ax--on .wt-onb-ax-switch--mine > span {
+  transform: translateX(12px);
+}
+.wt-onb-ax-tools {
+  display: inline-flex;
+  margin-top: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-100);
+  color: var(--ink-muted);
+  line-height: 20px;
+}
+.wt-onb-ax-tools > span {
+  width: 26px;
+  text-align: center;
+}
+.wt-onb-ax-tools > span + span {
+  border-left: 1px solid var(--line);
 }
 @keyframes wt-preview-track {
   0%,
   35% {
-    background: var(--line-control);
+    background: color-mix(in oklab, var(--line-control) 55%, transparent);
   }
   50%,
   92% {
@@ -953,7 +1041,7 @@ textarea.wt-input {
   }
   50%,
   92% {
-    transform: translateX(16px);
+    transform: translateX(12px);
   }
 }
 
@@ -1325,16 +1413,16 @@ textarea.wt-input {
   .wt-onb-dot,
   .wt-dialog-backdrop,
   .wt-onb-card,
-  .wt-onb-preview-switch,
-  .wt-onb-preview-switch > span {
+  .wt-onb-ax-switch--mine,
+  .wt-onb-ax-switch--mine > span {
     transition: none;
     animation: none;
   }
-  .wt-onb-preview-switch {
+  .wt-onb-ax-switch--mine {
     background: var(--ink);
   }
-  .wt-onb-preview-switch > span {
-    transform: translateX(16px);
+  .wt-onb-ax-switch--mine > span {
+    transform: translateX(12px);
   }
 }
 

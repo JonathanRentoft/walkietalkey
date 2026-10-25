@@ -5,6 +5,12 @@ import type { PairingPayload } from "@walkietalkey/protocol";
 import type { PairingState } from "../core/controller";
 import { parseScanned } from "../lib/pairingLink";
 import { createVideoDecoder } from "../lib/qr";
+import {
+  INSTALL_STEPS,
+  installFlow,
+  type InstallFlow,
+  type InstallIcon,
+} from "../lib/install";
 import { T, fill } from "../lib/strings";
 
 export function Loading() {
@@ -247,16 +253,100 @@ export function NameScreen(props: {
   );
 }
 
+/** Run 6: Safari's buttons as drawn on the iPhone, so the visitor finds the one each step names. */
+function InstallIcon(props: { id: InstallIcon }) {
+  const common = {
+    width: 22,
+    height: 22,
+    viewBox: "0 0 24 24",
+    "aria-hidden": true,
+    className: "wt-install-icon",
+  } as const;
+  switch (props.id) {
+    case "more":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10.5" className="wt-install-ring" />
+          <circle cx="7.5" cy="12" r="1.5" className="wt-install-dot" />
+          <circle cx="12" cy="12" r="1.5" className="wt-install-dot" />
+          <circle cx="16.5" cy="12" r="1.5" className="wt-install-dot" />
+        </svg>
+      );
+    case "share":
+      return (
+        <svg {...common}>
+          <path d="M8.5 9.5H6.8v11h10.4v-11h-1.7M12 14.5V2.8M8.4 6.2 12 2.6l3.6 3.6" />
+        </svg>
+      );
+    case "viewMore":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10.5" className="wt-install-ring" />
+          <path d="m7.6 10.2 4.4 4.4 4.4-4.4" />
+        </svg>
+      );
+    case "addToHome":
+      return (
+        <svg {...common}>
+          <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+      );
+    case "add":
+      return null;
+  }
+}
+
+function InstallSteps(props: { flow: InstallFlow; last: string }) {
+  return (
+    <ol className="wt-steps wt-install">
+      {INSTALL_STEPS[props.flow].map((s) => (
+        <li key={s.id} className="wt-install-step" data-step={s.id}>
+          <span className="wt-install-text">{s.text}</span>
+          <span className="wt-install-button">
+            {s.id === "add" ? (
+              <span className="wt-install-pill">{s.da}</span>
+            ) : (
+              <InstallIcon id={s.id} />
+            )}
+            {s.en !== s.da ? (
+              <span className="wt-install-en">
+                {T.installEnglish} {s.en}
+              </span>
+            ) : null}
+          </span>
+        </li>
+      ))}
+      <li className="wt-install-step">
+        <span className="wt-install-text">{props.last}</span>
+      </li>
+    </ol>
+  );
+}
+
 /**
  * PHONE-04: in a Safari tab on iOS, install first. A pairing link opened here never joins
  * (spec 5.3); it stays in the address bar, so the home-screen app pairs on its first launch
- * (run 2, Phase 5). `computer` is the name from a valid link.
+ * (run 2, Phase 5). `computer` is the name from a valid link. Run 6: the steps follow the
+ * visitor's iOS version (lib/install.ts).
  */
 export function InstallScreen(props: {
   computer: string | null;
   fromLink: boolean;
+  userAgent?: string;
 }) {
   const { computer } = props;
+  const { flow, safari } = installFlow(
+    props.userAgent ?? navigator.userAgent,
+  );
+  const notes = (
+    <>
+      {!safari ? <p className="wt-install-note">{T.installUseSafari}</p> : null}
+      {flow === "compact" ? (
+        <p className="wt-install-note">{T.installShareVisible}</p>
+      ) : null}
+    </>
+  );
   // An invalid link: as before, scan in the home-screen app.
   if (props.fromLink && !computer)
     return (
@@ -265,27 +355,23 @@ export function InstallScreen(props: {
         <section className="wt-screen-body">
           <h1 aria-live="polite">{T.openFromHome}</h1>
           <p>{T.installTitle}</p>
-          <ol className="wt-steps">
-            {T.installSteps.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ol>
+          <InstallSteps flow={flow} last={T.installOpen} />
+          {notes}
         </section>
       </main>
     );
-  const steps = computer
-    ? [...T.installSteps.slice(0, 2), fill(T.installOpenPairs, { computer })]
-    : T.installSteps;
   return (
     <main className="wt-screen">
       <Brand />
       <section className="wt-screen-body">
         <h1>{T.installTitle}</h1>
-        <ol className="wt-steps">
-          {steps.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ol>
+        <InstallSteps
+          flow={flow}
+          last={
+            computer ? fill(T.installOpenPairs, { computer }) : T.installOpen
+          }
+        />
+        {notes}
         {computer ? (
           <>
             <p>{T.installInTime}</p>

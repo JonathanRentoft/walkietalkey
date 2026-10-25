@@ -782,7 +782,9 @@
         "fastTitle": "A faster model",
         "useFast": "Use Ekko v1 Tiny",
         "keepEdda": "Keep Edda"
-      }
+      },
+      "replayNote": "In this walkthrough WalkieTalkey does not change your permissions.",
+      "close": "Close the introduction"
     },
     "model": {
       "downloading": "Downloading the Danish speech model",
@@ -886,7 +888,10 @@
       "previewExample": "Remember to buy milk on the way home",
       "notificationsOff": "Notifications are off, so you will not see when text from the phone is ready.",
       "notificationsAllow": "Turn on notifications",
-      "notificationsOpen": "Open Notifications"
+      "notificationsOpen": "Open Notifications",
+      "intro": "Introduction",
+      "introDesc": "See the first screens again. Your permissions and settings stay as they are.",
+      "introButton": "Show the introduction again"
     },
     "key": {
       "key": "Key",

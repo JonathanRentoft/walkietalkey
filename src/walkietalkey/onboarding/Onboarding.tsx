@@ -1,12 +1,18 @@
 // First run (spec 6.2, run 2 "plug and play"): one window, one step at a
 // time. The speech model downloads in the background from the first launch
 // and shows as one calm line under the steps; it never blocks a step.
+//
+// Run 6, `replay` ("Vis introduktionen igen" in Generelt): every screen a new
+// user meets, in order, without touching anything. The permission steps show
+// their first-run face but ask for nothing and open nothing, no step is saved,
+// and the end changes no setting (login item, phone offer).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GradientBackground } from "@walkietalkey/ui";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
   forwardStep,
+  nextStep,
   ONBOARDING_DONE,
   onboardingSteps,
   phoneOfferPending,
@@ -34,7 +40,10 @@ export function Onboarding(props: {
   platform: WtPlatform;
   initialStep: OnboardingStepId;
   onDone: () => void;
+  /** Run 6: the screens again, from the settings; nothing is changed. */
+  replay?: boolean;
 }) {
+  const replay = !!props.replay;
   const { t } = useTranslation();
   const wt = useWtSettings();
   const updateWt = useWtStore((s) => s.update);
@@ -44,8 +53,12 @@ export function Onboarding(props: {
   const [dictated, setDictated] = useState(props.initialStep === "phone");
   const phonePairing = wt?.allow_phone_pairing ?? true;
   const steps = useMemo(
-    () => onboardingSteps(props.platform, { phonePairing, dictated }),
-    [props.platform, phonePairing, dictated],
+    () =>
+      onboardingSteps(props.platform, {
+        phonePairing,
+        dictated: dictated || replay,
+      }),
+    [props.platform, phonePairing, dictated, replay],
   );
   const [step, setStep] = useState<OnboardingStepId>(props.initialStep);
   const [phoneShown, setPhoneShown] = useState(false);
@@ -56,19 +69,20 @@ export function Onboarding(props: {
   // The backend starts the download at the first launch; this follows it
   // (and starts it only if nothing did).
   useEffect(() => {
-    void useModelSetup.getState().watch({ onboarding: true });
-  }, []);
+    if (!replay) void useModelSetup.getState().watch({ onboarding: true });
+  }, [replay]);
   useTauriEvent("wt-phone-joined", () => setPhonePaired(true));
 
   const go = async (to: OnboardingStepId | null) => {
     if (!to) return;
     setStep(to);
     // Remembered so a restart resumes here (DESK-13).
-    await updateWt({ onboarding_resume_step: to });
+    if (!replay) await updateWt({ onboarding_resume_step: to });
   };
 
   /** The next step, past permissions that are already granted. */
   const forward = async () => {
+    if (replay) return go(nextStep(steps, step));
     const [microphone, accessibility] = await Promise.all([
       mac ? hasPermission("microphone") : windowsMicrophoneAllowed(),
       mac ? hasPermission("accessibility") : Promise.resolve(true),
@@ -87,6 +101,7 @@ export function Onboarding(props: {
   }, [step]);
 
   const finish = async () => {
+    if (replay) return props.onDone();
     // DESK-97: start at login, on by default after onboarding.
     await useSettingsStore.getState().updateSetting("autostart_enabled", true);
     // Finished, whether or not the model is in place yet: the download goes
@@ -116,17 +131,21 @@ export function Onboarding(props: {
         <MicrophoneStep
           platform={props.platform}
           onGranted={() => void forward()}
+          replay={replay}
         />
       );
       break;
     case "accessibility":
-      content = <AccessibilityStep onGranted={() => void forward()} />;
+      content = (
+        <AccessibilityStep onGranted={() => void forward()} replay={replay} />
+      );
       break;
     case "try":
       content = (
         <TryStep
           platform={props.platform}
           onDictated={() => setDictated(true)}
+          replay={replay}
         />
       );
       break;
@@ -213,6 +232,16 @@ export function Onboarding(props: {
             <ModelStatusLine className="wt-onb-model" />
             <div>{action}</div>
           </footer>
+        ) : null}
+        {/* Last in the window, so the first child still centres the steps. */}
+        {replay ? (
+          <Button
+            variant="quiet"
+            className="wt-onb-close"
+            onClick={props.onDone}
+          >
+            {t("wt.onboarding.close")}
+          </Button>
         ) : null}
       </main>
     </GradientBackground>

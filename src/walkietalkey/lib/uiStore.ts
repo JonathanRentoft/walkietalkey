@@ -30,6 +30,9 @@ interface UiStore {
   openHistory: (id: number | null, sentOnly?: boolean) => void;
   paused: boolean;
   setPaused: (p: boolean) => void;
+  /** Run 6: "Vis introduktionen igen" shows the first-run screens again. */
+  replayIntro: boolean;
+  setReplayIntro: (on: boolean) => void;
 }
 
 export const useUi = create<UiStore>()((set) => ({
@@ -44,4 +47,6 @@ export const useUi = create<UiStore>()((set) => ({
     set({ section: "history", historyId, historySentOnly: sentOnly }),
   paused: false,
   setPaused: (paused) => set({ paused }),
+  replayIntro: false,
+  setReplayIntro: (replayIntro) => set({ replayIntro }),
 }));

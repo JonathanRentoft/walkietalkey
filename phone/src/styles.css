@@ -403,6 +403,52 @@ body {
   gap: var(--space-2);
 }
 
+/* Run 6: the install steps with Safari's buttons drawn next to them (lib/install.ts) */
+.wt-install {
+  gap: var(--space-3);
+}
+.wt-install-step {
+  padding-left: var(--space-1);
+}
+.wt-install-text {
+  display: block;
+}
+.wt-install-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font: var(--type-body);
+}
+.wt-install-icon {
+  flex: none;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wt-install-ring {
+  stroke: var(--line-control);
+  stroke-width: 1.2;
+}
+.wt-install-dot {
+  fill: var(--ink);
+  stroke: none;
+}
+.wt-install-pill {
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-control);
+  color: var(--ink);
+  font: var(--type-body);
+}
+.wt-install-note {
+  font: var(--type-body);
+  color: var(--ink-muted);
+}
+
 .wt-link {
   align-self: center;
   border: 0;

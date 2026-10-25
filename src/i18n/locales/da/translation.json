@@ -782,7 +782,9 @@
         "fastTitle": "En hurtigere model",
         "useFast": "Brug Ekko v1 Tiny",
         "keepEdda": "Behold Edda"
-      }
+      },
+      "replayNote": "I gennemgangen ændrer WalkieTalkey ikke dine tilladelser.",
+      "close": "Luk introduktionen"
     },
     "model": {
       "downloading": "Henter dansk talemodel",
@@ -886,7 +888,10 @@
       "previewExample": "Husk at købe mælk på vej hjem",
       "notificationsOff": "Notifikationer er ikke slået til, så du ser ikke, når tekst fra telefonen er klar.",
       "notificationsAllow": "Slå notifikationer til",
-      "notificationsOpen": "Åbn Notifikationer"
+      "notificationsOpen": "Åbn Notifikationer",
+      "intro": "Introduktionen",
+      "introDesc": "Se de første skærme igen. Dine tilladelser og indstillinger bliver, som de er.",
+      "introButton": "Vis introduktionen igen"
     },
     "key": {
       "key": "Tast",

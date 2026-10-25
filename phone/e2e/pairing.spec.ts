@@ -176,8 +176,9 @@ test.describe("iPhone in a Safari tab (PHONE-04) and the home-screen app (Phase 
         name: "Føj WalkieTalkey til hjemmeskærmen for at bruge den",
       }),
     ).toBeVisible();
+    // Run 6: Playwright's iPhone 15 runs Safari 27, so the compact tab bar's steps (lib/install.ts).
     await expect(
-      page.getByText("Tryk på Del-knappen nederst i Safari."),
+      page.getByText("Tryk på ••• ved siden af adressefeltet."),
     ).toBeVisible();
 
     const computer = await newComputer();

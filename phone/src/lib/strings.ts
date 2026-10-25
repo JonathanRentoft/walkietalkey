@@ -34,12 +34,24 @@ export const T = {
   // TODO(copy): first screen, the short explanation under "Par med en computer" (PHONE-10)
   pairIntro:
     "Åbn WalkieTalkey på din computer, vælg Indstillinger, Telefon og Par en telefon. Scan så koden, der kommer frem.",
-  // TODO(copy): install steps in a Safari tab (PHONE-04)
-  installSteps: [
-    "Tryk på Del-knappen nederst i Safari.",
-    "Vælg Føj til hjemmeskærm, og tryk Tilføj.",
-    "Åbn WalkieTalkey fra hjemmeskærmen.",
-  ],
+  // TODO(copy), run 6: install steps in a Safari tab (PHONE-04), per iOS version (lib/install.ts). The button names
+  // are Safari's own; "Vis mere" (View More) must be checked on an iPhone set to Danish.
+  installCompact: {
+    more: "Tryk på ••• ved siden af adressefeltet.",
+    share: "Tryk på Del.",
+    viewMore: "Tryk på Vis mere, pilen nedad.",
+    addToHome: "Tryk på Føj til hjemmeskærm.",
+    add: "Tryk på Tilføj.",
+  },
+  installClassic: {
+    share: "Tryk på Del nederst i Safari.",
+    addToHome: "Rul ned, og tryk på Føj til hjemmeskærm.",
+    add: "Tryk på Tilføj.",
+  },
+  installOpen: "Åbn WalkieTalkey fra hjemmeskærmen.",
+  installShareVisible: "Kan du se Del med det samme, så spring de tre prikker over.",
+  installUseSafari: "Åbn siden i Safari. Andre browsere kan ikke føje WalkieTalkey til hjemmeskærmen på samme måde.",
+  installEnglish: "På engelsk:",
   // TODO(copy): Phase 5, opened from a pairing link in a Safari tab: the home-screen app pairs itself
   installOpenPairs:
     "Åbn WalkieTalkey fra hjemmeskærmen. Den parrer med {computer} med det samme.",
