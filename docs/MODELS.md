@@ -206,6 +206,15 @@ normalisation), Ekko v1 Tiny 9.36 % (RyeAI's normalisation), Whisper turbo
 _train_ split: the test split is held out but in its domain, which favours it here;
 the owner's own dictations (`--clips-dir`) are the real test.
 
+**Checked in run 7.** Edda's model card lists 2,463 FLEURS da_dk clips from
+`google/fleurs` _train_ in its training data. At the pinned revision FLEURS
+da_dk has 2,465 train clips (1,380 sentences), 395 validation and 930 test
+(350 sentences), so 2,463 is the train split after Edda's filtering (train and
+validation together would be 2,860). `wt-train fetch --overlap` compares train
+with test: no test clip shares a FLEURS sentence id, a normalised text, a file
+name or decoded audio with any train clip. Our FLEURS test regression check is
+therefore held out from Edda's training as well as from ours.
+
 **Punctuation after DESK-41** (`wt_eval.pnc_after`, Ekko PnC through
 `crates/ekko-pnc` on every clip under the threshold):
 
