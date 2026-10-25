@@ -4,6 +4,27 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-25
+
+<!-- TODO(copy): the Danish release notes -->
+
+**På dansk**
+
+- Tilgængelighed viser nu listen, som du ser den i Systemindstillinger, med WalkieTalkey nær bunden og dens kontakt fremhævet.
+- Under Indstillinger › Generelt kan du se introduktionen igen. Den ændrer ikke dine tilladelser.
+- Under Indstillinger › Model står Edda og de versioner af Edda, du selv har trænet. Du kan skifte frem og tilbage, og Edda bliver altid på computeren.
+- Kører WalkieTalkey fra diskbilledet, siger appen det, for så kan den ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra.
+- Telefonappen viser de præcise trin i Safari til din version af iOS, med knapperne på dansk og engelsk.
+
+**In English**
+
+- Accessibility: the picture now looks like the real list in System Settings › Privacy & Security › Accessibility, in light and dark, with WalkieTalkey near the bottom and its switch highlighted, and the + and − buttons under the list.
+- Indstillinger › Generelt › "Vis introduktionen igen" shows the first-run screens again without asking for, repairing or opening any permission, and without changing the login item or any other setting.
+- Indstillinger › Model › "Versioner af Edda" lists the base Edda and every version of it you trained with the workbench, with its version number, date and validation error rate, and switches between them. Rolling back means switching. The base Edda can no longer be deleted from the app, and a missing one is fetched again at start (unless your organisation pins a model).
+- When WalkieTalkey runs straight from its disk image, macOS runs a read-only copy that cannot update itself; the window now says so and asks you to open WalkieTalkey from Applications. The download page says the same.
+- Phone app: the install steps in Safari follow your iOS version: on iOS 26 and newer ••• › Share › View More › Add to Home Screen › Add, before that Share › Add to Home Screen › Add, each with Safari's button drawn and named in Danish and English.
+- For developers: `wt-train export` installs every export as a version of its own (`edda-ft-<slug>-v<N>`) and registers it as version N of `edda-da` in the local MLflow model registry, with its run, metrics and config. `wt-train use <N|edda>` switches the app (through the new `walkietalkey --use-model <id>`), and `wt-train use --list` lists the versions. Every MLflow run is tagged with what it changed: the pipeline around the model or the model's weights.
+
 ## [0.2.0] - 2026-10-25
 
 <!-- TODO(copy): the Danish release notes -->

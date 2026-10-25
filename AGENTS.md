@@ -211,11 +211,12 @@ The desktop app supports command-line parameters on all platforms for integratio
 | `--live`                  | With `--transcribe-file`: feed it through the live path at real-time speed and report the wait (DESK-43, DESK-46)                         |
 | `--key-recording`         | With `--transcribe-file` or `--transcribe-list`: pass each file through the recorder's silence removal first, as a key recording is       |
 | `--phone-receive`         | Receive phone dictations headlessly for the end-to-end test (DESK-61); with `--relay-url`, `--phone-app-url`, `--count`, `--timeout-secs` |
+| `--use-model`             | Select an installed model (`wt-train use`): in the running app, or saved for the next start when none runs (DESK-36)                      |
 | `--training-session`      | Hand a `wt-train record` session (its 127.0.0.1 link) to the running app; exits 3 when WalkieTalkey is not running                        |
 
 **Key design decisions:**
 
-- CLI flags are runtime-only overrides — they do NOT modify persisted settings
+- CLI flags are runtime-only overrides — they do NOT modify persisted settings (one exception: `--use-model` selects a model, exactly as Indstillinger › Model does)
 - Remote control flags work via `tauri_plugin_single_instance`: second instance sends args, then exits
 - `send_transcription_input()` in `signal_handle.rs` is shared between signal handlers and CLI
 
