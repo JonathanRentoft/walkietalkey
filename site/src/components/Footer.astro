@@ -10,9 +10,8 @@ const domain = new URL(SITE_URL).host;
   <div class="container foot-in">
     <div>
       <Logo variant="lockup" size={30} />
-      <small>© 2026 WalkieTalkey · Apache-2.0 · {domain}</small>
+      <small>© 2026 Jonathan Rentoft · Apache-2.0 · {domain}</small>
     </div>
-    <!-- TODO(copy): aria-label -->
     <nav aria-label="Alle sider">
       {FOOTER_NAV.map((k) => <a href={PAGES[k].path}>{PAGES[k].nav}</a>)}
       <a href={REPO_URL}>GitHub</a>

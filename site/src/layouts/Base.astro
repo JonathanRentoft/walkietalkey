@@ -21,7 +21,6 @@ interface Props {
 }
 const { page, concept } = Astro.props;
 const info = page === "notFound"
-  // TODO(copy)
   ? { path: "/404", title: "Siden findes ikke · WalkieTalkey", description: "Siden findes ikke. Gå til forsiden af WalkieTalkey." }
   : PAGES[page];
 const canonical = new URL(info.path, SITE_URL).href.replace(/\/$/, "") || SITE_URL;
@@ -48,12 +47,10 @@ const og = new URL(ogImage, SITE_URL).href;
     <meta property="og:image" content={og} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <!-- TODO(copy) -->
     <meta property="og:image:alt" content="WalkieTalkey. Tal. Slip. Indsæt." />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body data-concept={page === "home" ? (concept ?? "current") : undefined}>
-    <!-- TODO(copy) -->
     <a class="skip" href="#indhold">Gå til indholdet</a>
     <slot />
     <Footer />

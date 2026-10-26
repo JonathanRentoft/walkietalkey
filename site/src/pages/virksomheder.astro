@@ -6,7 +6,7 @@ import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
 import { CONTACT_EMAIL, CONTACT_URL, PAGES, PHONE_APP_URL, RELAY_URL } from "../lib/site";
 
-// TODO(copy): the meaning of each setting (spec Appendix B)
+// The meaning of each setting (spec Appendix B)
 /* The defaults are the desktop app's own (src-tauri/src/walkietalkey/settings.rs, spec Appendix B): the relay and the
    phone app on walkietalkey.com, the models from our GitHub release models-v1 (run 2). */
 const settings: [string, string, string, string][] = [
@@ -29,7 +29,6 @@ const settings: [string, string, string, string][] = [
 ];
 ---
 <Base page="business">
-  <!-- TODO(copy): the whole page -->
   <PageHero current="business" eyebrow="Virksomheder" title="Gratis for alle, også for jer" lead="I må bruge WalkieTalkey frit i hele virksomheden. Vil I have hjælp til at sætte det op, er det betalt hjælp, ikke en licens." palette="rav">
     <div class="ctas-row"><ShinyButton href={CONTACT_URL} size="lg">Skriv til os</ShinyButton></div>
   </PageHero>

@@ -1,8 +1,7 @@
 //! WalkieTalkey's Danish models (DESK-30, DESK-35), an overlay on Handy's
 //! catalog: `catalog.json` here has the same schema as Handy's synced copy and
 //! is merged in front of it, so Handy's file stays a verbatim copy of its
-//! package. The description is user-facing Danish. TODO(copy): Edda's
-//! description in catalog.json.
+//! package. The description is user-facing Danish.
 
 /// The overlay catalog, compiled in.
 pub const CATALOG_JSON: &str = include_str!("catalog.json");

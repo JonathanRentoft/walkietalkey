@@ -42,7 +42,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        # TODO(copy): Danish permission texts drafted for the owner to approve (spec Appendix A).
+        # Danish permission texts (spec Appendix A), approved by the owner in run 8.
         NSMicrophoneUsageDescription: "WalkieTalkey skal bruge mikrofonen for at høre dig."
         NSCameraUsageDescription: "WalkieTalkey bruger kameraet til at scanne koden på din computer."
     settings:

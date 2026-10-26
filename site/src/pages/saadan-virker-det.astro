@@ -7,17 +7,16 @@ import Base from "../layouts/Base.astro";
 import { PAGES } from "../lib/site";
 ---
 <Base page="how">
-  <!-- TODO(copy): the whole page -->
   <PageHero current="how" eyebrow="Sådan virker det" title="Fra din stemme til tekst på din computer" lead="To veje ind, én computer. Talemodellen kører på din egen computer, og telefonen sender kun krypteret lyd." palette="flint" />
   <main class="container page-body" id="indhold">
     <div class="prose">
       <h2>To måder at tale på</h2>
       <h3>Med tasten</h3>
       <p>Hold fn nede på en Mac (højre Ctrl på Windows, eller en tast du selv vælger), tal, og slip. Statuspillen viser Lytter, mens du taler, og Renskriver, når du slipper. Teksten sættes ind dér, hvor du skriver. Har du ikke givet appen lov til at indsætte, ligger teksten i udklipsholderen, og pillen siger Tekst klar til at indsætte.</p>
-      <!-- TODO(copy): tap or hold (run 2) -->
+      <!-- Tap or hold (run 2) -->
       <p>Vil du ikke holde tasten nede, så tryk på den én gang, og tal frit. Tryk igen, når du er færdig. Esc stopper uden at skrive noget.</p>
       <h3>Med telefonen</h3>
-      <!-- TODO(copy): the phone's tap or hold -->
+      <!-- The phone's tap or hold -->
       <p>Hold den store knap i telefonappen, tal, og slip. Eller tryk én gang, tal frit, og tryk igen, når du er færdig. Lyden krypteres på telefonen og sendes gennem et relæ til din computer, mens du taler. Computeren gør talen til tekst, lægger den i udklipsholderen og viser en notifikation: Tekst klar til at indsætte. Telefonen siger Klar på din computer, og du sætter teksten ind med ⌘V eller Ctrl+V.</p>
       <p>Teksten bliver kun på den computer, du dikterede til. Den sendes aldrig tilbage til telefonen.</p>
 
@@ -40,7 +39,7 @@ import { PAGES } from "../lib/site";
       <h2>Ingen konto</h2>
       <p>Der er intet login, ingen e-mail og ingen adgangskode. WalkieTalkey behøver ikke vide, hvem du er. Den skal kun vide, at din telefon må sende til din computer, og det klares ved at parre dem.</p>
       <h3>Sådan parrer du</h3>
-      <!-- TODO(copy): the pairing of run 2 (scan with the camera, add to the home screen) -->
+      <!-- The pairing of run 2 (scan with the camera, add to the home screen) -->
       <ol class="steps-list">
         <li>På computeren: Indstillinger › Telefon › Par en telefon. Computeren viser en kode, der gælder i 10 minutter og kun kan bruges én gang.</li>
         <li>Scan koden med telefonens kamera.</li>

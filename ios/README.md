@@ -60,7 +60,7 @@ Debug builds set `isInspectable`, so Safari's Web Inspector can attach (Develop 
 
 ## Prepared, and what needs the Apple Developer membership
 
-Prepared now: bundle id `com.walkietalkey.ios`, display name WalkieTalkey, iOS 17, iPhone only, portrait, app icon, Danish permission texts, the Associated Domains entitlement file, and the App Intent. Copy marked `TODO(copy)` (the permission texts in `project.yml`, the intent's description and phrases in `Intents/StartDictationIntent.swift`) needs the owner's approval (spec Appendix A).
+Prepared now: bundle id `com.walkietalkey.ios`, display name WalkieTalkey, iOS 17, iPhone only, portrait, app icon, Danish permission texts, the Associated Domains entitlement file, and the App Intent. The owner approved its Danish copy in run 8 (the permission texts in `project.yml`, the intent's description and phrases in `Intents/StartDictationIntent.swift`; spec Appendix A).
 
 Needs the team (spec 17, one membership covers the Mac and iOS apps):
 

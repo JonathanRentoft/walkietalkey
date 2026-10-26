@@ -21,6 +21,9 @@ export interface MockOptions {
   customModels?: { id: string; name: string }[];
   /** Run 6: the app runs from its disk image (wt_runs_from_disk_image). */
   fromDiskImage?: boolean;
+  /** DESK-114: wt_move_to_applications fails with this. Without it the move
+   *  succeeds and, as the real app quits then, never answers. */
+  moveError?: { kind: "not_writable" } | { kind: "failed"; message: string };
   /** Run 6: the workbench's sidecars for versions of Edda, by model id. */
   versions?: Record<
     string,
@@ -402,6 +405,11 @@ function mockBackend(options: MockOptions) {
     },
     cancel_download: () => null,
     wt_runs_from_disk_image: () => options.fromDiskImage ?? false,
+    wt_move_to_applications: () => {
+      if (options.moveError) throw options.moveError;
+      // The real app quits here and opens again from Programmer.
+      return new Promise(() => {});
+    },
     // Run 6: the base Edda and the installed versions of it (versions.rs).
     wt_model_versions: () => {
       const all = models();

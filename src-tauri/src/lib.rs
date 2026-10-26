@@ -810,6 +810,7 @@ pub fn run(cli_args: CliArgs) {
             walkietalkey::commands::wt_import_model_file,
             walkietalkey::versions::wt_model_versions,
             walkietalkey::updates::wt_runs_from_disk_image,
+            walkietalkey::move_app::wt_move_to_applications,
             walkietalkey::commands::wt_pairing_start,
             walkietalkey::commands::wt_pairing_cancel,
             walkietalkey::commands::wt_relay_status,

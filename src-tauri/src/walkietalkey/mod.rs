@@ -30,6 +30,7 @@ pub mod managed;
 pub mod mic;
 pub mod migrate;
 pub mod models;
+pub mod move_app;
 pub mod notify;
 pub mod output;
 pub mod pill;

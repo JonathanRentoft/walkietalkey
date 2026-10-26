@@ -4,13 +4,12 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+- When WalkieTalkey runs from its disk image, it offers to move itself to Applications with one click ("Flyt til Programmer") and opens again from there, so updates work. A copy already in Applications goes to the Trash. A user who may not write to Applications is told to drag it there instead. "Ikke nu" keeps the reminder in the window (DESK-114).
 - For developers: `wt-train report <run>` shows an evaluation as one HTML page (WER and CER with 95 % intervals, per condition, substitutions, deletions and insertions, per English term, and the 25 worst clips with audio and a word diff), `--vs` compares two runs, and every page is attached to its MLflow run.
 - For developers: `wt-train pilot record --setup <name>` records 12 pilot sentences for any recording setup (never trained on), `wt-train pilot report` compares the setups (accuracy with base Edda and the audio: level, noise, SNR, clipping), and `wt-train check` sums up the latest recording session in at most 25 lines.
 - For developers: the recording mix is configurable (`wt-train plan --mix phone-whisper=40,...`) and has a Mac whisper condition; `wt-train fetch --overlap` checks that FLEURS test shares nothing with Edda's training clips.
 
 ## [0.2.1] - 2026-10-25
-
-<!-- TODO(copy): the Danish release notes -->
 
 **På dansk**
 
@@ -30,8 +29,6 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - For developers: `wt-train export` installs every export as a version of its own (`edda-ft-<slug>-v<N>`) and registers it as version N of `edda-da` in the local MLflow model registry, with its run, metrics and config. `wt-train use <N|edda>` switches the app (through the new `walkietalkey --use-model <id>`), and `wt-train use --list` lists the versions. Every MLflow run is tagged with what it changed: the pipeline around the model or the model's weights.
 
 ## [0.2.0] - 2026-10-25
-
-<!-- TODO(copy): the Danish release notes -->
 
 **På dansk**
 
@@ -72,8 +69,6 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - Up to date: TypeScript 6, Tauri 2.12.5, openssl 0.10.81 and pytest 9.
 
 ## [0.1.0] - 2026-10-24
-
-<!-- TODO(copy): the Danish release notes -->
 
 **På dansk**
 

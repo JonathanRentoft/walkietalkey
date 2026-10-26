@@ -1063,6 +1063,15 @@
       "failed": "Could not check for updates. Try again later.",
       "fromDiskImage": "WalkieTalkey runs from the disk image and cannot update itself. Quit it, drag it to Applications, and open it from there."
     },
+    "move": {
+      "title": "Move WalkieTalkey to Applications",
+      "body": "WalkieTalkey runs from the disk image and cannot update itself from there. Move it to Applications, and it opens again from there and stays up to date.",
+      "move": "Move to Applications",
+      "notNow": "Not now",
+      "moving": "Moving…",
+      "notWritable": "Your user may not put apps in Applications, so WalkieTalkey cannot move itself. Quit it and drag it to Applications. Finder asks for an administrator's password.",
+      "failed": "WalkieTalkey could not move itself. Quit it, drag it to Applications, and open it from there."
+    },
     "advanced": {
       "intro": "Settings most people never need.",
       "network": "Relay address",
@@ -1110,7 +1119,7 @@
       "version": "Version",
       "credits": "Licences and credits",
       "credit": {
-        "walkietalkey": "Apache-2.0. Free for everyone, companies included.",
+        "walkietalkey": "© 2026 Jonathan Rentoft and the WalkieTalkey contributors. Apache-2.0. Free for everyone, companies included.",
         "handy": "Parts of the desktop app's code. CJ Pais, MIT.",
         "transcribe": "Runs the speech models on the computer, together with ggml. MIT.",
         "edda": "Danish speech model from the Alexandra Institute, built on OpenAI Whisper large-v3-turbo. Apache-2.0.",

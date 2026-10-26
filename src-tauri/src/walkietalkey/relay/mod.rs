@@ -724,7 +724,7 @@ pub fn qr_svg(url: &str) -> anyhow::Result<String> {
 
 pub async fn start_pairing(app: &AppHandle) -> Result<PairingView, String> {
     if !super::store::get(app).allow_phone_pairing {
-        return Err("Telefonparring er slået fra af din organisation.".into()); // TODO(copy)
+        return Err("Telefonparring er slået fra af din organisation.".into());
     }
     let client = ensure_client(app).await?;
     // A connection that is still being made gets a moment (the first
@@ -737,7 +737,7 @@ pub async fn start_pairing(app: &AppHandle) -> Result<PairingView, String> {
                 tokio::time::sleep(Duration::from_millis(250)).await;
             }
             Err(ClientError::NotConnected) => {
-                return Err("Ingen forbindelse til relæet. Prøv igen.".into()); // TODO(copy)
+                return Err("Ingen forbindelse til relæet. Prøv igen.".into());
             }
             Err(e) => return Err(e.to_string()),
         }
@@ -840,7 +840,7 @@ pub async fn cancel_pairing() -> Result<(), String> {
 }
 
 pub async fn remove_phone(id: &str) -> Result<(), String> {
-    let client = client().ok_or("Ingen forbindelse til relæet endnu.")?; // TODO(copy)
+    let client = client().ok_or("Ingen forbindelse til relæet endnu.")?;
     let phone = DeviceId::from_b64u(id).map_err(|e| e.to_string())?;
     client.revoke_phone(phone).await.map_err(|e| e.to_string())
 }

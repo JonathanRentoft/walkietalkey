@@ -23,7 +23,7 @@ pub fn verdict(seconds: f64, fast_model_available: bool) -> SpeedVerdict {
     SpeedVerdict {
         seconds,
         offer_fast_model: slow && fast_model_available,
-        // TODO(copy): the sentence that explains the offer.
+        // The sentence that explains the offer.
         reason: (slow && fast_model_available).then(|| {
             let danish_seconds = format!("{seconds:.1}").replace('.', ",");
             format!(
