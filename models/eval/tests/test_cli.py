@@ -143,3 +143,13 @@ def test_score_recomputes_summary_from_rows(tmp_path):
     assert main(["score", str(out)]) == 0
     again = json.loads((out / "summary.json").read_text())
     assert again["models"] == first["models"]
+
+
+def test_a_row_scores_a_hyphenated_compound_against_the_closed_one():
+    # Run 8: the reference's "Hjemkomst-chok" and the model's "Hjemkomstchok" are one word.
+    from wt_eval.cli import score_row
+    from wt_eval.datasets import Clip
+
+    row = score_row(Clip("c", Path("c.wav"), "Hjemkomst-chok, ca. 29¾ tommer.", 1.0),
+                    "hjemkomstchok cirka 29 trefjerdedele tommer", 1.0, None)
+    assert (row["ref_norm"], row["errors"]) == ("hjemkomstchok cirka niogtyve tre fjerdedele tommer", 0)

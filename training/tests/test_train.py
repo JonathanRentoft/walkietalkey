@@ -129,3 +129,16 @@ def test_top_encoder_layers_train_from_their_own_cache(tmp_path, tiny_base, smal
     # Entries hold the output of the 2 frozen layers, keyed apart from full-encoder entries.
     created = json.loads((run / "cache.json").read_text())["created"]
     assert len(created) == len(b.splits["train"]) + len(b.splits["validation"])
+
+
+def test_validation_counts_terms_on_the_owners_takes_only():
+    # Run 8: FLEURS rehearsal clips in the validation split count no English terms.
+    from wt_train.dataset import SOURCE_RECORDING, SOURCE_REHEARSAL, Item
+    from wt_train.spelling import Spelling, Term
+
+    spelling = Spelling([Term("test", ("test",))])
+    own, fleurs = (Item(id=i, audio="a.wav", text="Vi kører en test.", kind="terms", source=src, audio_sha256="1",
+                        seconds=1.0) for i, src in (("own", SOURCE_RECORDING), ("fleurs", SOURCE_REHEARSAL)))
+    assert train.validation_row(own, "vi kører en test", spelling)["terms"] == 1
+    row = train.validation_row(fleurs, "vi kører en test", spelling)
+    assert row["terms"] == 0 and row["source"] == SOURCE_REHEARSAL and row["sub"] == 0

@@ -2,12 +2,17 @@
 
 Text normalisation is the accuracy job's own, imported from
 ``models/eval/wt_eval/normalize.py`` and applied identically to reference and
-hypothesis: Unicode NFKC and lower case; numbers written as spoken Danish
+hypothesis, so the same spoken words score the same however they are written:
+Unicode NFKC, accents other than å's ring dropped, lower case; fractions,
+abbreviations, units, signs, clock times, ranges and ordinals as their spoken
+words (run 8: "29¾" -> "niogtyve tre fjerdedele", "e.Kr." -> "efter kristus",
+"11." before a word -> "ellevte"); numbers written as spoken Danish
 ("800.000" -> "otte hundrede tusind", "3,5" -> "tre komma fem", a lone
-1100-1999 read as a year); "%" and "&" spelled out; every character that is
-not a letter or digit becomes a space; number-word variants folded
-("tusinde" -> "tusind"); whitespace collapsed. Its docstring lists the known
-limits (ordinals, clock times, abbreviations).
+1100-1999 read as a year); every character that is not a letter or digit
+becomes a space; spelling variants folded ("tusinde" -> "tusind", "selv om" ->
+"selvom"); whitespace collapsed. A clip is scored with ``normalize_pair``: a
+compound with a hyphen in one text is joined where the other writes it closed.
+Its docstring lists the known limits.
 
 * **WER** is the word-level Levenshtein distance between the normalised texts
   (``wt_eval/wer.py``), summed over clips and divided by the reference words.
@@ -21,6 +26,10 @@ limits (ordinals, clock times, abbreviations).
     - strict: the same form of the same term ("deployede" for "deployede").
     - lenient: any form of the same term ("deployer" for "deployede"), like the
       owner's ten-sentence test ("3 of 8"), which accepts any Danish ending.
+  Run 8: terms are counted on the owner's own takes only (``counts_terms``).
+  FLEURS is plain Danish read aloud, and what spelling.yaml finds there
+  ("test", "bug") are ordinary Danish words, so a FLEURS dataset leaves every
+  term number empty (``without_terms``).
 """
 
 from __future__ import annotations
@@ -28,8 +37,22 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
-from .harness import Counts, bootstrap_ci, corpus_wer, normalize, word_errors
+from .harness import Counts, bootstrap_ci, corpus_wer, normalize_pair, word_errors
 from .spelling import Spelling
+
+
+TERM_KEYS = ("terms", "terms_strict", "terms_lenient", "term_accuracy_strict", "term_accuracy_lenient")
+
+
+def counts_terms(dataset: str) -> bool:
+    """Whether English-term accuracy means anything on ``dataset``: not on FLEURS
+    ("fleurs-da_dk-test", as wt-train eval names it, and its FLEURS check)."""
+    return not str(dataset or "").startswith("fleurs-")
+
+
+def without_terms(summary: dict) -> dict:
+    """``summary`` with every term number empty (None): a FLEURS summary."""
+    return {**summary, **{key: None for key in TERM_KEYS}}
 
 
 def edit_distance(a: str, b: str) -> int:
@@ -83,7 +106,7 @@ def term_counts(spelling: Spelling | None, reference: str, hypothesis: str) -> T
 def score_clip(clip_id: str, reference: str, hypothesis: str, spelling: Spelling | None = None,
                error: str | None = None) -> dict:
     """One per-clip row: normalised texts, word and character edits, term counts."""
-    ref_norm, hyp_norm = normalize(reference), normalize(hypothesis)
+    ref_norm, hyp_norm = normalize_pair(reference, hypothesis)
     words = word_errors(ref_norm.split(), hyp_norm.split())
     terms = term_counts(spelling, reference, hypothesis)
     return {

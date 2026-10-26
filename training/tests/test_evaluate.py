@@ -171,3 +171,27 @@ def test_own_references_are_respelled_and_fleurs_references_are_not(tmp_path):
     fleurs, _ = evaluate.score(Echo(), clips, spelling, "fleurs", log=lambda *_: None, respell_references=False)
     assert own[0]["reference"] == "Den er merget." and own[0]["sub"] == 0
     assert fleurs[0]["reference"] == "Den er merged." and fleurs[0]["sub"] == 1
+
+
+def test_rehearsal_clips_of_a_split_count_no_terms(tmp_path):
+    # Run 8: a run's validation and train splits mix in FLEURS train clips (rehearsal); their
+    # "terms" are ordinary Danish words, so only the owner's takes count terms.
+    from wt_train.dataset import SOURCE_RECORDING, SOURCE_REHEARSAL
+    from wt_train.spelling import Spelling, Term
+
+    manifest = tmp_path / "validation.jsonl"
+    items = [{"id": "own", "audio": str(tmp_path / "own.wav"), "text": "Vi kører en test.", "kind": "terms",
+              "source": SOURCE_RECORDING, "audio_sha256": "1", "seconds": 1.0},
+             {"id": "fleurs", "audio": str(tmp_path / "fleurs.wav"), "text": "Vi kører en test.", "kind": "plain",
+              "source": SOURCE_REHEARSAL, "audio_sha256": "2", "seconds": 1.0}]
+    manifest.write_text("".join(json.dumps(i) + "\n" for i in items), encoding="utf-8")
+    _, clips = evaluate.load_dataset(str(manifest))
+    assert [c.terms for c in clips] == [True, False]
+
+    class Echo:
+        def transcribe(self, wavs, progress=None):
+            return [("vi kører en test", None) for _ in wavs]
+
+    spelling = Spelling([Term("test", ("test",))])
+    rows, summary = evaluate.score(Echo(), clips, spelling, "validation", log=lambda *_: None)
+    assert [r["terms"] for r in rows] == [1, 0] and summary["terms"] == 1

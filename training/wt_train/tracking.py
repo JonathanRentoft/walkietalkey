@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Iterator
 
 from . import paths
+from .metrics import counts_terms
 
 EXPERIMENT = "wt-train"
 TELEMETRY_OFF = {"MLFLOW_DISABLE_TELEMETRY": "true", "DO_NOT_TRACK": "true"}
@@ -303,12 +304,23 @@ def log_training_inputs(tracked: Run, config: dict, config_hash: str, splits: di
 def log_eval(report: dict) -> str:
     """One ``wt-train eval``: every metric (overall, per condition, the FLEURS regression)
     and its files, under its training run when it scored one. Run 7: tagged ``wt.eval_dir``
-    with its folder, and returns the run's id ("" when tracking is off) for its report page."""
+    with its folder, and returns the run's id ("" when tracking is off) for its report page.
+    Run 8: ``change`` (``--change``) overrides ``eval_change``, ``notes`` is the run's note,
+    and ``wt.results_row`` / ``wt.results_rows`` hold the keys of the results.csv rows it
+    appended, which ``import_results`` then knows."""
     if not enabled():
         return ""
     out = Path(report["out"])
-    with run("eval", out.name, parent=train_run_id(report.get("train_run")), change=eval_change(report),
-             tags={"wt.eval_dir": str(out.resolve())}) as r:
+    tags = {"wt.eval_dir": str(out.resolve())}
+    if report.get("notes"):
+        tags["mlflow.note.content"] = report["notes"]
+    keys = [results_row_key(row) for row in report.get("results_rows") or []]
+    if keys:
+        tags["wt.results_row"] = keys[0]
+    if len(keys) > 1:
+        tags["wt.results_rows"] = " ".join(keys)
+    with run("eval", out.name, parent=train_run_id(report.get("train_run")),
+             change=report.get("change") or eval_change(report), tags=tags) as r:
         r.params({"backend": report.get("backend", ""), "model": report.get("model", ""),
                   "dataset": report.get("dataset", ""), "train_run": report.get("train_run") or ""})
         r.metrics(report.get("metrics") or {})
@@ -365,6 +377,14 @@ def _row_key(row: dict) -> str:
     return hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()[:16]
 
 
+def results_row_key(row: dict) -> str:
+    """The ``wt.results_row`` key of a row ``wt-train eval`` appends, as ``import_results``
+    computes it from the file: every column, as the text the CSV holds."""
+    from .evaluate import RESULT_COLUMNS
+
+    return _row_key({k: "" if row.get(k) is None else str(row.get(k)) for k in RESULT_COLUMNS})
+
+
 def _row_name(row: dict) -> str:
     return f"{row.get('backend', '')}-{row.get('dataset', '')}-{row.get('timestamp', '')[:10]}"
 
@@ -407,15 +427,21 @@ def _row_plan(rows: list[dict]) -> list[dict]:
 
 def import_results(path: Path = paths.RESULTS_CSV) -> int:
     """Logs every ``results.csv`` row not tracked yet as a finished run (tag
-    ``wt.results_row``, a hash of the row), so the UI shows them; returns how many were
-    added. Rows marked "baseline" in their notes are ``baseline`` runs, the rest ``eval``
+    ``wt.results_row``, a hash of the row; a tracked ``wt-train eval`` carries its rows'
+    hashes already), so the UI shows them; returns how many were added. A FLEURS row's term
+    columns are not logged (run 8). Rows marked "baseline" in their notes are ``baseline`` runs, the rest ``eval``
     runs; every one says what it changed (run 6), and a pipeline eval names the run it
     improves on. Rows tracked before run 6 get those tags too. Safe to call often."""
     if not enabled() or not Path(path).exists():
         return 0
     with Path(path).open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
-    known = {r.data.tags.get("wt.results_row"): r for r in find_runs()}
+    known = {}
+    for r in find_runs():
+        tags = r.data.tags
+        for key in [tags.get("wt.results_row"), *(tags.get("wt.results_rows") or "").split()]:
+            if key:
+                known.setdefault(key, r)
     c, experiment = client()
     added = 0
     for plan in _row_plan(rows):
@@ -437,6 +463,8 @@ def import_results(path: Path = paths.RESULTS_CSV) -> int:
         imported.params({k: v for k, v in row.items() if k not in _RESULT_METRICS and k != "notes"})
         numbers: dict[str, float] = dict(plan["metrics"])
         for k in _RESULT_METRICS:
+            if k.startswith("term") and not counts_terms(row.get("dataset", "")):
+                continue  # run 8: FLEURS's "terms" are ordinary Danish words
             try:
                 numbers[k] = float(row[k])
             except (KeyError, TypeError, ValueError):

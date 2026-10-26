@@ -1,13 +1,14 @@
 """Experiment tracking (run 5, Part 4): MLflow in the git-ignored work folder,
 telemetry off, results.csv rows as the first runs, and the UI on 127.0.0.1."""
 
+import csv
 import os
 import socket
 import subprocess
 
 import pytest
 
-from wt_train import paths, tracking, ui
+from wt_train import evaluate, paths, tracking, ui
 
 
 @pytest.fixture
@@ -118,6 +119,26 @@ def test_results_csv_rows_become_baseline_runs_once(store, tmp_path):
     assert hf.data.metrics["n"] == 930 and hf.data.metrics["cer_pct"] == 2.61
     assert hf.data.tags["wt.git_commit"].startswith("37c834e3")
     assert "baseline" in hf.data.tags["mlflow.note.content"]
+
+
+def test_fleurs_rows_import_without_term_accuracy(store, tmp_path):
+    # Run 8: rows from before run 8 counted FLEURS words such as "test" as English terms.
+    path = tmp_path / "results.csv"
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=evaluate.RESULT_COLUMNS, lineterminator="\n")
+        w.writeheader()
+        w.writerow({**{c: "" for c in evaluate.RESULT_COLUMNS}, "timestamp": "2026-10-25T02:16:19+02:00",
+                    "backend": "gguf", "model": "m", "dataset": "fleurs-da_dk-test", "n": "930", "wer_pct": "7.63",
+                    "terms": "8", "terms_strict": "5", "terms_lenient": "5", "term_accuracy_strict_pct": "62.50",
+                    "term_accuracy_lenient_pct": "62.50", "notes": "run 5"})
+        w.writerow({**{c: "" for c in evaluate.RESULT_COLUMNS}, "timestamp": "2026-10-26T10:00:00+02:00",
+                    "backend": "lora", "model": "t", "dataset": "t:test", "n": "40", "wer_pct": "9.00",
+                    "terms": "20", "terms_strict": "15", "term_accuracy_strict_pct": "75.00", "notes": "own takes"})
+    assert tracking.import_results(path) == 2
+    by_dataset = {r.data.params["dataset"]: r.data.metrics for r in tracking.find_runs()}
+    assert by_dataset["fleurs-da_dk-test"]["wer_pct"] == 7.63
+    assert not [k for k in by_dataset["fleurs-da_dk-test"] if k.startswith("term")]
+    assert by_dataset["t:test"]["term_accuracy_strict_pct"] == 75.0 and by_dataset["t:test"]["terms"] == 20
 
 
 def test_the_ui_serves_the_local_store_on_localhost_only(store):

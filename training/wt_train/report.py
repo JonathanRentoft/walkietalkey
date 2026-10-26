@@ -13,6 +13,9 @@ so the page shows the numbers and the clips behind them:
 * accuracy per English term of ``training/data/spelling.yaml``, strict (the same
   form) and lenient (any form of the term), counted per term exactly as
   ``metrics.term_counts`` counts them all together, with the current spelling.yaml;
+  not on FLEURS (run 8, ``metrics.counts_terms``): its "terms" are ordinary Danish
+  words such as "test" and "bug", so a FLEURS page has no term card, columns or
+  table, only a line that says why;
 * the 25 worst clips (most word errors, then highest WER), each with its audio,
   the reference, the model's text as written and a word diff coloured the way the
   WER counts it (``align.py``).
@@ -56,6 +59,7 @@ from .conditions import IDS
 from .harness import Counts, bootstrap_ci
 from .htmlpage import (LEGEND, Raw, audio_tag, cards, change, clip_card, diff_html, esc, page, pct, pct_ci,
                        table)
+from .metrics import counts_terms
 from .spelling import Spelling, load_spelling
 
 WORST = 25
@@ -430,15 +434,18 @@ def datasets_table(run: EvalRun) -> str:
             + '<p class="note">The others: <code>wt-train report &lt;run&gt; --dataset &lt;name&gt;</code>.</p>')
 
 
-def condition_table(rows: Sequence[dict], overall: Stats, spelling: Spelling | None) -> str:
+def condition_table(rows: Sequence[dict], overall: Stats, spelling: Spelling | None, with_terms: bool = True) -> str:
     out = []
     for label, part in groups(rows):
         s = overall if len(part) == len(rows) else stats(part)
-        strict, lenient = _terms_label(*term_totals(term_stats(part, spelling) if spelling else []))
-        out.append([label, f"{s.n:,}", f"{s.words:,}", pct_ci(s.wer, s.wer_ci), pct_ci(s.cer, s.cer_ci),
-                    f"{s.sub:,}", f"{s.dele:,}", f"{s.ins:,}", strict, lenient])
-    return table(["Condition", "Clips", "Words", "WER (95 %)", "CER (95 %)", "Subs", "Dels", "Ins", "Terms strict",
-                  "Terms lenient"], out, numeric=tuple(range(1, 10)))
+        line = [label, f"{s.n:,}", f"{s.words:,}", pct_ci(s.wer, s.wer_ci), pct_ci(s.cer, s.cer_ci),
+                f"{s.sub:,}", f"{s.dele:,}", f"{s.ins:,}"]
+        if with_terms:
+            line += _terms_label(*term_totals(term_stats(part, spelling) if spelling else []))
+        out.append(line)
+    headers = ["Condition", "Clips", "Words", "WER (95 %)", "CER (95 %)", "Subs", "Dels", "Ins"]
+    headers += ["Terms strict", "Terms lenient"] if with_terms else []
+    return table(headers, out, numeric=tuple(range(1, len(headers))))
 
 
 def edits_table(s: Stats) -> str:
@@ -457,8 +464,15 @@ def _missed(t: TermStat) -> str:
     return ", ".join(f"{form} ×{n}" if n > 1 else form for form, n in t.missed.most_common()) or "–"
 
 
+NO_TERMS_ON_FLEURS = ('<p class="note">English-term accuracy is not counted for FLEURS: it is plain Danish read '
+                      'aloud, and the words spelling.yaml would find in it (test, bug) are ordinary Danish words. It is '
+                      'counted on the owner\'s own takes.</p>')
+
+
 def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spelling | None) -> str:
     head = "<h2>English terms</h2>"
+    if not counts_terms(run.dataset):
+        return head + NO_TERMS_ON_FLEURS
     if spelling is None:
         return head + "<p>No spelling.yaml, so no term accuracy.</p>"
     if not terms:
@@ -498,15 +512,16 @@ def worst_section(rows: Sequence[dict], n: int) -> str:
     if not chosen:
         return "<h2>Worst clips</h2><p>Every clip came out right.</p>"
     note = ('<p class="note">Most word errors first, then the highest WER. The diff is over the normalised words '
-            'the WER counts (lower case, numbers as words, no punctuation); "Model wrote" is the text as the '
-            'model gave it.</p>')
+            'the WER counts (lower case; numbers, fractions, abbreviations and ordinals as their spoken words; no '
+            'punctuation); "Model wrote" is the text as the model gave it.</p>')
     return (f"<h2>The {len(chosen)} worst clips</h2>" + note + LEGEND
             + "".join(clip_section(i, r) for i, r in enumerate(chosen, 1)))
 
 
 METHOD = ("<h2>How the numbers are made</h2><p class=\"note\">Reference and model text are normalised as the "
-          "accuracy job does (models/eval: lower case, numbers written as words, punctuation dropped), so capitals "
-          "and punctuation do not count. WER is the word edits (substitutions, deletions, insertions) summed over "
+          "accuracy job does (models/eval: lower case; numbers, fractions, abbreviations, units, clock times and "
+          "ordinals written as their spoken words; punctuation dropped; a hyphenated compound joined where the "
+          "other text writes it closed), so the same speech scores the same however it is written. WER is the word edits (substitutions, deletions, insertions) summed over "
           "the clips, divided by the reference words; CER the same over characters. The intervals are 95 % "
           "percentile bootstraps over the clips (1,000 resamples, fixed seed): a new sample of sentences like "
           "these would most likely land in that range. The WER interval is the one wt-train eval wrote to "
@@ -526,14 +541,15 @@ def _consistency(run: EvalRun, s: Stats) -> str:
 def single_page(run: EvalRun, spelling: Spelling | None, n_worst: int = WORST, tracked_as: str = "") -> str:
     """The page of one run's dataset."""
     s = run_stats(run)
-    terms = term_stats(run.rows, spelling) if spelling else None
+    with_terms = counts_terms(run.dataset)
+    terms = term_stats(run.rows, spelling) if spelling and with_terms else None
     model = str(run.summary.get("model") or "?")
     backend = str(run.summary.get("backend") or "?")
     title = f"{run.dataset}: {_short_model(model)}, {BACKENDS.get(backend, backend)}"
     subtitle = (f"{backend} backend, model {model}. Eval run {run.folder.name}, started {_when(run)}"
                 + (f", tracked in MLflow as {tracked_as}" if tracked_as else "") + ".")
     body = [headline(s, terms), _consistency(run, s), datasets_table(run),
-            "<h2>Per recording condition</h2>", condition_table(run.rows, s, spelling),
+            "<h2>Per recording condition</h2>", condition_table(run.rows, s, spelling, with_terms),
             "<h2>Substitutions, deletions and insertions</h2>", edits_table(s), EDITS_NOTE,
             terms_section(run, terms, spelling), worst_section(run.rows, n_worst), METHOD]
     return page(title, "".join(body), subtitle)
@@ -625,8 +641,11 @@ def compare_edits(sa: Stats, sb: Stats) -> str:
     return table(["Kind", "A", "Share of words", "B", "Share of words", "Change"], rows, numeric=(1, 2, 3, 4, 5))
 
 
-def compare_terms(ta: Sequence[TermStat] | None, tb: Sequence[TermStat] | None, spelling: Spelling | None) -> str:
+def compare_terms(ta: Sequence[TermStat] | None, tb: Sequence[TermStat] | None, spelling: Spelling | None,
+                  with_terms: bool = True) -> str:
     head = "<h2>English terms</h2>"
+    if not with_terms:
+        return head + NO_TERMS_ON_FLEURS
     if spelling is None:
         return head + "<p>No spelling.yaml, so no term accuracy.</p>"
     da, db_ = {t.term: t for t in ta or []}, {t.term: t for t in tb or []}
@@ -681,8 +700,9 @@ def compare_page(a: EvalRun, b: EvalRun, spelling: Spelling | None, n_worst: int
                  tracked: tuple[str, str] = ("", "")) -> str:
     """A against B, on A's dataset."""
     sa, sb = run_stats(a), run_stats(b)
-    ta = term_stats(a.rows, spelling) if spelling else None
-    tb = term_stats(b.rows, spelling) if spelling else None
+    with_terms = counts_terms(a.dataset)
+    ta = term_stats(a.rows, spelling) if spelling and with_terms else None
+    tb = term_stats(b.rows, spelling) if spelling and with_terms else None
     ch = changes(a.rows, b.rows)
     delta = paired_change(ch)
     title = f"{a.dataset}: A against B"
@@ -699,7 +719,7 @@ def compare_page(a: EvalRun, b: EvalRun, spelling: Spelling | None, n_worst: int
             "<h2>Overall</h2>", overall_table(sa, sb, ta, tb),
             "<h2>Per recording condition</h2>", compare_conditions(a, b, sa, sb),
             "<h2>Substitutions, deletions and insertions</h2>", compare_edits(sa, sb), EDITS_NOTE,
-            compare_terms(ta, tb, spelling),
+            compare_terms(ta, tb, spelling, with_terms),
             changed_section("Clips that got worse", ch.worse, n_worst, 1),
             changed_section("Clips that got better", ch.better, n_worst, len(ch.worse[:n_worst]) + 1),
             f'<p class="note">{esc(" ".join(notes))}</p>', METHOD]

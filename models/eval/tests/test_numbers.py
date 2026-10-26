@@ -1,6 +1,6 @@
 import pytest
 
-from wt_eval.danish_numbers import cardinal, year
+from wt_eval.danish_numbers import cardinal, ordinal, year
 
 
 @pytest.mark.parametrize(
@@ -63,3 +63,43 @@ def test_year(n, words):
 def test_year_outside_1100_1999_is_cardinal():
     assert year(2010) == "to tusind og ti"
     assert year(1066) == "tusind og seksogtres"
+
+
+@pytest.mark.parametrize(
+    "n, words",
+    [
+        (1, "første"),
+        (2, "anden"),
+        (3, "tredje"),
+        (4, "fjerde"),
+        (5, "femte"),
+        (6, "sjette"),
+        (7, "syvende"),
+        (8, "ottende"),
+        (9, "niende"),
+        (10, "tiende"),
+        (11, "ellevte"),
+        (12, "tolvte"),
+        (13, "trettende"),
+        (15, "femtende"),
+        (19, "nittende"),
+        (20, "tyvende"),
+        (21, "enogtyvende"),
+        (30, "tredivte"),
+        (31, "enogtredivte"),
+        (40, "fyrretyvende"),
+        (45, "femogfyrretyvende"),
+        (50, "halvtredsindstyvende"),
+        (60, "tresindstyvende"),
+        (70, "halvfjerdsindstyvende"),
+        (80, "firsindstyvende"),
+        (90, "halvfemsindstyvende"),
+        (100, "hundrede"),
+        (101, "hundrede og første"),
+        (120, "hundrede og tyvende"),
+        (300, "tre hundrede"),
+        (345, "tre hundrede og femogfyrretyvende"),
+    ],
+)
+def test_ordinal(n, words):
+    assert ordinal(n) == words
