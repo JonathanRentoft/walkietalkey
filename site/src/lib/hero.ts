@@ -1,6 +1,5 @@
 /* The current front page's hero copy (run 5's fn-led hero, the one in production). Run 6's concepts take their copy
-   from lib/features.ts instead. Everything a visitor reads is Danish; all of it is new copy, so all of it is
-   TODO(copy). */
+   from lib/features.ts instead. Everything a visitor reads is Danish, approved by the owner in run 8. */
 
 export interface HeroCopy {
   /** h1 */
@@ -13,7 +12,7 @@ export interface HeroCopy {
   fine: string;
 }
 
-// TODO(copy): every string below (run 5, drafted from the owner's brief and spec 2.6)
+// Drafted in run 5 from the owner's brief and spec 2.6; approved in run 8.
 export const HERO: HeroCopy = {
   title: "Tal. Slip. Indsæt.",
   lead: "Hold {fn} nede, og tal dansk. Når du slipper, står teksten der, hvor du skriver.",

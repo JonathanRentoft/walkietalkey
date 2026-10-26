@@ -323,8 +323,7 @@ export function SceneCleanup(_props: SceneProps) {
               {clean ? "Renskrevet" : "Det du sagde"}
             </span>
             <span className="wt-sc-card-meta">
-              {/* TODO(copy): was "Lokal oprydning"; self-corrections come from the optional AI cleanup (review
-                  finding 17) */}
+              {/* was "Lokal oprydning"; self-corrections come from the optional AI cleanup (review finding 17) */}
               {clean ? "AI-oprydning" : "Rå tale"}
             </span>
           </div>
