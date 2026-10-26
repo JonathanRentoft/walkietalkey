@@ -61,7 +61,6 @@ evaluation:
 
 export:
   slug: top4
-  # TODO(copy)
   name: Edda finjusteret (encoder top 4)
   verify_clips: 10
   max_differing_clips: 1

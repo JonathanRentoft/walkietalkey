@@ -6,7 +6,7 @@
 // local server (wt_train/recorder/server.py). The page only polls that server and asks it to move
 // on, go back or start and stop a Mac take.
 //
-// TODO(copy): every Danish string below is a draft for the owner to approve.
+// Every Danish string below was approved by the owner in run 8.
 
 const POLL_MS = 400;
 
@@ -63,7 +63,7 @@ const CHECKS = {
   error: "Optagelsen kunne ikke gemmes.",
 };
 
-// TODO(copy): run 7, the pilot.
+// Run 7, the pilot.
 function pilotNote(setup, mac) {
   const intro = `Det er en pilot: tolv sætninger med opsætningen ${setup}, så du kan høre, om lyden er god, før du indtaler i timevis. Optagelserne bruges kun til at sammenligne opsætningerne og aldrig til træning.`;
   return mac

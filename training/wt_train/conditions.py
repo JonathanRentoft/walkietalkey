@@ -39,7 +39,7 @@ class Condition:
     style: str
     # Default share of the sentences recorded in this condition (the mix in mix.yaml overrides it).
     share: float
-    # How the recorder page names it. TODO(copy)
+    # How the recorder page names it (Danish, approved in run 8).
     label: str
 
 

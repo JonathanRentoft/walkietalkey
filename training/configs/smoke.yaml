@@ -51,7 +51,6 @@ evaluation:
 
 export:
   slug: smoke
-  # TODO(copy)
   name: Edda (røgtest)
   verify_clips: 3
   max_differing_clips: 1
