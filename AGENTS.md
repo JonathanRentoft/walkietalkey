@@ -25,6 +25,7 @@ Rules that keep the code maintainable and the product honest:
 | Website                           | `site/`                                                         | `bun run --cwd site dev`, `bun run --cwd site test`                                                                   |
 | Design system                     | `packages/ui/`                                                  | `bun run --cwd packages/ui test`                                                                                      |
 | Fine-tuning workbench             | `training/`                                                     | `uv run --project training wt-train --help`, `uv run --project training pytest`                                       |
+| Værkstedet (the workbench's app)  | `training/wt_train/studio/`, `training/studio/`                 | `uv run --project training wt-train studio`, `bun run --cwd training/studio test`                                     |
 | Licences                          | `deny.toml`, `scripts/walkietalkey/check-js-licenses.ts`        | `cargo deny --manifest-path src-tauri/Cargo.toml check`, `bun scripts/walkietalkey/check-js-licenses.ts`, `bun audit` |
 
 On macOS, if linking fails against a beta SDK: with only the Command Line Tools, point `SDKROOT` at `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`; with full Xcode, use Xcode's own SDK and never mix in the Command Line Tools SDK. CI pins a released Xcode with `scripts/walkietalkey/ci/select-xcode.sh`.

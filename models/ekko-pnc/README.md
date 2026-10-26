@@ -57,7 +57,7 @@ runtime that reproduces `ekko-stt` 0.1.2 exactly on a 52-input golden set
 ## Credit
 
 Ekko PnC v2 by RyeAI, CC BY 4.0, derived from jonfd/electra-small-nordic
-(CC BY 4.0). Mirrored unchanged by the WalkieTalkey project (Navigent.io ApS).
+(CC BY 4.0). Mirrored unchanged by Jonathan Rentoft for the WalkieTalkey project.
 
 ## Download
 

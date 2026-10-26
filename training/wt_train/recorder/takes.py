@@ -23,7 +23,13 @@ condition, the same three files::
     sessions.jsonl
 
 A redo moves the previous trio into ``.replaced/``, so a slip never loses a take;
-the dataset builder reads only the current one. A take counts as recorded while
+the dataset builder reads only the current one.
+
+Run 9, Værkstedet (``wt-train studio``): a take's metadata may hold its ``review``,
+``{"status": "approved" | "redo", "by": "check" | "owner", "problems": [...], "heard": ...,
+"wer": ...}``, written in place (:meth:`TakeStore.update_meta`). A take whose review is
+``redo`` is read again: the recorder's queue comes back to it, and the dataset builder
+leaves it out. A take counts as recorded while
 its ``.txt`` matches the text; if the owner edits a sentence (a spelling
 convention changed), the old take is "stale" and the recorder comes back to it.
 
@@ -52,12 +58,20 @@ SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 # a letter or digit (so never ".replaced", "sessions.jsonl" or "..").
 SAFE_SETUP = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?")
 STATUSES = ("missing", "recorded", "stale")
+REVIEWS = ("approved", "redo")
 REPLACED = ".replaced"
 SESSIONS_LOG = "sessions.jsonl"
 
 
 class UnknownItem(KeyError):
     """An id that is not in the sentence list (or the exam)."""
+
+
+def review_status(meta: dict | None) -> str | None:
+    """``approved`` or ``redo`` when a take's metadata holds a review (run 9), else None."""
+    review = meta.get("review") if isinstance(meta, dict) else None
+    status = review.get("status") if isinstance(review, dict) else None
+    return status if status in REVIEWS else None
 
 
 def condition_folder(root: Path, condition: str, exam: bool = False) -> Path:
@@ -130,6 +144,19 @@ class TakeStore:
             return json.loads(self.meta_path(item_id).read_text(encoding="utf-8"))
         except FileNotFoundError:
             return None
+
+    def update_meta(self, item_id: str, changes: dict) -> dict:
+        """Merge ``changes`` into the current take's metadata (top-level keys), written
+        atomically; returns the new metadata. The take must exist."""
+        path = self.meta_path(item_id)
+        meta = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(meta, dict):
+            raise ValueError(f"{path}: the metadata is not a JSON object")
+        meta.update(changes)
+        part = path.with_name(path.name + ".part")
+        part.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        os.replace(part, path)
+        return meta
 
     def earlier_takes(self, item_id: str) -> int:
         """How many takes of this item were replaced so far."""

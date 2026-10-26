@@ -9,8 +9,8 @@ Based on OpenAI's Whisper large-v3-turbo, Copyright (c) 2022 OpenAI, under the
 MIT licence (Whisper-MIT.txt).
 
 Modifications: converted to GGUF and quantised to Q8_0 with transcribe.cpp
-0.4.0 by the WalkieTalkey project (Navigent.io ApS). The weights are otherwise
-unchanged.
+0.4.0 by Jonathan Rentoft for the WalkieTalkey project. The weights are
+otherwise unchanged.
 
 The use restrictions of the CoRal licence travel with the model
 (CORAL-LICENSE); the FT Speech statement is in FTSPEECH-LICENSE.md. See the

@@ -1,8 +1,9 @@
 /**
  * The training screen (the fine-tuning workbench, PRIV-05): the sentence the computer asks for in
- * large text, the progress and the voice to use, the last take's check with "Optag forrige igen",
- * and the design system's PhoneApp below, scaled to the space that is left, with the same button
- * as a dictation (tap or hold, PHONE-26). It shows only while a computer's training session runs.
+ * large text, the progress and the voice to use, the last take's check, one row with "Tag om" and
+ * "Spring over" (PHONE-50, PHONE-52), and the design system's PhoneApp below, scaled to the space
+ * that is left, with the same button as a dictation (tap or hold, PHONE-26). It shows only while a
+ * computer's training session runs.
  */
 import {
   useEffect,
@@ -19,7 +20,12 @@ import {
 } from "../core/controller";
 import { T, fill } from "../lib/strings";
 import { countdownSeconds, viewState } from "../ui/viewState";
-import { checkMessage, trainingItem, type TrainingView } from "./state";
+import {
+  canSkip,
+  checkMessage,
+  trainingItem,
+  type TrainingView,
+} from "./state";
 
 interface Props {
   controller: PhoneController;
@@ -150,17 +156,27 @@ export function TrainingScreen({
             {checkMessage(last.check)}
           </p>
         ) : null}
-        {last ? (
-          <button
-            type="button"
-            className="wt-app-action wt-training-redo"
-            disabled={busy || waiting}
-            onClick={() => controller.trainingRedo(!training.redo)}
-          >
-            {training.redo ? T.trainingBack : T.trainingRedo}
-          </button>
-        ) : null}
       </section>
+
+      {/* Calm and thumb-sized, below the sentence; the hold button stays the main thing. */}
+      <div className="wt-training-actions">
+        <button
+          type="button"
+          className="wt-training-action wt-training-redo"
+          disabled={!last || busy || waiting}
+          onClick={() => controller.trainingRedo(!training.redo)}
+        >
+          {training.redo ? T.trainingBack : T.trainingRedo}
+        </button>
+        <button
+          type="button"
+          className="wt-training-action wt-training-skip"
+          disabled={busy || !canSkip(training)}
+          onClick={() => controller.trainingSkip()}
+        >
+          {T.trainingSkip}
+        </button>
+      </div>
 
       {/* The main screen's stage styles, scaled to the space below the sentence. */}
       <div className="wt-stage wt-training-stage">

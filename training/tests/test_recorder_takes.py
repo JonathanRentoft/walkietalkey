@@ -90,3 +90,20 @@ def test_the_session_log_appends_lines(tmp_path):
 def test_no_part_files_are_left(store, tmp_path):
     store.save("s0002", np.zeros(1600, dtype=np.int16), {})
     assert not list((tmp_path / "recordings").rglob("*.part"))
+
+
+def test_update_meta_merges_into_the_current_take_atomically(tmp_path):
+    import json
+
+    import numpy as np
+    from wt_train.recorder.takes import TakeStore, review_status
+
+    store = TakeStore(tmp_path, "phone-whisper", {"s0001": "Hej."})
+    store.save("s0001", np.zeros(1600, dtype=np.int16), {"id": "s0001", "take": 1})
+    assert review_status(store.meta("s0001")) is None
+    meta = store.update_meta("s0001", {"review": {"status": "redo", "by": "owner"}})
+    assert meta == {"id": "s0001", "take": 1, "review": {"status": "redo", "by": "owner"}}
+    assert json.loads(store.meta_path("s0001").read_text(encoding="utf-8")) == meta
+    assert review_status(meta) == "redo"
+    assert review_status({"review": {"status": "maybe"}}) is None
+    assert not list(store.folder.glob("*.part"))

@@ -45,6 +45,37 @@ def show_list() -> int:
     return 0
 
 
+class UseError(Exception):
+    """The switch could not be made; the message says why."""
+
+
+def switch(spec: str, app_bin: str | None = None, app: App | None = None) -> tuple[str, str]:
+    """Switch the app to ``spec`` (a version number, ``edda`` or an id): returns the model id
+    and a sentence saying what it uses now. ``app`` is the app that switches (default
+    :func:`_app`). Raises :class:`UseError`. Værkstedet (run 9) calls this too."""
+    try:
+        mid = versions.resolve(spec)
+    except versions.VersionError as e:
+        raise UseError(str(e)) from None
+    app = app or _app(app_bin)
+    if app is None:
+        raise UseError("no WalkieTalkey app found; install it, or pass --app-bin")
+    if not app.supports_use:
+        raise UseError(f"{app.bin} cannot switch models from the terminal; update WalkieTalkey")
+    try:
+        app.check_model(mid)
+    except (ValueError, RuntimeError) as e:
+        raise UseError(f"{mid} is not installed in WalkieTalkey ({e})") from None
+    out = app._run(["--use-model", mid], timeout=120)
+    if out.returncode != 0:
+        tail = out.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] or [""]
+        raise UseError(f"{app.bin} exited with {out.returncode}: {tail[0][:300]}")
+    versions.mark_in_app(mid)
+    number = versions.version_of(mid) if mid != paths.SHIPPED_EDDA_ID else None
+    label = f"version {number} ({mid})" if number else (versions.BASE_NAME if mid == paths.SHIPPED_EDDA_ID else mid)
+    return mid, f"WalkieTalkey uses {label} now."
+
+
 def main(argv: list[str]) -> int:
     p = argparse.ArgumentParser(prog="wt-train use", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -57,31 +88,11 @@ def main(argv: list[str]) -> int:
     if not a.version:
         p.error("name a version, edda, or --list")
     try:
-        mid = versions.resolve(a.version)
-    except versions.VersionError as e:
+        _, message = switch(a.version, a.app_bin)
+    except UseError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
-    app = _app(a.app_bin)
-    if app is None:
-        print("error: no WalkieTalkey app found; install it, or pass --app-bin", file=sys.stderr)
-        return 1
-    if not app.supports_use:
-        print(f"error: {app.bin} cannot switch models from the terminal; update WalkieTalkey", file=sys.stderr)
-        return 1
-    try:
-        app.check_model(mid)
-    except (ValueError, RuntimeError) as e:
-        print(f"error: {mid} is not installed in WalkieTalkey ({e})", file=sys.stderr)
-        return 1
-    out = app._run(["--use-model", mid], timeout=120)
-    if out.returncode != 0:
-        tail = out.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] or [""]
-        print(f"error: {app.bin} exited with {out.returncode}: {tail[0][:300]}", file=sys.stderr)
-        return 1
-    versions.mark_in_app(mid)
-    number = versions.version_of(mid) if mid != paths.SHIPPED_EDDA_ID else None
-    label = f"version {number} ({mid})" if number else (versions.BASE_NAME if mid == paths.SHIPPED_EDDA_ID else mid)
-    print(f"WalkieTalkey uses {label} now.")
+    print(message)
     return 0
 
 

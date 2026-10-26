@@ -10,9 +10,16 @@
  * away or the phone's socket is new, the prompt goes stale (the button waits) until the computer
  * sends it again, which it does when it sees the phone online; without a fresh prompt the phone
  * returns to normal (STALE_MS). training_end, or "Afslut", ends it at once.
+ *
+ * "Spring over" (PHONE-52) passes over the current sentence without a desktop change: the phone
+ * starts a training take for `skip:<prompt>` and cancels it at once, with no audio. The installed
+ * desktop hands both to the recorder, which reads a cancelled take with that prefix as a skip;
+ * the phone then waits for the computer's next prompt.
  */
 import {
+  MAX_PROMPT_ID_BYTES,
   b64uEncode,
+  utf8Encode,
   type DevicePayload,
   type TrainingCheck,
   type TrainingItem,
@@ -37,6 +44,8 @@ export interface TrainingView {
   last: TrainingLast | null;
   /** Reading the last sentence again. */
   redo: boolean;
+  /** The prompt "Spring over" asked the computer to pass over; it waits for another one. */
+  skipped: string | null;
   /** The computer went away or the connection is new: no take until it sends the prompt again. */
   stale: boolean;
 }
@@ -62,6 +71,7 @@ export function fromPrompt(
     next: p.next ?? null,
     last: p.last ?? null,
     redo: false,
+    skipped: null,
     stale: false,
   };
 }
@@ -75,4 +85,28 @@ export function trainingItem(t: TrainingView): TrainingItem | null {
 /** How the computer judged the last take (training/wt_train/recorder/checks.py). */
 export function checkMessage(check: TrainingCheck): string {
   return T.trainingChecks[check] ?? T.trainingChecks.error;
+}
+
+/** The prefix of a skip's prompt (PROTOCOL.md 8.4, PHONE-52). */
+export const SKIP_PREFIX = "skip:";
+
+/** The prompt a skip of `prompt` sends, or null when it would not fit the protocol's 64 bytes. */
+export function skipPrompt(prompt: string): string | null {
+  const out = SKIP_PREFIX + prompt;
+  return utf8Encode(out).length <= MAX_PROMPT_ID_BYTES ? out : null;
+}
+
+/**
+ * "Spring over" can be pressed: there is a next sentence, it is not a redo, the prompt is fresh,
+ * and this sentence was not skipped already (the computer has not moved on yet). Recording and
+ * sending are checked by the screen and the controller.
+ */
+export function canSkip(t: TrainingView): boolean {
+  return (
+    !t.stale &&
+    !t.redo &&
+    t.next !== null &&
+    t.skipped !== t.next.prompt &&
+    skipPrompt(t.next.prompt) !== null
+  );
 }

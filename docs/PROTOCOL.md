@@ -260,10 +260,10 @@ blocks; the application waits up to 5 s for them (DESK-61). The computer remembe
 sessions for 15 minutes and answers a resend of one with the same result instead of
 transcribing it twice.
 
-### 8.4 Training takes (run 5; DESK-65, PHONE-50, PHONE-51, PRIV-05)
+### 8.4 Training takes (run 5; DESK-65, PHONE-50, PHONE-51, PHONE-52, PRIV-05)
 
-The fine-tuning workbench (`wt-train record`, `training/`) records sentences on the phone through
-the dictation path. The recorder on the computer hands its session to the running app, which
+The fine-tuning workbench (`wt-train record`, `wt-train pilot record` or Værkstedet, `wt-train
+studio`; `training/`) records sentences on the phone through the dictation path. The recorder on the computer hands its session to the running app, which
 sends the sentence to the session's phone; the phone records it and sends it back as a take. It is
 the one deliberate exception to "text never goes back to the phone" (spec 12.1): only the
 recorder's sentences, only while its session runs, inside the end-to-end encryption.
@@ -303,6 +303,18 @@ recorder's sentences, only while its session runs, inside the end-to-end encrypt
   when the computer goes offline, or the phone's connection drops or is new, the prompt goes
   stale until the computer sends it again). What is left is a take sitting in the relay buffer
   while the computer is replaced by an older version within those 10 minutes.
+- "Spring over" (run 9, PHONE-52): the phone asks the computer to pass over the current
+  sentence with a training take whose prompt is `skip:` and the current prompt (`skip:s0042`),
+  started with 0x24 and cancelled at once with 0x23, with no 0x21 blocks; the start and the
+  cancel are queued together. It needs no desktop change: the app forwards a phone take's start
+  and cancel to the recorder as `{"type":"recording","prompt":"skip:s0042","source":"phone"}`
+  and `{"type":"cancelled",...}` and, as for any cancelled take, sends the phone nothing (no
+  `result`). The recorder reads a cancelled phone take with that prefix as "Spring over" for
+  that sentence when it is the current one, never as a take or as recording, and moves on with
+  a new `training_prompt`. A prompt id is at most 59 bytes so the prefixed one fits in 64; the
+  phone does not offer the skip otherwise. Until the prompt changes, the phone does not skip
+  again; a skip that could not be sent can be pressed again. An older recorder ignores the
+  cancelled take, so nothing is skipped and nothing is kept.
 - An older phone drops 0x31 and 0x32 (unknown types, 8.1) and keeps working; its counter still
   advances.
 - The relay needs no change: it routes by the header and reads only the type byte, to flush a

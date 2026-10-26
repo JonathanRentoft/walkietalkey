@@ -11,7 +11,13 @@ import {
 import type { RecorderLike } from "../src/audio/recorder";
 import { PhoneController } from "../src/core/controller";
 import { PhoneStorage } from "../src/lib/storage";
-import { checkMessage, trainingItem } from "../src/training/state";
+import {
+  canSkip,
+  checkMessage,
+  fromPrompt,
+  skipPrompt,
+  trainingItem,
+} from "../src/training/state";
 import { FakeComputer, FakeRelay } from "./fake-relay";
 
 /* Training takes for the fine-tuning workbench (PROTOCOL.md 8.4, PRIV-05): the computer's
@@ -269,6 +275,131 @@ describe("training takes on the phone", () => {
     await mac.toPhoneRaw(0x3f, utf8Encode('{"later":true}'));
     await mac.toPhone(prompt("s0001"));
     await until(() => c.getSnapshot().training !== null, "the prompt after it");
+  });
+});
+
+/* PHONE-52: "Spring over" asks the computer to pass over the current sentence with no desktop
+   change: a training take for `skip:<prompt>` (0x24) cancelled at once (0x23), no audio (no
+   0x21). The installed desktop forwards both to the recorder and sends the phone nothing; the
+   phone waits for the computer's next prompt. */
+describe("Spring over on the phone", () => {
+  const audioFrames = (mac: FakeComputer) =>
+    mac.frames
+      .filter((f) => f.type >= 0x20 && f.type <= 0x24)
+      .map((f) => f.type);
+
+  it("sends an empty training take for skip:<prompt> and cancels it at once", async () => {
+    const { c, mac } = await paired();
+    await mac.toPhone(prompt("s0043", ["s0042", "ok"]));
+    await until(() => c.getSnapshot().training !== null, "the training screen");
+    expect(canSkip(c.getSnapshot().training!)).toBe(true);
+
+    c.trainingSkip();
+    // The button waits for the computer's next prompt; nothing else changes on screen.
+    const t = c.getSnapshot().training!;
+    expect(canSkip(t)).toBe(false);
+    expect(trainingItem(t)?.prompt).toBe("s0043");
+    expect(c.getSnapshot().machine.phase).toBe("idle");
+    await until(() => audioFrames(mac).length === 2, "the two frames");
+    expect(audioFrames(mac)).toEqual([0x24, 0x23]);
+    const [s] = [...mac.sessions.values()];
+    expect(s!.training).toEqual({
+      id: b64uEncode(training),
+      prompt: "skip:s0043",
+      microphone: undefined,
+    });
+    expect(s!.cancelled).toBe(true);
+    expect(s!.blocks.size).toBe(0);
+    expect(s!.end).toBeNull();
+    // A second press before the computer moves on sends nothing.
+    c.trainingSkip();
+    await sleep(80);
+    expect(audioFrames(mac)).toEqual([0x24, 0x23]);
+
+    // The same prompt again (the phone came back online, say) keeps it waiting.
+    await mac.toPhone(prompt("s0043", ["s0042", "ok"]));
+    await sleep(80);
+    expect(canSkip(c.getSnapshot().training!)).toBe(false);
+    // The computer moves on: the next sentence can be skipped too.
+    await mac.toPhone(prompt("s0044", ["s0042", "ok"]));
+    await until(
+      () => trainingItem(c.getSnapshot().training!)?.prompt === "s0044",
+      "the next sentence",
+    );
+    expect(canSkip(c.getSnapshot().training!)).toBe(true);
+    // A take afterwards is an ordinary training take again.
+    await record(c);
+    await until(() => c.getSnapshot().machine.phase === "ready", "saved");
+    const take = [...mac.sessions.values()].find(
+      (x) => x.training?.prompt === "s0044",
+    );
+    expect(take!.end).toBe(4);
+    expect(take!.cancelled).toBeUndefined();
+  });
+
+  it("is not sent during a redo, while the prompt is stale, or with no next sentence", async () => {
+    const { c, mac } = await paired();
+    await mac.toPhone(prompt("s0043", ["s0042", "clipped"]));
+    await until(() => c.getSnapshot().training !== null, "the training screen");
+    c.trainingRedo(true);
+    expect(canSkip(c.getSnapshot().training!)).toBe(false);
+    c.trainingSkip();
+    c.trainingRedo(false);
+    expect(canSkip(c.getSnapshot().training!)).toBe(true);
+
+    mac.leave();
+    await until(() => c.getSnapshot().training?.stale === true, "stale");
+    expect(canSkip(c.getSnapshot().training!)).toBe(false);
+    c.trainingSkip();
+
+    mac.reconnect();
+    await mac.toPhone(prompt(null, ["s0043", "ok"]));
+    await until(
+      () =>
+        c.getSnapshot().training?.stale === false &&
+        c.getSnapshot().training?.next === null,
+      "complete",
+    );
+    expect(canSkip(c.getSnapshot().training!)).toBe(false);
+    c.trainingSkip();
+    await sleep(80);
+    expect(audioFrames(mac)).toEqual([]);
+  });
+
+  it("is not sent while a take records or is on its way", async () => {
+    const { c, mac } = await paired();
+    mac.answer = false;
+    await mac.toPhone(prompt("s0001"));
+    await until(() => c.getSnapshot().training !== null, "the training screen");
+    c.down();
+    expect(c.getSnapshot().machine.phase).toBe("rec");
+    c.trainingSkip();
+    c.up();
+    await sleep(30);
+    c.down();
+    c.up();
+    await until(() => c.getSnapshot().machine.phase === "send", "sending");
+    c.trainingSkip();
+    await sleep(80);
+    expect(
+      mac.frames.some((f) => f.type === 0x23 || f.name === "audio_cancel"),
+    ).toBe(false);
+    expect([...mac.sessions.values()].map((s) => s.training?.prompt)).toEqual([
+      "s0001",
+    ]);
+  });
+
+  it("only fits a prompt id that leaves room for the prefix in 64 bytes", () => {
+    expect(skipPrompt("s0042")).toBe("skip:s0042");
+    expect(skipPrompt("p".repeat(59))).toBe(`skip:${"p".repeat(59)}`);
+    expect(skipPrompt("p".repeat(60))).toBeNull();
+    expect(skipPrompt("æ".repeat(30))).toBeNull();
+    const t = fromPrompt(
+      "room",
+      "MacBook",
+      prompt("p".repeat(60)) as Parameters<typeof fromPrompt>[2],
+    );
+    expect(canSkip(t)).toBe(false);
   });
 });
 

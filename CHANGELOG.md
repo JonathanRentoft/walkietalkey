@@ -6,8 +6,6 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 
 ## [0.2.2] - 2026-10-26
 
-<!-- TODO(copy): the Danish release notes -->
-
 **På dansk**
 
 - Åbner du WalkieTalkey fra diskbilledet, tilbyder den at flytte sig selv til Programmer med ét klik og åbne igen derfra. Så kan den opdatere sig selv.

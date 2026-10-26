@@ -73,6 +73,18 @@ def test_every_export_is_a_new_registered_version_with_its_run_metrics_and_confi
     assert "model/edda-ft-first-v1.README.md" in {a.path for a in c.list_artifacts(first.run_id, "model")}
 
 
+def test_an_export_timed_by_its_real_step_names_is_logged(store, tmp_path):
+    # Run 9: export_run times its steps by name, and "verify (merged model)" has brackets, which
+    # MLflow refuses in a metric name; the first real export failed there after installing.
+    result = fake_export(tmp_path, 1)
+    result["seconds"] = {"merge": 4.0, "convert": 30.0, "quantise": 9.0, "verify (merged model)": 20.0,
+                         "verify (GGUF)": 12.0, "install": 1.0}
+    assert tracking.log_export(result) == 1
+    got = tracking.find_runs(kind="export")[0]
+    assert got.data.metrics["seconds/verify merged model"] == 20.0
+    assert got.data.metrics["seconds/verify GGUF"] == 12.0
+
+
 def test_versions_count_on_from_the_registry_and_the_installed_files(store, tmp_path):
     models = paths.app_models_dir()
     assert versions.next_version(models) == 1

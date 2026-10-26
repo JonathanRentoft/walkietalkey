@@ -67,4 +67,6 @@ CLAUDE.local.md
 training/data/recordings/
 training/data/pilot/
 training/work/
+# Værkstedet (wt-train studio): the built page, rebuilt from training/studio/ when its sources change.
+training/studio/dist/
 training/.venv/

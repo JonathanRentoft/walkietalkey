@@ -333,41 +333,69 @@ def _dbfs(v: float) -> str:
     return f"{round(v)} dBFS"
 
 
-def examine(take: Take) -> Row:
-    """The audio problems of one take (the match comes later, for the whole session at once)."""
-    stats = audiostats.measure(take.wav)
-    samples, rate = _samples(take.wav)
-    style, limits = take.style, checks.LIMITS[take.style]
-    result = checks.check_take(samples, style=style, device=take.device_class, text=take.text, rate=rate)
-    row = Row(take, stats, result)
+def audio_problems(stats: audiostats.AudioStats, result: checks.CheckResult, style: str) -> dict[str, str]:
+    """A take's audio problems by kind, each with its detail ("" when there is none to give):
+    the rules above. Værkstedet (run 9) judges its takes with the same rules."""
+    limits = checks.LIMITS[style]
     found = set(result.problems)
     # The recorder also calls a take silent when it is too close to the room noise; that one has
     # speech in it, so it is a noisy take here.
     heard = result.speech_seconds > 0 and result.level_dbfs >= limits.silent_dbfs
     if "silent" in found and not heard:
-        row.problems["silent"] = ""
-        return row
+        return {"silent": ""}
+    out: dict[str, str] = {}
     noisy = "silent" in found or stats.snr_db < NOISY_SNR_DB[style]
     if not stats.silent and not noisy and stats.snr_db >= CUT_MIN_SNR_DB and (stats.cut_start or stats.cut_end):
-        row.problems["cut"] = " and ".join(e for e, cut in (("start", stats.cut_start), ("end", stats.cut_end)) if cut)
+        out["cut"] = " and ".join(e for e, cut in (("start", stats.cut_start), ("end", stats.cut_end)) if cut)
     if "clipped" in found:
-        row.problems["clipped"] = ""
+        out["clipped"] = ""
     if "quiet" in found:
-        row.problems["quiet"] = _dbfs(stats.level_dbfs)
+        out["quiet"] = _dbfs(stats.level_dbfs)
     if stats.level_dbfs > LOUD_DBFS[style] and "clipped" not in found:
-        row.problems["loud"] = _dbfs(stats.level_dbfs)
+        out["loud"] = _dbfs(stats.level_dbfs)
     if noisy:
-        row.problems["noisy"] = f"SNR {round(stats.snr_db)} dB"
+        out["noisy"] = f"SNR {round(stats.snr_db)} dB"
     if "short" in found:
-        row.problems["short"] = f"{result.speech_seconds:.1f} s"
+        out["short"] = f"{result.speech_seconds:.1f} s"
+    return out
+
+
+def examine(take: Take) -> Row:
+    """The audio problems of one take (the match comes later, for the whole session at once)."""
+    stats = audiostats.measure(take.wav)
+    samples, rate = _samples(take.wav)
+    result = checks.check_take(samples, style=take.style, device=take.device_class, text=take.text, rate=rate)
+    row = Row(take, stats, result)
+    row.problems.update(audio_problems(stats, result, take.style))
     return row
+
+
+def judge_match(text: str, transcript: str, spelling=None) -> dict:
+    """What Edda heard against the text read: the text re-spelled like the training data,
+    scored as ``wt-train eval`` does, and the rule above. ``mismatch`` is the problem's
+    detail, or None when the take matches; ``ref_norm`` and ``hyp_norm`` are the
+    normalised words."""
+    from .metrics import score_clip
+
+    reference = spelling.apply(text) if spelling else text
+    scored = score_clip("", reference, transcript)
+    word_errors = scored["sub"] + scored["del"] + scored["ins"]
+    ref_words = scored["ref_words"]
+    wer = word_errors / ref_words if ref_words else float(word_errors > 0)
+    heard = words_heard(scored["ref_norm"], scored["hyp_norm"])
+    mismatch = None
+    if not transcript.strip():
+        mismatch = "nothing heard"
+    elif wer > MISMATCH_WER and word_errors >= MISMATCH_MIN_ERRORS and heard < MISMATCH_HEARD:
+        mismatch = f"WER {round(wer * 100)} %"
+    return {"wer": wer, "word_errors": word_errors, "ref_words": ref_words, "heard": heard, "mismatch": mismatch,
+            "ref_norm": scored["ref_norm"], "hyp_norm": scored["hyp_norm"]}
 
 
 def match(rows: list[Row], app_bin: Path | None, spelling_path: Path | None) -> dict:
     """Transcribe the heard takes with base Edda through the app (one batch) and flag the
     ones that do not match their text."""
     from .evaluate import AppTranscriber
-    from .metrics import score_clip
     from .spelling import load_spelling
 
     heard = [r for r in rows if "silent" not in r.problems]
@@ -387,20 +415,16 @@ def match(rows: list[Row], app_bin: Path | None, spelling_path: Path | None) -> 
             row.transcribe_error = error
             failed.append(row.take.id)
             continue
-        reference = spelling.apply(row.take.text) if spelling else row.take.text
-        scored = score_clip(row.take.id, reference, text)
+        judged = judge_match(row.take.text, text, spelling)
         row.transcript = text
-        row.word_errors = scored["sub"] + scored["del"] + scored["ins"]
-        row.ref_words = scored["ref_words"]
-        row.wer = row.word_errors / row.ref_words if row.ref_words else float(row.word_errors > 0)
+        row.word_errors = judged["word_errors"]
+        row.ref_words = judged["ref_words"]
+        row.wer = judged["wer"]
         errors += row.word_errors
         words += row.ref_words
-        row.heard = words_heard(scored["ref_norm"], scored["hyp_norm"])
-        if not text.strip():
-            row.problems["mismatch"] = "nothing heard"
-        elif (row.wer > MISMATCH_WER and row.word_errors >= MISMATCH_MIN_ERRORS
-              and row.heard < MISMATCH_HEARD):
-            row.problems["mismatch"] = f"WER {round(row.wer * 100)} %"
+        row.heard = judged["heard"]
+        if judged["mismatch"]:
+            row.problems["mismatch"] = judged["mismatch"]
     return {"ran": True, "app": str(found.bin), "model": paths.SHIPPED_EDDA_ID,
             "transcribed": len(heard) - len(failed), "wer": round(errors / words, 4) if words else None,
             "failed": failed}

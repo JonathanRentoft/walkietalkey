@@ -72,6 +72,15 @@ def test_a_block_that_raises_leaves_a_failed_run(store):
     assert tracking.find_runs(name="boom")[0].info.status == "FAILED"
 
 
+def test_a_run_stopped_with_ctrl_c_ends_killed(store):
+    # Run 9: Værkstedet stops a training with SIGINT; that is a stop, not a failure.
+    with pytest.raises(KeyboardInterrupt):
+        with tracking.run("train", "stopped") as r:
+            raise KeyboardInterrupt
+    c, _ = tracking.client()
+    assert c.get_run(r.id).info.status == "KILLED"
+
+
 def test_an_eval_nests_under_its_training_run(store):
     with tracking.run("train", "t") as parent:
         with tracking.run("eval", "t-test", parent=parent) as kid:

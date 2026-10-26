@@ -31,6 +31,13 @@ A run lives in ``<work>/runs/train/<name>-<timestamp>/`` with ``config.yaml``
 ``metrics.jsonl``, ``metrics.png``, ``best.json``, ``adapter/``, ``cache.json``
 (cache entries it created) and ``run.json``.
 
+Run 9: ``--progress <file>`` appends one JSON line per event as the run goes, for
+Værkstedet's training screen (``training/studio/API.md``): ``phase`` (build, cache,
+train, validate), ``run`` (its name and folder), ``plan`` (epochs, steps per epoch,
+total steps), ``step`` (loss and learning rate of each optimiser step), ``epoch`` (the
+validation after it; epoch 0 is the base model), then ``done``, ``failed`` (with the
+message) or ``stopped``. Ctrl+C or SIGTERM stop the run: its MLflow run ends KILLED.
+
 The per-epoch validation WER comes from the training model (float32 decoder,
 cached float16 encoder outputs). ``wt-train eval --backend lora`` scores the
 merged float16 model from audio, as the export does; the two can differ a
@@ -45,6 +52,7 @@ import json
 import math
 import random
 import shutil
+import signal
 import sys
 import time
 from datetime import datetime
@@ -58,6 +66,29 @@ from .dataset import Build, Item
 from .encoder_cache import CacheSpec, EncoderCache
 from .metrics import score_clip, summarize
 from .spelling import load_spelling
+
+
+# --- progress -------------------------------------------------------------------
+
+
+class Progress:
+    """``--progress <file>``: one JSON line per event, appended and flushed as it happens.
+    Without a file it does nothing."""
+
+    def __init__(self, path: Path | None = None):
+        self.path = Path(path) if path is not None else None
+        if self.path is not None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def __call__(self, event: str, **fields) -> None:
+        if self.path is None:
+            return
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"event": event, **fields}, ensure_ascii=False) + "\n")
+            f.flush()
+
+
+NO_PROGRESS = Progress()
 
 
 # --- configuration helpers -----------------------------------------------------
@@ -299,10 +330,11 @@ def save_run_inputs(run: Path, cfg: Config, build: Build) -> None:
 
 def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = None,
         runs_root: Path | None = None, cache_root: Path | None = None, log=console.log,
-        tracked: tracking.Run = tracking.NO_RUN) -> Path:
+        tracked: tracking.Run = tracking.NO_RUN, progress: Progress = NO_PROGRESS) -> Path:
     """Train one experiment; returns the run folder. ``tracked`` gets the config, the dataset
     fingerprint, the loss of every step, the validation of every epoch and the files
-    (``wt-train train`` passes a tracked MLflow run; by default nothing is tracked)."""
+    (``wt-train train`` passes a tracked MLflow run; by default nothing is tracked);
+    ``progress`` the events of ``--progress``."""
     import torch
     from peft import LoraConfig as PeftLoraConfig
     from peft import get_peft_model
@@ -310,6 +342,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
     started = time.time()
     t = cfg.training
     seed_everything(t.seed)
+    progress("phase", phase="build")
     build = build if build is not None else dataset.build(cfg, log=log)
     base = base if base is not None else whisper.load_base(cfg.base_model.repo, cfg.base_model.revision)
     device = whisper.pick_device(t.device)
@@ -319,6 +352,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
     frozen = total_layers - cfg.lora.encoder_top_layers
 
     run_dir = new_run_dir(runs_root if runs_root is not None else paths.runs_dir(), cfg.name)
+    progress("run", name=run_dir.name, dir=str(run_dir))
     save_run_inputs(run_dir, cfg, build)
     tracked.rename(run_dir.name)
     tracking.log_training_inputs(tracked, to_dict(cfg), config_hash(cfg), build.splits)
@@ -329,6 +363,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
                          CacheSpec(model=base.repo, revision=base.revision, features=base.feature_settings(),
                                    layers=frozen, total_layers=total_layers))
     reused = len({cache.path(i) for i in train_items + val_items}) - len(cache.missing(train_items + val_items))
+    progress("phase", phase="cache")
     created = fill_cache(cache, base, train_items + val_items, device, cfg.evaluation.batch_size, log)
     (run_dir / "cache.json").write_text(json.dumps(
         {"dir": str(cache.root), "created": [str(p) for p in created], "reused": reused,
@@ -361,12 +396,14 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
         optimizer, lambda step: lr_factor(step, warmup, total_steps, t.schedule))
     log(f"{len(train_items)} training clips, {len(val_items)} validation clips; "
         f"{t.epochs} epoch(s) of {steps_per_epoch} step(s), warmup {warmup}")
+    progress("plan", epochs=t.epochs, steps_per_epoch=steps_per_epoch, total_steps=total_steps)
 
     metrics: list[dict] = []
     best: dict | None = None
 
     def evaluate_epoch(epoch: int, train_loss: float | None, step: int, epoch_seconds: float) -> None:
         nonlocal best
+        progress("phase", phase="validate")
         rows, s = validate(inner, batches, val_items, base.tokens, spelling, cfg.evaluation.batch_size,
                            cfg.evaluation.max_new_tokens)
         _write_jsonl(run_dir / "validation" / f"epoch-{epoch}.jsonl", rows)
@@ -388,6 +425,8 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
         with (run_dir / "metrics.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         plot_metrics(metrics, run_dir / "metrics.png")
+        progress("epoch", epoch=epoch, step=step, train_loss=train_loss, validation_loss=s["loss"],
+                 validation_wer=s["wer"])
         log(format_metrics_row(row))
         if best is None or (row["validation_wer"], row["validation_loss"]) < (best["validation_wer"],
                                                                               best["validation_loss"]):
@@ -405,6 +444,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
     token_counts = {i.id: sum(1 for x in examples[i.id][1] if x != whisper.IGNORE) for i in train_items}
     for epoch in range(1, t.epochs + 1):
         epoch_started = time.time()
+        progress("phase", phase="train")
         model.train()
         generator = torch.Generator().manual_seed(t.seed * 1000 + epoch)
         order = [train_items[i] for i in torch.randperm(len(train_items), generator=generator).tolist()]
@@ -430,6 +470,8 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
             step += 1
             tracked.metrics({"train": {"loss": group_loss / max(1, group_tokens),
                                        "learning_rate": scheduler.get_last_lr()[0]}}, step=step)
+            progress("step", step=step, epoch=epoch, loss=group_loss / max(1, group_tokens),
+                     lr=scheduler.get_last_lr()[0])
             if step % max(1, steps_per_epoch // 5) == 0 or step == total_steps:
                 log(f"  epoch {epoch} step {step}/{total_steps}: loss {loss_sum / max(1, token_sum):.4f}, "
                     f"lr {scheduler.get_last_lr()[0]:.2e}")
@@ -456,6 +498,7 @@ def run(cfg: Config, *, base: whisper.Base | None = None, build: Build | None = 
     note = " (no epoch beat the base model)" if best["epoch"] == 0 else ""
     log(f"best: epoch {best['epoch']}, validation WER {best['validation_wer'] * 100:.2f} %{note}; "
         f"adapter in {run_dir / 'adapter'}")
+    progress("done", run=run_dir.name, best_epoch=best["epoch"], best_validation_wer=best["validation_wer"])
     return run_dir
 
 
@@ -479,16 +522,32 @@ def main(argv: list[str]) -> int:
     p.add_argument("config", type=Path, help="experiment YAML, e.g. configs/first-frozen-encoder.yaml")
     p.add_argument("--recordings", type=Path, help="takes folder instead of the config's data.recordings")
     p.add_argument("--device", choices=["auto", "mps", "cpu"], help="instead of the config's training.device")
+    p.add_argument("--progress", type=Path, help="append the run's progress to this file as JSON lines (Værkstedet)")
     a = p.parse_args(argv)
-    cfg = load_config(a.config)
-    if a.recordings:
-        cfg = with_overrides(cfg, data={"recordings": str(a.recordings.resolve())})
-    if a.device:
-        cfg = with_overrides(cfg, training={"device": a.device})
-    with tracking.run("train", cfg.name) as tracked:
-        run_dir = run(cfg, tracked=tracked)
+    progress = Progress(a.progress)
+    # SIGTERM stops the run like Ctrl+C: its MLflow run ends KILLED, not left running.
+    signal.signal(signal.SIGTERM, _interrupt)
+    try:
+        cfg = load_config(a.config)
+        if a.recordings:
+            cfg = with_overrides(cfg, data={"recordings": str(a.recordings.resolve())})
+        if a.device:
+            cfg = with_overrides(cfg, training={"device": a.device})
+        with tracking.run("train", cfg.name) as tracked:
+            run_dir = run(cfg, tracked=tracked, progress=progress)
+    except KeyboardInterrupt:
+        progress("stopped")
+        print("stopped", file=sys.stderr)
+        return 130
+    except Exception as e:
+        progress("failed", message=f"{type(e).__name__}: {e}")
+        raise
     print(f"next: wt-train eval --backend lora --run {run_dir.name} --dataset test")
     return 0
+
+
+def _interrupt(signum, frame) -> None:
+    raise KeyboardInterrupt
 
 
 if __name__ == "__main__":

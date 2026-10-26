@@ -49,7 +49,9 @@ import {
 } from "./streamer";
 import {
   STALE_MS,
+  canSkip,
   fromPrompt,
+  skipPrompt,
   trainingItem,
   type TrainingView,
 } from "../training/state";
@@ -392,6 +394,10 @@ export class PhoneController {
     } else if (p.type === "training_prompt") {
       const t = fromPrompt(entry.record.roomId, entry.record.computerName, p);
       if (this.trainingOver.has(t.id)) return;
+      // A skipped sentence sent again (the phone back online, say) still waits for the next one.
+      const was = this.training;
+      if (was?.id === t.id && was.skipped && was.skipped === t.next?.prompt)
+        t.skipped = was.skipped;
       this.clearTrainingTimer();
       this.training = t;
       // Takes go to the computer that asked for them.
@@ -452,12 +458,37 @@ export class PhoneController {
     }, this.deps.trainingStaleMs ?? STALE_MS);
   }
 
-  /** "Optag forrige igen" on the training screen, or back to the next sentence. */
+  /** "Tag om" on the training screen (the last sentence again), or back to the next sentence. */
   trainingRedo(on: boolean): void {
     const t = this.training;
     if (!t || !t.last || this.busy()) return;
     this.training = { ...t, redo: on };
     this.changed();
+  }
+
+  /**
+   * "Spring over" (PHONE-52): asks the computer to pass over the current sentence, as a training
+   * take for `skip:<prompt>` that is cancelled at once, with no audio (PROTOCOL.md 8.4). The
+   * computer answers with its next prompt; until the prompt changes, the button waits.
+   */
+  trainingSkip(): void {
+    const t = this.training;
+    if (!t || !t.next || !canSkip(t) || this.busy()) return;
+    const prompt = skipPrompt(t.next.prompt);
+    const entry = this.rooms.get(t.roomId);
+    if (!prompt || !entry?.link.connected) return;
+    const skipped = t.next.prompt;
+    const s = newSession(t.roomId, this.now());
+    s.training = { id: t.training, prompt };
+    this.training = { ...t, skipped };
+    this.changed();
+    void entry.streamer.skip(s).then((sent) => {
+      // Not sent (the connection dropped): the button can be pressed again.
+      const now = this.training;
+      if (sent || now?.id !== t.id || now.skipped !== skipped) return;
+      this.training = { ...now, skipped: null };
+      this.changed();
+    });
   }
 
   /** "Afslut": back to normal; this session's prompts are not shown again. */

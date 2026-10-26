@@ -24,6 +24,7 @@ STEPS = {
     "pilot": ("wt_train.pilot", "record the pilot sentences per setup, and compare the setups"),
     "check": ("wt_train.check", "look over the latest recording session: levels, noise, takes"),
     "card": ("wt_train.journal", "write a lab-journal page for a run"),
+    "studio": ("wt_train.studio", "Værkstedet: the workbench as a local app in the browser"),
 }
 
 

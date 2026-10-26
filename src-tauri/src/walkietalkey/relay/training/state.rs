@@ -472,6 +472,67 @@ mod tests {
         assert!(!s.owns(&key) && s.cancel(&key).is_none());
     }
 
+    /// PHONE-52 (PROTOCOL.md 8.4): the phone's "Spring over" is a training take for
+    /// `skip:<prompt>` that it cancels at once, with no blocks. The installed desktop passes it
+    /// to the recorder as a recording and a cancel with the prefixed prompt, and sends the
+    /// phone nothing: no result, no prompt, no end. The recorder reads it as "Spring over". This
+    /// pins that, so a desktop change cannot break the phone's skip without a failing test.
+    #[test]
+    fn a_skip_is_an_empty_cancelled_take_the_recorder_hears_of_and_the_phone_does_not() {
+        use wt_relay_client::wt_protocol::consts::{frame_type, MAX_PROMPT_ID_BYTES};
+
+        let mut s = Session::new(&answer("phone")).unwrap();
+        s.on_command(&prompt(Some("s0042"), Some(("s0041", "ok"))));
+        let key = (PHONE, SessionId([11; 16]));
+        let (mine, actions) = s.start(key, TRAINING, "skip:s0042", Some("iPhone-mikrofon".into()));
+        assert!(
+            mine,
+            "the session's own phone and training id: this session's"
+        );
+        assert_eq!(
+            actions,
+            vec![Action::Event(serde_json::json!({
+                "type": "recording", "prompt": "skip:s0042", "source": "phone"
+            }))]
+        );
+        let actions = s.cancel(&key).expect("the skip is this session's take");
+        assert_eq!(
+            actions,
+            vec![Action::Event(serde_json::json!({
+                "type": "cancelled", "prompt": "skip:s0042", "source": "phone"
+            }))],
+            "only the page hears of it; nothing goes to the phone"
+        );
+        assert!(!s.owns(&key) && s.open_takes().is_empty());
+        assert!(
+            s.phone_upload(&key).is_none(),
+            "never handed over as a take"
+        );
+        assert!(s.cancel(&key).is_none(), "a second cancel is nobody's");
+
+        // `skip:` (5 bytes) plus the longest prompt id the recorder uses still fits the
+        // protocol's 64 bytes; the phone refuses to skip when it would not (training/state.ts).
+        let longest = format!("skip:{}", "p".repeat(MAX_PROMPT_ID_BYTES - 5));
+        let start = DevicePayload::AudioStartTraining {
+            session_id: SessionId([12; 16]),
+            training: TRAINING,
+            prompt: longest.clone(),
+            microphone: None,
+        };
+        let bytes = start.encode().unwrap();
+        assert_eq!(
+            DevicePayload::decode(frame_type::AUDIO_START_TRAINING, &bytes).unwrap(),
+            start
+        );
+        let too_long = DevicePayload::AudioStartTraining {
+            session_id: SessionId([12; 16]),
+            training: TRAINING,
+            prompt: format!("{longest}p"),
+            microphone: None,
+        };
+        assert!(too_long.encode().is_err());
+    }
+
     #[test]
     fn mac_takes_follow_the_pages_start_and_stop() {
         let mut s = Session::new(&answer("mac")).unwrap();

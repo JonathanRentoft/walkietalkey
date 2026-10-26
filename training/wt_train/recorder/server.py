@@ -9,24 +9,16 @@ The page (static/index.html, app.js, style.css), in the owner's browser::
     POST /api/next | /api/prev      move to another sentence (the phone follows)
     POST /api/go?index=N
     POST /api/redo                  back to the sentence just recorded
+    POST /api/skip                  pass over the current sentence this round ("Spring over")
     POST /api/mac/start | stop | cancel   a take on the Mac's own input (the mac condition)
     POST /api/connect               hand the session to the app again
     GET  /api/takes/<id>.wav        the current take of a sentence, to play it back
 
 The WalkieTalkey app, which connects out to this server (the app opens no socket
-of its own). The recorder hands it ``http://127.0.0.1:<port>/app/v1#<token>``
-with ``walkietalkey --training-session <url>`` (the single-instance handoff, like
-``--toggle-transcription``); every request carries ``Authorization: Bearer
-<token>``::
-
-    POST /app/v1/hello              the app's version, its paired phones, its input
-                                    -> the training session id, device, style, phone
-    GET  /app/v1/next?after=N       the commands numbered above N (session.py), waiting
-                                    up to 20 s for one
-    POST /app/v1/takes              a take: 16 kHz mono PCM16 little-endian in the body,
-                                    its metadata as base64url JSON in X-WT-Take
-                                    -> saved, check, problems, replaced
-    POST /app/v1/events             recording, cancelled, mac_failed, phone, bye, error
+of its own): its API, ``/app/v1/hello|next|takes|events``, is :mod:`.appapi`, shared
+with Værkstedet (``wt-train studio``). The recorder hands the app
+``http://127.0.0.1:<port>/app/v1#<token>`` with ``walkietalkey --training-session <url>``
+(the single-instance handoff, like ``--toggle-transcription``).
 
 Takes are written to training/data/recordings/ (git-ignored) and nowhere else (the
 pilot's, ``wt-train pilot record``, to training/data/pilot/, which :func:`serve` runs too);
@@ -42,34 +34,26 @@ request.
 from __future__ import annotations
 
 import argparse
-import base64
 import hmac
-import json
 import re
 import secrets
 import sys
 import threading
 import time
 import webbrowser
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from ..conditions import CONDITIONS, IDS, condition
 from ..paths import EXAM_YAML, PLAN_CSV, RECORDINGS, SENTENCES_CSV
-from . import audio
-from .session import AppRefused, Session
+from .appapi import MAX_JSON, LocalHandler
+from .session import Session
 from .takes import TakeStore, UnknownItem
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
-# The phone stops at 5 minutes (PHONE-29); a little slack for the pre-roll.
-MAX_TAKE_S = 330
-MAX_BODY = MAX_TAKE_S * audio.TARGET_RATE * 2
-MAX_JSON = 64 * 1024
-LONG_POLL_S = 20.0
 UPLOAD_HEADER = "X-WT-Recorder"
-TAKE_HEADER = "X-WT-Take"
 
 STATIC = Path(__file__).parent / "static"
 FILES = {
@@ -119,6 +103,16 @@ class RecorderServer(ThreadingHTTPServer):
     def app_url(self) -> str:
         return f"http://{HOST}:{self.server_address[1]}/app/v1#{self.token}"
 
+    # The app's API (appapi.py) ------------------------------------------------
+
+    def app_session(self, authorization: str) -> Session | None:
+        if hmac.compare_digest(authorization.encode(), f"Bearer {self.token}".encode()):
+            return self.session
+        return None
+
+    def app_link(self, status: str, detail: str) -> None:
+        self.link = {"status": status, "detail": detail}
+
 
 def make_server(session: Session, token: str, port: int = DEFAULT_PORT, progress=None,
                 connect=None, rows: list[dict] | None = None) -> RecorderServer:
@@ -126,66 +120,17 @@ def make_server(session: Session, token: str, port: int = DEFAULT_PORT, progress
     return RecorderServer(session, token, port, progress=progress, connect=connect, rows=rows)
 
 
-class _Handler(BaseHTTPRequestHandler):
+class _Handler(LocalHandler):
     server: RecorderServer
     server_version = "wt-train-recorder"
-
-    def log_message(self, format: str, *args) -> None:
-        pass  # one line per take is printed instead
+    csp = CSP
 
     # Guards ---------------------------------------------------------------
-
-    def _host_ok(self) -> bool:
-        return self.headers.get("Host", "") in self.server.origins
 
     def _page_post_ok(self) -> bool:
         origin = self.headers.get("Origin")
         same_origin = origin is None or origin in {f"http://{o}" for o in self.server.origins}
         return same_origin and self.headers.get(UPLOAD_HEADER) == "1"
-
-    def _app_ok(self) -> int:
-        """0 when the app may call, else the HTTP status to refuse with."""
-        if not self._host_ok() or self.headers.get("Origin") is not None:
-            return 403
-        given = self.headers.get("Authorization", "")
-        if not hmac.compare_digest(given.encode(), f"Bearer {self.server.token}".encode()):
-            return 401
-        return 0
-
-    # Responses ------------------------------------------------------------
-
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", CSP)
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _json(self, status: int, payload: dict) -> None:
-        self._send(status, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json")
-
-    def _error(self, status: int, error: str, message: str) -> None:
-        self._json(status, {"error": error, "message": message})
-
-    def _body(self, limit: int) -> bytes | None:
-        """The request body within ``limit``, or None after answering with an error."""
-        try:
-            length = int(self.headers.get("Content-Length", ""))
-            if length < 0:
-                raise ValueError
-        except ValueError:
-            self.close_connection = True
-            self._error(411, "length", "Content-Length is required")
-            return None
-        if length > limit:
-            self.close_connection = True
-            self._error(413, "too-long", f"a take is at most {MAX_TAKE_S} s")
-            return None
-        return self.rfile.read(length)
 
     # Routes ---------------------------------------------------------------
 
@@ -193,12 +138,7 @@ class _Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         path = url.path
         if path.startswith("/app/"):
-            refused = self._app_ok()
-            if refused:
-                return self._error(refused, "forbidden", "the app's API needs the session's token")
-            if path == "/app/v1/next":
-                return self._next(parse_qs(url.query))
-            return self._error(404, "not-found", "not found")
+            return self.app_get()
         if not self._host_ok():
             return self._error(403, "forbidden", "unknown Host")
         if path in FILES:
@@ -220,19 +160,7 @@ class _Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         path = url.path
         if path.startswith("/app/"):
-            body = self._body(MAX_BODY if path == "/app/v1/takes" else MAX_JSON)
-            if body is None:
-                return
-            refused = self._app_ok()
-            if refused:
-                return self._error(refused, "forbidden", "the app's API needs the session's token")
-            if path == "/app/v1/hello":
-                return self._hello(body)
-            if path == "/app/v1/takes":
-                return self._take(body)
-            if path == "/app/v1/events":
-                return self._event(body)
-            return self._error(404, "not-found", "not found")
+            return self.app_post()
         body = self._body(MAX_JSON)
         if body is None:
             return
@@ -243,6 +171,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/api/next": session.next,
             "/api/prev": session.prev,
             "/api/redo": session.redo_last,
+            "/api/skip": session.skip,
             "/api/mac/start": session.mac_start,
             "/api/mac/stop": session.mac_stop,
             "/api/mac/cancel": session.mac_cancel,
@@ -267,71 +196,6 @@ class _Handler(BaseHTTPRequestHandler):
     def _state(self) -> dict:
         return {"session": self.server.session.state(), "progress": self.server.progress(),
                 "link": self.server.link, "conditions": self.server.rows}
-
-    # The app ----------------------------------------------------------------
-
-    def _json_body(self, body: bytes) -> dict | None:
-        try:
-            value = json.loads(body.decode("utf-8") or "{}")
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            value = None
-        if not isinstance(value, dict):
-            self._error(400, "json", "expected a JSON object")
-            return None
-        return value
-
-    def _hello(self, body: bytes) -> None:
-        info = self._json_body(body)
-        if info is None:
-            return
-        try:
-            answer = self.server.session.hello(info)
-        except AppRefused as e:
-            self.server.link = {"status": "no_phone", "detail": str(e)}
-            return self._error(409, "no_phone", str(e))
-        self.server.link = {"status": "connected", "detail": str(info.get("version") or "")}
-        phone = self.server.session.phone
-        print(f"WalkieTalkey {info.get('version') or ''} connected" + (f"; phone: {phone.get('name')}" if phone else ""),
-              flush=True)  # fmt: skip
-        return self._json(200, answer)
-
-    def _next(self, query: dict) -> None:
-        try:
-            after = int(query.get("after", ["0"])[0])
-            wait = min(25.0, max(0.0, float(query.get("wait", [LONG_POLL_S])[0])))
-        except ValueError:
-            return self._error(400, "after", "after and wait must be numbers")
-        commands = self.server.session.next_commands(after, timeout=wait)
-        return self._json(200, {"commands": commands})
-
-    def _take(self, body: bytes) -> None:
-        raw = self.headers.get(TAKE_HEADER, "")
-        try:
-            meta = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-8"))
-            if not isinstance(meta, dict) or not raw:
-                raise ValueError
-        except (ValueError, UnicodeDecodeError):
-            return self._error(400, "meta", f"{TAKE_HEADER} must be base64url JSON")
-        try:
-            samples = audio.decode_pcm16(body)
-        except ValueError as e:
-            return self._error(400, "audio", str(e))
-        result = self.server.session.take(meta, samples)
-        note = f" ({', '.join(result['problems'])})" if result["problems"] else ""
-        what = "saved" if result["saved"] else "not saved"
-        redo = " (redo)" if result.get("replaced") else ""
-        print(f"{meta.get('prompt')} {self.server.session.condition.id}: {len(samples) / 16000:.1f} s "
-              f"{what}{redo}{note}", flush=True)  # fmt: skip
-        return self._json(200, result)
-
-    def _event(self, body: bytes) -> None:
-        ev = self._json_body(body)
-        if ev is None:
-            return
-        self.server.session.event(ev)
-        if ev.get("type") == "bye":
-            self.server.link = {"status": "gone", "detail": ""}
-        return self._json(200, {})
 
 
 # --- progress ---------------------------------------------------------------------

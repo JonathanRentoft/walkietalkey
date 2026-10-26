@@ -400,7 +400,7 @@ export const STAGE = {
   subject: "Mødet i morgen",
   to: "Mette Holm",
   newMessage: "Ny besked",
-  /** the hero's picture, for screen readers: concept B's hero and fn shot in one. TODO(copy) */
+  /** the hero's picture, for screen readers: concept B's hero and fn shot in one. */
   heroLabel:
     "En bærbar computer og en telefon. Du holder fn-tasten nede og taler, og computeren lytter. Først når du slipper, står teksten i mailen, og statuspillen siger Indsat.",
   privacyLabel:

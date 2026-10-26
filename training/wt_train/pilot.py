@@ -29,7 +29,9 @@ minutes, not after hours of recording.
     writes one self-contained HTML page: a table of the setups (WER, CER, term
     accuracy, speech level, peak, noise floor in the pauses, SNR, clipped clips,
     length), then every clip of each setup with its audio and a word diff. The page
-    goes to ``<work>/reports/pilot-<date>.html``, opens in the browser, and is logged
+    goes to ``<work>/reports/pilot-<date>.html``, opens in the browser (``--no-open``:
+    not; run 9: ``--json-out <file>`` also keeps the numbers per setup as JSON, for
+    Værkstedet), and is logged
     to MLflow as a run of kind ``pilot`` (``wt.change`` ``data``, tag ``wt.pilot``)
     with the numbers per setup (``iphone-whisper/wer``). A setup without takes is
     skipped with a note.
@@ -377,6 +379,8 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
     p.add_argument("--app-bin", type=Path, help="the WalkieTalkey binary (default: the installed app first)")
     p.add_argument("--out", type=Path, help="the page (default <work>/reports/pilot-<date>.html)")
     p.add_argument("--no-open", action="store_true", help="do not open the page in the browser")
+    p.add_argument("--json-out", type=Path,
+                   help="also write the comparison (every setup's numbers and notes) to this JSON file (Værkstedet)")
     a = p.parse_args(argv)
     names = None
     if a.setups:
@@ -432,6 +436,11 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
                           indent=2, ensure_ascii=False) + "\n", "pilot.json")
         run_id = r.id
 
+    if a.json_out:
+        _write_json(a.json_out, {"generated_at": when.isoformat(timespec="seconds"), "page": str(out),
+                                 "model": a.model, "app": app_name, "run_id": run_id,
+                                 "setups": result["setups"], "skipped": result["skipped"]})
+        log(f"comparison: {a.json_out}")
     log("")
     log(f"{'setup':<20} {'clips':>5} {'WER %':>6} {'CER %':>6} {'speech':>8} {'noise':>8} {'SNR':>6}  notes")
     for name, s in result["setups"].items():
@@ -443,6 +452,14 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
         webbrowser.open(out.resolve().as_uri())
     failed = sum(s["scores"]["failed"] for s in result["setups"].values())
     return {"exit_code": 1 if failed else 0, "page": out, "metrics": metrics, "run_id": run_id, **result}
+
+
+def _write_json(path: Path, data: dict) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 # --- wt-train pilot -------------------------------------------------------------------------
