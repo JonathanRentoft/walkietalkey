@@ -1,0 +1,31 @@
+---
+/* Run 8: the short FAQ (concept B's), with the link to the rest. The whispering question is a claim: marked
+   TODO(claim) in draft previews and left out of production. */
+import Claim from "../home/Claim.astro";
+import { CTA, FAQ, FEATURES } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+
+interface Props {
+  class?: string;
+}
+---
+<section class:list={["fp-faq", Astro.props.class]} aria-labelledby="fp-spoergsmaal">
+  <article class="fp-faq-in" data-feature="faq">
+    <div class="fp-faq-head">
+      <h2 class="fp-h2" id="fp-spoergsmaal">{FEATURES.faq.title}</h2>
+      <p class="fp-text">{FEATURES.faq.short}</p>
+      <p class="fp-more"><a href={PAGES.faq.path}>{CTA.allQuestions}</a></p>
+    </div>
+    <div class="fp-faq-list">
+      {FAQ.map((q, i) =>
+        q.claim ? (
+          <Claim as="div" what={q.claim}>
+            <details><summary>{q.q}</summary><p>{q.a}</p></details>
+          </Claim>
+        ) : (
+          <details open={i === 0}><summary>{q.q}</summary><p>{q.a}</p></details>
+        ),
+      )}
+    </div>
+  </article>
+</section>

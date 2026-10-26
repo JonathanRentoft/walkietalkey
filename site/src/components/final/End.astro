@@ -1,0 +1,31 @@
+---
+/* Run 8: the last call to action (concept B's): the app icon, the slogan, "Hent gratis" and the fine print.
+     mesh: on a dark band of FluidMesh in Nat that follows the pointer, calm in the middle behind the words (page 2's
+           place for it), one of the page's living backgrounds ([data-fp-bg], final.ts)
+     plain: on the page itself */
+import { AppIcon, ShinyButton } from "@walkietalkey/ui";
+import Live from "./Live";
+import { CTA, FINE_PRINT, SLOGAN } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+
+interface Props {
+  mesh?: boolean;
+  class?: string;
+}
+const { mesh = false } = Astro.props;
+---
+<section class:list={["fp-end", { "fp-end--mesh": mesh }, Astro.props.class]} data-theme={mesh ? "dark" : undefined} aria-labelledby="fp-slut">
+  <div class="fp-end-panel">
+    {mesh && (
+      <div class="fp-end-bg" data-fp-bg="mesh" data-paused>
+        <Live client:visible kind="mesh" palette="nat" scrim="center" scrimAmount={1} />
+      </div>
+    )}
+    <div class="fp-end-in">
+      <AppIcon size={88} className="fp-end-icon" />
+      <p class="fp-end-title" id="fp-slut">{SLOGAN}</p>
+      <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+      <p class="fp-fine">{FINE_PRINT}</p>
+    </div>
+  </div>
+</section>

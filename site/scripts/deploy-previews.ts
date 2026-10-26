@@ -1,8 +1,8 @@
-/* Builds the front page's three concepts as draft previews and deploys each to its own Cloudflare Pages preview branch
-   of the project walkietalkey-site (run 6), so the owner can compare them. Production is never touched: the branches
-   are concept-a, concept-b and concept-c, never main, and nothing here runs `wrangler deploy` (walkietalkey.com and
+/* Builds the front page's three final pages as draft previews and deploys each to its own Cloudflare Pages preview
+   branch of the project walkietalkey-site (run 8), so the owner can pick one. Production is never touched: the
+   branches are final-1, final-2 and final-3, never main, and nothing here runs `wrangler deploy` (walkietalkey.com and
    www are Workers on custom domains) or changes the project's settings.
-   Usage: bun scripts/deploy-previews.ts [concept ...]   (default: all three; needs `wrangler login`)
+   Usage: bun scripts/deploy-previews.ts [page ...]   (default: all three; needs `wrangler login`)
    Each build goes to .concepts/<concept>/ with SITE_CONCEPT=<concept> and SITE_DRAFT=1 (lib/build.ts). */
 import { execFileSync } from "node:child_process";
 import {
@@ -20,7 +20,7 @@ const wanted: Concept[] = process.argv.slice(2).length
 
 for (const c of wanted) {
   const branch = previewBranch(c);
-  if (!/^concept-[abc]$/.test(branch))
+  if (!/^final-[123]$/.test(branch))
     throw new Error(`refusing to deploy to the branch "${branch}"`);
   console.log(`\n== ${c}: build`);
   const out = buildConcept(c, true);

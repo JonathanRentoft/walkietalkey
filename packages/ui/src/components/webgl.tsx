@@ -75,16 +75,30 @@ export interface FluidMeshProps {
   speed?: number;
   /** Follow the pointer. Default true. */
   interactive?: boolean;
+  /** Run 8: hold the mesh on its last frame, e.g. while another surface on the page is the one that moves. */
+  paused?: boolean;
   as?: Tag;
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
 }
 
+/** Run 8: the `paused` prop, applied to the running surface without building a new context. */
+function usePaused(paused: boolean | undefined) {
+  const handle = useRef<GLHandle | null>(null);
+  const initial = useRef(!!paused);
+  initial.current = !!paused;
+  useEffect(() => {
+    if (handle.current) handle.current.setPaused(!!paused);
+  }, [paused]);
+  return { handle, initial };
+}
+
 export function FluidMesh(props: FluidMeshProps) {
   const wrap = useRef<HTMLElement>(null),
     cv = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
+  const live = usePaused(props.paused);
   const palette = props.palette || "auto",
     scrim = props.scrim || "none";
   const deps = [
@@ -111,6 +125,7 @@ export function FluidMesh(props: FluidMeshProps) {
     }
     const g = mountGL(el, c, FRAG_MESH, {
       still: reduced,
+      paused: live.initial.current,
       lag: props.lag,
       speed: props.speed,
       interactive: props.interactive,
@@ -146,7 +161,11 @@ export function FluidMesh(props: FluidMeshProps) {
       fallbackBg(el, names());
       return undefined;
     }
-    return g.cleanup;
+    live.handle.current = g;
+    return () => {
+      live.handle.current = null;
+      g.cleanup();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   const El = (props.as || "div") as ElementType;
@@ -201,6 +220,8 @@ export interface LightWavesProps {
   grain?: number;
   speed?: number;
   interactive?: boolean;
+  /** Run 8: hold the waves on their last frame, e.g. while another surface on the page is the one that moves. */
+  paused?: boolean;
   as?: Tag;
   className?: string;
   style?: CSSProperties;
@@ -211,6 +232,7 @@ export function LightWaves(props: LightWavesProps) {
   const wrap = useRef<HTMLElement>(null),
     cv = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
+  const live = usePaused(props.paused);
   const palette = props.palette || "morgengry";
   useEffect(() => {
     const el = wrap.current,
@@ -219,6 +241,7 @@ export function LightWaves(props: LightWavesProps) {
     const n = WAVES[palette] || WAVES.morgengry;
     const g = mountGL(el, c, FRAG_WAVES, {
       still: reduced,
+      paused: live.initial.current,
       speed: props.speed,
       lag: 0.05,
       t0: 3,
@@ -251,7 +274,11 @@ export function LightWaves(props: LightWavesProps) {
       fallbackBg(el, ["night", n[2], "night"]);
       return undefined;
     }
-    return g.cleanup;
+    live.handle.current = g;
+    return () => {
+      live.handle.current = null;
+      g.cleanup();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     palette,

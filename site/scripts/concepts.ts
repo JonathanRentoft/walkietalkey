@@ -1,7 +1,7 @@
-/* Run 6: builds the front page's concepts (lib/build.ts) into .concepts/<name>/, for the tests, the screenshots and the
-   preview deploys. A draft build (the default) also shows the unmeasured claims, marked TODO(claim); --prod builds
+/* Builds the front page's final pages (run 8, lib/build.ts) into .concepts/<name>/, for the tests, the screenshots and
+   the preview deploys. A draft build (the default) also shows the unmeasured claims, marked TODO(claim); --prod builds
    what production would show into .concepts/<name>-prod/.
-   Usage: bun scripts/concepts.ts [--prod] [concept ...]   (default: all three) */
+   Usage: bun scripts/concepts.ts [--prod] [page ...]   (default: all three) */
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { join, resolve } from "node:path";

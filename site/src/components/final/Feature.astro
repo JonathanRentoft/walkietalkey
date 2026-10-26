@@ -1,0 +1,40 @@
+---
+/* Run 8: one feature of the production front page, given room: its demo (the design system's ShowcaseCard with the
+   production card's scene, final/look.ts) beside or above its words (the production card's title and text, and the
+   longer text from lib/features.ts). The demo hydrates when it comes into view; its surface is one of the page's
+   living backgrounds ([data-fp-bg], final.ts), so it holds still while another background is the one that moves.
+     layout  split: the demo and the words side by side on a wide screen (flip puts the demo on the right)
+             stack: the words under the demo, for two or three in a row
+             wide:  a wide demo with the words in a row under it */
+import { ShowcaseCard } from "@walkietalkey/ui";
+import Claim from "../home/Claim.astro";
+import { SHOWCASE, type ShowcaseKey } from "../../lib/features";
+import { LOOK } from "./look";
+
+interface Props {
+  id: ShowcaseKey;
+  layout?: "split" | "stack" | "wide";
+  flip?: boolean;
+  /** the demo's aspect ratio, if the layout wants another one than the production card's */
+  ratio?: string;
+  class?: string;
+}
+const { id, layout = "split", flip = false, ratio } = Astro.props;
+const f = SHOWCASE[id];
+const look = LOOK[id];
+---
+<article class:list={["fp-feat", `fp-feat--${layout}`, { "fp-feat--flip": flip }, Astro.props.class]} data-showcase={id} id={`funktion-${id}`}>
+  <div class="fp-feat-demo" data-fp-bg="card" data-paused>
+    <ShowcaseCard client:visible scene={f.scene} {...look} ratio={ratio ?? look.ratio} />
+  </div>
+  <div class="fp-feat-copy">
+    <h3 class="fp-feat-title">{f.title}</h3>
+    <p class="fp-feat-text">{f.text}</p>
+    {f.body && (
+      <p class="fp-feat-body">
+        {f.body}
+        {f.claim && <> <Claim what={f.claim.what}>{f.claim.text}</Claim></>}
+      </p>
+    )}
+  </div>
+</article>

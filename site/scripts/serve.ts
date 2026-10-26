@@ -1,5 +1,6 @@
 /* Serves dist/ the way Cloudflare Pages does: /hent answers hent.html, /x.html redirects to /x, unknown paths get
-   404.html, and the headers from _headers are applied. Usage: bun scripts/serve.ts [port] [folder, default dist] */
+   404.html, the headers from _headers are applied, and text is sent compressed to a client that accepts it (run 8:
+   so a local Lighthouse run weighs the page as Pages delivers it). Usage: bun scripts/serve.ts [port] [folder] */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
@@ -78,6 +79,15 @@ const server = Bun.serve({
     for (const r of rules)
       if (r.re.test(url.pathname))
         for (const [k, v] of r.headers) headers.set(k, v);
+    const type = headers.get("content-type") || "";
+    if (
+      /gzip/.test(req.headers.get("accept-encoding") || "") &&
+      /^(text\/|application\/(json|xml|manifest)|image\/svg)/.test(type)
+    ) {
+      headers.set("content-encoding", "gzip");
+      headers.set("vary", "accept-encoding");
+      return new Response(Bun.gzipSync(readFileSync(f)), { status, headers });
+    }
     return new Response(Bun.file(f), { status, headers });
   },
 });
