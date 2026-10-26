@@ -10,17 +10,23 @@ const only = process.env.CONCEPT ? pickConcept(process.env.CONCEPT) : null;
 const RUN = only ? [only] : CONCEPTS;
 export const conceptPort = (c: Concept) => PORT + CONCEPTS.indexOf(c);
 
+/* The final pages draw LightWaves and FluidMesh with WebGL. CI's runners have no GPU, and Chrome no longer falls back
+   to software WebGL by itself; this flag lets it (SwiftShader), so the backgrounds draw there too. */
+const WEBGL = { args: ["--enable-unsafe-swiftshader"] };
+
 const DEVICES = {
   desktop: {
     ...devices["Desktop Chrome"],
     channel: "chrome",
     viewport: { width: 1440, height: 900 },
+    launchOptions: WEBGL,
   },
   mobile: {
     ...devices["Pixel 7"],
     channel: "chrome",
     viewport: { width: 390, height: 844 },
     screen: { width: 390, height: 844 },
+    launchOptions: WEBGL,
   },
 };
 
