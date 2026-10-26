@@ -67,6 +67,9 @@ Scores on the owner's test split and on FLEURS da_dk test are in
 
 ## Credit and licence
 
+- **This fine-tune**: Copyright 2026 Jonathan Rentoft and the WalkieTalkey
+  contributors, made with the WalkieTalkey fine-tuning workbench, under the
+  Apache License 2.0.
 - **Edda v0.2** by the Alexandra Institute (CoRal project), released by Danish
   Foundation Models under the Apache License 2.0. This file is a derivative of
   its weights and carries the same licence.

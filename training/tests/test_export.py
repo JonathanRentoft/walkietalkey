@@ -68,6 +68,8 @@ def test_the_model_card_credits_edda_and_whisper_and_carries_the_terms():
     assert "{{" not in card
     assert "Alexandra Institute (CoRal project), released by Danish" in card and "Apache License 2.0" in card
     assert "OpenAI" in card and "MIT" in card
+    # run 8: the fine-tune's own copyright holder
+    assert "Copyright 2026 Jonathan Rentoft" in card
     assert "impersonate a person" in card and "Attachment A" in card
     assert "decision 18.7" in card
     assert "never uploaded" in card
