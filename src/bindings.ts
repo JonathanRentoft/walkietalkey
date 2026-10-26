@@ -757,6 +757,18 @@ async wtRunsFromDiskImage() : Promise<boolean> {
     return await TAURI_INVOKE("wt_runs_from_disk_image");
 },
 /**
+ * "Flyt til Programmer": moves the app to /Applications, opens it from there
+ * and quits this copy (DESK-114). macOS only.
+ */
+async wtMoveToApplications() : Promise<Result<null, MoveError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("wt_move_to_applications") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Indstillinger › Model › Versioner (run 6).
  */
 async wtModelVersions() : Promise<ModelVersion[]> {
@@ -1496,6 +1508,18 @@ sha256: string | null } } |
  * in a shared cache. Nothing to download.
  */
 "Local"
+/**
+ * Why the move did not happen; the window shows the Danish fallback.
+ */
+export type MoveError = 
+/**
+ * This user may not write to /Applications (a standard user).
+ */
+{ kind: "not_writable" } | 
+/**
+ * Anything else; the message is for the log.
+ */
+{ kind: "failed"; message: string }
 export type ModelUnloadTimeout = 
 /**
  * WalkieTalkey keeps the speech model loaded by default (DESK-45).

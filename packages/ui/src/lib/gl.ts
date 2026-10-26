@@ -43,6 +43,8 @@ export interface GLOptions {
   grain?: number;
   t0?: number;
   still?: boolean;
+  /** Run 8: start paused (one still frame); setPaused() on the handle pauses and resumes from outside. */
+  paused?: boolean;
   interactive?: boolean;
   setup?: (gl: WebGLRenderingContext, loc: Loc, wrap: HTMLElement) => void;
   frame?: (gl: WebGLRenderingContext, loc: Loc, t: number) => void;
@@ -52,6 +54,8 @@ export interface GLHandle {
   gl: WebGLRenderingContext;
   loc: Loc;
   redraw: () => void;
+  /** Run 8: holds the loop on its last frame (true) or lets it run again (false), keeping the context. */
+  setPaused: (paused: boolean) => void;
   cleanup: () => void;
 }
 
@@ -130,7 +134,8 @@ export function mountGL(
     H = 1,
     raf = 0,
     running = false,
-    visible = true;
+    visible = true,
+    held = !!opts.paused;
   const start = performance.now();
   const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5, amt: 0, tamt: 0 };
   const lag = opts.lag == null ? 0.06 : opts.lag;
@@ -163,7 +168,7 @@ export function mountGL(
     raf = requestAnimationFrame(loop);
   }
   function play() {
-    if (running || opts.still || !visible || document.hidden) return;
+    if (running || held || opts.still || !visible || document.hidden) return;
     running = true;
     raf = requestAnimationFrame(loop);
   }
@@ -219,6 +224,11 @@ export function mountGL(
     loc,
     redraw: () => {
       draw(performance.now());
+    },
+    setPaused: (p: boolean) => {
+      held = p;
+      if (p) pause();
+      else play();
     },
     cleanup: () => {
       pause();

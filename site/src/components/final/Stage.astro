@@ -1,0 +1,67 @@
+---
+/* Run 8: the hero's set, concept B's lit stage: a laptop and a phone on the floor of the hero, built from the design
+   system's parts (LaptopFrame, PhoneFrame, PhoneApp, DictationPill, Keycap) and rendered to static HTML. It is drawn
+   once at a fixed design size (1800 x 1000 world px) and filmed by one camera (final.css, .fp-world), a wide frame on a
+   wide screen and a tall one on a phone, so it has its final size before anything loads.
+
+   It plays B's fn shot once, by time, in CSS: the fn key goes down and the pill listens, the key comes up and the pill
+   cleans up, and only then does the line land in the mail (words land at release, DESK-46). Elements with fp-k show in
+   one phase each (fp-k-idle, -hold, -rel, -land); their base style is the finished state, so with reduced motion the
+   stage stands finished, and without JavaScript it plays all the same. */
+import {
+  DictationPill,
+  Keycap,
+  LaptopFrame,
+  Logo,
+  PhoneApp,
+  PhoneFrame,
+} from "@walkietalkey/ui";
+import { SAMPLES, STAGE } from "../../lib/features";
+---
+<div class="fp-view" data-stage role="img" aria-label={STAGE.heroLabel}>
+  <div class="fp-rig">
+    <div class="fp-world" aria-hidden="true">
+      <span class="fp-shade fp-shade--laptop"></span>
+      <span class="fp-shade fp-shade--phone"></span>
+      <span class="fp-shade fp-shade--key"></span>
+
+      <div class="fp-laptop">
+        <LaptopFrame width={880}>
+          <div class="wt-desk">
+            <div class="wt-mbar">
+              <span class="wt-mbar-left"><i class="wt-mbar-dot"></i><b>Post</b><span>Arkiv</span><span>Rediger</span><span>Vis</span></span>
+              <span class="wt-mbar-right">
+                <span class="wt-mbar-wt"><Logo variant="mark" tone="ink" size={11} decorative /><i class="fp-live fp-k fp-k-hold"></i></span>
+                <span>tor. 22. okt. 10.24</span>
+              </span>
+            </div>
+            <div class="wt-win fp-win">
+              <div class="wt-win-bar"><span class="wt-win-dots"><i></i><i></i><i></i></span><span class="wt-win-title">{STAGE.newMessage}</span></div>
+              <div class="wt-win-field"><span>Til:</span><b class="wt-win-chip">{STAGE.to}</b></div>
+              <div class="wt-win-field"><span>Emne:</span><b>{STAGE.subject}</b></div>
+              <div class="wt-win-body fp-body">
+                <i class="wt-caret fp-caret fp-k fp-k-pre"></i>
+                <span class="fp-line fp-k fp-k-paste" data-stage-line>{SAMPLES.mail}</span>
+                <i class="wt-caret fp-caret-end fp-k fp-k-land"></i>
+              </div>
+            </div>
+            <div class="fp-pills">
+              <DictationPill state="idle" className="fp-k fp-k-idle" />
+              <DictationPill state="listening" seconds={3} className="fp-k fp-k-hold" />
+              <DictationPill state="processing" className="fp-k fp-k-rel" />
+              <DictationPill state="pasted" className="fp-k fp-k-land" />
+            </div>
+          </div>
+        </LaptopFrame>
+      </div>
+
+      <div class="fp-phone">
+        <PhoneFrame width={260} screen="dark">
+          <PhoneApp state="idle" device="MacBook" />
+        </PhoneFrame>
+      </div>
+
+      <div class="fp-key"><Keycap size={112}>fn</Keycap></div>
+    </div>
+  </div>
+</div>

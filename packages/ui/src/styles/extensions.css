@@ -251,3 +251,41 @@ button.wt-app-dev {
     transition: none;
   }
 }
+
+/* Run 8: BarField's interactive mode stands still at the low point of its wave until the visitor moves; its script
+   sets each bar's transform while it responds and removes it once the bars have settled. */
+.wt-barfield--interactive .wt-bf {
+  animation: none;
+  transform: scaleY(calc(1 - var(--wt-int)));
+}
+.wt-barfield--interactive.wt-barfield--y .wt-bf {
+  transform: scaleX(calc(1 - var(--wt-int)));
+}
+/* Run 8: a paused BarField holds its CSS motion */
+.wt-barfield--paused .wt-bf {
+  animation-play-state: paused;
+}
+
+/* Run 8: SceneMixed's release mode. The pill listens over the empty card while you talk; then the sentence lands
+   whole, with the paste highlight the app's own text gets. */
+.wt-sc-mixed--release .wt-sc-card {
+  min-height: 150px;
+}
+.wt-sc-mixed-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+}
+.wt-sc-mixed-text--in {
+  border-radius: 0.2em;
+  animation: wt-paste 1.1s var(--ease-flow) both;
+}
+.wt-sc-mixed--release .wt-tw {
+  transition-duration: var(--duration-base);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-sc-mixed-text--in {
+    animation: none;
+  }
+}

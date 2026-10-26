@@ -19,6 +19,15 @@ def test_wer_ignores_case_punctuation_and_number_spelling():
     assert row["sub"] + row["del"] + row["ins"] == 0 and row["char_errors"] == 0
 
 
+def test_wer_scores_the_same_speech_alike_however_it_is_written():
+    # Run 8: FLEURS writes fractions, abbreviations and hyphenated compounds the model writes otherwise.
+    row = score_clip("a", "Hjemkomst-chok (det måler 29¾ tommer) e.Kr.",
+                     "Hjemkomstchok, der måler 29 trefjerdedele tommer efter Kristi fødsel")
+    assert (row["ref_norm"], row["hyp_norm"]) == ("hjemkomstchok det måler niogtyve tre fjerdedele tommer efter kristus",
+                                                  "hjemkomstchok der måler niogtyve tre fjerdedele tommer efter kristus")
+    assert (row["sub"], row["del"], row["ins"]) == (1, 0, 0)
+
+
 def test_wer_and_cer_count_errors():
     row = score_clip("a", "Hej med dig", "hej med mig")
     assert (row["sub"], row["del"], row["ins"], row["ref_words"]) == (1, 0, 0, 3)

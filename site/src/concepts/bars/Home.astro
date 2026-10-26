@@ -1,0 +1,69 @@
+---
+/* Run 8, page 2: bars. Two ways in. BarField stands still behind the stage until the visitor moves, and answers the
+   pointer and the scroll. The features follow in two chapters, by where you talk (concept B's own words): at your
+   Mac or pc (the fn key, and what it writes: the self-correction, Danish and English, your own words) and in the
+   phone (the button, the notification, the computer you sit at). The intro stays beside them while they pass, with
+   an index of the seven. Getting started and the price come next, on the bars of light; then the lights go down
+   for privacy, the questions, and a last band of FluidMesh in Nat that follows the pointer. */
+import Header from "../../components/Header.astro";
+import End from "../../components/final/End.astro";
+import Faq from "../../components/final/Faq.astro";
+import Feature from "../../components/final/Feature.astro";
+import Hero from "../../components/final/Hero.astro";
+import Intro from "../../components/final/Intro.astro";
+import Privacy from "../../components/final/Privacy.astro";
+import Start from "../../components/final/Start.astro";
+import { KICKER, SHOWCASE, type ShowcaseKey } from "../../lib/features";
+import "../../components/final/final.css";
+import "./bars.css";
+
+const CHAPTERS: { label: string; keys: ShowcaseKey[] }[] = [
+  { label: KICKER.fn, keys: ["fn", "corrections", "mixed", "words"] },
+  { label: KICKER.phone, keys: ["phone", "notify", "devices"] },
+];
+---
+<script is:inline>document.documentElement.classList.add("fp-js")</script>
+<Header current="home" />
+<main id="indhold" class="fp-main fb">
+  <Hero bg="bars" how="#funktioner" />
+
+  <section class="fb-feats" aria-labelledby="funktioner">
+    <div class="fp-wrap fb-grid">
+      <div class="fb-side">
+        <Intro align="start">
+          <nav class="fb-index" aria-labelledby="funktioner">
+            {CHAPTERS.map((c) => (
+              <div class="fb-index-group">
+                <p class="fp-kicker">{c.label}</p>
+                <ol>
+                  {c.keys.map((k) => <li><a href={`#funktion-${k}`}>{SHOWCASE[k].title}</a></li>)}
+                </ol>
+              </div>
+            ))}
+          </nav>
+        </Intro>
+      </div>
+      <div class="fb-list">
+        {CHAPTERS.map((c) => (
+          <section class="fb-chapter" aria-label={c.label}>
+            <p class="fb-chapter-label" aria-hidden="true">{c.label}</p>
+            {c.keys.map((k) => (
+              <Feature id={k} layout="stack" ratio={k === "phone" ? "4 / 3" : k === "notify" || k === "corrections" || k === "mixed" ? "16 / 10" : undefined} />
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <Start class="fb-get" />
+  <Privacy bg="light" class="fb-privacy" />
+  <Faq class="fb-faq" />
+  <End mesh class="fb-end" />
+</main>
+<script>
+  import { run } from "../../components/final/final";
+  import { follow } from "./index";
+  run();
+  follow();
+</script>

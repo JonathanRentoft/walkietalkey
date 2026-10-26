@@ -672,8 +672,8 @@
     "micPermissionDeniedTitle": "Mikrofonadgang nægtet",
     "micPermissionDenied": {
       "generic": "Mikrofonadgang blev nægtet af operativsystemet. Giv venligst mikrofontilladelse i dine systemindstillinger.",
-      "windows": "Aktivér mikrofonadgang under Indstillinger → Privatliv og sikkerhed → Mikrofon (inklusive adgang for skrivebordsapps).",
-      "macos": "Giv mikrofonadgang under Systemindstillinger → Privatliv og sikkerhed → Mikrofon.",
+      "windows": "Aktivér mikrofonadgang under Indstillinger → Beskyttelse af personlige oplysninger og sikkerhed → Mikrofon (inklusive adgang for skrivebordsapps).",
+      "macos": "Giv mikrofonadgang under Systemindstillinger → Anonymitet og sikkerhed → Mikrofon.",
       "linux": "Giv mikrofonadgang i dit systems lyd- eller privatlivsindstillinger."
     },
     "noInputDeviceTitle": "Ingen mikrofon fundet",
@@ -1063,6 +1063,15 @@
       "failed": "Kunne ikke søge efter opdateringer. Prøv igen senere.",
       "fromDiskImage": "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra."
     },
+    "move": {
+      "title": "Flyt WalkieTalkey til Programmer",
+      "body": "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv derfra. Flyt den til Programmer, så åbner den igen derfra og holder sig opdateret.",
+      "move": "Flyt til Programmer",
+      "notNow": "Ikke nu",
+      "moving": "Flytter…",
+      "notWritable": "Din bruger må ikke lægge programmer i Programmer, så WalkieTalkey kan ikke flytte sig selv. Afslut den, og træk den over i Programmer. Finder beder om en administrators adgangskode.",
+      "failed": "WalkieTalkey kunne ikke flytte sig selv. Afslut den, træk den over i Programmer, og åbn den derfra."
+    },
     "advanced": {
       "intro": "Indstillinger, de fleste aldrig får brug for.",
       "network": "Relæ-adresse",
@@ -1110,7 +1119,7 @@
       "version": "Version",
       "credits": "Licenser og kreditering",
       "credit": {
-        "walkietalkey": "Apache-2.0. Gratis for alle, også virksomheder.",
+        "walkietalkey": "© 2026 Jonathan Rentoft og WalkieTalkeys bidragydere. Apache-2.0. Gratis for alle, også virksomheder.",
         "handy": "Dele af skrivebordsappens kode. CJ Pais, MIT.",
         "transcribe": "Kører talemodellerne på computeren, sammen med ggml. MIT.",
         "edda": "Dansk talemodel fra Alexandra Instituttet, bygget på OpenAI Whisper large-v3-turbo. Apache-2.0.",

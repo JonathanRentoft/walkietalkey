@@ -2,7 +2,7 @@
   "_comment": [
     "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
     "Accuracy: WER on FLEURS da_dk test (930 clips), Q8_0, language da, timestamps auto, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
-    "Files download from the GitHub release models-v1 (models/release.sh); description_da is draft UI copy."
+    "Files download from the GitHub release models-v1 (models/release.sh); description_da is UI copy the owner approved (run 8)."
   ],
   "model": {
     "id": "ekko-v1-tiny",
@@ -33,7 +33,7 @@
       }
     }
   },
-  "description_da": "Hurtig dansk talemodel til computere uden grafikkort. TODO(copy)",
+  "description_da": "Hurtig dansk talemodel til computere uden grafikkort.",
   "results": {
     "ekko-v1-tiny": {
       "accuracy": {

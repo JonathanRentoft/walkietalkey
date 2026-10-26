@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type ElementType,
   type ReactNode,
+  type RefObject,
 } from "react";
 import {
   useAutoBlur,
@@ -580,16 +581,181 @@ export interface BarFieldProps {
   intensity?: number;
   /** Delay between bars in s. Default 0.08. */
   stagger?: number;
+  /** Run 8: stand still until the visitor moves. The bars near the pointer (or a touch) rise, scrolling sends a
+      wave through them, and they settle back to still. Never moves on its own; nothing with reduced motion. */
+  interactive?: boolean;
+  /** Run 8: hold the motion, e.g. while another surface on the page is the one that moves. */
+  paused?: boolean;
   grain?: boolean;
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
 }
 
+/** How long the bars take to come to rest once the surface is paused, in ms. */
+const SETTLE = 160;
+
+/** Run 8: BarField's interactive mode. Moves the bars only while something moves them, then stops its frames. */
+function useBarResponse(
+  ref: RefObject<HTMLDivElement>,
+  on: boolean,
+  paused: boolean,
+  rest: number,
+  dir: "x" | "y",
+  n: number,
+): void {
+  const held = useRef(paused);
+  held.current = paused;
+  const wakeRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (paused) wakeRef.current();
+  }, [paused]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return undefined;
+    const bars = Array.from(el.querySelectorAll<HTMLElement>(".wt-bf"));
+    const lift = new Float32Array(bars.length);
+    const axis = dir === "y" ? "scaleX(" : "scaleY(";
+    let px = 0.5,
+      near = 0,
+      moved = 0,
+      wave = 0,
+      phase = 0,
+      raf = 0,
+      last = 0,
+      visible = true,
+      lastY = window.scrollY;
+    function reset() {
+      lift.fill(0);
+      for (const b of bars) b.style.transform = "";
+    }
+    let heldAt = 0;
+    let snap: Float32Array | null = null;
+    function frame(now: number) {
+      const dt = Math.min(64, now - last) / 1000;
+      last = now;
+      /* paused (another surface is the one moving now): the bars ease to rest within SETTLE ms, however slow
+         the frames are, and stop */
+      if (held.current) {
+        if (!snap) {
+          snap = lift.slice();
+          heldAt = now;
+        }
+        const k = Math.max(0, 1 - (now - heldAt) / SETTLE);
+        const e = k * k * (3 - 2 * k);
+        for (let i = 0; i < bars.length; i++) {
+          lift[i] = snap[i] * e;
+          bars[i].style.transform =
+            axis + (rest + (1 - rest) * lift[i]).toFixed(4) + ")";
+        }
+        if (k > 0) raf = requestAnimationFrame(frame);
+        else {
+          raf = 0;
+          near = wave = 0;
+          snap = null;
+          reset();
+        }
+        return;
+      }
+      snap = null;
+      /* the pointer's pull fades once it stops, and the wave dies out */
+      if (now - moved > 380) near *= Math.exp(-dt / 0.32);
+      wave *= Math.exp(-dt / 0.55);
+      phase += dt * 5.2;
+      const follow = 1 - Math.exp(-dt / 0.11);
+      let busy = near > 0.003 || wave > 0.003;
+      for (let i = 0; i < bars.length; i++) {
+        const d = ((i + 0.5) / bars.length - px) / 0.075;
+        const target = Math.max(
+          near * Math.exp(-0.5 * d * d),
+          wave * (0.5 + 0.5 * Math.sin(phase - i * 0.42)),
+        );
+        lift[i] += (target - lift[i]) * follow;
+        if (lift[i] > 0.003) busy = true;
+        bars[i].style.transform =
+          axis + (rest + (1 - rest) * lift[i]).toFixed(4) + ")";
+      }
+      if (busy) raf = requestAnimationFrame(frame);
+      else {
+        raf = 0;
+        reset();
+      }
+    }
+    function wake() {
+      if (raf) return;
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    }
+    /* a pause while the bars are up lets them settle; at rest there is nothing to do */
+    wakeRef.current = () => {
+      if (lift.some((v) => v > 0.003)) wake();
+    };
+    const live = () => visible && !held.current && !document.hidden;
+    function onPointer(e: PointerEvent) {
+      if (!live()) return;
+      const r = el!.getBoundingClientRect();
+      if (
+        e.clientX < r.left ||
+        e.clientX > r.right ||
+        e.clientY < r.top ||
+        e.clientY > r.bottom
+      )
+        return;
+      px =
+        dir === "y"
+          ? (e.clientY - r.top) / (r.height || 1)
+          : (e.clientX - r.left) / (r.width || 1);
+      near = 1;
+      moved = performance.now();
+      wake();
+    }
+    function onScroll() {
+      const y = window.scrollY,
+        dy = y - lastY;
+      lastY = y;
+      if (!live() || !dy) return;
+      wave = Math.min(1, wave + Math.abs(dy) / 480);
+      phase += dy * 0.02;
+      wake();
+    }
+    window.addEventListener("pointermove", onPointer, { passive: true });
+    window.addEventListener("pointerdown", onPointer, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const io =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver((es) => {
+            visible = es[0].isIntersecting;
+          })
+        : null;
+    if (io) io.observe(el);
+    return () => {
+      window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("scroll", onScroll);
+      if (io) io.disconnect();
+      cancelAnimationFrame(raf);
+      wakeRef.current = () => {};
+      reset();
+    };
+  }, [ref, on, rest, dir, n]);
+}
+
 export function BarField(props: BarFieldProps) {
   const n = Math.max(1, Math.min(80, props.bars || 36));
   const dir = props.direction === "y" ? "y" : "x",
     mode = props.mode || "wave";
+  const ref = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+  const interactive = !!props.interactive;
+  const intensity = props.intensity == null ? 0.5 : props.intensity;
+  useBarResponse(
+    ref,
+    interactive && !reduced,
+    !!props.paused,
+    1 - intensity,
+    dir,
+    n,
+  );
   const s = pal(props.palette).stops;
   const from = props.from || s[s.length - 1],
     to = props.to || s[0];
@@ -619,10 +785,13 @@ export function BarField(props: BarFieldProps) {
   }
   return (
     <div
+      ref={ref}
       className={cx(
         "wt-barfield",
         "wt-barfield--" + dir,
         "wt-barfield--" + mode,
+        interactive && "wt-barfield--interactive",
+        props.paused && !interactive && "wt-barfield--paused",
         props.className,
       )}
       style={Object.assign(
@@ -630,7 +799,7 @@ export function BarField(props: BarFieldProps) {
           "--wt-from": "var(--" + from + ")",
           "--wt-to": "var(--" + to + ")",
           "--wt-dur": (props.duration || 2400) + "ms",
-          "--wt-int": props.intensity == null ? 0.5 : props.intensity,
+          "--wt-int": intensity,
           "--wt-bf-gap": (props.gap == null ? 6 : props.gap) + "px",
         },
         props.style,

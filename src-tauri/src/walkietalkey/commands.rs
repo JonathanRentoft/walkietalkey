@@ -146,7 +146,7 @@ pub fn wt_history_copy(app: AppHandle, id: i64) -> Result<(), String> {
     let (conn, _) = history_db(&app)?;
     let text = super::history::text_of(&conn, id)
         .map_err(|e| e.to_string())?
-        .ok_or("Teksten findes ikke længere.")?; // TODO(copy)
+        .ok_or("Teksten findes ikke længere.")?;
     crate::clipboard::write_text(&app, &text)
 }
 

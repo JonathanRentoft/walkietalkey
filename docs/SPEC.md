@@ -346,6 +346,7 @@ Om: version, licenser og kreditering (Handy, transcribe.cpp, Edda, Ekko PnC, ONN
 | DESK-111 | Checks at start and every 6 hours. Downloads in the background and installs on next restart, with "Genstart nu" in the menu. A company can turn this off (Appendix B). |
 | DESK-112 | Beta channel for people who want early builds. Because GitHub's "latest" skips pre-releases, beta has its own manifest at `https://walkietalkey.com/updates/beta.json`, written by the release workflow. |
 | DESK-113 | Run 6: a Mac app opened straight from its disk image runs from a read-only copy (App Translocation) that the updater cannot replace. The main window then says "WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra.", and Hent's first-open steps say to open it from Programmer. |
+| DESK-114 | Run 8: "Flyt til Programmer". When the Mac app runs from its disk image (DESK-113), a dialog at start, over the onboarding as over the main window, offers the move with one primary button ("Flyt til Programmer") and a quiet "Ikke nu"; after "Ikke nu" the DESK-113 banner stays as a reminder with the same button. The move copies the running bundle to `/Applications` with `ditto` (signatures and resources intact), moves a copy already there to the Trash (never deletes it), removes the quarantine attribute from the copy, and relaunches from Programmer: a small detached helper waits until this process has exited (the single-instance plugin would otherwise hand the launch back to it), opens the copy and ejects the disk image (a failed eject is ignored). When `/Applications` is not writable (a standard user), the dialog says so in Danish and keeps the manual instruction; no admin prompt. |
 
 ### 6.17 Accessibility and localisation
 
@@ -426,7 +427,7 @@ The owner records sentences for fine-tuning Edda on the phone, often whispered, 
 
 | ID | Requirement |
 |---|---|
-| PHONE-50 | While a computer runs a training session, its `training_prompt` replaces the main screen with the training screen: the sentence in large text (a long exam paragraph scrolls), the voice to use ("Hvisk" or "Almindelig stemme"), the progress, the last take's check with "Optag forrige igen", "Afslut", and PhoneApp's button below, which works as on the main screen (PHONE-26). A press records through the dictation capture (PHONE-30: the warm microphone and its pre-roll, the +15 dB gain and limiter, 16 kHz PCM16) and sends the take like a dictation (PHONE-31, PHONE-32), started with `audio_start_training` for the prompt, every resend too. The computer that sent the prompt becomes the target. A saved take shows "Gemt" instead of "Klar på". All training strings are drafts (`TODO(copy)`). |
+| PHONE-50 | While a computer runs a training session, its `training_prompt` replaces the main screen with the training screen: the sentence in large text (a long exam paragraph scrolls), the voice to use ("Hvisk" or "Almindelig stemme"), the progress, the last take's check with "Optag forrige igen", "Afslut", and PhoneApp's button below, which works as on the main screen (PHONE-26). A press records through the dictation capture (PHONE-30: the warm microphone and its pre-roll, the +15 dB gain and limiter, 16 kHz PCM16) and sends the take like a dictation (PHONE-31, PHONE-32), started with `audio_start_training` for the prompt, every resend too. The computer that sent the prompt becomes the target. A saved take shows "Gemt" instead of "Klar på". The training strings were drafts (`TODO(copy)`); the owner approved them in run 8. |
 | PHONE-51 | A training take only goes to a computer that sent the prompt on the current connection: when that computer goes offline, or the phone's connection drops or is new, the prompt goes stale and the button waits ("Venter på {computer}") until the computer sends it again (it does when it sees the phone online); without a fresh prompt the phone returns to the main screen after 10 s. `training_end` and "Afslut" return it at once, and the main screen starts afresh. A phone without this update drops the training frames (unknown types, PROTOCOL.md 8.1). |
 
 ---
@@ -577,7 +578,7 @@ offset  size  field
 | SITE-03 | `app.walkietalkey.com` serves the phone app, built from `phone/`. The build is plain static files, so a company can host its own copy (`PhoneAppUrl`, PRIV-03). walkietalkey.com and app.walkietalkey.com are Workers static assets on Workers custom domains, from the same builds as the Pages projects (run 2: Pages custom domains need a DNS record wrangler cannot write). The website links only to walkietalkey.com and its subdomains, never to the pages.dev or workers.dev deployments, which stay up for pairings made with v1. |
 | SITE-04 | No cookies and no analytics of any kind, so "Ingen sporing" is true for the website too. No cookie banner is needed. |
 | SITE-05 | The contact for everyone (companies, privacy and trademark questions) is `kontakt@walkietalkey.com`, forwarded to the owner with Cloudflare Email Routing (free; live since run 2). No contact form, so no form data to store. Vulnerabilities go through GitHub's private vulnerability reporting (SECURITY.md); open questions may also go to GitHub Discussions. |
-| SITE-06 | Lighthouse 95+ on performance and accessibility on mobile. Only one WebGL surface per page. Every animation respects reduced motion. |
+| SITE-06 | Lighthouse 95+ on performance and accessibility on mobile. Only one animated background runs at a time: one that is off screen pauses, and of two partly visible the more visible one runs (run 8, the owner's rule; it replaces "only one WebGL surface per page", since the final front pages use FluidMesh twice or LightWaves and FluidMesh). Every animation respects reduced motion: still frames, no pointer-following. |
 | SITE-07 | Open Graph image and favicon from the design system assets. |
 | SITE-08 | `/updates/beta.json` (DESK-112) is published by the release workflow. |
 
@@ -657,8 +658,8 @@ This section explains how running the project works in practice, step by step.
 
 | File | Content |
 |---|---|
-| `LICENSE` | Apache License 2.0, full text, copyright "2026 Navigent.io ApS and the WalkieTalkey contributors" (decision 18.1: Navigent.io ApS, CVR 46285395) |
-| `NOTICE` | "WalkieTalkey. Copyright 2026 Navigent.io ApS and the WalkieTalkey contributors". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
+| `LICENSE` | Apache License 2.0, full text, copyright "2026 Jonathan Rentoft and the WalkieTalkey contributors" (run 8: the owner personally; decision 18.1 named Navigent.io ApS) |
+| `NOTICE` | "WalkieTalkey. Copyright 2026 Jonathan Rentoft and the WalkieTalkey contributors". "This product includes software from Handy (MIT, Copyright (c) CJ Pais)". Credits for Edda, Ekko PnC, transcribe.cpp |
 | `licenses/Handy-MIT.txt` | Handy's MIT licence, unchanged |
 | `TRADEMARKS.md` | The name WalkieTalkey and the logo are not covered by the code licence. Forks must use another name and logo. Saying "based on WalkieTalkey" is fine |
 
@@ -760,7 +761,7 @@ WalkieTalkey is Apache-2.0. Third-party code under MIT keeps its copyright and p
 
 ## 18. Decisions for the owner
 
-1. **Who runs the public relay and website**: decided (run 2): **Navigent.io ApS** (CVR 46285395), the copyright holder in LICENSE and NOTICE and the operator on the privacy page. Was: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
+1. **Who runs the public relay and website**: decided (run 2): **Navigent.io ApS** (CVR 46285395), the operator on the privacy page. Run 8: the copyright holder in LICENSE and NOTICE is Jonathan Rentoft. Was: you personally, or Navigent.io ApS. Decide this first. It decides the name in the privacy policy, who carries the liability, the copyright holder in LICENSE and NOTICE, and how you enroll in the Apple Developer Program (personally, or the ApS as an organisation, which needs a D-U-N-S number). A company limits personal liability; ask an accountant or lawyer if in doubt.
 2. **Windows signing**: apply to SignPath Foundation first (free), with Azure Artifact Signing through a company as the fallback. Unsigned beta builds until then.
 3. **GitHub home**: organisation `walkietalkey` (recommended) or your personal account.
 4. **iPhone**: build the iOS shell in M3 (recommended, because of PHONE-02), or live with the permission prompt in the PWA.

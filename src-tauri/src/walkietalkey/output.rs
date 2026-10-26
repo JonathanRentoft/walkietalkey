@@ -23,7 +23,7 @@ impl Source {
         match self {
             Source::Key => "tast".to_string(),
             Source::Phone { name, .. } if !name.trim().is_empty() => name.clone(),
-            // TODO(copy): label for a phone that never sent a name.
+            // The label for a phone that never sent a name.
             Source::Phone { .. } => "en telefon uden navn".to_string(),
         }
     }

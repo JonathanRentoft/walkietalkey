@@ -193,7 +193,7 @@ pub fn verify_catalog_file(model_id: &str, path: &Path) -> Result<()> {
     if got.eq_ignore_ascii_case(&expected) {
         Ok(())
     } else {
-        // TODO(copy): the error the UI shows for a damaged download.
+        // The error the UI shows for a damaged download.
         Err(anyhow!(
             "Talemodellen kom ikke rigtigt frem (SHA-256 {got}, forventet {expected}). Prøv igen."
         ))
@@ -270,7 +270,7 @@ pub fn import_model_file(source: &Path, models_dir: &Path) -> Result<String> {
     if let Some(id) = import_punctuation(source, &hash, models_dir)? {
         return Ok(id);
     }
-    // TODO(copy): the error the UI shows for an unknown file.
+    // The error the UI shows for an unknown file.
     let (model_id, filename) = catalog_file_for(&hash)
         .ok_or_else(|| anyhow!("Filen passer ikke til en kendt talemodel."))?;
     fs::create_dir_all(models_dir)?;

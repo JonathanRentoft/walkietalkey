@@ -94,7 +94,7 @@ export const PILL_LABELS: Required<DictationPillLabels> = {
   notReady: "Talemodellen er ikke klar endnu",
   error: "Kunne ikke hente talemodellen. Prøv igen.",
   handsFree: "Tryk igen for at stoppe",
-  /* TODO(copy): not in Appendix A yet (DESK-59) */
+  /* not in Appendix A (DESK-59); approved by the owner in run 8 */
   micSilent: "Mikrofonen giver ingen lyd",
 };
 

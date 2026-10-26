@@ -1,4 +1,5 @@
-/* Shared facts for every page. User-facing strings are Danish; everything new is marked TODO(copy) where it is written. */
+/* Shared facts for every page. User-facing strings are Danish; a new one is marked TODO(copy) where it is written until
+   the owner approves it (run 8: scripts/walkietalkey/copy-approved-texts.json lists the approved ones). */
 
 /** Who operates the public relay and the website (decision 18.1, decided in run 2). */
 export const OPERATOR = "Navigent.io ApS (CVR 46285395)";
@@ -48,79 +49,62 @@ export const PAGES = {
     path: "/",
     nav: "Forside",
     title: "WalkieTalkey · Dansk tale til tekst, gratis og open source",
-    // TODO(copy)
     description:
       "Hold fn nede, eller tal ind i telefonen. Talen bliver til tekst på din egen computer. Gratis og open source, ingen konto.",
   },
   hent: {
     path: "/hent",
     nav: "Hent",
-    // TODO(copy)
     title: "Hent WalkieTalkey til Mac og Windows",
-    // TODO(copy)
     description:
       "Hent WalkieTalkey gratis til Mac eller Windows. Appen henter den danske talemodel første gang og kører på din egen computer.",
   },
   how: {
     path: "/saadan-virker-det",
     nav: "Sådan virker det",
-    // TODO(copy)
     title: "Sådan virker WalkieTalkey",
-    // TODO(copy)
     description:
       "Fra tasten eller telefonen til tekst på din computer: talemodellen, krypteringen fra telefon til computer, og hvorfor der ikke er nogen konto.",
   },
   privacy: {
     path: "/privatliv",
     nav: "Privatliv",
-    // TODO(copy)
     title: "Privatliv · WalkieTalkey",
-    // TODO(copy)
     description:
       "Hvilke data der findes hvor, hvor længe, og hvem der kan læse dem. Ingen konto og ingen sporing.",
   },
   oss: {
     path: "/open-source",
     nav: "Open source",
-    // TODO(copy)
     title: "Open source · WalkieTalkey",
-    // TODO(copy)
     description:
       "WalkieTalkey er open source under Apache-2.0. Her er licensen, koden og licenserne for kode og modeller fra andre.",
   },
   business: {
     path: "/virksomheder",
     nav: "Virksomheder",
-    // TODO(copy)
     title: "WalkieTalkey til virksomheder",
-    // TODO(copy)
     description:
       "Gratis for alle, også virksomheder. Færdige indstillinger til udrulning, jeres eget relæ og betalt hjælp til opsætning.",
   },
   security: {
     path: "/sikkerhed",
     nav: "Sikkerhed",
-    // TODO(copy)
     title: "Sikkerhed · WalkieTalkey",
-    // TODO(copy)
     description:
       "Sådan er WalkieTalkey bygget, hvad krypteringen beskytter mod, og hvordan du melder en sårbarhed.",
   },
   trademark: {
     path: "/varemaerke",
     nav: "Varemærke",
-    // TODO(copy)
     title: "Varemærke · WalkieTalkey",
-    // TODO(copy)
     description:
       "Navnet WalkieTalkey og logoet er ikke omfattet af kodelicensen. Sådan må du bruge dem.",
   },
   faq: {
     path: "/spoergsmaal",
     nav: "Spørgsmål",
-    // TODO(copy)
     title: "Spørgsmål og svar · WalkieTalkey",
-    // TODO(copy)
     description:
       "Svar på det, folk plejer at spørge om: pris, privatliv, talemodellen, telefonen og virksomheder.",
   },

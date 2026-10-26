@@ -7,8 +7,8 @@ import AppIntents
 
 struct StartDictationIntent: AppIntent {
     static var title: LocalizedStringResource = "Start diktering"
-    // TODO(copy): the description and the phrases below are drafts for the owner to approve
-    // (spec Appendix A, "Missing strings").
+    // The description and the phrases below were drafted under spec Appendix A ("Missing strings")
+    // and approved by the owner in run 8.
     static var description = IntentDescription("Åbner WalkieTalkey og begynder at optage.")
     static var openAppWhenRun: Bool = true
 

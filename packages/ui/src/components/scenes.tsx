@@ -45,6 +45,8 @@ export interface SceneProps {
   text?: string;
   device?: string;
   pasteKey?: string;
+  /** Run 8: the text lands whole when the key is let go, as the app pastes it, instead of word by word (SceneMixed). */
+  release?: boolean;
 }
 
 function SceneFit(p: {
@@ -321,8 +323,7 @@ export function SceneCleanup(_props: SceneProps) {
               {clean ? "Renskrevet" : "Det du sagde"}
             </span>
             <span className="wt-sc-card-meta">
-              {/* TODO(copy): was "Lokal oprydning"; self-corrections come from the optional AI cleanup (review
-                  finding 17) */}
+              {/* was "Lokal oprydning"; self-corrections come from the optional AI cleanup (review finding 17) */}
               {clean ? "AI-oprydning" : "Rå tale"}
             </span>
           </div>
@@ -413,10 +414,61 @@ export function SceneVocab(_props: SceneProps) {
   );
 }
 
+/* Run 8, the release mode: the pill listens while you talk, and the sentence lands whole when you let go. */
+const MIXED_STEPS: Steps = [
+  ["talk", 2400],
+  ["land", 4200],
+  ["reset", 450],
+];
+const MIXED_HL = ["pushe", "fixet", "main", "standup", "deploy"];
+
+function Landed(p: { text: string; on: boolean; highlight: string[] }) {
+  const words = p.text.split(/\s+/).filter(Boolean);
+  return (
+    <p
+      className={cx(
+        "wt-transcript wt-sc-mixed-text",
+        p.on && "wt-sc-mixed-text--in",
+      )}
+    >
+      <span className="wt-sr">{words.join(" ")}</span>
+      {words.map((w, i) => {
+        const bare = w.replace(/[.,?!:;]/g, "").toLowerCase();
+        return (
+          <span key={i}>
+            {i ? " " : null}
+            <span
+              aria-hidden
+              className={cx(
+                "wt-tw",
+                p.on && "wt-tw--in",
+                p.highlight.indexOf(bare) >= 0 && "wt-tw--hl",
+              )}
+            >
+              {w}
+            </span>
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 /* Dansk og engelsk i samme sætning. */
 export function SceneMixed(props: SceneProps) {
+  const reduced = useReducedMotion(),
+    ref = useRef<HTMLDivElement>(null);
+  const release = !!props.release;
+  const i = useTimeline(ref, MIXED_STEPS, reduced || !release, true, 1),
+    st = MIXED_STEPS[i][0];
+  const secs = useSeconds(release && st === "talk", reduced, 2);
+  const text =
+    props.text || "Kan du lige pushe fixet til main inden vores standup?";
   return (
-    <div className="wt-sc wt-sc-mixed">
+    <div
+      ref={ref}
+      className={cx("wt-sc wt-sc-mixed", release && "wt-sc-mixed--release")}
+    >
       <SceneFit w={420} h={260}>
         <div className="wt-sc-card">
           <div className="wt-sc-card-head">
@@ -429,15 +481,27 @@ export function SceneMixed(props: SceneProps) {
               engelsk
             </span>
           </div>
-          <Transcript
-            className="wt-sc-mixed-text"
-            highlight={["pushe", "fixet", "main", "standup", "deploy"]}
-            loop={2600}
-            speed={210}
-          >
-            {props.text ||
-              "Kan du lige pushe fixet til main inden vores standup?"}
-          </Transcript>
+          {release ? (
+            <Landed text={text} on={st === "land"} highlight={MIXED_HL} />
+          ) : (
+            <Transcript
+              className="wt-sc-mixed-text"
+              highlight={MIXED_HL}
+              loop={2600}
+              speed={210}
+            >
+              {text}
+            </Transcript>
+          )}
+          {release && st === "talk" ? (
+            <div className="wt-sc-mixed-pill">
+              <DictationPill
+                state="listening"
+                seconds={secs}
+                palette={props.palette}
+              />
+            </div>
+          ) : null}
         </div>
       </SceneFit>
     </div>
@@ -623,6 +687,8 @@ export interface ShowcaseCardProps {
   /** Heading element for the title. Default 'h3'. */
   as?: keyof JSX.IntrinsicElements;
   sceneText?: string;
+  /** Run 8: the scene's text lands whole on release, as the app pastes it (the "sprog" scene). Default false. */
+  release?: boolean;
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
@@ -635,7 +701,11 @@ export function ShowcaseCard(props: ShowcaseCardProps) {
     place = props.placement || "center";
   const Scene = props.scene ? SCENES[props.scene] : undefined;
   const sceneEl = Scene ? (
-    <Scene palette={props.palette as Palette} text={props.sceneText} />
+    <Scene
+      palette={props.palette as Palette}
+      text={props.sceneText}
+      release={props.release}
+    />
   ) : (
     props.children
   );

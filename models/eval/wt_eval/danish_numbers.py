@@ -10,6 +10,9 @@ alike, so only the digit-versus-word difference is neutralised):
 - million/milliard take "en" and a plural: "en million", "to millioner".
 - year(): 1100-1999 read in hundreds ("nitten hundrede og seksoghalvfjerds");
   any other value falls back to cardinal().
+- ordinal() (run 8): "femte", "enogtyvende", "halvtredsindstyvende"; from 100
+  the hundreds stay cardinal and the rest is the ordinal ("hundrede og
+  første"); a whole hundred reads as the cardinal ("tre hundrede").
 """
 
 from __future__ import annotations
@@ -19,6 +22,12 @@ _ONES = ["nul", "en", "to", "tre", "fire", "fem", "seks", "syv", "otte", "ni",
          "sytten", "atten", "nitten"]
 _TENS = {2: "tyve", 3: "tredive", 4: "fyrre", 5: "halvtreds", 6: "tres",
          7: "halvfjerds", 8: "firs", 9: "halvfems"}
+_ORDINAL_ONES = ["nulte", "første", "anden", "tredje", "fjerde", "femte", "sjette", "syvende",
+                 "ottende", "niende", "tiende", "ellevte", "tolvte", "trettende", "fjortende",
+                 "femtende", "sekstende", "syttende", "attende", "nittende"]
+_ORDINAL_TENS = {2: "tyvende", 3: "tredivte", 4: "fyrretyvende", 5: "halvtredsindstyvende",
+                 6: "tresindstyvende", 7: "halvfjerdsindstyvende", 8: "firsindstyvende",
+                 9: "halvfemsindstyvende"}
 _LARGE = [(10**9, "milliard", "milliarder"), (10**6, "million", "millioner")]
 
 
@@ -81,3 +90,15 @@ def year(n: int) -> str:
         head = f"{_below_100(hundreds)} hundrede"
         return head if rest == 0 else f"{head} og {_below_100(rest)}"
     return cardinal(n)
+
+
+def ordinal(n: int) -> str:
+    """The ordinal of 0..999 ("15." -> "femtende"); the normaliser reads only 1-3 digit ordinals."""
+    if n < 20:
+        return _ORDINAL_ONES[n]
+    if n < 100:
+        tens, ones = divmod(n, 10)
+        return _ORDINAL_TENS[tens] if ones == 0 else f"{_ONES[ones]}og{_ORDINAL_TENS[tens]}"
+    hundreds, rest = divmod(n, 100)
+    head = cardinal(hundreds * 100)
+    return head if rest == 0 else f"{head} og {ordinal(rest)}"

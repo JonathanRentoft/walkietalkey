@@ -18,7 +18,7 @@ import { qrSvg } from "../lib/qr";
 import { ALL_RELEASES_URL, MAC_DOWNLOAD_URL, PHONE_APP_URL, WINDOWS_DOWNLOAD_URL } from "../lib/site";
 
 const phoneHost = new URL(PHONE_APP_URL).host;
-// TODO(copy): the QR code's label for screen readers
+// The QR code's label for screen readers
 const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}`);
 ---
 <Base page="hent">
@@ -32,9 +32,7 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
       if (os) document.documentElement.setAttribute("data-os", os);
     })();
   </script>
-  <!-- TODO(copy): eyebrow, title, lead -->
   <PageHero current="hent" eyebrow="Hent" title="Hent WalkieTalkey" lead="Gratis og open source, til Mac og Windows. Appen henter selv den danske talemodel, og talen bliver til tekst på din egen computer.">
-    <!-- TODO(copy): the downloads -->
     <div class="get">
       <div class="get-opt" data-platform="mac">
         <DownloadButton href={MAC_DOWNLOAD_URL} size="lg">Hent til Mac</DownloadButton>
@@ -54,7 +52,6 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
   </PageHero>
 
   <main class="container page-body hent-body" id="indhold">
-    <!-- TODO(copy): the rest of the page -->
     <section class="hent-first" aria-labelledby="foerste-gang">
       <div class="prose">
         <h2 id="foerste-gang">Første gang du åbner appen</h2>
@@ -65,7 +62,7 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <span class="badge-rec">Passer til din computer</span>
           <h3 id="mac">Mac</h3>
           <p>macOS 13 Ventura eller nyere, på Mac med Apple Silicon og Mac med Intel.</p>
-          <!-- TODO(copy), run 5 and 6: macOS 26 blocks the first open of an app without an Apple Developer ID. Three
+          <!-- Run 5 and 6: macOS 26 blocks the first open of an app without an Apple Developer ID. Three
                steps with macOS's own names in Danish and English (run 6: the owner's Mac runs in English). The dialog
                says "“WalkieTalkey” blev ikke åbnet" / "“WalkieTalkey” Not Opened"; close it with Done, never Move to
                Trash. The Danish name of its Done button is not confirmed, so only the English one is named. Run 6:
@@ -87,7 +84,7 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
           <h3 id="win">Windows</h3>
           <p>Windows 10 (22H2) eller Windows 11, 64-bit.</p>
           <ol class="steps-list">
-            <!-- TODO(copy): Edge's own words must match the Danish Edge UI -->
+            <!-- Edge's own words must match the Danish Edge UI -->
             <li>Henter du med Edge, siger den måske, at filen ikke er almindeligt downloadet. Tryk på de tre prikker ud for filen › Behold › Vis mere › Behold alligevel.</li>
             <li>Åbn filen WalkieTalkey-windows.exe.</li>
             <li>Windows advarer, fordi appen endnu ikke er signeret af Microsoft. Tryk Flere oplysninger › Kør alligevel.</li>
@@ -137,10 +134,10 @@ const qr = await qrSvg(PHONE_APP_URL, `QR-kode til telefonappen på ${phoneHost}
         <ol class="steps-list">
           <li>Åbn WalkieTalkey på computeren, og gå til Indstillinger › Telefon › Par en telefon. Computeren viser en kode.</li>
           <li>Scan koden med telefonens kamera.</li>
-          <!-- TODO(copy): spec 5.3; only a real iPhone confirms whether iOS keeps the link, hence the fallback -->
+          <!-- Spec 5.3; only a real iPhone confirms whether iOS keeps the link, hence the fallback -->
           <li>På iPhone: føj WalkieTalkey til hjemmeskærmen, og åbn den derfra. Så parrer den. Ellers åbner appen kameraet, og du scanner koden igen. På Android parrer den med det samme.</li>
         </ol>
-        <!-- TODO(copy), run 6: Safari's steps for each iOS, as the phone app gives them (phone/src/lib/install.ts).
+        <!-- Run 6: Safari's steps for each iOS, as the phone app gives them (phone/src/lib/install.ts).
              "Vis mere" (View More) must be checked on an iPhone set to Danish. -->
         <p>Sådan føjer du WalkieTalkey til hjemmeskærmen i Safari:</p>
         <ul class="ios-steps">

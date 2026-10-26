@@ -23,7 +23,7 @@ ENTRIES = {
     "ekko-v1-tiny": {
         "summary_key": "ekko-v1-tiny-q8_0",
         "description": "Fast Danish model for computers without a GPU. No punctuation of its own",
-        "description_da": "Hurtig dansk talemodel til computere uden grafikkort. TODO(copy)",
+        "description_da": "Hurtig dansk talemodel til computere uden grafikkort.",
         "parameters": "110M",
         "capabilities": {"streaming": False, "translate": False, "languageDetection": False, "timestamps": True},
         "out": MODELS / "ekko-v1-tiny" / "catalog-entry.json",
@@ -31,7 +31,7 @@ ENTRIES = {
     "edda-v0.2": {
         "summary_key": "edda-v0.2-q8_0",
         "description": "Most accurate Danish model. Needs a GPU or Apple Silicon to be fast",
-        "description_da": "Den mest præcise danske talemodel. TODO(copy)",
+        "description_da": "Den mest præcise danske talemodel.",
         "parameters": "809M",
         # Timestamps are false on purpose: Edda drops words with Whisper's
         # segment timestamps on, so the app must decode with TimestampKind::None.
@@ -76,7 +76,7 @@ def main() -> int:
                 "Paste `model` into catalog.json models[] and `results` into catalog.json results{}.",
                 f"Accuracy: WER on FLEURS da_dk test ({s['clips']} clips), Q8_0, language da, timestamps "
                 f"{s['timestamps']}, normaliser of models/eval (ciLower: 2.5th percentile of a clip bootstrap).",
-                "Files download from the GitHub release models-v1 (models/release.sh); description_da is draft UI copy.",
+                "Files download from the GitHub release models-v1 (models/release.sh); description_da is UI copy the owner approved (run 8).",
             ],
             "model": entry,
             "description_da": spec["description_da"],

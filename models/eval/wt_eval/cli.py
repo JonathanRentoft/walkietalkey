@@ -18,7 +18,7 @@ from pathlib import Path
 from .datasets import Clip, load_clips_dir, load_fleurs, prepare_audio
 from .engine import Result, TranscribeCli
 from .vadsplit import cut_segments, vad_segments
-from .normalize import normalize
+from .normalize import normalize_pair
 from .punctuation import count_marks, needs_pnc, word_count
 from .wer import Counts, bootstrap_ci, corpus_wer, word_errors
 
@@ -43,7 +43,7 @@ class ModelSpec:
 
 
 def score_row(clip: Clip, hypothesis: str, compute_ms: float, error: str | None) -> dict:
-    ref_norm, hyp_norm = normalize(clip.reference), normalize(hypothesis)
+    ref_norm, hyp_norm = normalize_pair(clip.reference, hypothesis)
     c = word_errors(ref_norm.split(), hyp_norm.split())
     marks, words = count_marks(hypothesis), word_count(hypothesis)
     return {

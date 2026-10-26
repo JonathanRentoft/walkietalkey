@@ -1,0 +1,69 @@
+/* Run 8, page 3 (metal): its own rhythm. Every rule starts with .fm- (lib/build.ts); the shared sections are in
+   components/final/final.css. */
+/* the night carries on from the hero into privacy, as one panel: the mesh fades into night at the hero's foot,
+   and privacy starts on the same night */
+.fm .fp-hero-panel {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.fm .fp-hero-bg {
+  -webkit-mask-image: linear-gradient(#000 58%, #0000 100%);
+  mask-image: linear-gradient(#000 58%, #0000 100%);
+}
+.fm-privacy .fp-night-panel {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  background: var(--night);
+}
+/* privacy's light starts below the join, so nothing is cut off along it */
+.fm-privacy .fp-light > i:nth-child(1) {
+  top: 6%;
+}
+.fm-privacy .fp-light > i:nth-child(2) {
+  top: 10%;
+}
+.fm-intro {
+  padding: var(--space-24) 0 var(--space-16);
+}
+.fm-group + .fm-group {
+  padding-top: var(--space-24);
+}
+.fm-rows {
+  display: grid;
+  gap: var(--space-24);
+}
+.fm-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-12) var(--space-8);
+}
+.fm-get {
+  margin-top: var(--space-24);
+}
+.fm-faq {
+  padding: var(--space-24) 0;
+}
+.fm-end {
+  padding-bottom: var(--space-16);
+}
+@media (max-width: 899px) {
+  .fm-intro {
+    padding: var(--space-16) 0 var(--space-12);
+  }
+  .fm-group + .fm-group {
+    padding-top: var(--space-16);
+  }
+  .fm-rows {
+    gap: var(--space-16);
+  }
+  .fm-pair {
+    grid-template-columns: 1fr;
+    gap: var(--space-16);
+  }
+  .fm-get {
+    margin-top: var(--space-16);
+  }
+  .fm-faq {
+    padding: var(--space-16) 0;
+  }
+}

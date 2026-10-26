@@ -5,7 +5,7 @@ import Base from "../layouts/Base.astro";
 import { CONTACT_EMAIL, CONTACT_URL, LICENSE_URL, TRADEMARKS_URL } from "../lib/site";
 ---
 <Base page="trademark">
-  <!-- TODO(copy): the whole page except the logo note, which is spec 14.8 verbatim -->
+  <!-- The logo note below is spec 14.8 verbatim. -->
   <PageHero current="trademark" eyebrow="Varemærke" title="Navnet og logoet" lead="Koden er fri. Navnet WalkieTalkey og logoet er ikke omfattet af kodelicensen." palette="flint" />
   <main class="container page-body" id="indhold">
     <div class="prose">
@@ -25,7 +25,7 @@ import { CONTACT_EMAIL, CONTACT_URL, LICENSE_URL, TRADEMARKS_URL } from "../lib/
       <h2>Logofilerne</h2>
       <p>Logofilerne i projektet har en kort README, der siger:</p>
       <p class="callout"><strong>Ikke omfattet af kodelicensen. Se TRADEMARKS.md.</strong></p>
-      <!-- TODO(copy): the contact by e-mail (SITE-05) -->
+      <!-- The contact by e-mail (SITE-05) -->
       <p>Hele teksten står i <a href={TRADEMARKS_URL}>TRADEMARKS.md</a>. Er du i tvivl, så skriv til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>.</p>
     </div>
   </main>

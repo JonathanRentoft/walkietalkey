@@ -215,6 +215,14 @@ def _loss_sum(model, hidden, inputs, labels):
     return loss, int((labels != whisper.IGNORE).sum())
 
 
+def validation_row(item: Item, text: str, spelling) -> dict:
+    """One validation clip scored. Run 8: English terms on the owner's takes only; a FLEURS
+    rehearsal clip's "terms" are ordinary Danish words (``metrics.counts_terms``)."""
+    own = item.source != dataset.SOURCE_REHEARSAL
+    return {**score_clip(item.id, item.text, text, spelling if own else None), "kind": item.kind,
+            "source": item.source, "condition": item.condition}
+
+
 def validate(model, batches: _Batches, items: list[Item], tokens: whisper.Tokens, spelling, batch_size: int,
              max_new_tokens: int) -> tuple[list[dict], dict]:
     """Greedy transcripts and teacher-forced loss on the validation clips."""
@@ -231,9 +239,7 @@ def validate(model, batches: _Batches, items: list[Item], tokens: whisper.Tokens
             batch_loss, batch_tokens = _loss_sum(model, hidden, inputs, labels)
         loss += float(batch_loss)
         n_tokens += batch_tokens
-        for item, text in zip(batch, texts):
-            rows.append({**score_clip(item.id, item.text, text, spelling), "kind": item.kind, "source": item.source,
-                         "condition": item.condition})
+        rows += [validation_row(item, text, spelling) for item, text in zip(batch, texts)]
     summary = summarize(rows)
     summary["loss"] = loss / n_tokens if n_tokens else 0.0
     for source in (dataset.SOURCE_RECORDING, dataset.SOURCE_REHEARSAL):

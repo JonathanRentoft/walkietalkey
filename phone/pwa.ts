@@ -25,7 +25,7 @@ import { IOS_MANIFEST_FILE } from "./src/lib/platform";
 export const MANIFEST = {
   name: "WalkieTalkey",
   short_name: "WalkieTalkey",
-  // TODO(copy): manifest description
+  // Manifest description
   description: "Tal ind i telefonen. Teksten lander på din computer.",
   lang: "da",
   dir: "ltr",

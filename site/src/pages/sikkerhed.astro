@@ -5,14 +5,13 @@ import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
 import { PAGES, REPO_URL, SECURITY_REPORT_URL } from "../lib/site";
 
-// TODO(copy): every row (spec 13)
 const threats: [string, string, string][] = [
   ["Nogen aflytter forbindelsen mellem telefon, relæ og computer", "TLS og derudover kryptering med AES-256-GCM fra telefon til computer.", "Relæet kan se, hvornår der sendes, og hvor store beskederne er."],
   ["Relæet eller dem, der driver det, bliver kompromitteret", "Relæet har ingen nøgler og kan ikke bytte nøgler ud, når du parrer. Det kan holde beskeder tilbage, men ikke læse eller forfalske dem.", "At relæet holder op med at virke."],
   ["Nogen fotograferer parringskoden eller finder parringslinket i browserens historik", "Koden gælder i 10 minutter og kun én gang. Linket fjernes fra historikken. Computeren spørger Var det dig? ved hver ny telefon, og du fjerner den med ét tryk.", "En person, der har fysisk adgang til din ulåste computer."],
   ["Telefonen bliver stjålet", "Telefonens lås beskytter nøglen, og du fjerner telefonen på computeren på få sekunder.", "Dikteringer, som tyven når at lave, før du fjerner den."],
   ["Den, der leverer telefonappen i browseren, sender kode, der læser lyden, før den krypteres", "iPhone-appen har sin kode indbygget og henter intet fra nettet. Webappen bygges automatisk fra den åbne kode. Virksomheder kan selv levere telefonappen.", "Som ved alle webapps stoler du på den, der leverer siden."],
-  /* TODO(copy): only the signature the releases have today (review finding 5). Once a release is signed and notarised
+  /* Only the signature the releases have today (review finding 5). Once a release is signed and notarised
      by Apple and signed with Authenticode, say so here again. */
   ["En falsk opdatering", "Opdateringer er signeret med vores egen nøgle. Appen tjekker signaturen, før den installerer. Signering fra Apple og Microsoft kommer senere.", "En kompromitteret computer hos ejeren med signeringsnøglerne."],
   ["Skadelig kode i et bidrag", "Beskyttet hovedgren, gennemgang af hvert bidrag, automatiske test og tjek af licenser og kendte sårbarheder.", "Sårbarheder, som ingen opdager ved gennemgangen."],
@@ -21,7 +20,6 @@ const threats: [string, string, string][] = [
 ];
 ---
 <Base page="security">
-  <!-- TODO(copy): the whole page -->
   <PageHero current="security" eyebrow="Sikkerhed" title="Sådan er det bygget" lead="Krypteret fra telefon til computer, ingen konto, og nøgler der aldrig forlader dine enheder. Her er arkitekturen, og hvad den beskytter mod." palette="flint" />
   <main class="container page-body" id="indhold">
     <div class="prose">
@@ -31,7 +29,7 @@ const threats: [string, string, string][] = [
 
       <h2>Nøgler</h2>
       <ul>
-        <!-- TODO(copy): from v0.2.0 the Mac keeps its keys in WalkieTalkey's own secret folder, never the keychain
+        <!-- From v0.2.0 the Mac keeps its keys in WalkieTalkey's own secret folder, never the keychain
              (spec 9.2, SEC-11); the folder is bound to the Mac's hardware UUID, so a copy on another Mac is emptied. -->
         <li>Hver enhed laver sine egne nøglepar (P-256), første gang den starter. Den private del forlader aldrig enheden. På Mac ligger den i en privat mappe, som kun WalkieTalkey bruger, aldrig i nøgleringen. Mappen er bundet til netop den Mac. På Windows ligger den i Credential Manager, og på telefonen som en nøgle, der ikke kan læses ud.</li>
         <li>Hvert par af telefon og computer får sine egne nøgler, én til hver retning. Fjerner du én telefon, påvirker det ikke de andre.</li>
@@ -44,7 +42,7 @@ const threats: [string, string, string][] = [
 
       <h2>Opdateringer</h2>
       <p>Opdateringer er signeret med vores egen opdateringsnøgle, og appen tjekker signaturen, før den installerer.</p>
-      <!-- TODO(copy): unsigned first releases (review finding 5) -->
+      <!-- Unsigned first releases (review finding 5) -->
       <p>De første udgaver er endnu ikke signeret af Apple og Microsoft, så din computer advarer, første gang du åbner appen. Under <a href={PAGES.hent.path}>Hent</a> står, hvad du så gør.</p>
 
       <h2>Hvad den beskytter mod, og hvad ikke</h2>

@@ -5,6 +5,7 @@ import {
   CONCEPTS,
   CONCEPT_INFO,
   PREVIEW_BRANCHES,
+  SHARED_PREFIX,
   conceptDir,
   draftClaims,
   pickConcept,
@@ -14,8 +15,14 @@ import {
   FAQ,
   FEATURES,
   FEATURE_ORDER,
+  KICKER,
   PRIVACY_FACTS,
+  SHOWCASE,
+  SHOWCASE_INTRO,
+  SHOWCASE_ORDER,
+  STAGE,
   STEPS as START_STEPS,
+  TRY,
 } from "../src/lib/features";
 import { HERO } from "../src/lib/hero";
 import {
@@ -28,45 +35,44 @@ import {
   stepAt,
 } from "../src/lib/stage";
 
-describe("front page concepts (run 6, chosen at build time)", () => {
-  it("has the three concepts of the brief, A, B and C", () => {
-    expect(CONCEPTS).toEqual(["editorial", "stage", "hands-on"]);
-    expect(CONCEPTS.map((c) => CONCEPT_INFO[c].letter)).toEqual([
-      "a",
-      "b",
-      "c",
-    ]);
-    /* no two concepts share a class prefix, so no rule of one styles another */
-    expect(new Set(CONCEPTS.map((c) => CONCEPT_INFO[c].prefix)).size).toBe(3);
+describe("front page choices (run 8, chosen at build time)", () => {
+  it("has the three final pages, named by their hero's background", () => {
+    expect(CONCEPTS).toEqual(["waves", "bars", "metal"]);
+    expect(CONCEPTS.map((c) => CONCEPT_INFO[c].n)).toEqual([1, 2, 3]);
+    /* each page's own rules have their own prefix; the shared sections have one of their own */
+    const prefixes = CONCEPTS.map((c) => CONCEPT_INFO[c].prefix);
+    expect(new Set([...prefixes, SHARED_PREFIX]).size).toBe(4);
   });
   it("builds the current front page, the one in production, without SITE_CONCEPT", () => {
     expect(pickConcept(undefined)).toBeNull();
     expect(pickConcept(" ")).toBeNull();
     expect(conceptDir(null)).toBe("current");
   });
-  it("picks a concept by name or by letter", () => {
+  it("picks a page by name or by number", () => {
     for (const c of CONCEPTS) {
       expect(pickConcept(c)).toBe(c);
-      expect(pickConcept(CONCEPT_INFO[c].letter.toUpperCase())).toBe(c);
+      expect(pickConcept(c.toUpperCase())).toBe(c);
+      expect(pickConcept(String(CONCEPT_INFO[c].n))).toBe(c);
       expect(conceptDir(c)).toBe(c);
     }
   });
-  it("refuses an unknown concept instead of building the wrong page", () => {
+  it("refuses an unknown page instead of building the wrong one", () => {
     expect(() => pickConcept("main")).toThrow(/SITE_CONCEPT/);
+    expect(() => pickConcept("stage")).toThrow(/SITE_CONCEPT/);
   });
   it("shows unmeasured claims only in draft builds", () => {
     expect(draftClaims(undefined)).toBe(false);
     expect(draftClaims("0")).toBe(false);
     expect(draftClaims("1")).toBe(true);
   });
-  it("deploys each concept to its own preview branch, never to production", () => {
-    expect(PREVIEW_BRANCHES).toEqual(["concept-a", "concept-b", "concept-c"]);
+  it("deploys each page to its own preview branch, never to production", () => {
+    expect(PREVIEW_BRANCHES).toEqual(["final-1", "final-2", "final-3"]);
     for (const c of CONCEPTS)
       expect(previewBranch(c)).not.toMatch(/^(main|master|production)$/);
   });
 });
 
-describe("the front page's shared copy (run 6)", () => {
+describe("the front page's shared copy (run 6, run 8)", () => {
   const strings = (v: unknown): string[] =>
     typeof v === "string"
       ? [v]
@@ -92,8 +98,46 @@ describe("the front page's shared copy (run 6)", () => {
     expect(Object.keys(FEATURES).sort()).toEqual([...FEATURE_ORDER].sort());
   });
   it("is Danish copy without em dashes, exclamation marks or 'direkte' (spec 2.6, Appendix A)", () => {
-    for (const s of strings([FEATURES, FAQ, PRIVACY_FACTS, START_STEPS]))
+    for (const s of strings([
+      FEATURES,
+      FAQ,
+      PRIVACY_FACTS,
+      START_STEPS,
+      SHOWCASE,
+      SHOWCASE_INTRO,
+      KICKER,
+      STAGE,
+      TRY,
+    ]))
       expect(s, s).not.toMatch(/[—!]|direkte/i);
+  });
+  it("keeps the production front page's feature sections word for word (run 8)", () => {
+    expect(SHOWCASE_ORDER.map((k) => SHOWCASE[k].title)).toEqual([
+      "Hold fn, tal, slip",
+      "Eller tal ind i telefonen",
+      "Den retter dig, når du retter dig selv",
+      "Dansk og engelsk i samme sætning",
+      "Lander som en notifikation",
+      "Til den computer, du sidder ved",
+      "Dine ord, stavet rigtigt",
+    ]);
+    expect(SHOWCASE_ORDER.map((k) => SHOWCASE[k].scene)).toEqual([
+      "fn",
+      "telefon",
+      "renskriv",
+      "sprog",
+      "notifikation",
+      "enheder",
+      "ordliste",
+    ]);
+    expect(SHOWCASE_INTRO.title).toBe("Lavet til den måde, du taler på");
+    /* the unmeasured parts stay claims: whispering, English words written as said */
+    expect(SHOWCASE.phone.claim!.text).toMatch(/hvisk/i);
+    expect(SHOWCASE.mixed.claim!.text).toMatch(/engelske ord, som du siger/);
+    for (const k of SHOWCASE_ORDER)
+      expect(SHOWCASE[k].text + (SHOWCASE[k].body ?? "")).not.toMatch(
+        /hvisk|som du siger dem/i,
+      );
   });
   it("keeps whispering a claim until it is measured", () => {
     expect(FEATURES.phone.body + FEATURES.phone.short).not.toMatch(/hvisk/i);

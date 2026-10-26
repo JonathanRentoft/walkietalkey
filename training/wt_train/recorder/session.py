@@ -177,7 +177,7 @@ class Session:
                 self.recording = None
             elif kind == "mac_failed":
                 self.recording = None
-                self.error = f"Mac'en kunne ikke optage: {ev.get('message') or 'ukendt fejl'}"  # TODO(copy)
+                self.error = f"Mac'en kunne ikke optage: {ev.get('message') or 'ukendt fejl'}"
             elif kind == "phone" and self.phone and ev.get("id") == self.phone["id"]:
                 self.phone = {**self.phone, "online": bool(ev.get("online"))}
             elif kind == "bye":

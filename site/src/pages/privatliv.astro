@@ -7,7 +7,7 @@ import { Check } from "../components/home/Icons";
 import Base from "../layouts/Base.astro";
 import { CONTACT_EMAIL, CONTACT_URL, OPERATOR, PAGES } from "../lib/site";
 
-// TODO(copy): every row of the table (spec 12.1; model downloads from GitHub since run 2, DESK-32; the phone's 0.3 s
+// Every row of the table (spec 12.1; model downloads from GitHub since run 2, DESK-32; the phone's 0.3 s
 // pre-roll, PHONE-33)
 const rows: [string, string, string, string][] = [
   ["Lyd fra tasten", "I computerens hukommelse.", "Indtil den er skrevet ud.", "Dig."],
@@ -23,7 +23,6 @@ const rows: [string, string, string, string][] = [
 ];
 ---
 <Base page="privacy">
-  <!-- TODO(copy): eyebrow, title, lead -->
   <PageHero current="privacy" eyebrow="Privatliv" title="Hvad der sker med din tale" lead="Her står præcis, hvilke data der findes hvor, hvor længe de bliver, og hvem der kan læse dem." />
   <main class="container page-body" id="indhold">
     <div class="prose">
@@ -35,9 +34,8 @@ const rows: [string, string, string, string][] = [
         <li><Check s={16} />Ingen sporing.</li>
       </ul>
 
-      <!-- TODO(copy): the sections below -->
       <h2>Hvem står bag</h2>
-      <!-- TODO(copy): the contact by e-mail (SITE-05) -->
+      <!-- The contact by e-mail (SITE-05) -->
       <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. Det er den dataansvarlige for de få data, der findes på relæet og hjemmesiden. Du kan skrive til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>.</p>
       <p>Relæet og hjemmesiden kører hos Cloudflare (Workers, Durable Objects og Pages). Cloudflare er databehandler: de behandler IP-adresser og tidspunkter for forbindelser på operatørens vegne og efter operatørens instruks.</p>
 
@@ -55,7 +53,6 @@ const rows: [string, string, string, string][] = [
     </div>
 
     <div class="prose">
-      <!-- TODO(copy) -->
       <h2>Historikken på din computer</h2>
       <p>Hver diktering gemmes i appens datamappe på din computer med tidspunkt, kilde (tasten eller telefonens navn) og teksten, så du kan finde den igen. Du vælger selv, hvor længe: Gem ikke, 1 dag, 14 dage, 90 dage eller Altid. Du kan slette alt med Slet al historik.</p>
       <p>Historikken er kun krypteret på disken, hvis computerens diskkryptering (FileVault eller BitLocker) er slået til.</p>
@@ -63,7 +60,7 @@ const rows: [string, string, string, string][] = [
 
       <h2>Telefonen og relæet</h2>
       <p>Telefonen optager og krypterer lyden, før den sendes. Lyden går gennem relæet til din computer, og kun telefonen og computeren har nøglen. Relæet ser rummenes id'er, enhedernes offentlige nøgler, IP-adresser, tidspunkter og hvor store beskederne er. Det ser aldrig lyd eller tekst. Teksten sendes aldrig tilbage til telefonen.</p>
-      <!-- TODO(copy): the warm microphone (PHONE-30, PHONE-33) -->
+      <!-- The warm microphone (PHONE-30, PHONE-33) -->
       <p>Mens telefonappen er åben og parret, er telefonens mikrofon tændt, så dit første ord kommer med, når du trykker. Telefonen viser imens sit eget tegn for, at mikrofonen er i brug. Mellem dikteringerne ligger højst de seneste 0,3 sekunder lyd i telefonens hukommelse, og de bliver hele tiden overskrevet. Når du trykker på knappen, kommer op til 0,3 sekunder fra lige før trykket med i dikteringen. Ellers bliver intet sendt eller gemt. Mikrofonen slukker, når appen går i baggrunden, efter 3 minutter uden brug, og når ingen computer er parret.</p>
       <p>Er computeren ikke online, venter den krypterede lyd højst 10 minutter i relæet. Telefonen gemmer aldrig lyd på sin disk.</p>
 
@@ -78,7 +75,7 @@ const rows: [string, string, string, string][] = [
       <p>En virksomhed, der ikke vil have, at noget passerer servere, vi driver, kan køre sit eget relæ og sin egen udgave af telefonappen og hente talemodellerne fra sin egen server. Søgning efter opdateringer går stadig til GitHub, medmindre virksomheden slår automatiske opdateringer fra og installerer dem selv. Se <a href={PAGES.business.path}>Virksomheder</a>.</p>
 
       <h2>Dine rettigheder</h2>
-      <!-- TODO(copy): the contact by e-mail (SITE-05) -->
+      <!-- The contact by e-mail (SITE-05) -->
       <p>Der er ingen konto, så vi kender hverken dit navn eller din e-mail, og vi kan ikke knytte relæets data til dig. Har du spørgsmål om dine data, så skriv til <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>. Du kan også klage til Datatilsynet.</p>
       <p class="muted">Senest opdateret 24. oktober 2026.</p>
     </div>

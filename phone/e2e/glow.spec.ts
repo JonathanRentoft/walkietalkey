@@ -148,10 +148,28 @@ test.describe("the glow around the button is never clipped (Phase 4)", () => {
     await pairByLink(page, computer);
     const p = await press(page);
     await settle(page);
+    // The recording glow pulses, so a cut shows most at the pulse's peak; on a slow runner one
+    // sample can land in a trough (CI's Linux WebKit found 7 stepped rays once, against 19 to 33
+    // locally). Three samples across the pulse, keeping the strongest: the self-test still needs
+    // the detector to see the cut, and the clean check below gets stricter, not looser.
+    const strongest = async () => {
+      let best = await measureGlow(page);
+      for (let i = 0; i < 2; i++) {
+        await page.waitForTimeout(250);
+        const r = await measureGlow(page);
+        if (r.steppedRays > best.steppedRays || r.maxStep > best.maxStep)
+          best = {
+            ...r,
+            steppedRays: Math.max(r.steppedRays, best.steppedRays),
+            maxStep: Math.max(r.maxStep, best.maxStep),
+          };
+      }
+      return best;
+    };
     const cut = async (css: string) => {
       const style = await page.addStyleTag({ content: css });
       await page.waitForTimeout(200);
-      const r = await measureGlow(page);
+      const r = await strongest();
       await style.evaluate((el) => (el as Element).remove());
       return r;
     };
@@ -167,10 +185,8 @@ test.describe("the glow around the button is never clipped (Phase 4)", () => {
     if (process.env.E2E_GLOW_LOG) console.log("square cut", square);
     expect(square.maxStep).toBeGreaterThan(MAX_GLOW_STEP);
     expect(square.steppedRays).toBeGreaterThanOrEqual(8);
-    // And without either: clean.
-    expect((await measureGlow(page)).steppedRays).toBeLessThanOrEqual(
-      MAX_NOISY_RAYS,
-    );
+    // And without either: clean, at every sample.
+    expect((await strongest()).steppedRays).toBeLessThanOrEqual(MAX_NOISY_RAYS);
     await p.release();
   });
 

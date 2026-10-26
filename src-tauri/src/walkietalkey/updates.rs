@@ -196,11 +196,12 @@ pub fn install_pending_on_exit() {
 /// Run 6: macOS runs an app opened straight from its disk image (or any
 /// quarantined app it has not seen moved by Finder) from a read-only copy
 /// under AppTranslocation, and the updater cannot replace a read-only app. The
-/// owner's v0.2.0 ran like that. The screens then ask to open WalkieTalkey from
-/// Programmer.
+/// owner's v0.2.0 ran like that. The screens then offer "Flyt til Programmer"
+/// (DESK-114, move_app.rs). A dev build outside a bundle is never offered it.
 pub fn runs_from_disk_image(exe: &std::path::Path) -> bool {
     let path = exe.to_string_lossy();
-    path.contains("/AppTranslocation/") || path.starts_with("/Volumes/")
+    (path.contains("/AppTranslocation/") || path.starts_with("/Volumes/"))
+        && super::move_app::bundle_from_exe(exe).is_some()
 }
 
 /// Whether this app runs from a read-only copy that cannot update itself.
@@ -241,6 +242,10 @@ mod tests {
         )));
         assert!(!runs_from_disk_image(Path::new(
             "/Users/me/Applications/WalkieTalkey.app/Contents/MacOS/walkietalkey"
+        )));
+        // DESK-114: a dev build on an external drive is not offered the move.
+        assert!(!runs_from_disk_image(Path::new(
+            "/Volumes/SSD/walkietalkey/src-tauri/target/debug/walkietalkey"
         )));
     }
 

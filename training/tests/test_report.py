@@ -160,8 +160,8 @@ def test_substitutions_deletions_and_insertions_with_their_share(tmp_path, make_
 
 
 def test_accuracy_per_english_term_strict_and_lenient(tmp_path, make_wav, spelling_file):
-    folder = small_fleurs_run(tmp_path, make_wav)
-    rows = rows_of(folder)
+    folder = small_fleurs_run(tmp_path, make_wav, dataset="takes")
+    rows = rows_of(folder, "takes")
     spelling = load_spelling(spelling_file)
     terms = {t.term: t for t in report.term_stats(rows, spelling)}
     assert (terms["deploy"].clips, terms["deploy"].total, terms["deploy"].strict, terms["deploy"].lenient) == (2, 2, 1, 2)
@@ -180,8 +180,26 @@ def test_accuracy_per_english_term_strict_and_lenient(tmp_path, make_wav, spelli
 
 
 def test_a_run_without_terms_says_so(tmp_path, make_wav, spelling_file):
-    folder = write_run(tmp_path / "runs" / "r", [("a", "en to tre", "en to tre")], make_wav)
+    folder = write_run(tmp_path / "runs" / "r", [("a", "en to tre", "en to tre")], make_wav, dataset="takes")
     assert "No English terms from spelling.yaml" in render(folder, tmp_path, "--spelling", str(spelling_file))
+
+
+def test_fleurs_pages_show_no_term_accuracy(tmp_path, make_wav, spelling_file):
+    # Run 8: the "terms" spelling.yaml finds in FLEURS are ordinary Danish words ("test", "bug").
+    folder = small_fleurs_run(tmp_path, make_wav)  # its references hold "deployede" and "commits"
+    html = render(folder, tmp_path, "--spelling", str(spelling_file))
+    for shown in ("English terms right", "Terms strict", "Terms lenient", "<td>deploy</td>", "Strict right"):
+        assert shown not in html
+    assert "not counted for FLEURS" in html
+    run_a, run_b = two_runs(tmp_path, make_wav)
+    compared = render(run_a, tmp_path, "--vs", str(run_b), "--spelling", str(spelling_file))
+    for shown in ("English terms, strict", "Strict A", "Terms strict"):
+        assert shown not in compared
+    assert "not counted for FLEURS" in compared
+    # the owner's takes keep theirs
+    takes = small_fleurs_run(tmp_path, make_wav, name="20261026-100000-gguf-m", dataset="takes")
+    own = render(takes, tmp_path, "--spelling", str(spelling_file))
+    assert "English terms right (strict)" in own and "Terms strict" in own and "<td>deploy</td>" in own
 
 
 def test_one_row_per_recording_condition_or_one_group_for_fleurs(tmp_path, make_wav):

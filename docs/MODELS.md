@@ -169,15 +169,34 @@ Unit tests: `cd models/eval && uv run --group dev pytest` (88 tests).
   (cased, punctuated) transcription.
 - **WER normaliser** (`wt_eval/normalize.py`, applied to both sides): Unicode
   NFKC and lower case; numbers as spoken Danish ("800.000" becomes "otte
-  hundrede tusind", "3,5" becomes "tre komma fem", a lone 1100 to 1999 is read as
-  a year, "nitten hundrede og seksoghalvfjerds", other integers as cardinals,
+  hundrede tusind", "3,5" becomes "tre komma fem", 1100 to 1999 read alike
+  whether written "1.100", "1100" or in words, other integers as cardinals,
   "%" becomes "procent"); every character that is not a letter or digit becomes
   a space (punctuation, hyphens, quotes); "tusinde"/"tusind", "én"/"en" and "et
   hundrede"/"hundrede" folded; whitespace collapsed. WER is the corpus total of
   substitutions, deletions and insertions over reference words (Levenshtein),
-  with a 95 % bootstrap interval over clips. Known limits: ordinals ("5. maj"
-  reads as "fem maj"), clock times ("10.30" reads as a decimal) and
-  abbreviations ("f.eks.") are not folded.
+  with a 95 % bootstrap interval over clips.
+
+  **Run 8: the reference and the model's text normalise the same way.** Before,
+  the normaliser read some written forms differently from the same words
+  spoken, so part of the "errors" were scoring errors: "29¾" in a FLEURS
+  reference became "to hundrede og treoghalvfems fire", "e.kr." was split. Now
+  fractions ("29¾" and "29 trefjerdedele" both read "niogtyve tre
+  fjerdedele"), abbreviations (e.kr., f.Kr., f.eks., bl.a., ca., kl., nr., pct.,
+  osv. and more; "kr." is kroner only after a number), units after a number
+  (km, m, cm, km/t), signs ($, ~, x), ordinals and dates ("15. august"), clock
+  times, ratios and ranges, accents (idé/ide) and a few spelling variants
+  ("selv om"/"selvom", "dollars"/"dollar") read alike, and `normalize_pair`
+  joins a hyphenated compound when the other text writes it closed
+  ("Schengen-land"/"Schengenland"). Over the 930 FLEURS test references, 89
+  changed (34 distinct texts). Both baselines were rerun with identical
+  transcripts and the fixed normaliser: Edda float16 through Transformers
+  7.21 % to **6.32 %** (95 %: 5.86 to 6.79), the app path (0.2.1) 7.63 % to
+  **6.72 %** (6.26 to 7.18), all of it from the scoring. Still not folded:
+  "10.30" outside "klokken", "halv syv", Roman numerals, compounds written
+  apart without a hyphen. The transcribe-cli table below was scored with the
+  earlier normaliser.
+
 - **Punctuation measure** (`wt_eval/punctuation.py`, on the raw hypothesis):
   marks are `. , ? ! ; :` except a mark between two digits ("3,5", "800.000");
   words are whitespace-separated tokens. Reported as marks per 25 words over the

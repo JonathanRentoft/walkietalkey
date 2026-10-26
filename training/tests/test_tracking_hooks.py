@@ -1,5 +1,8 @@
 """Tracking in train, eval and export (run 5, Part 4): what each run leaves in MLflow."""
 
+import csv
+import json
+
 import pytest
 
 import fake_app
@@ -103,6 +106,8 @@ def test_an_eval_logs_every_metric_the_fleurs_regression_terms_and_transcripts(s
     assert params["model"] == "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf"
     assert metrics["clips/wer"] == 0 and metrics["clips/n"] == 2
     assert metrics["fleurs-da_dk-test/wer"] > 0  # the regression check (the fake app answers "hej")
+    # Run 8: term accuracy for the owner's clips only, never for the FLEURS check.
+    assert metrics["clips/terms"] == 1 and not [k for k in metrics if k.startswith("fleurs-da_dk-test/term")]
     assert "mlflow.parentRunId" not in got.data.tags  # no training run behind a base-model eval
     assert {"summary.json", "terms.md", "side-by-side.md"} <= artifacts(got)
     (out,) = list((tmp_path / "work" / "runs" / "eval").iterdir())
@@ -110,6 +115,44 @@ def test_an_eval_logs_every_metric_the_fleurs_regression_terms_and_transcripts(s
     assert "| deploy | 1 | 1 | 0 |" in terms
     side = (out / "side-by-side.md").read_text(encoding="utf-8")
     assert "Hej med dig." in side and "| id |" in side
+
+
+def test_a_fleurs_eval_counts_no_terms_and_is_tracked_as_asked(store, tmp_path, make_wav, monkeypatch):
+    # Run 8: FLEURS's "terms" are ordinary Danish words; a rescoring is a pipeline change with a note,
+    # and the results.csv row it appends is not imported a second time by wt-train ui.
+    work = tmp_path / "work"
+    write_fleurs(work / "datasets" / "fleurs-da_dk", "test",
+                 [(f"x{i}", f"{3000 + i}", f"Vi deployede den {i}.") for i in range(3)], seed0=40)
+    spelling = tmp_path / "spelling.yaml"
+    spelling.write_text("terms:\n  deploy:\n    forms: [deploye, deployede]\n", encoding="utf-8")
+    binary, _ = fake_app.install(tmp_path, monkeypatch, batch=True)
+    results = tmp_path / "results.csv"
+    code = evaluate.main(["--backend", "gguf", "--model", "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
+                          "--app-bin", str(binary), "--spelling", str(spelling), "--results", str(results),
+                          "--change", "pipeline", "--notes", "normaliser fix, run 8"], log=lambda *_: None)
+    assert code == 0
+    with results.open(newline="") as f:
+        (written,) = list(csv.DictReader(f))
+    assert written["dataset"] == evaluate.FLEURS_TEST and written["fleurs_n"] == "3"
+    for column in ("terms", "terms_strict", "terms_lenient", "term_accuracy_strict_pct", "term_accuracy_lenient_pct"):
+        assert written[column] == ""
+    (out,) = list((work / "runs" / "eval").iterdir())
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))["results"][evaluate.FLEURS_TEST]
+    assert summary["terms"] is None and summary["term_accuracy_strict"] is None
+    assert not (out / "terms.md").exists()
+    (got,) = tracking.find_runs(kind="eval")
+    assert got.data.tags["wt.change"] == "pipeline"
+    assert got.data.tags["mlflow.note.content"] == "normaliser fix, run 8"
+    assert not [k for k in got.data.metrics if "term" in k]
+    assert tracking.import_results(results) == 0
+    assert len(tracking.find_runs()) == 1
+
+
+def test_an_eval_measures_the_model_unless_told(store, tmp_path, make_wav, monkeypatch):
+    assert gguf_eval(tmp_path, make_wav, monkeypatch, "--change", "model") == 0
+    assert tracking.find_runs(kind="eval")[0].data.tags["wt.change"] == "model"
+    with pytest.raises(SystemExit):
+        gguf_eval(tmp_path, make_wav, monkeypatch, "--change", "weather")
 
 
 def test_an_eval_of_a_trained_run_sits_under_it(store, tmp_path):

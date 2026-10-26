@@ -103,7 +103,7 @@ export:
   # The app id becomes edda-ft-<slug>; the file edda-ft-<slug>.gguf in the
   # app's models folder. Lower-case letters, digits and "-".
   slug: first
-  # Name shown in the app's model list (GGUF general.name). TODO(copy)
+  # Name shown in the app's model list (GGUF general.name).
   name: Edda finjusteret (forsøg 1)
   # Validation clips transcribed by both the merged model and the GGUF to check
   # that conversion and Q8_0 quantisation kept the text.
