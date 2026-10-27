@@ -15,10 +15,11 @@ export type Screen =
   | "evaluering"
   | "versioner"
   | "journal"
+  | "laer"
   | "rapport"
   | "ukendt";
 
-/** The six screens of the navigation, in order. */
+/** The seven screens of the navigation, in order (run 11: Lær det after Journal). */
 export const SCREENS = [
   "optag",
   "data",
@@ -26,6 +27,7 @@ export const SCREENS = [
   "evaluering",
   "versioner",
   "journal",
+  "laer",
 ] as const;
 export type NavScreen = (typeof SCREENS)[number];
 

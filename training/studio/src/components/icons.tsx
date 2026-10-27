@@ -57,6 +57,13 @@ export const IconJournal = () => (
     <path d="M6 18.5A1.5 1.5 0 0 1 7.5 17H18M9.5 7.5h5M9.5 10.5h5" />
   </Icon>
 );
+/** Lær det: an open book. */
+export const IconLearn = () => (
+  <Icon>
+    <path d="M12 6.5C10.4 5.2 8 4.5 4 4.5v13c4 0 6.4.7 8 2 1.6-1.3 4-2 8-2v-13c-4 0-6.4.7-8 2z" />
+    <path d="M12 6.5v13" />
+  </Icon>
+);
 export const IconPlay = ({ size = 16 }: { size?: number }) => (
   <Icon size={size}>
     <path d="M8 5.5v13l10.5-6.5L8 5.5z" />

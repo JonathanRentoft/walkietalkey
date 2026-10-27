@@ -303,12 +303,16 @@ export interface ConfigSetting {
   label: string;
   /** The Danish heading of its section; null for `name`. */
   section_label?: string | null;
+  /** Run 11: for the four settings a beginner touches first, what turning it up or down does. */
+  help?: string | null;
 }
 
 export interface TrainingConfig {
   name: string;
   file: string;
   settings: ConfigSetting[];
+  /** Run 11: the keys of the four settings shown first, in order. */
+  essentials?: string[];
   /** English: why the config does not load (then there are no settings). */
   error?: string;
 }
@@ -360,7 +364,12 @@ export interface TrainingState {
 
 export interface EvalRun {
   id: string;
+  /** The MLflow run's name: the slug the command line takes. */
   name: string;
+  /** Run 11: its readable Danish name, "Appen · FLEURS" (a day where two would share one). */
+  title: string;
+  /** Run 11: the WER normaliser's version that counted it; null for one without a number. */
+  normaliser: number | null;
   kind: string;
   date: string | null;
   dataset: string | null;
@@ -446,6 +455,39 @@ export interface JournalPage {
   hypothesis: string;
   learned: string;
   files: string;
+}
+
+/* ------------------------------------------------------------------- Lær det */
+
+export interface LearnNotebook {
+  name: string;
+  number: number | null;
+  title: string;
+  summary: string | null;
+  minutes: number | null;
+  /** The working copy in <work>/notebooks/ exists. */
+  copy: boolean;
+  /** A code cell of the copy has outputs. */
+  ran: boolean;
+  /** The copy's last change. */
+  saved: string | null;
+}
+
+export interface LearnListing {
+  notebooks: LearnNotebook[];
+  /** Where the working copies are. */
+  copies: string;
+}
+
+export interface LearnOpenAnswer {
+  notebook: LearnNotebook;
+  created: boolean;
+  with: "open" | "code";
+}
+
+export interface LearnResetAnswer {
+  notebook: LearnNotebook;
+  kept: string | null;
 }
 
 export interface ApiErrorBody {

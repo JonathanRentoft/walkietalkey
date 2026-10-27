@@ -65,6 +65,7 @@ describe("strings", () => {
       "use-failed",
       "text",
       "exists",
+      "no-vscode",
     ];
     expect(codes.filter((c) => !S.errors[c])).toEqual([]);
     expect(errorText("busy", "training")).toBe(

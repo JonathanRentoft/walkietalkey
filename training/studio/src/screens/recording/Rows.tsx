@@ -234,7 +234,11 @@ export function RowList({ state, act }: { state: RecordingState; act: Act }) {
         </p>
       )}
       <ol className="rows" ref={listRef} tabIndex={-1} aria-label={R.listTitle}>
-        {shown.length === 0 && <li className="rows-empty">{R.filterEmpty}</li>}
+        {shown.length === 0 && (
+          <li className="rows-empty">
+            {counts.total === 0 ? R.empty.all : R.empty[filter]}
+          </li>
+        )}
         {shown.map(({ row, n }) => (
           <RowItem
             key={row.id}

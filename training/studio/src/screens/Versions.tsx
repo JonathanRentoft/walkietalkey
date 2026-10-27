@@ -8,6 +8,7 @@ import { IconCheck } from "../components/icons";
 import {
   Button,
   Card,
+  Empty,
   ErrorBox,
   JobPanel,
   Loading,
@@ -132,7 +133,9 @@ export function VersionsScreen() {
               </div>
             </Card>
 
-            {v.versions.length === 0 && <p className="empty">{V.empty}</p>}
+            {v.versions.length === 0 && (
+              <Empty what={V.emptyWhat} when={V.emptyWhen} />
+            )}
             {v.versions.map((x) => {
               const on = x.id === inApp || x.in_app;
               return (
@@ -225,7 +228,11 @@ function Export({
     <Section id="export" title={V.exportTitle} help={V.exportHelp}>
       <Card>
         {versions.exportable.length === 0 ? (
-          <p className="empty">{V.exportNone}</p>
+          <Empty
+            what={V.exportEmptyWhat}
+            when={V.exportEmptyWhen}
+            to={{ href: "/traening", label: V.goTraining }}
+          />
         ) : (
           <div className="row-inline">
             <label className="field field--inline">

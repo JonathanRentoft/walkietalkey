@@ -8,6 +8,7 @@ import { Bars, Legend, StackedBars } from "../components/charts";
 import { IconCheck, IconQuestion, IconWarn } from "../components/icons";
 import {
   Card,
+  Empty,
   ErrorBox,
   Loading,
   PageHeader,
@@ -59,155 +60,166 @@ export function DataScreen() {
             <StatTile label={D.recorded} value={int(d.sentences.recorded)} />
           </div>
 
-          <Section id="minutes" title={D.minutesTitle}>
-            <Card>
-              {d.conditions.length === 0 ? (
-                <p className="empty">{D.noConditions}</p>
-              ) : (
-                <Bars
-                  label={D.minutesTitle}
-                  max={Math.max(1, ...d.conditions.map((c) => c.minutes))}
-                  rows={d.conditions.map((c) => ({
-                    key: c.id,
-                    label: c.label,
-                    value: c.minutes,
-                    text: minutes(c.minutes),
-                    sub: `${int(c.takes)} ${D.takes.toLowerCase()}`,
-                  }))}
-                />
-              )}
-            </Card>
-          </Section>
+          {d.conditions.length === 0 ? (
+            <Section id="minutes" title={D.minutesTitle}>
+              <Empty
+                what={D.empty.what}
+                when={D.empty.when}
+                to={{ href: "/optag", label: D.empty.go }}
+              />
+            </Section>
+          ) : (
+            <>
+              <Section id="minutes" title={D.minutesTitle}>
+                <Card>
+                  <Bars
+                    label={D.minutesTitle}
+                    max={Math.max(1, ...d.conditions.map((c) => c.minutes))}
+                    rows={d.conditions.map((c) => ({
+                      key: c.id,
+                      label: c.label,
+                      value: c.minutes,
+                      text: minutes(c.minutes),
+                      sub: `${int(c.takes)} ${D.takes.toLowerCase()}`,
+                    }))}
+                  />
+                </Card>
+              </Section>
 
-          <Section
-            id="split"
-            title={D.splitTitle}
-            help={D.splitHelp(
-              pct(d.fractions.validation, 0),
-              pct(d.fractions.test, 0),
-              d.config,
-            )}
-            aside={
-              <Segmented<Unit>
-                label={D.unit}
-                value={unit}
-                onChange={setUnit}
-                options={[
-                  { value: "takes", label: D.takes },
-                  { value: "minutes", label: D.minutes },
-                ]}
-              />
-            }
-          >
-            <Card>
-              <Legend
-                items={[
-                  { label: D.train, series: 1 },
-                  { label: D.validation, series: 2 },
-                  { label: D.test, series: 3 },
-                ]}
-              />
-              <StackedBars
-                label={D.splitTitle}
-                max={Math.max(
-                  1e-9,
-                  ...d.conditions.map((c) =>
-                    unit === "takes" ? c.takes : c.minutes,
-                  ),
+              <Section
+                id="split"
+                title={D.splitTitle}
+                help={D.splitHelp(
+                  pct(d.fractions.validation, 0),
+                  pct(d.fractions.test, 0),
+                  d.config,
                 )}
-                rows={d.conditions.map((c) => {
-                  const f = (n: number) =>
-                    unit === "takes" ? int(n) : minutes(n);
-                  const v = (p: { takes: number; minutes: number }) =>
-                    unit === "takes" ? p.takes : p.minutes;
-                  return {
-                    key: c.id,
-                    label: c.label,
-                    total: f(unit === "takes" ? c.takes : c.minutes),
-                    parts: [
-                      {
-                        label: D.train,
-                        value: v(c.split.train),
-                        text: f(v(c.split.train)),
-                        series: 1,
-                      },
-                      {
-                        label: D.validation,
-                        value: v(c.split.validation),
-                        text: f(v(c.split.validation)),
-                        series: 2,
-                      },
-                      {
-                        label: D.test,
-                        value: v(c.split.test),
-                        text: f(v(c.split.test)),
-                        series: 3,
-                      },
-                    ],
-                  };
-                })}
-              />
-              <details className="table-view">
-                <summary>{S.common.showTable}</summary>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{D.condition}</th>
-                      <th scope="col" className="num">
-                        {D.train}
-                      </th>
-                      <th scope="col" className="num">
-                        {D.validation}
-                      </th>
-                      <th scope="col" className="num">
-                        {D.test}
-                      </th>
-                      <th scope="col" className="num">
-                        {D.total}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.conditions.map((c) => (
-                      <tr key={c.id}>
-                        <th scope="row">{c.label}</th>
-                        {(["train", "validation", "test"] as const).map((k) => (
-                          <td key={k} className="num">
-                            {int(c.split[k].takes)} /{" "}
-                            {minutes(c.split[k].minutes)}
-                          </td>
+                aside={
+                  <Segmented<Unit>
+                    label={D.unit}
+                    value={unit}
+                    onChange={setUnit}
+                    options={[
+                      { value: "takes", label: D.takes },
+                      { value: "minutes", label: D.minutes },
+                    ]}
+                  />
+                }
+              >
+                <Card>
+                  <Legend
+                    items={[
+                      { label: D.train, series: 1 },
+                      { label: D.validation, series: 2 },
+                      { label: D.test, series: 3 },
+                    ]}
+                  />
+                  <StackedBars
+                    label={D.splitTitle}
+                    max={Math.max(
+                      1e-9,
+                      ...d.conditions.map((c) =>
+                        unit === "takes" ? c.takes : c.minutes,
+                      ),
+                    )}
+                    rows={d.conditions.map((c) => {
+                      const f = (n: number) =>
+                        unit === "takes" ? int(n) : minutes(n);
+                      const v = (p: { takes: number; minutes: number }) =>
+                        unit === "takes" ? p.takes : p.minutes;
+                      return {
+                        key: c.id,
+                        label: c.label,
+                        total: f(unit === "takes" ? c.takes : c.minutes),
+                        parts: [
+                          {
+                            label: D.train,
+                            value: v(c.split.train),
+                            text: f(v(c.split.train)),
+                            series: 1,
+                          },
+                          {
+                            label: D.validation,
+                            value: v(c.split.validation),
+                            text: f(v(c.split.validation)),
+                            series: 2,
+                          },
+                          {
+                            label: D.test,
+                            value: v(c.split.test),
+                            text: f(v(c.split.test)),
+                            series: 3,
+                          },
+                        ],
+                      };
+                    })}
+                  />
+                  <details className="table-view">
+                    <summary>{S.common.showTable}</summary>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th scope="col">{D.condition}</th>
+                          <th scope="col" className="num">
+                            {D.train}
+                          </th>
+                          <th scope="col" className="num">
+                            {D.validation}
+                          </th>
+                          <th scope="col" className="num">
+                            {D.test}
+                          </th>
+                          <th scope="col" className="num">
+                            {D.total}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.conditions.map((c) => (
+                          <tr key={c.id}>
+                            <th scope="row">{c.label}</th>
+                            {(["train", "validation", "test"] as const).map(
+                              (k) => (
+                                <td key={k} className="num">
+                                  {int(c.split[k].takes)} /{" "}
+                                  {minutes(c.split[k].minutes)}
+                                </td>
+                              ),
+                            )}
+                            <td className="num">
+                              {int(c.takes)} / {minutes(c.minutes)}
+                            </td>
+                          </tr>
                         ))}
-                        <td className="num">
-                          {int(c.takes)} / {minutes(c.minutes)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </details>
-              {d.rehearsal && (
-                <p className="help">
-                  {D.rehearsal(
-                    pct(d.rehearsal.share, 0),
-                    pct(d.rehearsal.validation_share, 0),
+                      </tbody>
+                    </table>
+                  </details>
+                  {d.rehearsal && (
+                    <p className="help">
+                      {D.rehearsal(
+                        pct(d.rehearsal.share, 0),
+                        pct(d.rehearsal.validation_share, 0),
+                      )}
+                    </p>
                   )}
-                </p>
-              )}
-              {d.skipped.length > 0 && (
-                <details className="notes">
-                  <summary>{D.skipped(int(d.skipped.length))}</summary>
-                  <p className="help">{D.skippedHelp}</p>
-                  <ul className="mono-list">
-                    {d.skipped.map((s) => (
-                      <li key={s.id}>
-                        <code>{s.id}</code> <span lang="en">{s.reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </Card>
-          </Section>
+                  {d.skipped.length > 0 && (
+                    <details className="notes">
+                      <summary>{D.skipped(int(d.skipped.length))}</summary>
+                      <p className="help">{D.skippedHelp}</p>
+                      <ul className="mono-list">
+                        {d.skipped.map((s) => (
+                          <li key={s.id}>
+                            <code>{s.id}</code>{" "}
+                            <span lang="en">{s.reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </Card>
+              </Section>
+            </>
+          )}
 
           <Section id="leakage" title={D.leakageTitle} help={D.leakageHelp}>
             <Leakage view={d} />
@@ -246,14 +258,11 @@ function Leakage({ view }: { view: DataView }) {
   const L = view.leakage;
   if (!L.ran)
     return (
-      <p className="empty">
-        {D.leakageNotRun}
-        {L.message && (
-          <span className="help block" lang="en">
-            {L.message}
-          </span>
-        )}
-      </p>
+      <Empty
+        what={D.leakageNotRun}
+        when={D.empty.leakage}
+        to={{ href: "/optag", label: D.empty.go }}
+      />
     );
   const splits = L.checks.find((c) => c.id === "splits");
   const held = L.checks.filter((c) => c.id !== "splits");

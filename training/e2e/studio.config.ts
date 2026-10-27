@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
    training/studio/). One studio server runs on 127.0.0.1:8796, outside the 8780 to 8799 range a
    real Værkstedet takes by default only in that it is given its port, with every path a
    temporary folder: sentences, plan and mix, exam, pilot, spelling, configs, recordings, pilot
-   takes, journal and the work folder. Nothing touches training/data/ or training/work/.
+   takes, journal, the learning notebooks and the work folder. Nothing touches training/data/ or
+   training/work/, and VS Code is never opened (WT_OPEN is a stand-in that logs its arguments).
 
    The spec plays the WalkieTalkey app: the studio writes the app's link with its token to a
    file (--app-url-file) instead of handing it to a running app, and the spec talks to the app
@@ -31,7 +32,15 @@ const STUDIO_PORT = 8796;
 // The config is loaded in every worker too; they inherit the runner's folder through the env.
 process.env.WT_STUDIO_E2E ??= mkdtempSync(join(tmpdir(), "wt-studio-e2e-"));
 const work = process.env.WT_STUDIO_E2E;
-for (const d of ["recordings", "pilot", "journal", "configs", "work", "models"])
+for (const d of [
+  "recordings",
+  "pilot",
+  "journal",
+  "configs",
+  "work",
+  "models",
+  "notebooks",
+])
   mkdirSync(join(work, d), { recursive: true });
 
 const SENTENCES = [
@@ -105,6 +114,46 @@ writeFileSync(
   ].join("\n"),
 );
 
+// Run 11: two learning notebooks by their contract (training/tests/test_notebooks.py), for Lær det.
+const notebook = (n: number, title: string, summary: string) => ({
+  nbformat: 4,
+  nbformat_minor: 5,
+  metadata: {
+    kernelspec: {
+      name: "python3",
+      display_name: "Python 3",
+      language: "python",
+    },
+    wt: { number: n, summary, minutes: 3 },
+  },
+  cells: [
+    { cell_type: "markdown", metadata: {}, source: [`# 0${n} · ${title}`] },
+    {
+      cell_type: "code",
+      metadata: {},
+      source: ["print('hej')"],
+      outputs: [],
+      execution_count: null,
+    },
+  ],
+});
+writeFileSync(
+  join(work, "notebooks", "01-lyden.ipynb"),
+  JSON.stringify(notebook(1, "Lyden", "Hør en optagelse, som Edda får den.")),
+);
+writeFileSync(
+  join(work, "notebooks", "02-edda-indefra.ipynb"),
+  JSON.stringify(notebook(2, "Edda indefra", "Følg en sætning gennem Edda.")),
+);
+
+// VS Code is never opened: a stand-in for `open` writes its arguments to open.log, one a line.
+const fakeOpen = join(work, "fake-open");
+writeFileSync(
+  fakeOpen,
+  `#!/bin/sh\nprintf '%s\\n' "$@" > ${JSON.stringify(join(work, "open.log"))}\nexit 0\n`,
+);
+chmodSync(fakeOpen, 0o755);
+
 // The stand-in for the walkietalkey binary, run by the training project's Python.
 const script = readFileSync(
   join(repo, "training/tests/fake_app.py"),
@@ -134,6 +183,7 @@ const server = {
     flag("spelling", join(work, "spelling.yaml")),
     flag("configs", join(work, "configs")),
     flag("journal", join(work, "journal")),
+    flag("notebooks", join(work, "notebooks")),
     flag("dist", join(repo, "training/studio/dist")),
     flag("app-bin", fakeApp),
     flag("app-url-file", join(work, "app-url")),
@@ -146,6 +196,8 @@ const server = {
     WT_APP_MODELS_DIR: join(work, "models"),
     WT_TRACKING: "0",
     WT_CAFFEINATE: "0",
+    WT_OPEN: fakeOpen,
+    WT_CODE: "",
     FAKE_APP_BATCH: "1",
     FAKE_APP_LOG: join(work, "fake-app.log"),
     FAKE_APP_MODELS: "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",

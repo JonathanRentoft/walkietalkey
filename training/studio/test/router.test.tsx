@@ -8,21 +8,25 @@ import {
   navigate,
   parseRoute,
   reportHref,
+  SCREENS,
   useRoute,
 } from "../src/router";
 
 describe("parseRoute", () => {
-  it("knows the six screens, with / as the recording screen", () => {
+  it("knows the seven screens, with / as the recording screen", () => {
     expect(parseRoute("/").screen).toBe("optag");
-    for (const s of [
+    const seven = [
       "optag",
       "data",
       "traening",
       "evaluering",
       "versioner",
       "journal",
-    ])
-      expect(parseRoute(`/${s}`).screen).toBe(s);
+      "laer",
+    ];
+    for (const s of seven) expect(parseRoute(`/${s}`).screen).toBe(s);
+    // Run 11: Lær det comes after the journal in the navigation.
+    expect([...SCREENS]).toEqual(seven);
     expect(parseRoute("/data/").screen).toBe("data");
   });
 
