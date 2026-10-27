@@ -1,0 +1,35 @@
+---
+/* Run 10: one feature in a row of its own (Row.astro): its words beside its demo, the design system's ShowcaseCard
+   with the scene and surface picked per feature (look.ts, _kit/work/run10/demos.md). The demo hydrates when it comes
+   into view; its surface is one of the page's living backgrounds ([data-fp-bg], front.ts), so it holds still while
+   another background is the one that moves. A feature's measured fact, if it has one, stands under its words. */
+import { ShowcaseCard } from "@walkietalkey/ui";
+import Row from "./Row.astro";
+import { LOOK, type DemoKey } from "./look";
+import { SHOWCASE } from "../../lib/features";
+
+interface Props {
+  id: DemoKey;
+}
+const { id } = Astro.props;
+const f = SHOWCASE[id];
+const look = LOOK[id];
+/* a stopwatch, in the design system's line style */
+const WATCH = "M8 14.2a5.4 5.4 0 1 0 0-10.8 5.4 5.4 0 0 0 0 10.8ZM8 6v2.9l1.9 1.2M6.4 1.6h3.2";
+---
+<Row row={id} data-showcase={id} id={`funktion-${id}`}>
+  <Fragment slot="copy">
+    <h3 class="fp-feat-title">{f.title}</h3>
+    <p class="fp-feat-text">{f.text}</p>
+    {f.body && <p class="fp-feat-body">{f.body}</p>}
+    {f.fact && (
+      <p class="fp-feat-fact">
+        <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d={WATCH} /></svg>
+        <span>{f.fact}</span>
+      </p>
+    )}
+  </Fragment>
+  <div slot="box" class="fp-feat-demo" data-fp-bg="card" data-paused>
+    <ShowcaseCard client:visible scene={f.scene} {...look} />
+  </div>
+</Row>

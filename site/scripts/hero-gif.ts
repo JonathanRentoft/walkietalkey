@@ -1,12 +1,16 @@
-/* Records the hero animation (the stage on the homepage, run 5) as docs/assets/hero.gif for the README (spec 14.3).
-   Playwright records Chrome's screencast (a screenshot on every repaint, with its timestamp) through one loop in
-   real time; ffmpeg (Homebrew) crops them to the demo and turns them into a GIF with the measured frame timings.
+/* Records the hero animation (the stage on the front page: the fn key held, the pill listening, the words landing on
+   release) as docs/assets/hero.gif for the README (spec 14.3). The stage plays its sequence once after load (front.css,
+   fp-seq-*), so Playwright records Chrome's screencast (a screenshot on every repaint, with its timestamp) from a
+   reload until the sequence has ended; ffmpeg (Homebrew) crops the frames to the stage and turns them into a GIF with
+   the measured frame timings. The GIF loops; the page plays it once.
    Usage: bun scripts/hero-gif.ts [baseURL] (default: the local server, bun scripts/serve.ts). GIF_WIDTH sets the width. */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
-import { LOOP_MS } from "../src/lib/stage";
+
+/** the stage comes up (0.15 s + 1.6 s) and its sequence plays once (1.6 s delay + 5.4 s), then a held last frame */
+const LOOP_MS = 8200;
 
 const base = process.argv[2] || "http://localhost:4329";
 const site = resolve(import.meta.dir, "..");
@@ -23,18 +27,7 @@ const page = await browser.newPage({
 });
 await page.goto(base + "/");
 await page.evaluate(() => document.fonts.ready);
-const demo = page.locator("[data-stage]");
-await page.evaluate(() => {
-  const d = document.querySelector("[data-stage]")!;
-  window.scrollTo(0, d.getBoundingClientRect().top + window.scrollY - 40);
-});
-/* wait for the loop to come round to its first step */
-await page
-  .locator('[data-stage][data-step="reset"]')
-  .waitFor({ timeout: 20000 });
-await page.locator('[data-stage][data-step="idle"]').waitFor({ timeout: 5000 });
-
-const box = (await demo.boundingBox())!;
+const box = (await page.locator("[data-stage]").boundingBox())!;
 const cdp = await page.context().newCDPSession(page);
 const shots: { file: string; at: number }[] = [];
 let first = 0;
@@ -51,6 +44,8 @@ await cdp.send("Page.startScreencast", {
   quality: 95,
   everyNthFrame: 1,
 });
+/* from the start: the stage plays once after load */
+await page.reload();
 await page.waitForTimeout(LOOP_MS + 200);
 await cdp.send("Page.stopScreencast");
 await browser.close();

@@ -1,14 +1,14 @@
-/* Run 8: the final pages' one script (plus the islands).
+/* The front page's one script (plus the islands).
 
-   One living background at a time. Every living background on the page has a host, [data-fp-bg]: the hero's, each
-   demo card's surface, the privacy section's, the price's bars and page 2's last band. Only the one that fills the
+   One living background at a time (SITE-06). Every living background on the page has a host, [data-fp-bg]: the
+   hero's bars, each demo card's surface, the night panel's mesh, and the bars of getting started and the price. Only the one that fills the
    most of the screen runs; every other host gets data-paused (the HTML starts with all of them paused, so nothing
-   runs before this has looked). CSS holds a paused host's CSS surfaces (final.css), and the WebGL and BarField
+   runs before this has looked). CSS holds a paused host's CSS surfaces (front.css), and the WebGL and BarField
    islands read the attribute (Live.tsx). A host must beat the running one by a little to take over, so two that
    fill about the same space do not flicker between them. With reduced motion the surfaces stand still by themselves.
 
-   And concept C's two small demos, getting started and the price: flip the two permissions, and the third step is
-   ready; slide the number of computers, and the price stays 0 kr. Without JavaScript both show their finished state. */
+   And the two small demos, getting started and the price: flip the two permissions, and the fn key is ready; slide
+   the number of computers, and the price stays 0 kr. Without JavaScript both show their finished state. */
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -75,7 +75,7 @@ export function backgrounds(doc: Document = document): () => void {
   };
 }
 
-/* ------------------------------------------------------------- getting started and the price (concept C) */
+/* ------------------------------------------------------------------------- getting started and the price */
 const checked = (el: Element) => el.getAttribute("aria-checked") === "true";
 
 function replay(el: Element | null, cls: string) {

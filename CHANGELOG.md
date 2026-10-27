@@ -8,6 +8,8 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - For developers: Værkstedet (`wt-train studio`) is the fine-tuning workbench as a local app in the browser, with a launcher in `~/Applications` (`wt-train studio --install-app`): recording with every take checked and heard by Edda as it arrives, the data and its splits, training with live loss curves, evaluation reports, model versions and the lab journal.
 - For developers: `wt-train export` no longer fails at the end when it logs its step timings to MLflow.
 - The model files name Jonathan Rentoft as the one who converted and mirrored the weights.
+- walkietalkey.com has its final front page (SITE-02, SITE-06): the light hero with 40 bars that stand still until you move, touch or scroll, then one feature per row, text and demo taking turns left and right (text above its demo on phones). A new scene shows the phone's button held, the sound travelling to the computer in use, and the text landing there while the other computer stays empty. Only what is measured is claimed: whispering and English words inside Danish sentences stay off the page until they are, and the speed is said as it was measured on a MacBook Pro with M1 Pro.
+- Jonathan Rentoft operates the public relay and the website and is the data controller; the privacy page names him and kontakt@walkietalkey.com, and no longer names a company, its CVR number or its address.
 
 ## [0.2.2] - 2026-10-26
 

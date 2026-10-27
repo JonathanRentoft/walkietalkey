@@ -289,3 +289,693 @@ button.wt-app-dev {
     animation: none;
   }
 }
+
+/* Run 10: SpeakToDesk, the devices scene without a card. The three devices sit on the page itself: a warm glow and
+   soft shadows on the floor, no box. The stage is drawn at 960 x 580 (600 x 800 under 560 px) and scaled to the
+   width of its box with container query units, so the server's picture is the right size before anything hydrates.
+   Motion is transforms and opacity only; the phone's rings turn with rotate() instead of the conic angle. */
+.wt-spk {
+  position: relative;
+  width: 100%;
+  container: wt-spk / inline-size;
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+.wt-spk-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 960 / 580;
+}
+.wt-spk-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 960px;
+  height: 580px;
+  transform-origin: 0 0;
+  transform: scale(tan(atan2(100cqw, 960px)));
+  /* the route's control point and end, from its start (SpeakToDesk.tsx, ARC_WIDE) */
+  --cx: -40px;
+  --cy: -196px;
+  --ex: -84px;
+  --ey: -104px;
+}
+
+/* the floor: one wide warm glow under the group, a soft shadow under each device */
+.wt-spk-glow {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 250px;
+  height: 330px;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--sand) 55%, #ffffff00),
+    #ffffff00
+  );
+  opacity: 0.7;
+}
+[data-theme="dark"] .wt-spk-glow {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--rav-dyb) 30%, #ffffff00),
+    #ffffff00
+  );
+}
+.wt-spk-floor {
+  position: absolute;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--night) 24%, #ffffff00),
+    #ffffff00
+  );
+}
+
+/* the computers */
+.wt-spk-dev {
+  position: absolute;
+  top: 64px;
+  width: 380px;
+  z-index: 1;
+}
+.wt-spk-dev--on {
+  left: 40px;
+}
+.wt-spk-dev--off {
+  left: 540px;
+}
+.wt-spk-dev > .wt-spk-floor {
+  left: -36px;
+  right: -36px;
+  top: 222px;
+  height: 60px;
+}
+/* the computer in use warms the floor under it when the words land */
+.wt-spk-dev--on::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: 150px;
+  height: 210px;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--rav) 60%, #ffffff00),
+    #ffffff00
+  );
+  opacity: 0.2;
+  transition: opacity 0.9s var(--ease-flow);
+}
+.wt-spk-dev--landed::before {
+  opacity: 0.7;
+}
+.wt-spk-laptop {
+  font-size: calc(380px / 76);
+}
+.wt-spk .wt-desk {
+  font-size: 1.6em;
+}
+
+/* MacBook: the display notch, and WalkieTalkey last in the menu bar, where the sound arrives */
+.wt-spk-dev--mac .wt-laptop-cam {
+  display: none;
+}
+.wt-spk-dev--mac .wt-laptop-screen::after {
+  content: "";
+  position: absolute;
+  z-index: 9;
+  top: 0;
+  left: 50%;
+  width: 8.4em;
+  height: 1.3em;
+  margin-left: -4.2em;
+  border-radius: 0 0 0.6em 0.6em;
+  background: #0e0e0f;
+}
+.wt-spk .wt-mbar-right > span:last-child {
+  order: -1;
+}
+/* ThinkPad: matte black, squarer, the red pointing stick */
+.wt-spk-tp .wt-laptop-lid {
+  padding: 1.4em 1.25em 1.5em;
+  border-radius: 0.8em 0.8em 0.35em 0.35em;
+  background: linear-gradient(180deg, #252527, #19191a);
+  box-shadow:
+    inset 0 0 0 0.12em #2f2f31,
+    0 3em 6em -3em #1b1a1973;
+}
+.wt-spk-tp .wt-laptop-cam {
+  top: 0.45em;
+}
+.wt-spk-tp .wt-laptop-screen {
+  border-radius: 0.15em;
+}
+.wt-spk-tp .wt-laptop-base {
+  height: 1.6em;
+  margin: 0 -2.6em;
+  border-radius: 0 0 1em 1em / 0 0 1em 1em;
+  background: linear-gradient(180deg, #303032 0%, #1d1d1f 55%, #121213 100%);
+  box-shadow:
+    0 2.4em 3.2em -2em #1b1a1966,
+    inset 0 0.1em 0 #ffffff1f;
+}
+.wt-spk-tp .wt-laptop-notch {
+  top: 0.38em;
+  width: 0.8em;
+  height: 0.8em;
+  margin-left: -0.4em;
+  border-radius: 50%;
+  background: var(--signal-rec);
+  box-shadow: inset 0 -0.1em 0.15em #00000059;
+}
+
+/* the MacBook's desk: the compose window, the notice, the pill and the paste keys, sized for the smaller screen */
+.wt-spk .wt-win {
+  left: 2.2em;
+  top: 3.9em;
+  width: 30em;
+  height: 22em;
+}
+.wt-spk .wt-desk-pill {
+  transform: translate(-50%, 1.4em) scale(0.6);
+}
+.wt-spk .wt-desk-pill--in {
+  transform: translate(-50%, 0) scale(0.6);
+}
+.wt-spk .wt-desk-keys {
+  bottom: 3em;
+}
+.wt-spk-dev--clear .wt-win-body {
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-flow);
+}
+
+/* the ThinkPad's desk: a quiet window, the screen dimmed */
+.wt-spk-quiet {
+  position: absolute;
+  left: 3em;
+  top: 2.6em;
+  width: 27em;
+  height: 19em;
+  border-radius: 0.7em;
+  overflow: hidden;
+  background: var(--surface-200);
+  box-shadow:
+    0 0.2em 0.6em #1b1a191f,
+    0 2.4em 5em -1.6em #1b1a1966,
+    inset 0 0 0 0.1em var(--line);
+}
+.wt-spk-quiet-bar {
+  height: 3.4em;
+  border-bottom: 0.1em solid var(--line);
+}
+.wt-spk-quiet-body {
+  padding: 2em;
+}
+.wt-spk-quiet-body i {
+  display: block;
+  height: 1em;
+  margin-bottom: 1.3em;
+  border-radius: 0.5em;
+  background: var(--surface-300);
+}
+.wt-spk-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: color-mix(in oklab, var(--night) 58%, #ffffff00);
+}
+
+/* the names, and which one is in use */
+.wt-spk-label {
+  position: absolute;
+  left: 50%;
+  top: 274px;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  white-space: nowrap;
+  font-size: 17px;
+  transform: translateX(-50%);
+}
+.wt-spk-name {
+  font: 600 1em/1 var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.wt-spk-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  height: 1.75em;
+  padding: 0 0.7em 0 0.6em;
+  box-sizing: border-box;
+  border-radius: var(--radius-pill);
+  font: 500 0.82em/1 var(--font-sans);
+  color: var(--ink-muted);
+}
+.wt-spk-state i {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  flex: none;
+}
+.wt-spk-state--on {
+  color: var(--ink);
+  background: var(--surface-200);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1px var(--line);
+}
+.wt-spk-state--on i {
+  background: var(--rav-dyb);
+  box-shadow: 0 0 0 0.25em color-mix(in oklab, var(--rav) 45%, #ffffff00);
+}
+.wt-spk-state--off i {
+  box-shadow: inset 0 0 0 0.12em var(--line-control);
+}
+
+/* the phone, in front */
+.wt-spk-phone {
+  position: absolute;
+  left: 392px;
+  top: 190px;
+  z-index: 3;
+}
+.wt-spk-phone .wt-phone {
+  font-size: calc(176px / 30);
+}
+.wt-spk-phone > .wt-spk-floor {
+  left: -50px;
+  right: -50px;
+  bottom: -26px;
+  height: 60px;
+}
+.wt-spk .wt-finger {
+  width: 6.4em;
+  height: 6.4em;
+  margin: -3.2em 0 0 -3.2em;
+}
+.wt-spk .wt-app-halo {
+  animation: wt-spk-turn 6s linear infinite;
+}
+.wt-spk .wt-app--rec .wt-app-halo {
+  animation-duration: 2.4s;
+}
+.wt-spk .wt-app-ring {
+  animation: wt-spk-turn 8s linear infinite;
+}
+@keyframes wt-spk-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* the pill's moving halo and shimmer paint every frame; here they hold still, and the record dot breathes */
+.wt-spk .wt-pill-halo,
+.wt-spk .wt-shimmer {
+  animation: none;
+}
+.wt-spk .wt-rec {
+  animation: wt-breathe 1.4s ease-in-out infinite;
+}
+
+/* the voice reaching the microphone: rings closing in on the held button */
+.wt-spk-voice {
+  position: absolute;
+  left: 13.7em;
+  top: 25.5em;
+  z-index: 5;
+  pointer-events: none;
+}
+.wt-spk-voice i {
+  position: absolute;
+  left: -7.5em;
+  top: -7.5em;
+  width: 15em;
+  height: 15em;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 0.16em solid color-mix(in oklab, var(--sand) 80%, #ffffff00);
+  opacity: 0;
+}
+.wt-spk-voice--on i {
+  animation: wt-spk-ring 1.5s var(--ease-flow) infinite;
+}
+.wt-spk-voice--on i:nth-child(2) {
+  animation-delay: 0.5s;
+}
+.wt-spk-voice--on i:nth-child(3) {
+  animation-delay: 1s;
+}
+@keyframes wt-spk-ring {
+  0% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.04);
+    opacity: 0;
+  }
+}
+.wt-spk-voice--still i:nth-child(1) {
+  opacity: 0.45;
+  transform: scale(1.18);
+}
+.wt-spk-voice--still i:nth-child(2) {
+  opacity: 0.22;
+  transform: scale(1.38);
+}
+
+/* the sound on its way: a dotted route and small capsules of voice flying it */
+.wt-spk-arcs {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-flow);
+}
+.wt-spk-arcs--on {
+  opacity: 1;
+}
+.wt-spk-arc {
+  fill: none;
+  stroke: var(--rav-dyb);
+  stroke-width: 2;
+  stroke-dasharray: 0.5 8;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+.wt-spk-arc--narrow {
+  display: none;
+}
+.wt-spk-flow {
+  position: absolute;
+  left: 480px;
+  top: 186px;
+  z-index: 4;
+  pointer-events: none;
+}
+.wt-spk-pkt {
+  position: absolute;
+  left: -19px;
+  top: -10px;
+  width: 38px;
+  height: 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  border-radius: var(--radius-pill);
+  background: var(--night);
+  box-shadow:
+    0 6px 14px -4px #1b1a1980,
+    inset 0 0 0 1px var(--night-line);
+  opacity: 0;
+}
+.wt-spk-pkt i {
+  width: 2.5px;
+  height: 11px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to top, var(--rav-dyb), var(--sand));
+}
+.wt-spk-flow--on .wt-spk-pkt {
+  animation: wt-spk-fly 1.2s linear infinite;
+}
+.wt-spk-flow--on .wt-spk-pkt:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.wt-spk-flow--on .wt-spk-pkt:nth-child(3) {
+  animation-delay: 0.8s;
+}
+/* a quadratic curve from the start (0, 0) through (--cx, --cy) to (--ex, --ey), sampled every eighth of the curve
+   and timed by the length of each piece, so the capsules keep an even pace (wide: the route is 192 px long) */
+@keyframes wt-spk-fly {
+  0% {
+    transform: translate(0, 0) scale(0.55);
+    opacity: 0;
+  }
+  23.7% {
+    transform: translate(
+        calc(var(--cx) * 0.21875 + var(--ex) * 0.015625),
+        calc(var(--cy) * 0.21875 + var(--ey) * 0.015625)
+      )
+      scale(0.8);
+    opacity: 1;
+  }
+  43% {
+    transform: translate(
+        calc(var(--cx) * 0.375 + var(--ex) * 0.0625),
+        calc(var(--cy) * 0.375 + var(--ey) * 0.0625)
+      )
+      scale(1);
+  }
+  57.8% {
+    transform: translate(
+        calc(var(--cx) * 0.46875 + var(--ex) * 0.140625),
+        calc(var(--cy) * 0.46875 + var(--ey) * 0.140625)
+      )
+      scale(1);
+  }
+  68.4% {
+    transform: translate(
+        calc(var(--cx) * 0.5 + var(--ex) * 0.25),
+        calc(var(--cy) * 0.5 + var(--ey) * 0.25)
+      )
+      scale(1);
+  }
+  75.5% {
+    transform: translate(
+        calc(var(--cx) * 0.46875 + var(--ex) * 0.390625),
+        calc(var(--cy) * 0.46875 + var(--ey) * 0.390625)
+      )
+      scale(1);
+  }
+  81.2% {
+    transform: translate(
+        calc(var(--cx) * 0.375 + var(--ex) * 0.5625),
+        calc(var(--cy) * 0.375 + var(--ey) * 0.5625)
+      )
+      scale(0.95);
+  }
+  88.8% {
+    transform: translate(
+        calc(var(--cx) * 0.21875 + var(--ex) * 0.765625),
+        calc(var(--cy) * 0.21875 + var(--ey) * 0.765625)
+      )
+      scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--ex), var(--ey)) scale(0.5);
+    opacity: 0;
+  }
+}
+/* the narrow route, 346 px long */
+@keyframes wt-spk-fly-n {
+  0% {
+    transform: translate(0, 0) scale(0.55);
+    opacity: 0;
+  }
+  17.9% {
+    transform: translate(
+        calc(var(--cx) * 0.21875 + var(--ex) * 0.015625),
+        calc(var(--cy) * 0.21875 + var(--ey) * 0.015625)
+      )
+      scale(0.8);
+    opacity: 1;
+  }
+  33.6% {
+    transform: translate(
+        calc(var(--cx) * 0.375 + var(--ex) * 0.0625),
+        calc(var(--cy) * 0.375 + var(--ey) * 0.0625)
+      )
+      scale(1);
+  }
+  47.4% {
+    transform: translate(
+        calc(var(--cx) * 0.46875 + var(--ex) * 0.140625),
+        calc(var(--cy) * 0.46875 + var(--ey) * 0.140625)
+      )
+      scale(1);
+  }
+  59.5% {
+    transform: translate(
+        calc(var(--cx) * 0.5 + var(--ex) * 0.25),
+        calc(var(--cy) * 0.5 + var(--ey) * 0.25)
+      )
+      scale(1);
+  }
+  70.2% {
+    transform: translate(
+        calc(var(--cx) * 0.46875 + var(--ex) * 0.390625),
+        calc(var(--cy) * 0.46875 + var(--ey) * 0.390625)
+      )
+      scale(1);
+  }
+  80.1% {
+    transform: translate(
+        calc(var(--cx) * 0.375 + var(--ex) * 0.5625),
+        calc(var(--cy) * 0.375 + var(--ey) * 0.5625)
+      )
+      scale(0.95);
+  }
+  89.8% {
+    transform: translate(
+        calc(var(--cx) * 0.21875 + var(--ex) * 0.765625),
+        calc(var(--cy) * 0.21875 + var(--ey) * 0.765625)
+      )
+      scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--ex), var(--ey)) scale(0.5);
+    opacity: 0;
+  }
+}
+/* the still frame: two capsules on the route, about a third and two thirds of the way */
+.wt-spk-flow--still .wt-spk-pkt:nth-child(1) {
+  opacity: 1;
+  transform: translate(
+    calc(var(--cx) * 0.4352 + var(--ex) * 0.4624),
+    calc(var(--cy) * 0.4352 + var(--ey) * 0.4624)
+  );
+}
+.wt-spk-flow--still .wt-spk-pkt:nth-child(2) {
+  opacity: 0.75;
+  transform: translate(
+      calc(var(--cx) * 0.42 + var(--ex) * 0.09),
+      calc(var(--cy) * 0.42 + var(--ey) * 0.09)
+    )
+    scale(0.85);
+}
+
+/* under 560 px: the MacBook on top, the ThinkPad below on the left, the phone below on the right */
+@container wt-spk (max-width: 559.98px) {
+  .wt-spk-box {
+    aspect-ratio: 600 / 800;
+  }
+  .wt-spk-stage {
+    width: 600px;
+    height: 800px;
+    transform: scale(tan(atan2(100cqw, 600px)));
+    /* ARC_NARROW */
+    --cx: 141px;
+    --cy: -222px;
+    --ex: 25px;
+    --ey: -313px;
+  }
+  .wt-spk-glow {
+    left: 0;
+    right: 0;
+    top: 220px;
+    height: 560px;
+  }
+  .wt-spk-dev--on {
+    left: 90px;
+    top: 40px;
+    width: 420px;
+  }
+  .wt-spk-dev--on .wt-spk-laptop {
+    font-size: calc(420px / 76);
+  }
+  .wt-spk-dev--on > .wt-spk-floor {
+    top: 246px;
+  }
+  .wt-spk-dev--on::before {
+    top: 160px;
+    height: 240px;
+  }
+  .wt-spk-dev--on .wt-spk-label {
+    top: 300px;
+  }
+  .wt-spk-dev--off {
+    left: 44px;
+    top: 486px;
+    width: 250px;
+  }
+  .wt-spk-dev--off .wt-spk-laptop {
+    font-size: calc(250px / 76);
+  }
+  .wt-spk-dev--off > .wt-spk-floor {
+    left: -30px;
+    right: -30px;
+    top: 140px;
+    height: 44px;
+  }
+  .wt-spk-dev--off .wt-spk-label {
+    top: 186px;
+  }
+  .wt-spk-label {
+    font-size: 22px;
+  }
+  .wt-spk-phone {
+    left: 364px;
+    top: 382px;
+  }
+  .wt-spk-phone .wt-phone {
+    font-size: calc(190px / 30);
+  }
+  .wt-spk-arc--wide {
+    display: none;
+  }
+  .wt-spk-arc--narrow {
+    display: inline;
+  }
+  .wt-spk-flow {
+    left: 459px;
+    top: 372px;
+  }
+  .wt-spk-pkt {
+    left: -23px;
+    top: -12px;
+    width: 46px;
+    height: 24px;
+    gap: 3px;
+  }
+  .wt-spk-pkt i {
+    width: 3px;
+    height: 13px;
+  }
+  .wt-spk-flow--on .wt-spk-pkt {
+    animation-name: wt-spk-fly-n;
+    animation-duration: 1.5s;
+  }
+  .wt-spk-flow--on .wt-spk-pkt:nth-child(2) {
+    animation-delay: 0.5s;
+  }
+  .wt-spk-flow--on .wt-spk-pkt:nth-child(3) {
+    animation-delay: 1s;
+  }
+}
+
+/* paused by the page: the CSS motion holds where it is */
+.wt-spk--paused *,
+.wt-spk--paused *::before,
+.wt-spk--paused *::after {
+  animation-play-state: paused !important;
+}
+/* reduced motion: one still frame, nothing moves */
+.wt-spk--reduced *,
+.wt-spk--reduced *::before,
+.wt-spk--reduced *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-spk *,
+  .wt-spk *::before,
+  .wt-spk *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,24 @@
+---
+/* Run 10: the devices row. You talk into the phone, and the text lands only on the computer you sit at; the other
+   computer stays empty (spec 5.5, PHONE-40). The scene stands on the page itself, with no card, frame or surface
+   around it, only a soft light under the devices, as the owner asked.
+
+   The scene is the design system's SpeakToDesk: the phone's button held, sound flying to the MacBook in use, the text
+   landing there, the ThinkPad empty. It sets its own height from its width, hydrates when it comes into view and plays
+   only while it is on screen; its server frame is the same still frame reduced motion shows. */
+import { SpeakToDesk } from "@walkietalkey/ui";
+import Row from "./Row.astro";
+import { SHOWCASE } from "../../lib/features";
+
+const f = SHOWCASE.devices;
+---
+<Row row="devices" data-showcase="devices" id="funktion-devices" boxProps={{ class: "fp-devices", "data-devices": "" }}>
+  <Fragment slot="copy">
+    <h3 class="fp-feat-title">{f.title}</h3>
+    <p class="fp-feat-text">{f.text}</p>
+    {f.body && <p class="fp-feat-body">{f.body}</p>}
+  </Fragment>
+  <div slot="box" class="fp-devices-scene">
+    <SpeakToDesk client:visible />
+  </div>
+</Row>

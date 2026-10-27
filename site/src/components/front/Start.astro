@@ -1,0 +1,102 @@
+---
+/* Run 10: getting started and the price, as two rows like the features (Row.astro), each with a small demo on the
+   design system's GradientBars (glow, Morgengry): bars of light rising from the bottom of the box.
+     Kom i gang på et minut: the three steps beside a box where you flip the two permissions the app asks for, and
+       the fn key lights up: "Klar. Hold fn, og tal."
+     Gratis for alle, også for virksomheder: a box with 0 kr. for 1.000 computers and a slider for how many (the price
+       stays 0 kr. however far you slide it, principle 3), beside the two plans as words, stacked, and "Hjælpen er en
+       service, ikke en licens". From 25 computers the paid help is marked.
+   Without JavaScript both show their finished state: the permissions on, the price for 1.000 computers. The bars are
+   two of the page's living backgrounds ([data-fp-bg], front.ts). */
+import { GradientBars, Keycap, ShinyButton } from "@walkietalkey/ui";
+import { Check } from "../home/Icons";
+import Row from "./Row.astro";
+import { CTA, FEATURES, PLANS, STEPS, TRY } from "../../lib/features";
+import { CONTACT_URL, PAGES } from "../../lib/site";
+
+/* how many computers the slider steps through; it starts at the last, 1.000 */
+const COUNTS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
+const fmt = new Intl.NumberFormat("da-DK");
+const start = COUNTS.length - 1;
+const count = TRY.many.replace("{n}", fmt.format(COUNTS[start]));
+---
+<div class="fp-get" id="kom-i-gang">
+  <Row row="start" tag="section" aria-labelledby="fp-kom-i-gang" data-feature="start" data-start data-ready-text={TRY.ready} data-wait-text={TRY.waiting}>
+    <Fragment slot="copy">
+      <h2 class="fp-h2" id="fp-kom-i-gang">{FEATURES.start.title}</h2>
+      <p class="fp-text">{FEATURES.start.body}</p>
+      <ol class="fp-steps">
+        {STEPS.map((s, i) => (
+          <li class="fp-step">
+            <span class="fp-step-n" aria-hidden="true">{i + 1}</span>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.body}</p>
+              {i === 0 && <a class="fp-link" href={PAGES.hent.path}>{TRY.get}</a>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Fragment>
+    <div slot="box" class="fp-get-box" data-fp-bg="bars" data-paused>
+      <GradientBars variant="glow" palette="morgengry" bars={22} className="fp-get-surface">
+        <div class="fp-try">
+          <div class="fp-perms" role="group" aria-label={TRY.permissionsTitle}>
+            <span class="fp-tag fp-js-only">{TRY.permissionsTitle}</span>
+            {TRY.permissions.map((p) => (
+              <button type="button" class="fp-switch" role="switch" aria-checked="true" data-perm>
+                <span>{p}</span>
+                <span class="fp-switch-track" aria-hidden="true"><span class="fp-switch-knob"></span></span>
+              </button>
+            ))}
+          </div>
+          <p class="fp-ready" data-final data-ready>
+            <Keycap size={44} className="fp-ready-key">fn</Keycap>
+            <span data-ready-label aria-live="polite">{TRY.ready}</span>
+          </p>
+        </div>
+      </GradientBars>
+    </div>
+  </Row>
+
+  <Row row="free" tag="section" aria-labelledby="fp-gratis" data-feature="free" data-free data-counts={JSON.stringify(COUNTS)} data-one={TRY.one} data-many={TRY.many}>
+    <Fragment slot="copy">
+      <h2 class="fp-h2" id="fp-gratis">{FEATURES.free.title}</h2>
+      <div class="fp-plan-list">
+        <div class="fp-plan">
+          <p class="fp-plan-name"><b>{PLANS.free.title}</b><span>{PLANS.free.price}</span></p>
+          <p class="fp-plan-note">{PLANS.free.note}</p>
+          <ul>{PLANS.free.items.map((s) => <li><Check s={16} />{s}</li>)}</ul>
+          <div class="fp-plan-ctas">
+            <ShinyButton variant="ink" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+          </div>
+        </div>
+        <div class="fp-plan fp-plan--help" data-help data-lit>
+          <p class="fp-plan-name"><b>{PLANS.help.title}</b><span>{PLANS.help.price}</span></p>
+          <p class="fp-plan-note">{PLANS.help.note}</p>
+          <ul>{PLANS.help.items.map((s) => <li><Check s={16} />{s}</li>)}</ul>
+          <div class="fp-plan-ctas">
+            <ShinyButton variant="glass" icon={false} href={CONTACT_URL}>{CTA.contact}</ShinyButton>
+            <a class="fp-link" href={PAGES.business.path}>{CTA.business}</a>
+          </div>
+        </div>
+      </div>
+      <p class="fp-plans-foot">{PLANS.footnote}</p>
+    </Fragment>
+    <div slot="box" class="fp-get-box" data-fp-bg="bars" data-paused>
+      <GradientBars variant="glow" palette="morgengry" bars={22} className="fp-get-surface">
+        <div class="fp-try fp-try--price">
+          <div class="fp-price">
+            <span class="fp-price-n" data-price>{PLANS.free.price}</span>
+            <span class="fp-price-for" data-count>{count}</span>
+          </div>
+          <div class="fp-range fp-js-only">
+            <label for="fp-count">{TRY.countLabel}</label>
+            <input id="fp-count" type="range" min="0" max={COUNTS.length - 1} step="1" value={start} aria-valuetext={count} data-range />
+            <p class="fp-range-hint" data-hint data-text={TRY.hint} aria-live="polite">{TRY.hint}</p>
+          </div>
+        </div>
+      </GradientBars>
+    </div>
+  </Row>
+</div>

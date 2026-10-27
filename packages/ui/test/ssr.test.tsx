@@ -38,6 +38,22 @@ describe("server rendering", () => {
     expect(html).not.toContain("wt-sc-dev-hist");
   });
 
+  /* Run 10: the server's picture tells the whole story before the island hydrates (client:visible): the button held,
+     the words on the computer in use, the other computer empty and dimmed. */
+  it("renders SpeakToDesk's still frame, the text only on the computer in use", () => {
+    const html = renderToString(createElement(UI.SpeakToDesk));
+    expect(html).toContain('data-step="still"');
+    expect(html).toContain('role="img"');
+    expect(html).toContain("wt-app--rec");
+    expect(html).toContain("Tekst klar til at indsætte");
+    expect(html).toContain("I brug");
+    expect(html).toContain("Ikke i brug");
+    const off = html.slice(html.indexOf("wt-spk-dev--off"));
+    expect(off).not.toContain("wt-win-pasted");
+    expect(off).not.toContain("Hej Mette");
+    expect(html).not.toMatch(/visibility:\s*hidden/);
+  });
+
   it("renders the still state of motion components (no reduced-motion guess on the server)", () => {
     expect(renderToString(createElement(UI.RelayDemo))).toContain(
       "wt-relay--home",

@@ -1,0 +1,17 @@
+---
+/* The short FAQ, with the link to the rest: the heading on the left, the questions on the right. */
+import { CTA, FAQ, FEATURES } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+---
+<section class="fp-faq" aria-labelledby="fp-spoergsmaal">
+  <article class="fp-faq-in" data-feature="faq">
+    <div class="fp-faq-head">
+      <h2 class="fp-h2" id="fp-spoergsmaal">{FEATURES.faq.title}</h2>
+      <p class="fp-text">{FEATURES.faq.short}</p>
+      <p class="fp-more"><a href={PAGES.faq.path}>{CTA.allQuestions}</a></p>
+    </div>
+    <div class="fp-faq-list">
+      {FAQ.map((q, i) => <details open={i === 0}><summary>{q.q}</summary><p>{q.a}</p></details>)}
+    </div>
+  </article>
+</section>

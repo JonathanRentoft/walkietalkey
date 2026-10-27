@@ -1,6 +1,6 @@
 ---
 /* PRIV-02: the table of spec 12.1 in plain Danish, the operator of the public relay and the website (decision 18.1:
-   Navigent.io ApS, OPERATOR in lib/site.ts), Cloudflare as processor, and how to reach the operator: kontakt@ on the
+   Jonathan Rentoft, OPERATOR in lib/site.ts), Cloudflare as processor, and how to reach the operator: kontakt@ on the
    domain (SITE-05), forwarded by Cloudflare Email Routing. */
 import PageHero from "../components/PageHero.astro";
 import { Check } from "../components/home/Icons";
@@ -36,7 +36,8 @@ const rows: [string, string, string, string][] = [
 
       <h2>Hvem står bag</h2>
       <!-- The contact by e-mail (SITE-05) -->
-      <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. Det er den dataansvarlige for de få data, der findes på relæet og hjemmesiden. Du kan skrive til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>.</p>
+      <!-- TODO(copy): run 10, the operator is a person, so the second sentence names him. -->
+      <p>Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. {OPERATOR} er dataansvarlig for de få data, der findes på relæet og hjemmesiden. Du kan skrive til os på <a href={CONTACT_URL}>{CONTACT_EMAIL}</a>.</p>
       <p>Relæet og hjemmesiden kører hos Cloudflare (Workers, Durable Objects og Pages). Cloudflare er databehandler: de behandler IP-adresser og tidspunkter for forbindelser på operatørens vegne og efter operatørens instruks.</p>
 
       <h2>Hvilke data findes hvor</h2>

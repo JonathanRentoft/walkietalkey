@@ -645,7 +645,7 @@ function HomeScreen() {
 
 /* --------------------------------------------------------- Desktop scene */
 
-function MenuBar(p: { platform?: string; live?: boolean }) {
+export function MenuBar(p: { platform?: string; live?: boolean }) {
   if (p.platform === "windows") return null;
   return (
     <div className="wt-mbar" aria-hidden>
@@ -666,7 +666,7 @@ function MenuBar(p: { platform?: string; live?: boolean }) {
   );
 }
 
-function Taskbar(p: { platform?: string; live?: boolean }) {
+export function Taskbar(p: { platform?: string; live?: boolean }) {
   if (p.platform !== "windows") return null;
   return (
     <div className="wt-tbar" aria-hidden>
@@ -686,7 +686,7 @@ function Taskbar(p: { platform?: string; live?: boolean }) {
 }
 
 /* A compose window. `text` is shown when `pasted`. */
-function ComposeWindow(p: {
+export function ComposeWindow(p: {
   platform?: string;
   className?: string;
   style?: CSSProperties;

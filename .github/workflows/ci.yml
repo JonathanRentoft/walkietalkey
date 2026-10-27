@@ -95,12 +95,9 @@ jobs:
       - name: Phone app (fake microphone against a local relay)
         working-directory: phone
         run: bun run test:e2e
-      - name: Website (every page, no cookies, no third parties)
+      - name: Website (every page and the front page, no cookies, no third parties)
         working-directory: site
         run: bun run build && bun run test:e2e
-      - name: Website front-page concepts (run 6, each in a browser)
-        working-directory: site
-        run: bun run test:concepts
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v7

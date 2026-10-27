@@ -91,6 +91,12 @@ export {
   type ShowcaseScene,
   type SceneProps,
 } from "./components/scenes";
+export {
+  SpeakToDesk,
+  SPEAK_TO_DESK_LABELS,
+  type SpeakToDeskProps,
+  type SpeakToDeskLabels,
+} from "./components/SpeakToDesk";
 export { useReducedMotion } from "./lib/hooks";
 export type { Palette } from "./lib/palettes";
 
