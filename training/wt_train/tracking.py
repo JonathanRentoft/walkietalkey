@@ -29,6 +29,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -208,13 +209,22 @@ class _NoRun(Run):
 NO_RUN = _NoRun()
 
 
+def metric_name(text: str) -> str:
+    """``text`` as MLflow takes a metric name: letters, digits, ``_ - . : /`` and spaces; anything
+    else (the brackets of ``verify (merged model)``, an export step) is dropped."""
+    return " ".join(_NOT_IN_A_METRIC_NAME.sub("", text).split())
+
+
+_NOT_IN_A_METRIC_NAME = re.compile(r"[^\w\-.:/ ]")
+
+
 def flatten_numbers(values: dict, prefix: str = "") -> dict[str, float]:
     """``{"test": {"wer": 0.07}}`` as ``{"test/wer": 0.07}``, numbers only. Metric names use
     slashes, like the per-condition ones (``test/iphone-whisper/wer``); MLflow's UI groups
     charts by them."""
     out: dict[str, float] = {}
     for key, value in values.items():
-        name = f"{prefix}{key}"
+        name = f"{prefix}{metric_name(str(key))}"
         if isinstance(value, dict):
             out.update(flatten_numbers(value, f"{name}/"))
         elif isinstance(value, bool):
@@ -235,7 +245,8 @@ def git_tags() -> dict[str, str]:
 def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | None = None,
         change: str | None = None) -> Iterator[Run]:
     """A run of ``kind`` named ``name`` (the workbench's own run name), finished
-    when the block ends, FAILED if it raises. ``parent`` (a run or a run id) nests it
+    when the block ends, FAILED if it raises, KILLED when it is stopped (Ctrl+C, or
+    Værkstedet's stop, run 9: ``KeyboardInterrupt``). ``parent`` (a run or a run id) nests it
     under a training run. ``change`` is ``pipeline`` or ``model`` (run 6); training and
     exports change the model, and an eval measures a model unless it says otherwise."""
     change = change or DEFAULT_CHANGE.get(kind)
@@ -253,6 +264,9 @@ def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | N
     current = Run(c, created.info.run_id)
     try:
         yield current
+    except KeyboardInterrupt:
+        current.finish("KILLED")
+        raise
     except BaseException:
         current.finish("FAILED")
         raise

@@ -274,3 +274,107 @@ def test_a_redo_goes_back_to_the_last_kept_take_not_a_refused_one(tmp_path):
     fresh.redo_last()
     assert last_prompt(fresh)["next"]["prompt"] == "s0001"
     assert phone_take(fresh, "s0002", good())["check"] == "error", "only the current sentence"
+
+
+# --- run 9: "Spring over", reviews, the end, hooks (shared with wt-train studio) -------------
+
+
+def test_spring_over_passes_the_sentence_over_until_the_others_had_their_turn(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    assert s.skip()
+    assert last_prompt(s)["next"]["prompt"] == "s0002"
+    assert s.state()["items"][0]["skipped"] is True
+    phone_take(s, "s0002", good())
+    assert last_prompt(s)["next"]["prompt"] == "s0003", "the skipped s0001 waits"
+    phone_take(s, "s0003", good())
+    p = last_prompt(s)
+    assert p["next"]["prompt"] == "s0001", "only the skipped one is left: a new round"
+    assert s.skipped == set()
+
+
+def test_the_phone_skips_in_band_and_it_is_never_a_take_or_recording(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    s.event({"type": "recording", "prompt": "skip:s0001", "source": "phone"})
+    assert s.state()["recording"] is None
+    s.event({"type": "cancelled", "prompt": "skip:s0001", "source": "phone"})
+    assert last_prompt(s)["next"]["prompt"] == "s0002"
+    assert not (tmp_path / "recordings" / "phone-whisper" / "s0001.wav").exists()
+    # A skip of a sentence that is not the current one changes nothing.
+    s.event({"type": "cancelled", "prompt": "skip:s0003", "source": "phone"})
+    assert last_prompt(s)["next"]["prompt"] == "s0002"
+
+
+def test_no_skip_while_a_take_is_recording(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    s.event({"type": "recording", "prompt": "s0001", "source": "phone"})
+    assert not s.skip()
+    assert last_prompt(s)["next"]["prompt"] == "s0001"
+
+
+def test_a_take_whose_review_says_redo_is_open_again(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    phone_take(s, "s0001", good())
+    s.store.update_meta("s0001", {"review": {"status": "redo", "by": "owner"}})
+    again = new_session(tmp_path)
+    hello(again)
+    p = last_prompt(again)
+    assert p["next"]["prompt"] == "s0001" and p["done"] == 0
+    s.store.update_meta("s0001", {"review": {"status": "approved", "by": "owner"}})
+    assert last_prompt(hello_and(new_session(tmp_path)))["next"]["prompt"] == "s0002"
+
+
+def hello_and(session):
+    hello(session)
+    return session
+
+
+def test_review_changed_moves_on_from_a_kept_sentence_and_restarts_a_finished_session(tmp_path):
+    reviews = {}
+    s = new_session(tmp_path, is_open=lambda i: reviews.get(i) != "kept")
+    hello(s)
+    reviews["s0001"] = "kept"
+    s.review_changed("s0001")
+    assert last_prompt(s)["next"]["prompt"] == "s0002"
+    reviews.update({"s0002": "kept", "s0003": "kept"})
+    s.review_changed("s0002")
+    s.review_changed("s0003")
+    assert last_prompt(s)["next"] is None
+    reviews["s0002"] = "redo"
+    s.review_changed("s0002")
+    assert last_prompt(s)["next"]["prompt"] == "s0002"
+
+
+def test_after_the_end_no_take_is_kept_and_no_mac_take_starts(tmp_path):
+    s = new_session(tmp_path)
+    hello(s)
+    s.end()
+    assert phone_take(s, "s0001", good())["check"] == "error"
+    assert not (tmp_path / "recordings" / "phone-whisper" / "s0001.wav").exists()
+    mac = new_session(tmp_path, "mac-normal")
+    hello(mac, phones=())
+    mac.end()
+    assert not mac.mac_start()
+
+
+def test_hooks_hear_every_change_and_every_kept_take(tmp_path):
+    changes, kept = [], []
+    s = new_session(tmp_path, on_change=lambda: changes.append(1),
+                    on_take=lambda item, result, meta: kept.append((item.id, result.check, meta["take"])))
+    hello(s)
+    n = len(changes)
+    phone_take(s, "s0001", good())
+    phone_take(s, "s0002", silent())
+    assert kept == [("s0001", "ok", 1)]
+    assert len(changes) >= n + 2
+
+
+def test_resume_from_picks_up_the_current_sentence_and_the_skips(tmp_path):
+    s = new_session(tmp_path)
+    s.resume_from("s0003", {"s0001", "nope"})
+    hello(s)
+    assert last_prompt(s)["next"]["prompt"] == "s0003"
+    assert s.skipped == {"s0001"}

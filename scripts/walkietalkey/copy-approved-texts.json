@@ -12,7 +12,10 @@
       "Talen bliver til tekst på din egen computer med Edda, en dansk talemodel. Appen henter den selv første gang, mens du gør resten klar.",
       "Telefonappen: hold knappen, eller tryk én gang, og teksten lander i udklipsholderen på din computer. Krypteret fra telefon til computer.",
       "Kom i gang på få trin: mikrofon, tilgængelighed (Mac) og prøv det. Ingen konto, ingen sporing.",
-      "Appen er endnu ikke signeret af Apple eller Microsoft. På Mac åbner du appen én gang og trykker derefter Åbn alligevel under Systemindstillinger › Anonymitet og sikkerhed. På Windows trykker du Flere oplysninger › Kør alligevel."
+      "Appen er endnu ikke signeret af Apple eller Microsoft. På Mac åbner du appen én gang og trykker derefter Åbn alligevel under Systemindstillinger › Anonymitet og sikkerhed. På Windows trykker du Flere oplysninger › Kør alligevel.",
+      "Åbner du WalkieTalkey fra diskbilledet, tilbyder den at flytte sig selv til Programmer med ét klik og åbne igen derfra. Så kan den opdatere sig selv.",
+      "Om WalkieTalkey nævner nu ophavsretten: Jonathan Rentoft og WalkieTalkeys bidragydere.",
+      "Beskederne om mikrofonen bruger nu macOS' eget navn, Anonymitet og sikkerhed."
     ],
     "GitHub release v0.2.0": [
       "Første gang er let: Mac'en beder kun om Mikrofon og Tilgængelighed, og WalkieTalkey spørger aldrig om din adgangskode til nøgleringen, heller ikke efter en opdatering.",
@@ -111,7 +114,8 @@
       "Optagelsen ser ud til at være skåret af. Optag den igen.",
       "Hørte ikke noget. Optag den igen.",
       "Noget af lyden nåede ikke frem. Optag den igen.",
-      "Optagelsen kunne ikke gemmes."
+      "Optagelsen kunne ikke gemmes.",
+      "Tag om"
     ],
     "site/src/components/Footer.astro": ["Alle sider"],
     "site/src/components/Header.astro": ["Hovedmenu", "Menu"],
@@ -120,6 +124,11 @@
       "Siden findes ikke. Gå til forsiden af WalkieTalkey.",
       "WalkieTalkey. Tal. Slip. Indsæt.",
       "Gå til indholdet"
+    ],
+    "site/src/lib/features.ts": [
+      "En bærbar computer og en telefon. Du holder fn-tasten nede og taler, og computeren lytter. Først når du slipper, står teksten i mailen, og statuspillen siger Indsat.",
+      "Telefonen krypterer lyden og sender den gennem relæet til din computer. Relæet kan ikke læse den. Talen bliver til tekst på computeren.",
+      "En computer med WalkieTalkeys kode åben, og licensen Apache-2.0."
     ],
     "site/src/lib/site.ts": [
       "Hold fn nede, eller tal ind i telefonen. Talen bliver til tekst på din egen computer. Gratis og open source, ingen konto.",

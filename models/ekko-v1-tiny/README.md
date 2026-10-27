@@ -99,8 +99,8 @@ CPU: 0.09 s for 10 s of speech, 0.35 s for 35 s.
 
 Ekko v1 Tiny by RyeAI, derived from NVIDIA's parakeet-rnnt-110m-da-dk.
 Licensed by NVIDIA Corporation under the NVIDIA Open Model License. Converted
-with transcribe.cpp (MIT). GGUF conversion and quantisation by the WalkieTalkey
-project (Navigent.io ApS).
+with transcribe.cpp (MIT). GGUF conversion and quantisation by Jonathan Rentoft
+for the WalkieTalkey project.
 
 ## Download
 

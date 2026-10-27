@@ -118,6 +118,8 @@ const project = (name: keyof typeof PORTS) => ({
 
 export default defineConfig({
   testDir: ".",
+  // Værkstedet's spec has its own config (studio.config.ts, bun run test:studio).
+  testIgnore: "studio.spec.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 3,

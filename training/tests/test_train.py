@@ -142,3 +142,57 @@ def test_validation_counts_terms_on_the_owners_takes_only():
     assert train.validation_row(own, "vi kører en test", spelling)["terms"] == 1
     row = train.validation_row(fleurs, "vi kører en test", spelling)
     assert row["terms"] == 0 and row["source"] == SOURCE_REHEARSAL and row["sub"] == 0
+
+
+# --- run 9: --progress, for Værkstedet ----------------------------------------------------
+
+
+def progress_lines(path):
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def test_progress_follows_the_run_phase_by_phase(tmp_path, tiny_base, small_build):
+    cfg, b = small_build
+    out = tmp_path / "progress.jsonl"
+    run = train.run(cfg, base=tiny_base, build=b, runs_root=tmp_path / "runs", cache_root=tmp_path / "cache",
+                    log=lambda *_: None, progress=train.Progress(out))
+    events = progress_lines(out)
+    kinds = [e["event"] for e in events]
+    phases = [e["phase"] for e in events if e["event"] == "phase"]
+    assert phases[:3] == ["build", "cache", "validate"] and phases.count("train") == 2
+    assert kinds.index("run") < kinds.index("plan") < kinds.index("step")
+    assert next(e for e in events if e["event"] == "run") == {"event": "run", "name": run.name, "dir": str(run)}
+    plan = next(e for e in events if e["event"] == "plan")
+    steps = [e for e in events if e["event"] == "step"]
+    assert plan["epochs"] == 2 and plan["total_steps"] == plan["steps_per_epoch"] * 2 == len(steps)
+    assert [s["step"] for s in steps] == list(range(1, len(steps) + 1))
+    assert all(s["loss"] > 0 and s["lr"] >= 0 and s["epoch"] in (1, 2) for s in steps)
+    epochs = [e for e in events if e["event"] == "epoch"]
+    assert [e["epoch"] for e in epochs] == [0, 1, 2]
+    assert epochs[0]["step"] == 0 and epochs[0]["train_loss"] is None
+    assert epochs[-1]["step"] == plan["total_steps"] and 0 <= epochs[-1]["validation_wer"]
+    metrics = [json.loads(line) for line in (run / "metrics.jsonl").read_text().splitlines()]
+    assert [e["validation_loss"] for e in epochs] == [m["validation_loss"] for m in metrics]
+    done = events[-1]
+    best = json.loads((run / "best.json").read_text())
+    assert done == {"event": "done", "run": run.name, "best_epoch": best["epoch"],
+                    "best_validation_wer": best["validation_wer"]}
+
+
+def test_progress_says_when_a_run_failed_or_was_stopped(tmp_path, monkeypatch):
+    (tmp_path / "empty").mkdir()
+    config = tmp_path / "c.yaml"
+    config.write_text(f"name: c\ndata:\n  recordings: {tmp_path / 'empty'}\n", encoding="utf-8")
+    out = tmp_path / "failed.jsonl"
+    with pytest.raises(Exception):
+        train.main([str(config), "--progress", str(out)])
+    last = progress_lines(out)[-1]
+    assert last["event"] == "failed" and "no usable takes" in last["message"]
+
+    def interrupted(*_, **__):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(train, "run", interrupted)
+    out = tmp_path / "stopped.jsonl"
+    assert train.main([str(config), "--progress", str(out)]) == 130
+    assert progress_lines(out)[-1] == {"event": "stopped"}

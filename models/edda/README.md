@@ -155,7 +155,7 @@ a model trained on them:
 Edda v0.2 by the Alexandra Institute (CoRal project), released by Danish
 Foundation Models under Apache-2.0. Based on OpenAI's Whisper large-v3-turbo
 (MIT). Converted with transcribe.cpp (MIT). GGUF conversion and quantisation by
-the WalkieTalkey project (Navigent.io ApS).
+Jonathan Rentoft for the WalkieTalkey project.
 
 ## Download
 

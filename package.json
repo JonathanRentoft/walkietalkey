@@ -7,7 +7,8 @@
     "packages/*",
     "phone",
     "relay",
-    "site"
+    "site",
+    "training/studio"
   ],
   "type": "module",
   "scripts": {
@@ -26,6 +27,7 @@
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
     "test:recorder": "playwright test -c training/e2e",
+    "test:studio": "playwright test -c training/e2e/studio.config.ts",
     "check:translations": "bun scripts/check-translations.ts",
     "copy:list": "bun scripts/walkietalkey/copy-list.ts",
     "check:copy": "bun scripts/walkietalkey/copy-list.ts --check",

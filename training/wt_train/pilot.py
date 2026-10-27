@@ -29,10 +29,14 @@ minutes, not after hours of recording.
     writes one self-contained HTML page: a table of the setups (WER, CER, term
     accuracy, speech level, peak, noise floor in the pauses, SNR, clipped clips,
     length), then every clip of each setup with its audio and a word diff. The page
-    goes to ``<work>/reports/pilot-<date>.html``, opens in the browser, and is logged
+    goes to ``<work>/reports/pilot-<date>.html``, opens in the browser (``--no-open``:
+    not; run 9: ``--json-out <file>`` also keeps the numbers per setup as JSON, for
+    Værkstedet), and is logged
     to MLflow as a run of kind ``pilot`` (``wt.change`` ``data``, tag ``wt.pilot``)
     with the numbers per setup (``iphone-whisper/wer``). A setup without takes is
-    skipped with a note.
+    skipped with a note. A take Værkstedet marked for a new take (run 9: its review says
+    ``redo``) is left out, as the dataset builder leaves it out, and listed with the
+    same reason.
 
 Pilot takes are never trained on: the dataset builder never reads ``pilot/``, and its
 leakage check refuses any pilot sentence, take or file in a split (``dataset.py``).
@@ -56,7 +60,7 @@ from .conditions import Condition, condition, condition_id
 from .htmlpage import LEGEND, Raw, audio_tag, cards, db, diff_html, esc, page, pct, table
 from .metrics import summarize
 from .recorder.checks import LIMITS
-from .recorder.takes import SAFE_SETUP, SESSIONS_LOG, TakeStore
+from .recorder.takes import REDO_REASON, SAFE_SETUP, SESSIONS_LOG, TakeStore, review_status
 from .sentences import Sentence, load_sentences
 
 PHONE_PREFIXES = ("iphone", "phone", "android")
@@ -195,8 +199,10 @@ def _meta(path: Path) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def pilot_clips(root: Path, setup: str, kinds: dict[str, str] | None = None) -> list[PilotClip]:
-    """The current takes of a setup: ``<id>.wav`` with its ``.txt`` (and ``.json``)."""
+def pilot_clips(root: Path, setup: str, kinds: dict[str, str] | None = None,
+                left_out: list[dict] | None = None) -> list[PilotClip]:
+    """The current takes of a setup: ``<id>.wav`` with its ``.txt`` (and ``.json``). A take
+    marked for a new take is not one; it is added to ``left_out`` (id, reason)."""
     folder = Path(root) / setup
     if not folder.is_dir():
         return []
@@ -206,6 +212,10 @@ def pilot_clips(root: Path, setup: str, kinds: dict[str, str] | None = None) -> 
         if not txt.is_file():
             continue
         meta = _meta(wav.with_suffix(".json"))
+        if review_status(meta) == "redo":
+            if left_out is not None:
+                left_out.append({"id": f"{wav.stem}.{setup}", "reason": REDO_REASON})
+            continue
         kind = (kinds or {}).get(wav.stem) or str(meta.get("kind") or "")
         out.append(PilotClip(setup=setup, id=wav.stem, wav=wav.resolve(),
                              reference=txt.read_text(encoding="utf-8").strip(), kind=kind, meta=meta))
@@ -238,17 +248,19 @@ def evaluate_setups(root: Path, sentences: list[Sentence], transcriber, spelling
                     setups: list[str] | None = None, log=console.log) -> dict:
     """Every setup's takes transcribed in one go (the model loads once), scored with
     ``metrics.score_clip`` and measured with ``audiostats``. Returns ``setups`` (name ->
-    numbers), ``rows`` (one per clip) and ``skipped`` (setups without takes)."""
+    numbers), ``rows`` (one per clip), ``skipped`` (setups without takes) and ``left_out``
+    (takes marked for a new take: id and reason)."""
     from .evaluate import EvalClip, score
 
     names = list(setups) if setups else known_setups(root)
     kinds = {s.id: s.kind for s in sentences}
-    by_setup = {n: pilot_clips(root, parse_setup(n).name, kinds) for n in names}
+    left_out: list[dict] = []
+    by_setup = {n: pilot_clips(root, parse_setup(n).name, kinds, left_out) for n in names}
     used = [n for n in names if by_setup[n]]
     skipped = [n for n in names if not by_setup[n]]
     clips = [c for n in used for c in by_setup[n]]
     if not clips:
-        return {"setups": {}, "rows": [], "skipped": skipped}
+        return {"setups": {}, "rows": [], "skipped": skipped, "left_out": left_out}
     evals = [EvalClip(f"{c.id}.{c.setup}", c.wav, c.reference, parse_setup(c.setup).condition.id) for c in clips]
     rows, _ = score(transcriber, evals, spelling, "pilot", log)
     stats = {}
@@ -271,7 +283,7 @@ def evaluate_setups(root: Path, sentences: list[Sentence], transcriber, spelling
         out[n] = {"setup": n, "device": s.device, "style": s.style, "condition": s.condition.id,
                   "microphones": sorted({r["microphone"] for r in part if r["microphone"]}),
                   "scores": scores, "audio": audio, "notes": setup_notes(s.style, audio, scores, flagged)}
-    return {"setups": out, "rows": rows, "skipped": skipped}
+    return {"setups": out, "rows": rows, "skipped": skipped, "left_out": left_out}
 
 
 def metrics_for_logging(result: dict) -> dict[str, float]:
@@ -377,6 +389,8 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
     p.add_argument("--app-bin", type=Path, help="the WalkieTalkey binary (default: the installed app first)")
     p.add_argument("--out", type=Path, help="the page (default <work>/reports/pilot-<date>.html)")
     p.add_argument("--no-open", action="store_true", help="do not open the page in the browser")
+    p.add_argument("--json-out", type=Path,
+                   help="also write the comparison (every setup's numbers and notes) to this JSON file (Værkstedet)")
     a = p.parse_args(argv)
     names = None
     if a.setups:
@@ -408,6 +422,8 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
     result = evaluate_setups(a.pilot_dir, sentences, transcriber, spelling, setups=names, log=log)
     for name in result["skipped"]:
         log(f"{name}: no takes yet, skipped")
+    for take in result["left_out"]:
+        log(f"{take['id']}: left out ({take['reason']})")
     if not result["setups"]:
         log(f"no pilot takes in {a.pilot_dir}; record a setup with: wt-train pilot record --setup <name>")
         return {"exit_code": 1, "page": None, **result}
@@ -432,6 +448,12 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
                           indent=2, ensure_ascii=False) + "\n", "pilot.json")
         run_id = r.id
 
+    if a.json_out:
+        _write_json(a.json_out, {"generated_at": when.isoformat(timespec="seconds"), "page": str(out),
+                                 "model": a.model, "app": app_name, "run_id": run_id,
+                                 "setups": result["setups"], "skipped": result["skipped"],
+                                 "left_out": result["left_out"]})
+        log(f"comparison: {a.json_out}")
     log("")
     log(f"{'setup':<20} {'clips':>5} {'WER %':>6} {'CER %':>6} {'speech':>8} {'noise':>8} {'SNR':>6}  notes")
     for name, s in result["setups"].items():
@@ -443,6 +465,14 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
         webbrowser.open(out.resolve().as_uri())
     failed = sum(s["scores"]["failed"] for s in result["setups"].values())
     return {"exit_code": 1 if failed else 0, "page": out, "metrics": metrics, "run_id": run_id, **result}
+
+
+def _write_json(path: Path, data: dict) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 # --- wt-train pilot -------------------------------------------------------------------------

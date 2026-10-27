@@ -143,7 +143,9 @@ export const T = {
   trainingNormal: "Almindelig stemme",
   trainingProgress: "{done} af {total}",
   trainingComplete: "Alle sætninger er indtalt. Tak.",
-  trainingRedo: "Optag forrige igen",
+  // "Tag om" and "Spring over": the owner's own words (run 9, PHONE-50, PHONE-52)
+  trainingRedo: "Tag om",
+  trainingSkip: "Spring over",
   trainingRedoing: "Du optager den forrige igen.",
   trainingBack: "Tilbage til den næste",
   trainingWaiting: "Venter på {computer}",

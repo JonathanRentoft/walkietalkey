@@ -189,6 +189,19 @@ export class SessionStreamer {
       await this.link.send({ type: "audio_cancel", sessionId: s.id });
   }
 
+  /**
+   * "Spring over" (PHONE-52, PROTOCOL.md 8.4): a training take with no audio, started and
+   * cancelled at once, queued together so nothing comes between them. True when both went out.
+   */
+  async skip(s: AudioSession): Promise<boolean> {
+    if (!s.training || s.cancelled || !this.link.connected) return false;
+    s.cancelled = true;
+    s.blocks = [];
+    const started = this.link.send(this.startPayload(s));
+    const cancelled = this.link.send({ type: "audio_cancel", sessionId: s.id });
+    return (await started) && (await cancelled);
+  }
+
   /** After (re)authentication: every open session again, one after another, paced. */
   async resendOpen(sessions: readonly AudioSession[]): Promise<void> {
     for (const s of sessions) {

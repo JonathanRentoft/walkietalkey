@@ -1,0 +1,584 @@
+// TODO(copy): drafted in run 9, the owner approves them
+/* Every text Værkstedet shows. Danish, du-form, short sentences, sentence case, no em dashes
+   (test/strings.test.ts). Numbers come in already formatted (lib/format.ts). Where the recorder
+   page (wt_train/recorder/static/app.js) already says a thing, the same words are used. */
+import type { Band } from "./lib/level";
+
+export const S = {
+  app: {
+    name: "Værkstedet",
+    sub: "Træning af Edda",
+    skip: "Gå til indholdet",
+  },
+
+  nav: {
+    label: "Værkstedets sider",
+    optag: "Optagelse",
+    data: "Data",
+    traening: "Træning",
+    evaluering: "Evaluering",
+    versioner: "Versioner",
+    journal: "Journal",
+  },
+
+  status: {
+    label: "Status",
+    appFound: (version: string) => `WalkieTalkey ${version}`,
+    appFoundNoVersion: "WalkieTalkey er fundet",
+    appMissing: "WalkieTalkey er ikke fundet",
+    noBatch: "Appen kan ikke lytte til optagelser",
+    nothingRuns: "Intet kører lige nu",
+    recording: (label: string) => `Optager: ${label}`,
+    paused: (label: string) => `På pause: ${label}`,
+    training: (config: string) => `Træner: ${config}`,
+    offline: "Værkstedet svarer ikke",
+  },
+
+  common: {
+    loading: "Henter",
+    retry: "Prøv igen",
+    close: "Luk",
+    back: "Tilbage",
+    cancel: "Annullér",
+    start: "Start",
+    log: "Log",
+    showLog: "Vis loggen",
+    hideLog: "Skjul loggen",
+    showTable: "Vis tallene som tabel",
+    none: "ingen",
+    yes: "ja",
+    no: "nej",
+    job: {
+      running: "Kører",
+      done: "Færdig",
+      failed: "Fejlede",
+      stopped: "Stoppet",
+    } as Record<string, string>,
+    started: (when: string) => `Startet ${when}`,
+    emptyLog: "Loggen er tom indtil videre.",
+  },
+
+  /* Every error code of API.md, by route where the same code means different things. */
+  errors: {
+    generic: "Noget gik galt. Prøv igen.",
+    network: "Værkstedet svarer ikke. Kører wt-train studio stadig?",
+    forbidden: "Værkstedet afviste handlingen. Hent siden igen.",
+    json: "Værkstedet forstod ikke handlingen. Hent siden igen.",
+    "too-long": "Teksten er for lang til at blive gemt.",
+    "not-found": "Det findes ikke længere. Hent siden igen.",
+    "bad-response": "Værkstedet svarede med noget, siden ikke forstår.",
+    since: "Siden og Værkstedet er kommet ud af trit. Hent siden igen.",
+    busy: "Det kan ikke lade sig gøre, mens noget andet er i gang.",
+    unknown: "Det kender Værkstedet ikke. Hent siden igen.",
+    "no-share": "Forholdet har ingen andel i mixet, så det kan ikke startes.",
+    "bad-setup": "Opsætningen kendes ikke.",
+    "no-pick": "Vælg en optagelse først.",
+    paused: "Optagelsen er sat på pause. Tryk Fortsæt først.",
+    "mac-not-ready":
+      "Mac'en kan ikke optage lige nu. Er WalkieTalkey åben, og er det en optagelse på Mac'en?",
+    config: "Konfigurationen har en fejl og kan ikke indlæses.",
+    "no-configs": "Der er ingen konfigurationer i training/configs.",
+    "not-running": "Der kører ingen træning.",
+    "tracking-off":
+      "Sporingen (MLflow) er slået fra, så der er ingen kørsler at vise.",
+    "no-folder":
+      "Kørslens klip ligger ikke i en evalueringsmappe, så der kan ikke laves en rapport.",
+    "not-comparable":
+      "Kørsel B har ingen resultater for kørsel A's datasæt, så de kan ikke sammenlignes.",
+    "report-failed": "Rapporten kunne ikke laves. Se loggen.",
+    version: "Den version kendes ikke.",
+    "use-failed": "WalkieTalkey kunne ikke skifte model.",
+    text: "Noterne kunne ikke gemmes. Prøv igen.",
+    exists: "Den findes allerede.",
+  } as Record<string, string>,
+
+  errorsIn: {
+    recording: {
+      busy: "Vent, til optagelsen er færdig.",
+      unknown: "Den sætning findes ikke i denne optagelse. Hent siden igen.",
+    },
+    pilot: { busy: "Sammenligningen kører allerede." },
+    data: { unknown: "Konfigurationen findes ikke." },
+    training: {
+      busy: "Der kører allerede en træning.",
+      unknown: "Konfigurationen findes ikke.",
+    },
+    evaluation: { unknown: "Kørslen findes ikke længere i MLflow." },
+    versions: {
+      busy: "Der kører allerede en eksport.",
+      unknown: "Træningen har ingen adapter, der kan eksporteres.",
+    },
+    journal: {
+      unknown: "Kørslen eller siden findes ikke.",
+      exists: "Der findes allerede en side for den kørsel.",
+    },
+  } as Record<string, Record<string, string>>,
+
+  recording: {
+    title: "Optagelse",
+    intro:
+      "Indtal sætningerne til træningen. Hver optagelse bliver tjekket, og Edda lytter med.",
+
+    pickTitle: "Vælg, hvad du vil optage",
+    pickAgain: "Vælg en anden optagelse",
+    pickReplaces:
+      "En ny optagelse afløser den, der er i gang. Det, du har optaget, bliver.",
+    conditions: "Rigtige forhold",
+    conditionsHelp: "Sætningerne til træningen, fordelt efter mixet.",
+    conditionDone: (done: string, planned: string) =>
+      `${done} af ${planned} sætninger`,
+    conditionShare: (share: string) => `${share} af mixet`,
+    conditionRedo: (n: string) => `${n} skal tages om`,
+    noShare: "Har ingen andel i mixet endnu, så den kan ikke startes.",
+    noShareShort: "Ingen andel i mixet",
+    exam: "Eksamen",
+    examToggle: (n: string) =>
+      `Optag eksamensafsnittene (${n}) i stedet for sætningerne`,
+    examHelp:
+      "Eksamen er lange afsnit, som aldrig bruges til træning, kun til at bedømme modellen.",
+    examProgress: (done: string, total: string) =>
+      `Eksamen: ${done} af ${total} afsnit`,
+    pilot: "Piloten",
+    pilotHelp: (n: string) =>
+      `Det er en pilot: ${n} sætninger pr. opsætning, så du kan høre, om lyden er god, før du indtaler i timevis. Optagelserne bruges kun til at sammenligne opsætningerne og aldrig til træning.`,
+    suggested: "Foreslået",
+    setupDone: (done: string, total: string) => `${done} af ${total}`,
+    phone: "Telefonen",
+    mac: "Mac'en",
+    start: "Start optagelsen",
+    starting: "Starter",
+    pickFirst: "Vælg en optagelse først.",
+
+    kind: {
+      condition: "Sætninger",
+      exam: "Eksamen",
+      pilot: "Pilot",
+    },
+
+    link: {
+      connectedPhone: (phone: string) =>
+        `Forbundet. Sætningerne vises på ${phone}`,
+      connectedPhoneOffline: (phone: string) =>
+        `Forbundet, men ${phone} er ikke online. Åbn WalkieTalkey på telefonen.`,
+      connectedMac: "Forbundet til WalkieTalkey på Mac'en",
+      connecting: "Forbinder til WalkieTalkey",
+      waiting: "Venter på WalkieTalkey",
+      not_running: "Åbn WalkieTalkey på Mac'en",
+      no_phone: "Ingen telefon er parret. Par telefonen i WalkieTalkey.",
+      gone: "WalkieTalkey har lukket forbindelsen. Sæt på pause, og fortsæt for at forbinde igen.",
+      error: "Forbindelsen til WalkieTalkey fejlede",
+      paused: "På pause. Telefonen er tilbage til almindelig diktering.",
+      pausedMac: "På pause. Der optages ikke, før du fortsætter.",
+      stopped: "Optagelsen er stoppet.",
+      thePhone: "telefonen",
+    },
+
+    mic: (name: string) => `Mikrofon: ${name}`,
+    micMacDefault: "Mikrofon: Mac'ens standardmikrofon",
+    micPhoneUnknown:
+      "Mikrofon: telefonens, navnet kommer med den første optagelse",
+    pause: "Pause",
+    resume: "Fortsæt",
+    stop: "Stop",
+    skip: "Spring over",
+    progress: (approved: string, total: string) =>
+      `${approved} af ${total} godkendt`,
+    recorded: (minutes: string) => `${minutes} optaget`,
+    redoCount: (n: string) => `${n} skal tages om`,
+    receivedCount: (n: string) => `${n} bliver tjekket`,
+    serverError: "Optagelsen har en fejl:",
+    refused: {
+      silent: "Hørte ikke noget. Optag den igen.",
+      gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
+      error: "Optagelsen kunne ikke gemmes.",
+    } as Record<string, string>,
+    refusedOther: "Optagelsen blev ikke gemt. Optag den igen.",
+
+    now: "Nu",
+    nowExam: "Nu: læs afsnittet op i ét stræk",
+    phoneHint:
+      "Sætningen står også på telefonen. Hold knappen, læs op, og slip.",
+    keySpace: "Mellemrum",
+    keyEsc: "Esc",
+    macHintSpace: "starter og stopper optagelsen.",
+    macHintEsc: "annullerer.",
+    record: "Optag",
+    stopRecording: "Stop optagelsen",
+    cancelRecording: "Annullér",
+    recordingNow: "Optager",
+    recordingOnPhone: "Optager på telefonen",
+    allDone: "Alle sætninger i denne runde er optaget. Godt arbejde.",
+    noCurrent: "Ingen sætning er valgt.",
+    pausedHint: "Tryk Fortsæt for at optage videre.",
+
+    listTitle: "Sætningerne",
+    filter: "Vis",
+    filterAll: (n: string) => `Alle (${n})`,
+    filterRedo: (n: string) => `Tag om (${n})`,
+    filterWaiting: (n: string) => `Venter (${n})`,
+    filterApproved: (n: string) => `Godkendt (${n})`,
+    filterEmpty: "Ingen sætninger her.",
+
+    status: {
+      waiting: "Venter",
+      recording: "Optager",
+      received: "Modtaget",
+      approved: "Godkendt",
+      redo: "Tag om",
+    } as Record<string, string>,
+    skipped: "Sprunget over",
+    current: "Nu",
+    take: (n: string, secs: string) => `Optagelse ${n} · ${secs}`,
+    approvedByOwner: "Godkendt af dig",
+    redoByOwner: "Du bad om en ny optagelse",
+    redoByCheck: "Tjekket sendte den tilbage",
+
+    heard: "Edda hørte",
+    listening: "Edda lytter",
+    waitingForEdda: "Venter på, at Edda lytter",
+    eddaError: "Edda lyttede ikke med, så kun lydtjekket afgør.",
+    wer: (p: string) => `${p} ordfejl`,
+    allRight: "Alle ord rigtige",
+    diffLegend: "Forklaring",
+    diff: {
+      eq: "Samme ord",
+      sub: "Hørt som et andet ord",
+      del: "Ikke hørt",
+      ins: "Ekstra ord",
+    },
+    srSub: (ref: string, hyp: string) => `${ref}, hørt som ${hyp}`,
+    srDel: (ref: string) => `${ref}, ikke hørt`,
+    srIns: (hyp: string) => `ekstra ord ${hyp}`,
+
+    play: "Afspil",
+    playLabel: (id: string) => `Afspil optagelsen af ${id}`,
+    stopPlaying: "Stop",
+    redo: "Tag om",
+    approveAnyway: "Godkend alligevel",
+    go: "Optag nu",
+    goLabel: (id: string) => `Gør ${id} til den næste sætning`,
+
+    problems: {
+      quiet: "For svag",
+      clipped: "Forvrænget",
+      cut: "Skåret af",
+      silent: "Hørte ikke noget",
+      short: "For kort",
+      gaps: "Huller i lyden",
+      loud: "Kraftig",
+      noisy: "Støj i baggrunden",
+      mismatch: "Edda hørte noget andet",
+      error: "Tjekket fejlede",
+    } as Record<string, string>,
+    problemOther: (kind: string) => `Andet: ${kind}`,
+    checksLabel: "Lydtjekket",
+    sendsBack: "Sendt tilbage",
+    warning: "Advarsel",
+
+    meter: {
+      label: "Lydniveau",
+      bands: {
+        silent: "Stille",
+        tooQuiet: "For svag",
+        quiet: "Lidt svag",
+        good: "God",
+        loud: "Kraftig",
+        tooLoud: "For kraftig",
+      } satisfies Record<Band, string>,
+      verdict: (level: string, band: string) =>
+        `${level}, ${band.toLowerCase()}`,
+      aria: (level: string, peak: string, noise: string, band: string) =>
+        `Lydniveau ${level}, ${band.toLowerCase()}. Top ${peak}. Baggrundsstøj ${noise}.`,
+      snr: (snr: string) => `${snr} over støjen`,
+      envelope: "Lyden hen over optagelsen",
+      pending: "Lyden bliver målt",
+    },
+
+    progressTitle: "Fremskridt mod mixet",
+    mixTitle: "Det valgte mix",
+    progressHelp:
+      "Godkendte sætninger af dem, mixet har planlagt for hvert forhold.",
+    progressTotal: (minutes: string, sentences: string) =>
+      `${minutes} optaget i alt af ${sentences} sætninger`,
+    progressShare: (share: string) => `${share} af mixet`,
+    progressDone: (done: string, planned: string) => `${done} af ${planned}`,
+
+    pilotTitle: "Piloten",
+    pilotSetups: "Opsætningerne",
+    pilotCompare: "Sammenlign opsætningerne",
+    pilotComparing: "Sammenligner opsætningerne",
+    pilotNone: "Opsætningerne er ikke sammenlignet endnu.",
+    pilotFrom: (when: string) => `Sammenligning fra ${when}`,
+    pilotModel: (model: string) => `Model: ${model}`,
+    pilotReport: "Åbn hele pilotrapporten",
+    pilotFailed: "Sammenligningen fejlede. Se loggen.",
+    pilotNotes: "Noter fra sammenligningen (på engelsk)",
+    pilotMetrics: {
+      wer: "Ordfejl (WER)",
+      werHelp: "Lavere er bedre",
+      snr: "Tale over støj",
+      snrHelp: "Højere er bedre",
+      level: "Taleniveau",
+      levelHelp: "Tættere på det gode bånd er bedre",
+      clipped: "Forvrængede klip",
+      clippedHelp: "Færre er bedre",
+    },
+    clips: (n: string) => `${n} klip`,
+  },
+
+  data: {
+    title: "Data",
+    intro: "Hvad træningen får at se, og hvad der holdes udenfor.",
+    config: "Konfiguration",
+    sentences: "Sætninger",
+    plain: "Uden engelske ord",
+    terms: "Med engelske fagord",
+    recorded: "Indtalt",
+    minutesTitle: "Optagede minutter pr. forhold",
+    splitTitle: "Opdeling pr. forhold",
+    splitHelp: (validation: string, test: string, config: string) =>
+      `Validering ${validation} og test ${test} af sætningerne, som konfigurationen ${config} siger. En sætning ligger altid kun i én af delene.`,
+    unit: "Enhed",
+    takes: "Optagelser",
+    minutes: "Minutter",
+    train: "Træning",
+    validation: "Validering",
+    test: "Test",
+    condition: "Forhold",
+    total: "I alt",
+    skipped: (n: string) => `${n} optagelser er ikke med`,
+    skippedHelp:
+      "Optagelser, der skal tages om, eller som ikke kan bruges, holdes ude af træningen.",
+    rehearsal: (share: string, validation: string) =>
+      `Genopfriskning: ${share} af træningen og ${validation} af valideringen er almindelig dansk tale, så modellen ikke glemmer det, den kan i forvejen.`,
+    leakageTitle: "Lækagetjek",
+    leakageHelp:
+      "Ingen sætning må både være i træningen og i det, modellen bliver bedømt på. Ellers ser tallene bedre ud, end de er.",
+    leakageNotRun: "Lækagetjekket er ikke kørt endnu.",
+    leakageOk: "I orden",
+    leakageOverlap: (n: string) => `${n} fælles sætninger`,
+    leakageUnknown: "Kunne ikke tjekkes",
+    leakageAllOk: "Alle tjek er i orden.",
+    leakageSomeUnknown:
+      "Ikke alle tjek kunne køres. Ved hvert tjek står hvorfor.",
+    leakageProblem:
+      "Mindst ét tjek fandt fælles sætninger. Træn ikke, før det er rettet.",
+    boxes: {
+      train: "Træning",
+      validation: "Validering",
+      test: "Test",
+      "fleurs-test": "FLEURS-testen",
+      exam: "Eksamen",
+      pilot: "Piloten",
+    } as Record<string, string>,
+    heldOut: "Holdt udenfor",
+    yourSplits: "Dine optagelser",
+    noConditions: "Der er ingen optagelser endnu.",
+  },
+
+  training: {
+    title: "Træning",
+    intro:
+      "Vælg en konfiguration, se indstillingerne, og start. Kurverne tegnes, mens den træner.",
+    config: "Konfiguration",
+    settings: "Indstillinger",
+    file: (f: string) => `Fil: ${f}`,
+    sections: {
+      base_model: "Grundmodel",
+      data: "Data",
+      training: "Træning",
+      lora: "LoRA",
+      encoder: "Encoder",
+      decoder: "Decoder",
+      eval: "Evaluering",
+      evaluation: "Evaluering",
+      export: "Eksport",
+      tracking: "Sporing",
+      rehearsal: "Genopfriskning",
+      general: "Generelt",
+    } as Record<string, string>,
+    start: "Start træningen",
+    starting: "Starter",
+    busy: "Der kører allerede en træning.",
+    running: "Træningen kører",
+    noRun: "Ingen træning kører. Vælg en konfiguration, og start.",
+    phase: {
+      build: "Bygger datasættet",
+      cache: "Forbereder lyden til encoderen",
+      train: "Træner",
+      validate: "Validerer",
+      done: "Færdig",
+      failed: "Fejlede",
+      stopped: "Stoppet",
+    } as Record<string, string>,
+    phases: "Faser",
+    epoch: (e: string, n: string) => `Epoke ${e} af ${n}`,
+    step: (s: string, n: string) => `Trin ${s} af ${n}`,
+    run: (name: string) => `Kørsel: ${name}`,
+    awake: "Mac'en holdes vågen, mens træningen kører",
+    stop: "Stop træningen",
+    stopConfirm: "Stop træningen nu? Den kan ikke fortsætte, hvor den slap.",
+    stopYes: "Ja, stop den",
+    stopNo: "Lad den køre",
+    stopping: "Stopper",
+    lossTitle: "Tab under træningen",
+    lossHelp:
+      "Lavere er bedre. Træningstabet svinger fra trin til trin, så linjen er udglattet. Valideringen er den, der tæller.",
+    trainLoss: "Træning, udglattet",
+    trainLossRaw: "Træning, hvert trin",
+    validationLoss: "Validering",
+    werTitle: "Ordfejl på valideringen",
+    werHelp: "Epoke 0 er Edda, før træningen begyndte.",
+    stepAxis: "Trin",
+    noPoints: "Ingen punkter endnu.",
+    tooltipStep: (s: string) => `Trin ${s}`,
+    runsTitle: "Tidligere træninger",
+    runsEmpty: "Der er ingen tidligere træninger endnu.",
+    colRun: "Kørsel",
+    colDate: "Dato",
+    colBestEpoch: "Bedste epoke",
+    colBest: "Ordfejl, bedste",
+    colBaseline: "Ordfejl før",
+    colChange: "Forskel",
+    done: "Træningen er færdig.",
+    best: (epoch: string, wer: string) =>
+      `Bedste epoke: ${epoch}, med ${wer} ordfejl på valideringen.`,
+    configError: "Konfigurationen kan ikke indlæses, så den kan ikke startes.",
+    unfinished: "Ikke færdig",
+    byDefault: "standard",
+    noAdapter: "Ingen adapter",
+    failed: "Træningen fejlede. Se loggen.",
+    stopped: "Træningen blev stoppet.",
+  },
+
+  evaluation: {
+    title: "Evaluering",
+    intro:
+      "Kørslerne fra MLflow. Ordfejl er andelen af ord, modellen skriver forkert; lavere er bedre.",
+    empty: "Der er ingen evalueringer endnu.",
+    colRun: "Kørsel",
+    colDate: "Dato",
+    colDataset: "Datasæt",
+    colModel: "Model",
+    colClips: "Klip",
+    colWer: "Ordfejl (WER)",
+    colCi: "95 %-interval",
+    colCer: "Tegnfejl (CER)",
+    colChange: "Ændring",
+    colInterval: "Ordfejl med interval",
+    scale: (max: string) => `0 til ${max}`,
+    open: "Åbn rapport",
+    opening: "Laver rapporten",
+    openLabel: (name: string) => `Åbn rapporten for ${name}`,
+    compareTitle: "Sammenlign to kørsler",
+    compareHelp:
+      "Vælg kørsel A og kørsel B. Rapporten viser forskellen sætning for sætning.",
+    a: "Kørsel A",
+    b: "Kørsel B",
+    choose: "Vælg en kørsel",
+    compare: "Sammenlign",
+    comparing: "Sammenligner",
+    sameRun: "Vælg to forskellige kørsler.",
+  },
+
+  report: {
+    title: "Rapport",
+    back: "Tilbage",
+    backTo: (where: string) => `Tilbage til ${where.toLowerCase()}`,
+    bad: "Rapporten kan ikke vises.",
+    frame: "Rapporten",
+  },
+
+  versions: {
+    title: "Versioner",
+    intro:
+      "De modeller, WalkieTalkey kan bruge. Skift med ét klik, og skift tilbage på samme måde.",
+    inUse: (name: string) => `Appen bruger nu ${name}`,
+    inUseBadge: "I brug",
+    base: "Grundmodellen",
+    baseName: (name: string) => `${name}, uden finjustering`,
+    use: "Brug denne",
+    useBase: (name: string) => `Brug ${name}`,
+    using: "Skifter",
+    switched: (name: string) => `WalkieTalkey bruger nu ${name}.`,
+    notInstalled: "Ikke installeret",
+    appMissing:
+      "WalkieTalkey er ikke fundet på denne Mac. Valget gemmes til appen starter.",
+    appCannot:
+      "Denne version af WalkieTalkey kan ikke skifte model fra Værkstedet. Opdatér appen.",
+    colVersion: "Version",
+    colRun: "Træning",
+    colDate: "Dato",
+    colWer: "Ordfejl på valideringen",
+    versionN: (n: string) => `Version ${n}`,
+    empty:
+      "Der er ingen finjusterede versioner endnu. Eksportér en træning nedenfor.",
+    exportTitle: "Eksportér en træning",
+    exportHelp:
+      "Laver en model, appen kan bruge, ud fra en færdig træning. Den lægges i listen ovenfor.",
+    exportRun: "Træning",
+    exportNone: "Der er ingen træninger, der kan eksporteres.",
+    export: "Eksportér",
+    exporting: "Eksporterer",
+    exported: "Eksporteret. Den nye version står i listen.",
+    exportFailed: "Eksporten fejlede. Se loggen.",
+    exportStopped: "Eksporten blev stoppet.",
+  },
+
+  journal: {
+    title: "Journal",
+    intro:
+      "En side pr. kørsel: tallene skrives ind af sig selv, og du skriver, hvad du forventede, og hvad du lærte.",
+    pages: "Sider",
+    pagesEmpty: "Der er ingen sider endnu.",
+    runs: "Kørsler uden side",
+    runsEmpty: "Alle kørsler har en side.",
+    write: "Skriv side",
+    writing: "Skriver siden",
+    hasHypothesis: "Hypotese skrevet",
+    noHypothesis: "Ingen hypotese endnu",
+    hasLearned: "Læring skrevet",
+    noLearned: "Intet lært skrevet endnu",
+    allPages: "Alle sider",
+    hypothesis: "Hypotese",
+    hypothesisHelp: "Hvad forventede du, og hvorfor?",
+    learned: "Hvad jeg lærte",
+    learnedHelp: "Hvad viste tallene, og hvad prøver du næste gang?",
+    notesTitle: "Dine noter",
+    save: "Gem",
+    saving: "Gemmer",
+    saved: "Gemt",
+    unsaved: "Ikke gemt",
+    leave: "Du har tekst, der ikke er gemt. Vil du forlade siden alligevel?",
+    kindTrain: "Træning",
+    kindEval: "Evaluering",
+  },
+
+  notFound: {
+    title: "Siden findes ikke",
+    body: "Den side kender Værkstedet ikke.",
+    home: "Til optagelsen",
+  },
+};
+
+export type Strings = typeof S;
+
+export type ErrorArea =
+  | "recording"
+  | "pilot"
+  | "data"
+  | "training"
+  | "evaluation"
+  | "versions"
+  | "journal";
+
+/** The Danish text for an error code (API.md: the page names each code itself), by route. */
+export function errorText(
+  code: string | null | undefined,
+  area?: ErrorArea,
+): string {
+  if (!code) return S.errors.generic;
+  return (
+    (area && S.errorsIn[area]?.[code]) || S.errors[code] || S.errors.generic
+  );
+}

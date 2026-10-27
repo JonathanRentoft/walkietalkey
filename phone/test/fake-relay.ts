@@ -34,6 +34,8 @@ export interface ComputerSession {
   answered: number;
   /** From audio_start_training: the training session (base64url), the prompt, the microphone. */
   training?: { id: string; prompt: string; microphone?: string };
+  /** audio_cancel arrived. */
+  cancelled?: boolean;
 }
 
 export class FakeComputer {
@@ -53,6 +55,8 @@ export class FakeComputer {
   answer = true;
   /** presence_query frames received. */
   presenceQueries = 0;
+  /** Every device frame received, in order: its type byte and payload type (`0x24 audio_start_training`). */
+  readonly frames: { type: number; name: DevicePayload["type"] }[] = [];
   private channel!: PairChannel;
   private c2p!: CryptoKey;
   private recv: Promise<unknown> = Promise.resolve();
@@ -135,6 +139,7 @@ export class FakeComputer {
       } catch {
         return;
       }
+      this.frames.push({ type: bytes[1]!, name: p.type });
       await this.handle(socket, p);
     });
   }
@@ -180,6 +185,9 @@ export class FakeComputer {
         s.end = p.chunks;
         return this.maybeAnswer(socket, p.sessionId, s);
       }
+      case "audio_cancel":
+        this.session(p.sessionId).cancelled = true;
+        return;
       default:
         return;
     }

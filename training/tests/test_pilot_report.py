@@ -248,3 +248,33 @@ def test_takes_are_scored_against_the_text_as_read(tmp_path, monkeypatch):
     assert [c.id for c in clips] == ["pilot-01", "pilot-02", "pilot-03"]
     assert clips[1].reference == ROWS[1].text and clips[1].kind == "plain"
     assert clips[0].meta["setup"] == "mac-normal" and np.isfinite(audiostats.measure(clips[0].wav).level_dbfs)
+
+
+def test_json_out_keeps_the_comparison_for_vaerkstedet(tmp_path, monkeypatch):
+    # Run 9: Værkstedet runs the report as a job and reads the comparison from this file.
+    monkeypatch.setenv("WT_WORK_DIR", str(tmp_path / "work"))
+    out = tmp_path / "studio" / "pilot-comparison.json"
+    report = run(tmp_path, "--json-out", str(out))
+    saved = json.loads(out.read_text(encoding="utf-8"))
+    assert saved["page"] == str(report["page"]) and saved["model"] == paths.SHIPPED_EDDA_ID
+    assert saved["generated_at"] and saved["skipped"] == ["airpods-normal"]
+    assert saved["setups"] == json.loads(json.dumps(report["setups"]))
+    assert "rows" not in saved
+
+
+def test_a_take_marked_for_a_new_take_is_not_scored(tmp_path, monkeypatch):
+    # Run 9: Værkstedet's "Tag om" (or its checks) writes review.status = redo; the pilot leaves
+    # such a take out, as the dataset builder does, with the same reason.
+    monkeypatch.setenv("WT_WORK_DIR", str(tmp_path / "work"))
+    root, csv_path, spelling = record(tmp_path)
+    store = TakeStore(root, "phone-whisper", {s.id: s.text for s in ROWS}, setup="iphone-whisper")
+    store.update_meta("pilot-01", {"review": {"status": "redo", "by": "owner"}})
+    stand_in = StandIn()
+    argv = ["--pilot-dir", str(root), "--sentences", str(csv_path), "--spelling", str(spelling), "--no-open"]
+    report = pilot.report_main(argv, transcriber=stand_in, log=print)
+    assert report["setups"]["iphone-whisper"]["scores"]["n"] == 2
+    assert all(Path(w).stem != "pilot-01" or Path(w).parent.name != "iphone-whisper" for w in stand_in.calls[0])
+    assert report["left_out"] == [{"id": "pilot-01.iphone-whisper", "reason": "marked for a new take"}]
+    from wt_train.dataset import REDO_REASON
+
+    assert REDO_REASON == "marked for a new take"

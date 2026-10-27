@@ -12,7 +12,7 @@ kept here:
   the owner's approval before release (spec Appendix A, "Missing strings").
   Once approved: `bun scripts/walkietalkey/todo-copy.ts --approve <key>`.
 
-416 strings, 366 approved, 8 marked TODO(copy). Generated
+416 strings, 374 approved, 0 marked TODO(copy). Generated
 by `bun scripts/walkietalkey/copy-list.ts`; `--check` fails when this file
 is out of date.
 
@@ -338,13 +338,13 @@ Notes:
 | `wt.updates.downloading`                       | Henter version {{version}}                                                                                                                                                            | Approved   |
 | `wt.updates.failed`                            | Kunne ikke søge efter opdateringer. Prøv igen senere.                                                                                                                                 | Approved   |
 | `wt.updates.fromDiskImage`                     | WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv. Afslut den, træk den over i Programmer, og åbn den derfra.                                                         | Approved   |
-| `wt.move.title`                                | Flyt WalkieTalkey til Programmer                                                                                                                                                      | TODO(copy) |
-| `wt.move.body`                                 | WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv derfra. Flyt den til Programmer, så åbner den igen derfra og holder sig opdateret.                                  | TODO(copy) |
-| `wt.move.move`                                 | Flyt til Programmer                                                                                                                                                                   | TODO(copy) |
-| `wt.move.notNow`                               | Ikke nu                                                                                                                                                                               | TODO(copy) |
-| `wt.move.moving`                               | Flytter…                                                                                                                                                                              | TODO(copy) |
-| `wt.move.notWritable`                          | Din bruger må ikke lægge programmer i Programmer, så WalkieTalkey kan ikke flytte sig selv. Afslut den, og træk den over i Programmer. Finder beder om en administrators adgangskode. | TODO(copy) |
-| `wt.move.failed`                               | WalkieTalkey kunne ikke flytte sig selv. Afslut den, træk den over i Programmer, og åbn den derfra.                                                                                   | TODO(copy) |
+| `wt.move.title`                                | Flyt WalkieTalkey til Programmer                                                                                                                                                      | Approved   |
+| `wt.move.body`                                 | WalkieTalkey kører fra diskbilledet og kan ikke opdatere sig selv derfra. Flyt den til Programmer, så åbner den igen derfra og holder sig opdateret.                                  | Approved   |
+| `wt.move.move`                                 | Flyt til Programmer                                                                                                                                                                   | Approved   |
+| `wt.move.notNow`                               | Ikke nu                                                                                                                                                                               | Approved   |
+| `wt.move.moving`                               | Flytter…                                                                                                                                                                              | Approved   |
+| `wt.move.notWritable`                          | Din bruger må ikke lægge programmer i Programmer, så WalkieTalkey kan ikke flytte sig selv. Afslut den, og træk den over i Programmer. Finder beder om en administrators adgangskode. | Approved   |
+| `wt.move.failed`                               | WalkieTalkey kunne ikke flytte sig selv. Afslut den, træk den over i Programmer, og åbn den derfra.                                                                                   | Approved   |
 | `wt.advanced.intro`                            | Indstillinger, de fleste aldrig får brug for.                                                                                                                                         | Approved   |
 | `wt.advanced.network`                          | Relæ-adresse                                                                                                                                                                          | Approved   |
 | `wt.advanced.relay`                            | Relæ-adresse                                                                                                                                                                          | Approved   |
@@ -386,7 +386,7 @@ Notes:
 | `wt.about.claims`                              | Talen bliver til tekst på din egen computer. Ingen konto. Ingen sporing.                                                                                                              | Approved   |
 | `wt.about.version`                             | Version                                                                                                                                                                               | Approved   |
 | `wt.about.credits`                             | Licenser og kreditering                                                                                                                                                               | Approved   |
-| `wt.about.credit.walkietalkey`                 | © 2026 Jonathan Rentoft og WalkieTalkeys bidragydere. Apache-2.0. Gratis for alle, også virksomheder.                                                                                 | TODO(copy) |
+| `wt.about.credit.walkietalkey`                 | © 2026 Jonathan Rentoft og WalkieTalkeys bidragydere. Apache-2.0. Gratis for alle, også virksomheder.                                                                                 | Approved   |
 | `wt.about.credit.handy`                        | Dele af skrivebordsappens kode. CJ Pais, MIT.                                                                                                                                         | Approved   |
 | `wt.about.credit.transcribe`                   | Kører talemodellerne på computeren, sammen med ggml. MIT.                                                                                                                             | Approved   |
 | `wt.about.credit.edda`                         | Dansk talemodel fra Alexandra Instituttet, bygget på OpenAI Whisper large-v3-turbo. Apache-2.0.                                                                                       | Approved   |

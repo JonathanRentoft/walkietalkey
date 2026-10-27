@@ -16,10 +16,11 @@ import {
   test,
 } from "./helpers";
 
-/* Training takes for the fine-tuning workbench (wt-train record; PROTOCOL.md 8.4, PRIV-05): the
-   computer's prompt shows the training screen, the sentence is recorded through the dictation
-   capture and arrives as audio_start_training with the prompt, the next prompt shows the check,
-   a redo records the last sentence again, and the end returns the phone to normal. */
+/* Training takes for the fine-tuning workbench (wt-train record, Værkstedet; PROTOCOL.md 8.4,
+   PRIV-05): the computer's prompt shows the training screen, the sentence is recorded through the
+   dictation capture and arrives as audio_start_training with the prompt, the next prompt shows
+   the check, "Tag om" records the last sentence again, "Spring over" asks the computer to pass
+   over the sentence (PHONE-52), and the end returns the phone to normal. */
 
 const SENTENCE = "Vi merger PR'en, når buildet er grønt.";
 const NEXT = "Kan du deploye til staging?";
@@ -45,6 +46,8 @@ function prompt(
 
 const text = (page: import("@playwright/test").Page) =>
   page.locator(".wt-training-text");
+const skip = (page: import("@playwright/test").Page) =>
+  page.getByRole("button", { name: "Spring over" });
 
 test.describe("training takes (PRIV-05)", () => {
   test("prompt, take, check, redo and the end", async ({
@@ -88,8 +91,10 @@ test.describe("training takes (PRIV-05)", () => {
     await expect(page.locator(".wt-training-check")).toContainText(
       "Optagelsen er svag",
     );
-    await page.getByRole("button", { name: "Optag forrige igen" }).click();
+    await page.getByRole("button", { name: "Tag om" }).click();
     await expect(text(page)).toHaveText(SENTENCE);
+    // A redo is not skipped.
+    await expect(skip(page)).toBeDisabled();
     await hold(page, 1200);
     const redo = await computer.waitSession(
       (x) => x !== s && !!x.end && x.training?.prompt === "s0042",
@@ -115,6 +120,66 @@ test.describe("training takes (PRIV-05)", () => {
     );
     expect(computer.sessions.size).toBe(before + 1);
     expect(dictation.training).toBeUndefined();
+  });
+
+  test("Spring over: an empty training take for skip:<prompt>, then the computer's next sentence (PHONE-52)", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer("MacBook");
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    const training = randomBytes(16);
+    await computer.toPhone(prompt(training, ["s0042", SENTENCE], null, 16));
+    await expect(text(page)).toHaveText(SENTENCE);
+
+    // One calm row under the sentence, thumb-sized, above the hold button.
+    const redo = page.getByRole("button", { name: "Tag om" });
+    await expect(redo).toBeDisabled();
+    await expect(skip(page)).toBeEnabled();
+    const box = async (l: import("@playwright/test").Locator) =>
+      (await l.boundingBox())!;
+    const [r, k, t, b] = await Promise.all([
+      box(redo),
+      box(skip(page)),
+      box(text(page)),
+      box(holdButton(page)),
+    ]);
+    expect(Math.abs(r.y - k.y)).toBeLessThan(1);
+    expect(Math.min(r.height, k.height)).toBeGreaterThanOrEqual(44);
+    expect(r.y).toBeGreaterThanOrEqual(t.y + t.height);
+    expect(r.y + r.height).toBeLessThanOrEqual(b.y);
+    expect(k.x + k.width).toBeLessThanOrEqual(page.viewportSize()!.width + 0.5);
+
+    await skip(page).click();
+    const s = await computer.waitSession(
+      (x) => x.cancelled && x.training?.prompt === "skip:s0042",
+      "the skip",
+    );
+    expect(s.training!.id).toBe(b64uEncode(training));
+    expect(s.blocks.size).toBe(0);
+    expect(s.chunkFrames).toBe(0);
+    expect(s.end).toBeNull();
+    // Nothing new on the phone: the same sentence, waiting for the computer.
+    await expect(skip(page)).toBeDisabled();
+    await expect(text(page)).toHaveText(SENTENCE);
+    await expect(label(page)).toHaveText("Hold for at tale");
+
+    // The computer moves on by itself.
+    await computer.toPhone(prompt(training, ["s0043", NEXT], null, 16));
+    await expect(text(page)).toHaveText(NEXT);
+    await expect(skip(page)).toBeEnabled();
+    // A take after it is an ordinary training take.
+    await hold(page, 1200);
+    const take = await computer.waitSession(
+      (x) => !!x.end && x.training?.prompt === "s0043",
+      "the take after the skip",
+    );
+    expect(take.cancelled).toBe(false);
+    expect(
+      [...computer.sessions.values()].filter((x) => x.cancelled),
+    ).toHaveLength(1);
   });
 
   test("Afslut leaves the training screen", async ({

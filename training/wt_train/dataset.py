@@ -11,7 +11,9 @@ Inputs
     capture "browser". Takes are joined with ``sentences.csv`` for the kind
     (terms or plain). Every transcript is re-spelled with ``Spelling.apply`` so
     the model learns one spelling per term form. Takes without a text, or whose
-    id is not in sentences.csv, are skipped and listed in the summary. The exam
+    id is not in sentences.csv, are skipped and listed in the summary, and so is
+    a take Værkstedet marked for a new take (run 9: its metadata's ``review``
+    says ``redo``; ``recorder/takes.py``). The exam
     (``recordings/exam/``) is never read here, nor the pilot (``training/data/pilot/``,
     run 7): a recordings folder inside the pilot's is refused.
 
@@ -75,6 +77,7 @@ from .audio import file_sha256
 from .conditions import BROWSER_CONDITION, BY_ID, IDS
 from .config import Config, load_config, to_dict, with_overrides
 from .harness import normalize
+from .recorder.takes import REDO_REASON, review_status
 from .sentences import load_sentences
 from .spelling import Spelling, load_spelling
 
@@ -144,6 +147,10 @@ def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
             if sid not in kinds:
                 skipped.append({"id": clip_id, "reason": "id not in sentences.csv"})
                 continue
+            meta = _meta(wav.with_suffix(".json"))
+            if review_status(meta) == "redo":
+                skipped.append({"id": clip_id, "reason": REDO_REASON})
+                continue
             text = spelling.apply(txt.read_text(encoding="utf-8").strip())
             if not sentence_key(text):
                 skipped.append({"id": clip_id, "reason": "empty text"})
@@ -151,7 +158,6 @@ def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
             info = audio.info(wav)
             if not info.is_16k_mono:
                 raise ValueError(f"{wav}: {info.rate} Hz, {info.channels} channel(s); takes must be 16 kHz mono")
-            meta = _meta(wav.with_suffix(".json"))
             items.append(Item(id=clip_id, audio=str(wav.resolve()), text=text, kind=kinds[sid],
                               source=SOURCE_RECORDING, audio_sha256=audio.content_sha256(wav),
                               seconds=round(info.seconds, 3), sentence=sid, condition=cid,
@@ -292,10 +298,15 @@ def fleurs_test_held_out(root: Path | None = None) -> HeldOut:
                    hashes=frozenset(known.values()), folder=(root / "test").resolve())
 
 
-def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None,
-                  pilot: Pilot | None = None) -> dict:
-    """Raise LeakageError listing every problem; otherwise a short report."""
-    problems: list[str] = []
+LEAKAGE_CHECKS = ("splits", "fleurs-test", "exam", "pilot")
+
+
+def leakage_problems(splits: dict[str, list[Item]], held_out: HeldOut | None, exam: Exam | None = None,
+                     pilot: Pilot | None = None) -> list[tuple[str, str]]:
+    """Every leak as ``(check, problem)``; the checks are :data:`LEAKAGE_CHECKS`: within the
+    splits (a sentence in two, the same audio twice, an id twice), and against each held-out
+    set that is given (Værkstedet, run 9, shows them one by one)."""
+    problems: list[tuple[str, str]] = []
 
     def examples(values) -> str:
         values = sorted(values)
@@ -305,7 +316,7 @@ def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam |
     for a, b in itertools.combinations(splits, 2):
         both = keys[a] & keys[b]
         if both:
-            problems.append(f"{len(both)} sentence(s) in both {a} and {b}: {examples(both)}")
+            problems.append(("splits", f"{len(both)} sentence(s) in both {a} and {b}: {examples(both)}"))
 
     every = [(name, item) for name, items in splits.items() for item in items]
     by_audio: dict[str, list[str]] = {}
@@ -313,34 +324,43 @@ def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam |
         by_audio.setdefault(item.audio_sha256, []).append(f"{item.id} ({name})")
     for places in by_audio.values():
         if len(places) > 1:
-            problems.append(f"the same audio twice: {', '.join(places)}")
+            problems.append(("splits", f"the same audio twice: {', '.join(places)}"))
     ids = Counter(item.id for _, item in every)
     for clip_id, n in ids.items():
         if n > 1:
-            problems.append(f"id {clip_id} appears {n} times")
+            problems.append(("splits", f"id {clip_id} appears {n} times"))
 
     for name, item in every:
         where = f"{item.id} ({name})"
-        if name != "test" and item.key in held_out.keys:
-            problems.append(f"FLEURS test text in {name}: {where}: {item.text!r}")
-        if item.audio_sha256 in held_out.hashes:
-            problems.append(f"FLEURS test audio in {name}: {where}")
-        if Path(item.audio).resolve().is_relative_to(held_out.folder):
-            problems.append(f"a FLEURS test file in {name}: {item.audio}")
+        if held_out is not None:
+            if name != "test" and item.key in held_out.keys:
+                problems.append(("fleurs-test", f"FLEURS test text in {name}: {where}: {item.text!r}"))
+            if item.audio_sha256 in held_out.hashes:
+                problems.append(("fleurs-test", f"FLEURS test audio in {name}: {where}"))
+            if Path(item.audio).resolve().is_relative_to(held_out.folder):
+                problems.append(("fleurs-test", f"a FLEURS test file in {name}: {item.audio}"))
         if exam is not None:
             if item.key in exam.keys:
-                problems.append(f"an exam paragraph in {name}: {where}")
+                problems.append(("exam", f"an exam paragraph in {name}: {where}"))
             if item.audio_sha256 in exam.hashes:
-                problems.append(f"exam audio in {name}: {where}")
+                problems.append(("exam", f"exam audio in {name}: {where}"))
             if Path(item.audio).resolve().is_relative_to(exam.folder):
-                problems.append(f"an exam file in {name}: {item.audio}")
+                problems.append(("exam", f"an exam file in {name}: {item.audio}"))
         if pilot is not None:
             if item.key in pilot.keys:
-                problems.append(f"a pilot sentence in {name}: {where}: {item.text!r}")
+                problems.append(("pilot", f"a pilot sentence in {name}: {where}: {item.text!r}"))
             if item.audio_sha256 in pilot.hashes:
-                problems.append(f"pilot audio in {name}: {where}")
+                problems.append(("pilot", f"pilot audio in {name}: {where}"))
             if Path(item.audio).resolve().is_relative_to(pilot.folder):
-                problems.append(f"a pilot file in {name}: {item.audio}")
+                problems.append(("pilot", f"a pilot file in {name}: {item.audio}"))
+    return problems
+
+
+def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None,
+                  pilot: Pilot | None = None) -> dict:
+    """Raise LeakageError listing every problem; otherwise a short report."""
+    problems = [text for _, text in leakage_problems(splits, held_out, exam, pilot)]
+    every = [(name, item) for name, items in splits.items() for item in items]
 
     if problems:
         raise LeakageError("leakage check failed:\n  " + "\n  ".join(problems))

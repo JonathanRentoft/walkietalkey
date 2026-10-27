@@ -68,6 +68,9 @@ jobs:
       - name: Website (types, build, build checks)
         working-directory: site
         run: bun run typecheck && bun run build && bun run test:unit
+      - name: Værkstedet, the workbench's page (types, unit tests, build)
+        working-directory: training/studio
+        run: bun run typecheck && bun run test && bun run build
       - name: Desktop UI build
         run: bun run build
 

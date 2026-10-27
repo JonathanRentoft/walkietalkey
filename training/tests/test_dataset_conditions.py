@@ -75,6 +75,35 @@ def test_takes_of_every_condition_and_the_browser_takes_load(tmp_path):
     assert len({i.audio_sha256 for i in items}) == len(items)
 
 
+def test_a_take_marked_for_a_new_take_is_left_out(tmp_path):
+    # Run 9: Værkstedet's "Tag om" (or its checks) writes review.status = redo into the metadata.
+    root, sentences, spelling, _ = setup(tmp_path, n=6)
+    write_condition_take(root, "phone-normal", "s0001", "Der er en hund i haven.", seed=1,
+                         review={"status": "redo", "by": "owner"})
+    write_condition_take(root, "mac-normal", "s0002", "Der er en fisk i haven.", seed=2,
+                         review={"status": "approved", "by": "check"})
+    items, skipped = load_recordings(root, sentences, load_spelling(spelling))
+    ids = {i.id for i in items}
+    assert "s0001.phone-normal" not in ids and "s0002.mac-normal" in ids
+    assert {"id": "s0001.phone-normal", "reason": "marked for a new take"} in skipped
+
+
+def test_leakage_problems_name_their_check(tmp_path):
+    from wt_train.dataset import HeldOut, Item, leakage_problems
+
+    def item(i, text, sha):
+        return Item(id=i, audio=str(tmp_path / f"{i}.wav"), text=text, kind="plain", source="recording",
+                    audio_sha256=sha, seconds=1.0)
+
+    splits = {"train": [item("a", "Hej med dig.", "1"), item("b", "Testsætning alfa.", "2")],
+              "validation": [item("c", "Hej med dig.", "3")], "test": []}
+    held = HeldOut(keys=frozenset({dataset.sentence_key("Testsætning alfa.")}), hashes=frozenset(),
+                   folder=tmp_path / "fleurs-test")
+    checks = [c for c, _ in leakage_problems(splits, held)]
+    assert checks == ["splits", "fleurs-test"]
+    assert [c for c, _ in leakage_problems(splits, None)] == ["splits"]
+
+
 def test_every_recording_of_a_sentence_lands_in_one_split(tmp_path, fleurs_root):
     many = {f"s{i:04d}" for i in range(0, 24, 2)}
     root, sentences, spelling, exam = setup(tmp_path, every_condition=many)
