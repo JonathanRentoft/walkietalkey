@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { LearnScreen, numberOf } from "../src/screens/Learn";
+import { LearnScreen, numberOf, shortPath } from "../src/screens/Learn";
 import { fakeFetch } from "./fake-fetch";
 
 let fake: ReturnType<typeof fakeFetch> | undefined;
@@ -136,5 +136,12 @@ describe("Lær det", () => {
     };
     expect(numberOf({ ...n, number: 4 })).toBe("04");
     expect(numberOf({ ...n, number: null })).toBe("");
+  });
+
+  it("names the copies' folder from training/ on", () => {
+    expect(
+      shortPath("/Users/jonathan/walkietalkey-app/training/work/notebooks"),
+    ).toBe("training/work/notebooks");
+    expect(shortPath("/tmp/wt-work/notebooks")).toBe("/tmp/wt-work/notebooks");
   });
 });

@@ -314,7 +314,8 @@ def metrics_for_logging(result: dict) -> dict[str, float]:
 def _terms(s: dict) -> str:
     if not s["terms"]:
         return "–"
-    return f"{s['terms_strict']} af {s['terms']} (i enhver form {s['terms_lenient']})"
+    return Raw(f'<span style="white-space:nowrap">{s["terms_strict"]} af {s["terms"]}</span><br>'
+               f'<span class="muted" style="white-space:nowrap">i enhver form: {s["terms_lenient"]}</span>')
 
 
 def _label(name: str) -> str:

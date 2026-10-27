@@ -22,6 +22,8 @@ import { navigate, reportHref } from "../router";
 import { errorText, S } from "../strings";
 
 const E = S.evaluation;
+/** A first evaluation that needs nothing but the workbench: base Edda on FLEURS (a command, not copy). */
+const EVAL_EXAMPLE = "wt-train eval --backend hf";
 
 export interface Group {
   /** The normaliser's version; null for one without a number. */
@@ -181,7 +183,7 @@ export function EvaluationScreen() {
       {!runs.data ? (
         !runs.error && <Loading />
       ) : list.length === 0 ? (
-        <Empty what={E.emptyWhat} when={E.emptyWhen} />
+        <Empty what={E.emptyWhat} when={E.emptyWhen} code={EVAL_EXAMPLE} />
       ) : (
         <>
           {groups.length > 1 && (

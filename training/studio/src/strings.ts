@@ -398,7 +398,7 @@ export const S = {
       what: "Her kommer dine optagelser: minutterne pr. forhold og deres opdeling i træning, validering og test.",
       when: "De kommer efter den første optagelse på Optagelse.",
       go: "Til Optagelse",
-      leakage: "Lækagetjekket kører, når der er optagelser at tjekke.",
+      leakage: "Det kører, når der er optagelser at tjekke.",
     },
   },
 
@@ -533,7 +533,7 @@ export const S = {
     emptyWhat:
       "Her kommer målingerne af modellerne: ordfejl, tegnfejl og hvor sikre tallene er.",
     emptyWhen:
-      "De første kommer, når du har kørt en evaluering, for eksempel wt-train eval --backend gguf i terminalen.",
+      "De første kommer, når du har kørt en evaluering i terminalen, for eksempel af Edda på FLEURS:",
   },
 
   report: {

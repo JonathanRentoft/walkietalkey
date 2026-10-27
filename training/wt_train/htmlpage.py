@@ -50,6 +50,7 @@ overflow:hidden;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-weight:600;color:var(--muted);font-size:13px}tr:last-child td{border-bottom:0}
 td.num,th.num{text-align:right;white-space:nowrap}
+.table-wrap{overflow-x:auto;border-radius:12px}
 .clip{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
 .clip header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;color:var(--muted);font-size:13px}
 .clip header b{color:var(--ink);font-size:14px}.clip audio{height:32px;max-width:100%}
@@ -156,7 +157,8 @@ def table(headers: Sequence[str], rows: Iterable[Sequence[object]], numeric: Seq
 
     head = "".join(th(i, h) for i, h in enumerate(headers))
     body = "".join("<tr>" + "".join(td(i, v) for i, v in enumerate(r)) + "</tr>" for r in rows)
-    return Raw(f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>")
+    # A wide table (the pilot's thirteen columns) scrolls sideways instead of being cut off.
+    return Raw(f'<div class="table-wrap"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>')
 
 
 def cards(items: Iterable[Sequence[str]]) -> str:

@@ -60,7 +60,7 @@ export function DataScreen() {
             <StatTile label={D.recorded} value={int(d.sentences.recorded)} />
           </div>
 
-          {d.conditions.length === 0 ? (
+          {d.conditions.every((c) => c.takes === 0) ? (
             <Section id="minutes" title={D.minutesTitle}>
               <Empty
                 what={D.empty.what}
@@ -256,14 +256,7 @@ function CheckMark({ check }: { check: LeakageCheck }) {
 /** The splits as boxes, the held-out sets as boxes, and each check on the line between them. */
 function Leakage({ view }: { view: DataView }) {
   const L = view.leakage;
-  if (!L.ran)
-    return (
-      <Empty
-        what={D.leakageNotRun}
-        when={D.empty.leakage}
-        to={{ href: "/optag", label: D.empty.go }}
-      />
-    );
+  if (!L.ran) return <Empty what={D.leakageNotRun} when={D.empty.leakage} />;
   const splits = L.checks.find((c) => c.id === "splits");
   const held = L.checks.filter((c) => c.id !== "splits");
   const allOk = L.checks.every((c) => c.ok === true);

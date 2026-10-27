@@ -108,9 +108,7 @@ describe("the evaluations", () => {
         "Her kommer målingerne af modellerne: ordfejl, tegnfejl og hvor sikre tallene er.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/wt-train eval --backend gguf/),
-    ).toBeInTheDocument();
+    expect(screen.getByText("wt-train eval --backend hf")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 });

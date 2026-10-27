@@ -1992,7 +1992,17 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     return {
       ...view,
       sentences: { ...view.sentences, recorded: 0 },
-      conditions: [],
+      // As the server answers before the first take: every condition, none with a take.
+      conditions: view.conditions.map((c) => ({
+        ...c,
+        takes: 0,
+        minutes: 0,
+        split: {
+          train: { takes: 0, minutes: 0 },
+          validation: { takes: 0, minutes: 0 },
+          test: { takes: 0, minutes: 0 },
+        },
+      })),
       skipped: [],
       leakage: {
         ran: false,

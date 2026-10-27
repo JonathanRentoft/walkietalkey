@@ -24,6 +24,12 @@ import { errorText, S } from "../strings";
 
 const L = S.learn;
 
+/** A folder inside the workbench from its training/ on ("training/work/notebooks"), else as it is. */
+export function shortPath(path: string): string {
+  const at = path.lastIndexOf("/training/");
+  return at >= 0 ? path.slice(at + 1) : path;
+}
+
 /** "01", as the notebook's own title heading numbers it. */
 export function numberOf(n: LearnNotebook): string {
   return n.number === null ? "" : String(n.number).padStart(2, "0");
@@ -203,7 +209,7 @@ export function LearnScreen() {
         <>
           <div className="learn-help">
             <p className="help">{L.setup}</p>
-            <p className="help">{L.copies(list.copies)}</p>
+            <p className="help">{L.copies(shortPath(list.copies))}</p>
           </div>
           <ol className="notebooks" aria-label={L.listLabel}>
             {list.notebooks.map((n) => (

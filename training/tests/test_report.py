@@ -313,8 +313,27 @@ def test_the_comparison_page_side_by_side(tmp_path, make_wav):
     assert "kun i A" in html and "kun i B" in html
     for label in ("Erstatninger", "Udeladelser", "Tilføjelser"):
         assert f"<td>{label}</td>" in html
-    # Two runs that would share a name are told apart by their day.
+    # Two runs that would share a name are told apart by their day, in the title and the table.
     assert "<title>m i appen · FLEURS · 25. okt. mod m i appen · FLEURS · 24. okt.</title>" in html
+    assert "<td>Navn</td><td>m i appen · FLEURS · 25. okt.</td><td>m i appen · FLEURS · 24. okt.</td>" in html
+    # Both from before 26 October: one normaliser, no warning.
+    assert "hver sin normalisering" not in html
+
+
+def test_a_comparison_across_the_normaliser_fix_says_so_under_the_verdict(tmp_path, make_wav):
+    # Run 11: 26 October's runs were counted by normaliser 2, 25 October's by 1.
+    plan = [("k0", 2, 1), ("k1", 3, 1)]
+    a = [(cid, *with_errors(10, ea, start=i * 10)) for i, (cid, _, ea) in enumerate(plan)]
+    b = [(cid, *with_errors(10, eb, start=i * 10)) for i, (cid, eb, _) in enumerate(plan)]
+    run_b = write_run(tmp_path / "runs" / "20261025-015628-gguf-m", b, make_wav)
+    run_a = write_run(tmp_path / "runs" / "20261026-170753-gguf-m", a, make_wav, summary_patch=None)
+    summary = json.loads((run_a / "summary.json").read_text())
+    summary["normaliser"] = 2
+    (run_a / "summary.json").write_text(json.dumps(summary))
+    html = render(run_a, tmp_path, "--vs", str(run_b))
+    warning = html.index("A og B er talt med hver sin normalisering (1 og 2)")
+    assert html.index("Intervallet er parret") < warning < html.index("<h2>De to kørsler</h2>")
+    assert "<td>Normalisering</td><td>2</td><td>1</td>" in html
 
 
 def test_the_comparison_needs_the_same_dataset(tmp_path, make_wav):

@@ -150,16 +150,20 @@ export function ErrorBox({
 export function Empty({
   what,
   when,
+  code,
   to,
 }: {
   what: string;
   when?: string;
+  /** A command to run in the terminal, shown whole on its own line. */
+  code?: string;
   to?: { href: string; label: string };
 }) {
   return (
     <div className="empty empty-state">
       <p className="empty-what">{what}</p>
       {when && <p className="empty-when">{when}</p>}
+      {code && <code className="empty-code">{code}</code>}
       {to && (
         <Link className="btn btn--secondary btn--sm empty-go" href={to.href}>
           {to.label}

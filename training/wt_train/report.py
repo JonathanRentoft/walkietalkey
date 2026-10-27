@@ -70,6 +70,7 @@ from .studio.labels import eval_title, unique_titles
 
 WORST = 25
 FOLDER_TIME = "%Y%m%d-%H%M%S"  # wt-train eval's folder names start with the time it started
+
 # TODO(copy): run 11 drafted every Danish string in this file (the report pages' words).
 NO_CONDITION = "Alle klip (uden optageforhold)"
 OTHER_CONDITION = "Uden optageforhold"
@@ -558,9 +559,23 @@ METHOD = ("<h2>Sådan er tallene lavet</h2><p class=\"note\">Referencen og model
           "intervallet. WER-intervallet er det, wt-train eval skrev i summary.json.</p>")
 
 
+def _versions(*runs: EvalRun) -> list[int]:
+    return sorted({v for v in (normaliser_of(r) for r in runs) if v is not None})
+
+
+def mixed_normalisers(a: EvalRun, b: EvalRun) -> str:
+    """A warning, right under the verdict, when A and B were counted by different normalisers."""
+    versions = _versions(a, b)
+    if len(versions) < 2:
+        return ""
+    return (f'<p class="worse">A og B er talt med hver sin normalisering ({" og ".join(map(str, versions))}). '
+            "En del af ændringen kommer derfor fra normaliseringen og ikke fra modellen: rettelsen den 26. "
+            "oktober 2026 ændrede alle tal uden at ændre modellen.</p>")
+
+
 def method(*runs: EvalRun) -> str:
     """How the numbers are made, and which normaliser counted them."""
-    versions = sorted({v for v in (normaliser_of(r) for r in runs) if v is not None})
+    versions = _versions(*runs)
     if not versions:
         return METHOD
     if len(versions) == 1:
@@ -589,9 +604,12 @@ def single_page(run: EvalRun, spelling: Spelling | None, n_worst: int = WORST, t
     terms = term_stats(run.rows, spelling) if spelling and with_terms else None
     model = str(run.summary.get("model") or "?")
     backend = str(run.summary.get("backend") or "?")
-    subtitle = (f"{BACKENDS.get(backend, backend)} ({backend}), model {model}, datasæt {run.dataset}. "
-                f"Evalueringskørsel {run.folder.name}, startet {_when(run)}"
-                + (f", sporet i MLflow som {tracked_as}" if tracked_as else "") + ".")
+    how = BACKENDS.get(backend, backend)
+    tracked = ""
+    if tracked_as:
+        tracked = ", sporet i MLflow" + (f" som {tracked_as}" if tracked_as != run.folder.name else "")
+    subtitle = (f"{how[:1].upper()}{how[1:]} ({backend}), model {model}, datasæt {run.dataset}. "
+                f"Evalueringskørsel {run.folder.name}, startet {_when(run)}{tracked}.")
     body = [headline(s, terms), _consistency(run, s), datasets_table(run),
             "<h2>Pr. optageforhold</h2>", condition_table(run.rows, s, spelling, with_terms),
             "<h2>Erstatninger, udeladelser og tilføjelser</h2>", edits_table(s), EDITS_NOTE,
@@ -602,15 +620,17 @@ def single_page(run: EvalRun, spelling: Spelling | None, n_worst: int = WORST, t
 # --- the comparison page -----------------------------------------------------------------
 
 
-def runs_table(a: EvalRun, b: EvalRun, tracked: tuple[str, str]) -> str:
-    def facts(run: EvalRun, name: str) -> list[str]:
+def runs_table(a: EvalRun, b: EvalRun, tracked: tuple[str, str], names: tuple[str, str] | None = None) -> str:
+    titles = names or (run_title(a), run_title(b))
+
+    def facts(run: EvalRun, name: str, title: str) -> list[str]:
         version = normaliser_of(run)
-        return [run_title(run), run.folder.name, _when(run), str(run.summary.get("backend") or "?"),
+        return [title, run.folder.name, _when(run), str(run.summary.get("backend") or "?"),
                 str(run.summary.get("model") or "?"), name or "–", count(len(run.rows)),
                 str(version) if version is not None else "–"]
 
     labels = ["Navn", "Evalueringskørsel", "Startet", "Backend", "Model", "MLflow-kørsel", "Klip", "Normalisering"]
-    fa, fb = facts(a, tracked[0]), facts(b, tracked[1])
+    fa, fb = facts(a, tracked[0], titles[0]), facts(b, tracked[1], titles[1])
     return table(["", "A", "B"], [[label, x, y] for label, x, y in zip(labels, fa, fb)])
 
 
@@ -762,8 +782,8 @@ def compare_page(a: EvalRun, b: EvalRun, spelling: Spelling | None, n_worst: int
              "med andre ord)."]
     if ch.only_a or ch.only_b:
         notes.append(f"{count(len(ch.only_a))} klip kun i A og {count(len(ch.only_b))} kun i B er ikke sammenlignet.")
-    body = [compare_cards(sa, sb, delta, ch), verdict(delta), _consistency(a, sa), _consistency(b, sb),
-            "<h2>De to kørsler</h2>", runs_table(a, b, tracked),
+    body = [compare_cards(sa, sb, delta, ch), verdict(delta), mixed_normalisers(a, b), _consistency(a, sa),
+            _consistency(b, sb), "<h2>De to kørsler</h2>", runs_table(a, b, tracked, (name_a, name_b)),
             "<h2>Samlet</h2>", overall_table(sa, sb, ta, tb),
             "<h2>Pr. optageforhold</h2>", compare_conditions(a, b, sa, sb),
             "<h2>Erstatninger, udeladelser og tilføjelser</h2>", compare_edits(sa, sb), EDITS_NOTE,

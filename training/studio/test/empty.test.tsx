@@ -30,7 +30,7 @@ describe("the empty states", () => {
       screen.getAllByRole("link", { name: "Til Optagelse" })[0],
     ).toHaveAttribute("href", "/optag");
     expect(
-      screen.getByText("Lækagetjekket kører, når der er optagelser at tjekke."),
+      screen.getByText("Det kører, når der er optagelser at tjekke."),
     ).toBeInTheDocument();
     // No empty split chart under it.
     expect(document.querySelector(".bars--stacked")).toBeNull();

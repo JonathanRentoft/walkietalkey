@@ -153,7 +153,7 @@ def test_the_page(tmp_path, monkeypatch):
     for header in ("WER", "CER", "Fagord rigtige", "Taleniveau", "Top", "Støjgulv", "SNR", "Forvrænget", "Længde"):
         assert f">{header}</th>" in html
     assert "15,79 %" in html  # iphone-whisper's WER
-    assert "0 af 2 (i enhver form 2)" in html and "telefonen, hvisket" in html
+    assert "0 af 2</span><br>" in html and "i enhver form: 2</span>" in html and "telefonen, hvisket" in html
     # Every clip with its player (embedded, self-contained) and its diff.
     assert html.count("<audio controls") == 9 and html.count('src="data:audio/') == 9
     assert '<del class="w sub">deployer</del><ins class="w sub">deployede</ins>' in html
