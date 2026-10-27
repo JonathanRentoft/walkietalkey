@@ -212,7 +212,11 @@ class Recorder:
         for item in pick.items:
             if store.status(item.id) != "recorded":
                 continue
-            meta = store.meta(item.id) or {}
+            try:
+                meta = store.meta(item.id) or {}
+            except (OSError, ValueError):  # a broken metadata file: the take is checked again
+                meta = {}
+            meta = meta if isinstance(meta, dict) else {}
             key = str(store.wav_path(item.id))
             entry = self._entries.get(key)
             if entry is None or entry.identity != identity(meta):
@@ -259,7 +263,8 @@ class Recorder:
         def hand() -> None:
             status, detail = self.handoff(url, self.places.app_bin)
             with self._lock:
-                if self.session is not session or self.link["status"] == "connected":
+                # The app may have answered already (connected, no_phone, gone): that stays.
+                if self.session is not session or self.link["status"] != "connecting":
                     return
                 self.link = {"status": {"ok": "waiting", "not_running": "not_running"}.get(status, "error"),
                              "detail": detail}
@@ -270,10 +275,12 @@ class Recorder:
     def start(self, body: dict) -> dict:
         kind, pid = str(body.get("kind") or ""), body.get("id")
         with self._lock:
+            # The new pick is ready before the running session ends: if it cannot open, that
+            # session goes on.
             pick = self._make_pick(kind, str(pid or ""), bool(body.get("exam")))
+            self._load(pick)
             if self.session is not None and not self.session.ended:
                 self.session.end()
-            self._load(pick)
             self.pick = pick
             self._new_session(pick)
         self._connect()

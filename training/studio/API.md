@@ -20,7 +20,9 @@ durations in seconds; levels in dBFS; WER and CER as fractions (0.0632), never p
   refuses any request with an `Origin`. The page never sees the token.
 - Errors: `{"error": "<code>", "message": "<English, for the log>"}` with a 4xx/5xx status. The
   page shows its own Danish text per code and falls back to a generic one. Codes every route can
-  give: `forbidden` (403), `json` (400, not a JSON object), `too-long` (413), `not-found` (404).
+  give: `forbidden` (403), `json` (400, not a JSON object), `too-long` (413), `not-found` (404),
+  `internal` (500: something unexpected; `message` names the exception, the traceback is in the
+  server's log, and the server goes on).
 - CSP for the page: `default-src 'none'; script-src 'self'; style-src 'self'; connect-src
 'self'; media-src 'self'; img-src 'self' data:; font-src 'self'; frame-src 'self';
 base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. Report pages
@@ -124,7 +126,9 @@ Starts a session (replacing a running one) and hands it to the running app
 Answers the recording state. Errors: `unknown` (404, or 400 for a `kind` that is neither),
 `no-share` (409), `bad-setup` (400). `{"kind": "exam", "id": "<condition>"}` is the same as
 `"kind": "condition"` with `"exam": true`. The session replaced gets no `end`: its token is
-refused at once, which ends it in the app (and the new handoff replaces it there anyway).
+refused at once, which ends it in the app (and the new handoff replaces it there anyway). The
+new pick's takes are read before the running session ends: a pick that cannot open (an error)
+leaves that session running.
 
 ### `POST /api/recording/pause`, `POST /api/recording/resume`, `POST /api/recording/stop`
 
@@ -267,8 +271,8 @@ recording).
   `mismatch` (Edda heard something else), `error`. The page names each in Danish. `detail` is a
   short English note with units, as `wt-train check` prints them: `"-52 dBFS"`, `"start and end"`,
   `"SNR 9 dB"`, `"0.3 s"`, `"WER 80 %"`, `"nothing heard"`, or `""`. `error`: the check itself
-  failed (the file could not be read); then no review is written, so it is checked again after a
-  restart.
+  failed (the file could not be read, when it came in or when a pick opened); then no review is
+  written (an earlier one stays), so it is checked again after a restart.
 - `envelope`: 48 numbers, the level (dBFS) of each 48th of the take, for a small level meter.
 - `heard` is Edda's text as the app wrote it (case and punctuation as in a dictation); `wer` is
   over the normalised words, the reference re-spelled like the training data.
@@ -297,7 +301,8 @@ recording).
 - `link.status`: `waiting`, `connecting`, `connected`, `not_running` (WalkieTalkey is not open),
   `no_phone` (no paired phone), `gone` (the app said bye or went quiet), `error`. `detail` is
   English (the handoff's message, the app's version once connected, `manual` when the link was
-  written to `--app-url-file`).
+  written to `--app-url-file`). What the app said (`connected`, `no_phone`, `gone`) is never
+  overwritten by the handoff's own result, which only replaces `connecting`.
 - The rows of an exam session are paragraphs (`kind: "exam"`).
 
 ### The phone's "Spring over" (PROTOCOL.md 8.4, PHONE-52)
@@ -387,7 +392,9 @@ comparison, and the job's `result` is the comparison too. `notes` are English, f
 in the options and in the comparison) also carry `label`, the Danish name ("iPhone, hvisket").
 In the comparison `terms` is the strict term accuracy, `clipped` the clips with clipping,
 `seconds` the mean length of a clip, and `report` is `null` when the page is outside
-`<work>/reports/`.
+`<work>/reports/`. A take marked for a new take (`review.status` `redo`) is not scored, as the
+dataset builder leaves it out; `left_out` lists them: `[{"id": "pilot-03.iphone-whisper",
+"reason": "marked for a new take"}]`.
 
 ## Data
 
@@ -704,7 +711,13 @@ page's own folder of plots; the Markdown's image links are relative to the journ
 Saves both into the Markdown file, replacing only what is under those two headings (each up to
 the next `## ` heading); everything else in the file stays byte for byte. Answers the page.
 Either may be left out. A missing heading is added at the end; text is saved as UTF-8 with `\n`
-line ends. 400 `text` for a value that is not a string, 404 `unknown` for no such page.
+line ends. A line that starts with `## ` would start a section of its own, so it is saved as
+`### ` (the text kept). 400 `text` for a value that is not a string, 404 `unknown` for no such
+page.
+
+A page is any `<name>.md` in the journal folder whose name has no `/` or `\`, does not start
+with a dot and is at most 200 characters (the owner may name one himself, with spaces or æøå;
+the page sends it percent-encoded); the path must resolve inside the journal folder.
 
 ## Jobs
 
@@ -727,7 +740,9 @@ Long work runs as a job: a child process of the server, its output kept (the las
 ```
 
 `status`: `running`, `done`, `failed`, `stopped`. `POST /api/jobs/<id>/stop` stops one (SIGINT,
-SIGTERM after 15 s, SIGKILL after 10 s more). Kinds: `train`, `export`, `pilot`, `report`. Jobs
+SIGTERM after 15 s, SIGKILL after 10 s more). A job runs in its own session, and the signals go
+to its whole process group, so what it started (the app's batch, an export's tools) ends too;
+a job is `done`/`failed`/`stopped` once its output is closed and it has exited. Kinds: `train`, `export`, `pilot`, `report`. Jobs
 end when the server stops (the launcher's quit stops the server, which stops its jobs). Ids are
 `j1`, `j2`, ... from the server's start; `title` is Danish; `result` is the pilot comparison for
 a `pilot` job, else `null`.
@@ -741,6 +756,9 @@ one runs opens the running one and exits. `--parent-pid <pid>` (the launcher) st
 when that process is gone. SIGTERM and SIGINT stop it cleanly: the recording session ends (the
 phone returns to normal), jobs are stopped, then it exits.
 
+- SIGHUP stops it the same way. The way out takes at most about 10 s: every job gets SIGINT at
+  once, SIGTERM 5 s later, SIGKILL 3 s after that, while the app gets up to 3 s to fetch the
+  session's end; the launcher waits 20 s after its SIGTERM before it sends SIGKILL.
 - One server per work folder: `<work>/studio/server.json` (`pid`, `url`); a second start whose
   server answers `/api/ping` with that pid prints the same `Værkstedet: <url>` line (a note goes
   to stderr), opens it unless `--no-browser`, and exits 0.

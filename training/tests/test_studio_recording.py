@@ -485,3 +485,158 @@ def test_a_pilot_setup_with_takes_is_offered_too(server, places):
     status, pilot = get(server, "/api/pilot")
     assert pilot["sentences"] == 2 and pilot["comparison"] is None and pilot["job"] is None
     assert {s["name"]: s["done"] for s in pilot["setups"]}["usb-mic"] == 1
+
+
+# --- the review's findings (run 9) ----------------------------------------------------------
+
+
+def test_a_verdict_written_while_a_redo_is_saved_never_lands_on_the_new_take(tmp_path):
+    # R1: the reviewer read the old take's metadata; the app's redo take of the same sentence
+    # was saved meanwhile (from the session's thread). The verdict must not overwrite the new
+    # take's metadata with the old take's: saving waits for the write, which lands on the old
+    # take, then moved aside with it.
+    import numpy as np
+
+    from wt_train.recorder.takes import TakeStore
+    from wt_train.studio import review as rv
+
+    store = TakeStore(tmp_path, "phone-whisper", {"s1": "Hej med dig."})
+    samples = (np.random.default_rng(1).standard_normal(16000) * 3000).astype(np.int16)
+    old = {"id": "s1", "session": "A", "take": 1, "recorded_at": "t1", "microphone": "old-mic"}
+    store.save("s1", samples, old)
+    entry = rv.Entry(store, "s1", "Hej med dig.", "whisper", "phone", dict(old))
+    real_meta = store.meta
+    saver: list[threading.Thread] = []
+
+    def racing_meta(item_id):
+        meta = real_meta(item_id)
+        if not saver:
+            new = {"id": "s1", "session": "A", "take": 2, "recorded_at": "t2", "microphone": "new-mic"}
+            saver.append(threading.Thread(target=store.save, args=("s1", samples, new)))
+            saver[0].start()
+            saver[0].join(0.3)  # with the shared lock it cannot finish before the write
+        return meta
+
+    store.meta = racing_meta
+    rv.Reviewer(transcriber=lambda: None)._write(entry, {"status": "redo", "by": "check", "problems": []})
+    saver[0].join(5)
+    store.meta = real_meta
+    current = store.meta("s1")
+    assert (current["take"], current["microphone"]) == (2, "new-mic") and "review" not in current
+    (moved,) = (tmp_path / ".replaced" / "phone-whisper").glob("s1.*.json")
+    kept = json.loads(moved.read_text(encoding="utf-8"))
+    assert kept["take"] == 1 and kept["review"]["status"] == "redo"
+    assert not [p for p in store.folder.iterdir() if p.suffix not in (".wav", ".txt", ".json")]
+
+
+def test_a_verdict_for_a_take_that_was_replaced_is_not_written(tmp_path):
+    import numpy as np
+
+    from wt_train.recorder.takes import TakeStore
+    from wt_train.studio import review as rv
+
+    store = TakeStore(tmp_path, "phone-whisper", {"s1": "Hej med dig."})
+    samples = np.zeros(16000, dtype=np.int16)
+    first = {"id": "s1", "session": "A", "take": 1, "recorded_at": "t1"}
+    store.save("s1", samples, first)
+    entry = rv.Entry(store, "s1", "Hej med dig.", "whisper", "phone", dict(first))
+    store.save("s1", samples, {"id": "s1", "session": "A", "take": 2, "recorded_at": "t2"})
+    reviewer = rv.Reviewer(transcriber=lambda: None)
+    reviewer._write(entry, {"status": "redo", "by": "check"})
+    reviewer.set_owner(entry, "approved")
+    assert "review" not in store.meta("s1")
+    assert store.update_meta("s1", {"x": 1}, expect=("A", 1, "t1")) is None
+    assert store.update_meta("s1", {"x": 1}, expect=("A", 2, "t2"))["x"] == 1
+
+
+def test_no_phone_from_the_apps_hello_is_not_overwritten_by_the_handoff(tmp_path, monkeypatch):
+    # R2: the app's refused hello arrives before the handoff command has returned.
+    import dataclasses
+
+    places = dataclasses.replace(write_places(tmp_path, monkeypatch), app_url_file=None)
+    holder = {}
+
+    def handoff(url, app_bin):
+        token = url.split("#", 1)[1]
+        body = json.dumps({"app": "walkietalkey", "version": "0.3.0", "os": "mac", "phones": []}).encode()
+        holder["hello"] = request(holder["srv"], "POST", "/app/v1/hello", body,
+                                  {"Authorization": f"Bearer {token}", "Content-Type": "application/json"})[0]
+        return "ok", "handed to WalkieTalkey"
+
+    srv = start_server(places, handoff=handoff)
+    holder["srv"] = srv
+    try:
+        assert post(srv, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})[0] == 200
+        deadline = time.monotonic() + 5
+        while "hello" not in holder and time.monotonic() < deadline:
+            time.sleep(0.05)
+        time.sleep(0.3)
+        assert holder["hello"] == 409
+        assert state(srv)["link"]["status"] == "no_phone"
+    finally:
+        stop_server(srv)
+
+
+def test_a_handoff_that_fails_still_says_so(tmp_path, monkeypatch):
+    import dataclasses
+
+    places = dataclasses.replace(write_places(tmp_path, monkeypatch), app_url_file=None)
+    srv = start_server(places, handoff=lambda url, app_bin: ("not_running", "WalkieTalkey is not running"))
+    try:
+        post(srv, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})
+        deadline = time.monotonic() + 5
+        while state(srv)["link"]["status"] == "connecting" and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert state(srv)["link"] == {"status": "not_running", "detail": "WalkieTalkey is not running"}
+    finally:
+        stop_server(srv)
+
+
+def test_an_unreadable_take_does_not_stop_a_pick_from_opening(server, places):
+    # R3: a take with the owner's verdict, no audio numbers and a WAV that cannot be read.
+    folder = places.recordings / "phone-whisper"
+    folder.mkdir(parents=True)
+    (folder / "s0001.txt").write_text("Vi merger PR'en, når buildet er grønt.\n", encoding="utf-8")
+    (folder / "s0001.wav").write_bytes(b"RIFF\x00\x00\x00\x00WAVEjunk")
+    (folder / "s0001.json").write_text(json.dumps({
+        "id": "s0001", "session": "a", "take": 1, "recorded_at": "t", "seconds": 2.0,
+        "review": {"status": "approved", "by": "owner", "audio": None}}), encoding="utf-8")
+    assert post(server, "/api/recording/start", {"kind": "condition", "id": "mac-normal"})[0] == 200
+    status, st = post(server, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})
+    assert status == 200 and st["pick"]["id"] == "phone-whisper" and st["active"]
+    row = {r["id"]: r for r in st["rows"]}["s0001"]
+    assert row["status"] == "approved" and row["take"]["level_dbfs"] is None
+    assert [p["kind"] for p in row["take"]["problems"]] == ["error"]
+
+
+def test_a_pick_that_fails_to_open_leaves_the_running_session_alone(server, places, monkeypatch):
+    from wt_train.studio.recording import Recorder
+
+    assert post(server, "/api/recording/start", {"kind": "condition", "id": "mac-normal"})[0] == 200
+    app = App(server, places)
+    app.hello(phones=())
+
+    def broken(self, pick):
+        raise RuntimeError("the disk is gone")
+
+    monkeypatch.setattr(Recorder, "_load", broken)
+    status, body = post(server, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})
+    assert status == 500 and body["error"] == "internal" and "the disk is gone" in body["message"]
+    st = state(server)
+    assert st["pick"]["id"] == "mac-normal" and st["active"]
+    assert all(c["type"] != "end" for c in app.commands())
+
+
+def test_a_take_with_broken_metadata_still_opens(server, places):
+    folder = places.recordings / "phone-whisper"
+    folder.mkdir(parents=True)
+    from wt_train.recorder.audio import write_wav
+
+    write_wav(folder / "s0001.wav", good())
+    (folder / "s0001.txt").write_text("Vi merger PR'en, når buildet er grønt.\n", encoding="utf-8")
+    (folder / "s0001.json").write_text("{not json", encoding="utf-8")
+    status, st = post(server, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})
+    assert status == 200 and st["active"]
+    assert server.reviewer.idle(10)
+    row = {r["id"]: r for r in state(server)["rows"]}["s0001"]
+    assert row["status"] == "received" and [p["kind"] for p in row["take"]["problems"]] == ["error"]

@@ -384,6 +384,7 @@ def test_the_pilot_comparison_runs_as_a_job(places, tmp_path, monkeypatch):
         assert setup["name"] == "iphone-whisper" and setup["label"] == "iPhone, hvisket" and setup["clips"] == 2
         assert setup["wer"] is not None and setup["level_dbfs"] < -30 and setup["seconds"] == pytest.approx(2.9, 0.1)
         assert isinstance(setup["notes"], list) and pilot["job"]["result"]["setups"][0]["name"] == "iphone-whisper"
+        assert c["left_out"] == []
     finally:
         stop_server(srv)
 
@@ -484,3 +485,37 @@ def test_a_page_is_written_for_a_tracked_run_once(places, store):
         assert post(srv, "/api/journal", {"run": "nope"})[1]["error"] == "unknown"
     finally:
         stop_server(srv)
+
+
+# --- the review's findings: the journal (run 9) --------------------------------------------
+
+
+def test_a_heading_typed_into_a_section_does_not_split_it(server, places):
+    places.journal.mkdir(parents=True)
+    page = places.journal / "2026-10-27-run.md"
+    page.write_text(CARD, encoding="utf-8")
+    typed = "Idé:\n## Mere data\nog\n##  to mellemrum"
+    status, saved = post(server, f"/api/journal/{page.stem}", {"hypothesis": typed, "learned": "## Lært"})
+    assert status == 200
+    assert saved["hypothesis"] == "Idé:\n### Mere data\nog\n###  to mellemrum"
+    assert saved["learned"] == "### Lært"
+    again = get(server, f"/api/journal/{page.stem}")[1]
+    assert again["hypothesis"] == saved["hypothesis"] and again["learned"] == "### Lært"
+    assert "## What I changed\n\n## What happened" in again["markdown"], "the other sections stay"
+
+
+def test_any_plain_page_name_in_the_journal_opens(server, places):
+    places.journal.mkdir(parents=True)
+    page = places.journal / "Mit forsøg (æøå) 2.md"
+    page.write_text(CARD, encoding="utf-8")
+    (places.journal / ".skjult.md").write_text(CARD, encoding="utf-8")
+    (places.journal.parent / "secret.md").write_text("secret", encoding="utf-8")
+    names = [p["name"] for p in get(server, "/api/journal")[1]["pages"]]
+    assert names == ["Mit forsøg (æøå) 2"]
+    from urllib.parse import quote
+
+    status, read = get(server, f"/api/journal/{quote(page.stem)}")
+    assert status == 200 and read["name"] == page.stem and read["files"] == f"/files/journal/{page.stem}/"
+    assert post(server, f"/api/journal/{quote(page.stem)}", {"learned": "Ja."})[1]["learned"] == "Ja."
+    for bad in ("..%2Fsecret", "%2E%2E%2Fsecret", ".skjult", "a%5Cb", "%2Fetc%2Fpasswd"):
+        assert get(server, f"/api/journal/{bad}")[0] == 404, bad

@@ -77,7 +77,7 @@ from .audio import file_sha256
 from .conditions import BROWSER_CONDITION, BY_ID, IDS
 from .config import Config, load_config, to_dict, with_overrides
 from .harness import normalize
-from .recorder.takes import review_status
+from .recorder.takes import REDO_REASON, review_status
 from .sentences import load_sentences
 from .spelling import Spelling, load_spelling
 
@@ -149,7 +149,7 @@ def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
                 continue
             meta = _meta(wav.with_suffix(".json"))
             if review_status(meta) == "redo":
-                skipped.append({"id": clip_id, "reason": "marked for a new take"})
+                skipped.append({"id": clip_id, "reason": REDO_REASON})
                 continue
             text = spelling.apply(txt.read_text(encoding="utf-8").strip())
             if not sentence_key(text):

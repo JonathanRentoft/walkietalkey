@@ -9,7 +9,12 @@ Saving replaces only what is under those two headings, each up to the next line 
 starts with ``## `` (or the end of the file); every other byte of the file stays as it
 was, so numbers, plots and anything the owner wrote by hand elsewhere survive. A heading
 that is missing is added at the end. Text is saved as UTF-8 with ``\\n`` line ends (a
-``\\r\\n`` from the browser becomes ``\\n``). The files next to a page (its plots) are
+``\\r\\n`` from the browser becomes ``\\n``); a line of the owner's that starts with ``## ``
+would start a new section, so it is saved as ``### `` (the text kept).
+
+A page is any ``<name>.md`` in the journal folder whose name has no path separator and does
+not start with a dot (the owner may name one himself, with spaces or æøå); the path is still
+checked to resolve inside the folder. The files next to a page (its plots) are
 served from ``/files/journal/<path>``, only from inside the journal folder.
 """
 
@@ -17,6 +22,7 @@ from __future__ import annotations
 
 import os
 import re
+import tempfile
 from pathlib import Path
 
 from ..journal import HEADINGS
@@ -25,7 +31,7 @@ from .recording import StudioError
 
 HYPOTHESIS, LEARNED = HEADINGS[0], HEADINGS[3]
 EDITABLE = {"hypothesis": HYPOTHESIS, "learned": LEARNED}
-NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,200}")
+MAX_NAME = 200
 _HEADING = re.compile(r"^## (.*?)[ \t]*$", re.M)
 _NEXT = re.compile(r"^## ", re.M)
 _TITLE = re.compile(r"^# (.+?)[ \t]*$", re.M)
@@ -51,8 +57,14 @@ def section(text: str, heading: str) -> str:
     return text[where[0]:where[1]].strip() if where else ""
 
 
+_OWN_HEADING = re.compile(r"^## ", re.M)
+
+
 def _clean(value) -> str:
-    return str(value or "").replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+    """The owner's text: ``\\n`` line ends, no blank lines around it, and no line that would
+    start a section of its own (``## `` becomes ``### ``)."""
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+    return _OWN_HEADING.sub("### ", text)
 
 
 def _body(value: str, last: bool) -> str:
@@ -96,15 +108,25 @@ class Notebook:
     def folder(self) -> Path:
         return Path(self.places.journal)
 
+    @staticmethod
+    def plain(name: str) -> bool:
+        """A page name the journal accepts: no separator, no leading dot, not too long."""
+        return (0 < len(name) <= MAX_NAME and not name.startswith(".") and "/" not in name and "\\" not in name
+                and "\0" not in name and name.strip() == name)
+
     def _path(self, name) -> Path:
         name = str(name or "")
-        if not NAME.fullmatch(name) or ".." in name:
-            raise StudioError(404, "unknown", f"no journal page {name!r}")
-        return self.folder / f"{name}.md"
+        if self.plain(name):
+            path = self.folder / f"{name}.md"
+            if path.resolve().parent == self.folder.resolve():
+                return path
+        raise StudioError(404, "unknown", f"no journal page {name!r}")
 
     def pages(self) -> list[dict]:
         out = []
         for path in sorted(self.folder.glob("*.md"), reverse=True) if self.folder.is_dir() else []:
+            if not self.plain(path.stem) or not path.is_file():
+                continue
             try:
                 text = path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
@@ -154,9 +176,14 @@ class Notebook:
         text = path.read_text(encoding="utf-8")
         new = replace_sections(text, values)
         if new != text:
-            part = path.with_name(f".{path.name}.part")
-            part.write_bytes(new.encode("utf-8"))
-            os.replace(part, path)
+            fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".part", dir=path.parent)
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(new.encode("utf-8"))
+                os.replace(tmp, path)
+            except BaseException:
+                Path(tmp).unlink(missing_ok=True)
+                raise
         return self.read(name)
 
     def create(self, run) -> dict:

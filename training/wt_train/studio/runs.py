@@ -273,7 +273,7 @@ class Runs:
                            "seconds": round(audio["seconds"] / clips, 2) if clips and "seconds" in audio else None,
                            "notes": list(s.get("notes") or [])})
         return {"generated_at": raw.get("generated_at"), "report": f"/reports/{page.name}" if inside else None,
-                "model": raw.get("model"), "setups": setups}
+                "model": raw.get("model"), "setups": setups, "left_out": list(raw.get("left_out") or [])}
 
     def compare_pilot(self) -> dict:
         p = self.places

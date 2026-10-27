@@ -20,8 +20,11 @@ The verdict: a take with a problem in :data:`REDO` goes back (``redo``, by ``che
 once Edda has heard it, or could not. It is written into the take's metadata as
 ``review`` (``TakeStore.update_meta``), with the numbers the page shows, so a restart
 shows the same rows without measuring again. A take replaced while it was checked is
-left alone (its metadata names another take); a verdict of the owner's ("Tag om",
-"Godkend alligevel") is never overwritten by the check, which only adds its numbers.
+left alone (its metadata names another take): the verdict is written under the lock a
+take's save holds too (``recorder/takes.LOCK``), after checking which take is current. A
+verdict of the owner's ("Tag om", "Godkend alligevel") is never overwritten by the check,
+which only adds its numbers. A take that cannot be read is shown with a problem ``error``
+and checked again after a restart.
 """
 
 from __future__ import annotations
@@ -39,15 +42,15 @@ import soundfile as sf
 from .. import audiostats, paths
 from ..align import align
 from ..recorder import checks
-from ..recorder.takes import TakeStore, review_status
+from ..recorder.takes import LOCK, TakeStore, review_status, take_identity
 
 # Problems that send a take back; "silent" only reaches a take saved before these checks.
 REDO = frozenset({"quiet", "clipped", "cut", "short", "mismatch", "silent", "gaps"})
 WARNINGS = frozenset({"loud", "noisy"})
 ENVELOPE_POINTS = 48
 RETRY_APP_S = 60.0
-# Every write of a review goes through this lock, so the check and the owner never race.
-WRITE_LOCK = threading.Lock()
+# Every write of a review, and every save of a take, goes through this lock (takes.py).
+WRITE_LOCK = LOCK
 
 
 def _now() -> str:
@@ -68,10 +71,7 @@ def envelope(x: np.ndarray, points: int = ENVELOPE_POINTS) -> list[float]:
     return out
 
 
-def identity(meta: dict | None) -> tuple:
-    """Which take a metadata file describes: its session, take number and time."""
-    meta = meta or {}
-    return (meta.get("session"), meta.get("take"), meta.get("recorded_at"))
+identity = take_identity
 
 
 def diff_ops(ref_norm: str, hyp_norm: str) -> list[dict]:
@@ -277,14 +277,17 @@ class Reviewer:
         the review has none (measured here, once)."""
         from ..check import judge_match
 
-        if entry.heard is not None and entry.diff is None:
-            judged = judge_match(entry.text, entry.heard, self.spelling())
-            with Entry.lock:
-                entry.diff = diff_ops(judged["ref_norm"], judged["hyp_norm"])
-        if entry.audio is None and entry.path.is_file():
-            numbers, env, _ = measure(entry)
-            with Entry.lock:
-                entry.audio, entry.envelope = numbers, env
+        try:
+            if entry.heard is not None and entry.diff is None:
+                judged = judge_match(entry.text, str(entry.heard), self.spelling())
+                with Entry.lock:
+                    entry.diff = diff_ops(judged["ref_norm"], judged["hyp_norm"])
+            if entry.audio is None and entry.path.is_file():
+                numbers, env, _ = measure(entry)
+                with Entry.lock:
+                    entry.audio, entry.envelope = numbers, env
+        except Exception as e:  # noqa: BLE001 - one bad take never stops a pick from opening
+            self._unchecked(entry, f"the take could not be read: {type(e).__name__}: {e}", notify=False)
 
     def check(self, batch: list[Entry]) -> None:
         """Audio first (the rows get their numbers at once), then one batch through Edda."""
@@ -354,33 +357,37 @@ class Reviewer:
             numbers, env = entry.audio, entry.envelope
         review = {"status": status, "by": "check", "problems": problems, "heard": transcript, "wer": wer,
                   "edda_error": error, "audio": numbers, "envelope": env, "checked_at": _now()}
-        written = self._write(entry, review)
-        with Entry.lock:
-            entry.problems, entry.heard, entry.wer, entry.diff, entry.edda_error = problems, transcript, wer, diff, error
-            entry.review = written
-            entry.pending = False
+        self._write(entry, review, diff=diff)
         self.on_result(entry)
 
-    def _unchecked(self, entry: Entry, message: str) -> None:
-        """The check itself failed (an unreadable file): no review, so it is checked again
-        after a restart; the row shows the error."""
+    def _unchecked(self, entry: Entry, message: str, notify: bool = True) -> None:
+        """The check itself failed (an unreadable file): no review is written, so it is checked
+        again after a restart; the row shows the error."""
         with Entry.lock:
             entry.problems = [{"kind": "error", "detail": message[:200]}]
             entry.pending = False
-        self.on_result(entry)
+        if notify:
+            self.on_result(entry)
 
-    def _write(self, entry: Entry, review: dict) -> dict:
-        """The review as written: the check's, or the owner's verdict with the check's numbers.
-        Nothing is written when the take on disk is another one by now."""
+    def _write(self, entry: Entry, review: dict, diff=None) -> dict:
+        """Write the check's verdict, or the owner's with the check's numbers, and keep it on
+        the entry, all under the lock a save holds. Nothing is written when the take on disk is
+        another one by now."""
         with WRITE_LOCK:
             meta = entry.store.meta(entry.item_id)
-            if meta is None or identity(meta) != entry.identity:
-                return review
-            earlier = meta.get("review") if isinstance(meta.get("review"), dict) else None
-            if earlier and earlier.get("by") == "owner" and review_status(meta):
-                review = {**review, "status": earlier["status"], "by": "owner", "decided_at": earlier.get("decided_at")}
-            entry.store.update_meta(entry.item_id, {"review": review})
-            return review
+            if meta is not None and identity(meta) == entry.identity:
+                earlier = meta.get("review") if isinstance(meta.get("review"), dict) else None
+                if earlier and earlier.get("by") == "owner" and review_status(meta):
+                    review = {**review, "status": earlier["status"], "by": "owner",
+                              "decided_at": earlier.get("decided_at")}
+                entry.store.update_meta(entry.item_id, {"review": review}, expect=entry.identity)
+            with Entry.lock:
+                entry.problems, entry.heard, entry.wer = review.get("problems") or [], review.get("heard"), \
+                    review.get("wer")
+                entry.diff, entry.edda_error = diff, review.get("edda_error")
+                entry.review = review
+                entry.pending = False
+        return review
 
     def set_owner(self, entry: Entry, status: str) -> dict:
         """"Tag om" (``redo``) or "Godkend alligevel" (``approved``), by the owner."""
@@ -390,9 +397,10 @@ class Reviewer:
             with Entry.lock:
                 known = {"problems": entry.problems, "heard": entry.heard, "wer": entry.wer,
                          "edda_error": entry.edda_error, "audio": entry.audio, "envelope": entry.envelope}
+            if identity(meta) != entry.identity:
+                earlier = {}
             review = {**known, **earlier, "status": status, "by": "owner", "decided_at": _now()}
-            if identity(meta) == entry.identity:
-                entry.store.update_meta(entry.item_id, {"review": review})
-        with Entry.lock:
-            entry.review = review
+            entry.store.update_meta(entry.item_id, {"review": review}, expect=entry.identity)
+            with Entry.lock:
+                entry.review = review
         return review

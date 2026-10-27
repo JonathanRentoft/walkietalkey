@@ -277,6 +277,32 @@ def test_sigint_stops_it_too(places):
             proc.kill()
 
 
+def test_sighup_stops_it_like_sigterm(places):
+    # The terminal it runs in closes.
+    proc, _ = launch(places, "--port", str(free_port()))
+    try:
+        proc.send_signal(signal.SIGHUP)
+        assert proc.wait(30) == 0
+        assert not (places.work / "studio" / "server.json").exists()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_an_unexpected_error_is_a_json_500_and_the_server_goes_on(server, monkeypatch, capsys):
+    def broken():
+        raise RuntimeError("something nobody expected")
+
+    monkeypatch.setattr(server.recorder, "options", broken)
+    status, body = get(server, "/api/recording/options")
+    assert status == 500 and body == {"error": "internal", "message": "RuntimeError: something nobody expected"}
+    assert "Traceback" in capsys.readouterr().err
+    monkeypatch.setattr(server.recorder, "state", broken)
+    status, body = get(server, "/api/recording/state")
+    assert status == 500 and body["error"] == "internal"
+    assert get(server, "/api/ping")[0] == 200
+
+
 def test_it_stops_when_the_launcher_is_gone(places):
     parent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     proc, _ = launch(places, "--port", str(free_port()), "--parent-pid", str(parent.pid))

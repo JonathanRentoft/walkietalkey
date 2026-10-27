@@ -9,7 +9,7 @@
 // ~/Library/Logs/WalkieTalkey Værksted/studio.log, and opens the URL of the server's ready line
 // (`Værkstedet: http://127.0.0.1:<port>/`) in the default browser. Clicking the Dock icon again
 // opens it again. Quitting (the menu, ⌘Q, or SIGTERM) sends SIGTERM to the server's group,
-// waits up to 8 s, then SIGKILL. If the server stops by itself, an alert shows the end of the
+// waits up to 20 s, then SIGKILL. If the server stops by itself, an alert shows the end of the
 // log and the launcher quits. The server also stops when this process is gone (--parent-pid).
 //
 // For tests: WT_STUDIO_NO_BROWSER=1 opens no browser; WT_STUDIO_LOG_DIR replaces the log folder.
@@ -145,18 +145,19 @@ final class Server {
     /// Something in the server's process group is still alive.
     var groupAlive: Bool { kill(-pid, 0) == 0 || errno == EPERM }
 
-    /// SIGTERM to the group, up to 8 s for it to go, then SIGKILL.
+    /// SIGTERM to the group, up to 20 s for it to go (the server stops its jobs and ends the
+    /// recording session within about 10 s), then SIGKILL.
     func stop(log: Log) {
         guard groupAlive else { return }
         log.note("stopping the server (SIGTERM to process group \(pid))")
         kill(-pid, SIGTERM)
-        let deadline = Date().addingTimeInterval(8)
+        let deadline = Date().addingTimeInterval(20)
         while Date() < deadline {
             if exited && !groupAlive { return }
             usleep(100_000)
         }
         if groupAlive {
-            log.note("the server did not stop within 8 s; SIGKILL")
+            log.note("the server did not stop within 20 s; SIGKILL")
             kill(-pid, SIGKILL)
         }
         _ = done.wait(timeout: .now() + 2)

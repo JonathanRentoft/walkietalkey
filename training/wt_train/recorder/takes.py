@@ -29,7 +29,10 @@ Run 9, Værkstedet (``wt-train studio``): a take's metadata may hold its ``revie
 ``{"status": "approved" | "redo", "by": "check" | "owner", "problems": [...], "heard": ...,
 "wer": ...}``, written in place (:meth:`TakeStore.update_meta`). A take whose review is
 ``redo`` is read again: the recorder's queue comes back to it, and the dataset builder
-leaves it out. A take counts as recorded while
+leaves it out. Saving a take and writing into its metadata share one lock (:data:`LOCK`), and
+a write names the take it is for (:func:`take_identity`), so a verdict on a take that was
+just replaced never lands on the new one. Files are written to unique temporary names in the
+same folder, then renamed into place. A take counts as recorded while
 its ``.txt`` matches the text; if the owner edits a sentence (a spelling
 convention changed), the old take is "stale" and the recorder comes back to it.
 
@@ -44,6 +47,8 @@ import json
 import os
 import re
 import shutil
+import tempfile
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -61,6 +66,10 @@ STATUSES = ("missing", "recorded", "stale")
 REVIEWS = ("approved", "redo")
 REPLACED = ".replaced"
 SESSIONS_LOG = "sessions.jsonl"
+# Why a take marked for a new take is left out, wherever takes are listed (dataset, pilot).
+REDO_REASON = "marked for a new take"
+# Held while a take is saved or its metadata written, in every thread and every store.
+LOCK = threading.RLock()
 
 
 class UnknownItem(KeyError):
@@ -72,6 +81,25 @@ def review_status(meta: dict | None) -> str | None:
     review = meta.get("review") if isinstance(meta, dict) else None
     status = review.get("status") if isinstance(review, dict) else None
     return status if status in REVIEWS else None
+
+
+def take_identity(meta: dict | None) -> tuple:
+    """Which take a metadata file describes: its session, take number and time."""
+    meta = meta or {}
+    return (meta.get("session"), meta.get("take"), meta.get("recorded_at"))
+
+
+def write_atomic(path: Path, text: str) -> None:
+    """``text`` (UTF-8) at ``path`` through a unique temporary file beside it."""
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".part", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def condition_folder(root: Path, condition: str, exam: bool = False) -> Path:
@@ -145,18 +173,20 @@ class TakeStore:
         except FileNotFoundError:
             return None
 
-    def update_meta(self, item_id: str, changes: dict) -> dict:
+    def update_meta(self, item_id: str, changes: dict, expect: tuple | None = None) -> dict | None:
         """Merge ``changes`` into the current take's metadata (top-level keys), written
-        atomically; returns the new metadata. The take must exist."""
-        path = self.meta_path(item_id)
-        meta = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(meta, dict):
-            raise ValueError(f"{path}: the metadata is not a JSON object")
-        meta.update(changes)
-        part = path.with_name(path.name + ".part")
-        part.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        os.replace(part, path)
-        return meta
+        atomically; returns the new metadata. With ``expect`` (:func:`take_identity`), only
+        when the current take is that one: None, and nothing written, when it is not (or
+        there is none)."""
+        with LOCK:
+            meta = self.meta(item_id)
+            if expect is not None and (meta is None or take_identity(meta) != tuple(expect)):
+                return None
+            if not isinstance(meta, dict):
+                raise ValueError(f"{self.meta_path(item_id)}: no metadata to update")
+            meta.update(changes)
+            write_atomic(self.meta_path(item_id), json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+            return meta
 
     def earlier_takes(self, item_id: str) -> int:
         """How many takes of this item were replaced so far."""
@@ -170,16 +200,15 @@ class TakeStore:
         Returns whether one was replaced."""
         text = self.text(item_id)
         wav, txt, js = self.wav_path(item_id), self.txt_path(item_id), self.meta_path(item_id)
-        self.folder.mkdir(parents=True, exist_ok=True)
-        replaced = any(p.exists() for p in (wav, txt, js))
-        if replaced:
-            self._keep(item_id, wav, txt, js)
-        # Text and metadata first: a take only counts once its WAV is in place.
-        for path, body in ((txt, text + "\n"), (js, json.dumps(meta, ensure_ascii=False, indent=2) + "\n")):
-            part = path.with_name(path.name + ".part")
-            part.write_text(body, encoding="utf-8")
-            os.replace(part, path)
-        write_wav(wav, samples)
+        with LOCK:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            replaced = any(p.exists() for p in (wav, txt, js))
+            if replaced:
+                self._keep(item_id, wav, txt, js)
+            # Text and metadata first: a take only counts once its WAV is in place.
+            write_atomic(txt, text + "\n")
+            write_atomic(js, json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+            write_wav(wav, samples)
         return replaced
 
     def _keep(self, item_id: str, *paths: Path) -> None:

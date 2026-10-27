@@ -186,7 +186,7 @@ def test_a_companion_ends_with_its_job_and_every_job_ends_with_the_server(tmp_pa
     job = jobs.start("train", "Træning", py("import time; time.sleep(30)"))
     companion = jobs.attach(job, py("import time; time.sleep(60)"))
     assert companion.poll() is None
-    jobs.stop_all(timeout=10)
+    jobs.stop_all()
     assert job.status == "stopped"
     assert companion.wait(5) is not None
 
@@ -196,3 +196,76 @@ def test_children_get_the_work_folder(tmp_path):
     job = jobs.start("report", "x", py("import os; print(os.environ['WT_WORK_DIR'], os.getcwd())"))
     assert job.done.wait(20)
     assert job.log[0] == f"{tmp_path / 'w'} {os.path.realpath(tmp_path)}"
+
+
+# --- the review's findings: process groups and the shutdown budget (run 9) ------------------
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+SPAWNER = ("import subprocess, sys, time\n"
+           "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+           "print(child.pid, flush=True)\n"
+           "time.sleep(60)\n")
+
+
+def test_stopping_a_job_reaches_every_process_it_started(tmp_path):
+    # The app's --transcribe-list under a pilot report, or the export's tools: they run in the
+    # job's process group and must not survive it.
+    jobs = Jobs(cwd=tmp_path)
+    job = jobs.start("pilot", "Pilotens sammenligning", py(SPAWNER))
+    deadline = time.time() + 10
+    while not job.log and time.time() < deadline:
+        time.sleep(0.05)
+    grandchild = int(job.log[0])
+    jobs.stop(job.id, grace=1.0, kill_grace=1.0)
+    assert job.done.wait(10), "the job ends once its whole group is gone"
+    assert job.status == "stopped"
+    deadline = time.time() + 5
+    while _alive(grandchild) and time.time() < deadline:
+        time.sleep(0.05)
+    assert not _alive(grandchild)
+
+
+STUBBORN = ("import signal, time\n"
+            "signal.signal(signal.SIGINT, signal.SIG_IGN)\n"
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+            "print('ready', flush=True)\n"
+            "time.sleep(60)\n")
+
+
+def test_the_server_stops_every_job_within_the_launchers_wait(tmp_path, monkeypatch):
+    from wt_train.studio import jobs as jobs_module
+    from wt_train.studio import recording, server
+
+    # SIGINT, 5 s, SIGTERM, 3 s, SIGKILL: with the session's end (at most 3 s, at the same time)
+    # and the checks, about 10 s, well inside the launcher's 20 s before its SIGKILL.
+    assert (jobs_module.SHUTDOWN_GRACE_S, jobs_module.SHUTDOWN_KILL_GRACE_S) == (5.0, 3.0)
+    budget = max(recording.END_WAIT_S, jobs_module.SHUTDOWN_GRACE_S + jobs_module.SHUTDOWN_KILL_GRACE_S + 1)
+    assert budget + server.REVIEW_STOP_S <= 12 < server.LAUNCHER_KILL_AFTER_S == 20
+    monkeypatch.setattr(jobs_module, "SHUTDOWN_GRACE_S", 0.3)
+    monkeypatch.setattr(jobs_module, "SHUTDOWN_KILL_GRACE_S", 0.3)
+    jobs = Jobs(cwd=tmp_path)
+    job = jobs.start("train", "Træning", py(STUBBORN))
+    deadline = time.time() + 10
+    while not job.log and time.time() < deadline:
+        time.sleep(0.05)
+    started = time.time()
+    jobs.stop_all()
+    assert time.time() - started < 3 and job.status == "stopped" and job.exit == -9
+
+
+def test_the_launcher_waits_20_seconds_before_sigkill():
+    from pathlib import Path
+
+    launcher = Path(labels.__file__).parents[2] / "studio" / "launcher"
+    swift = (launcher / "Launcher.swift").read_text(encoding="utf-8")
+    assert "addingTimeInterval(20)" in swift and "within 20 s" in swift and "addingTimeInterval(8)" not in swift
+    readme = (launcher / "README.md").read_text(encoding="utf-8")
+    assert "wait up to 20 s" in readme and "8 s" not in readme

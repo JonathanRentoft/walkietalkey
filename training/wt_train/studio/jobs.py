@@ -5,9 +5,13 @@ A job is ``python -m wt_train <step> ...`` (the same interpreter, ``uv`` not nee
 started in ``training/`` in a session of its own, with its standard output and error
 read line by line; the last :data:`KEEP_LINES` lines are kept for the page. Its status is
 ``running``, then ``done`` (exit 0), ``failed`` (any other exit) or ``stopped`` (stopped
-from the page or by the server's exit). Stopping sends SIGINT (the step ends cleanly: a
-training's MLflow run ends KILLED), then SIGTERM after :data:`STOP_GRACE_S`, then SIGKILL
-after :data:`KILL_GRACE_S` more. When the server stops, every job is stopped.
+from the page or by the server's exit). Stopping signals the job's whole process group (its
+own session), so what it started, the app's ``--transcribe-list`` under a pilot report or
+an export's tools, ends with it: SIGINT (the step ends cleanly: a training's MLflow run
+ends KILLED), then SIGTERM after :data:`STOP_GRACE_S`, then SIGKILL after
+:data:`KILL_GRACE_S` more. When the server stops, every job is stopped at once on a shorter
+budget (:data:`SHUTDOWN_GRACE_S`, :data:`SHUTDOWN_KILL_GRACE_S`), so the server is gone
+well before the launcher's own SIGKILL.
 
 ``on_exit(job)`` runs when a job's process has ended, in the job's own reader thread;
 whatever it returns becomes the job's ``result``. ``companion`` is a second process tied
@@ -30,11 +34,27 @@ from pathlib import Path
 KEEP_LINES = 400
 STOP_GRACE_S = 15.0
 KILL_GRACE_S = 10.0
+# When the server stops: SIGINT, 5 s, SIGTERM, 3 s, SIGKILL.
+SHUTDOWN_GRACE_S = 5.0
+SHUTDOWN_KILL_GRACE_S = 3.0
+# After SIGKILL, how long to wait for the group to be gone.
+KILLED_WAIT_S = 1.0
 STATUSES = ("running", "done", "failed", "stopped")
 
 
 def _now() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def signal_group(pgid: int, sig: int) -> bool:
+    """``sig`` to every process of a group; False when none is left."""
+    try:
+        os.killpg(pgid, sig)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def step_argv(*args: str) -> list[str]:
@@ -113,7 +133,7 @@ class Jobs:
 
     def _finish(self, job: Job, code: int | None, on_exit) -> None:
         if job.companion is not None and job.companion.poll() is None:
-            job.companion.terminate()
+            signal_group(job.companion.pid, signal.SIGTERM)
         job.exit = code
         if on_exit is not None:
             try:
@@ -149,8 +169,8 @@ class Jobs:
         return found[-1] if found else None
 
     def stop(self, job_id: str, *, grace: float = STOP_GRACE_S, kill_grace: float = KILL_GRACE_S) -> Job | None:
-        """SIGINT now, SIGTERM after ``grace`` seconds, SIGKILL after ``kill_grace`` more (in a
-        thread of its own; the call returns at once)."""
+        """SIGINT now, SIGTERM after ``grace`` seconds, SIGKILL after ``kill_grace`` more, each to
+        the job's process group (in a thread of its own; the call returns at once)."""
         job = self.get(job_id)
         if job is None or not job.running or job.proc is None:
             return job
@@ -160,21 +180,35 @@ class Jobs:
         return job
 
     def _escalate(self, job: Job, grace: float, kill_grace: float) -> None:
-        for sig, wait in ((signal.SIGINT, grace), (signal.SIGTERM, kill_grace), (signal.SIGKILL, 5.0)):
-            if job.proc is None or job.proc.poll() is not None:
+        if job.proc is None:
+            return
+        pgid = job.proc.pid  # start_new_session: the job leads its own group
+        for sig, wait in ((signal.SIGINT, grace), (signal.SIGTERM, kill_grace), (signal.SIGKILL, KILLED_WAIT_S)):
+            if not signal_group(pgid, sig):
                 return
-            try:
-                job.proc.send_signal(sig)
-            except ProcessLookupError:
-                return
-            if job.done.wait(wait):
-                return
+            deadline = time.monotonic() + wait
+            # Done (its output closed and it exited) and nothing else left in its group.
+            while (left := deadline - time.monotonic()) > 0:
+                if not job.done.is_set():
+                    job.done.wait(min(0.1, left))
+                elif not signal_group(pgid, 0):
+                    return
+                else:
+                    time.sleep(min(0.1, left))
 
-    def stop_all(self, timeout: float = 20.0) -> None:
-        """Stop every running job and wait (up to ``timeout``) for them to end."""
+    def stop_all(self, wait: bool = True) -> list[Job]:
+        """Stop every running job on the shutdown budget; with ``wait``, until they are gone
+        (:meth:`wait_all`). Returns the jobs it stopped."""
         jobs = self.running()
         for job in jobs:
-            self.stop(job.id, grace=min(STOP_GRACE_S, timeout / 2), kill_grace=min(KILL_GRACE_S, timeout / 4))
-        deadline = time.time() + timeout
+            self.stop(job.id, grace=SHUTDOWN_GRACE_S, kill_grace=SHUTDOWN_KILL_GRACE_S)
+        if wait:
+            self.wait_all(jobs)
+        return jobs
+
+    @staticmethod
+    def wait_all(jobs: list[Job], started: float | None = None) -> None:
+        """Wait for ``jobs`` to end, at most the shutdown budget from ``started`` (default now)."""
+        deadline = (started or time.monotonic()) + SHUTDOWN_GRACE_S + SHUTDOWN_KILL_GRACE_S + KILLED_WAIT_S + 0.5
         for job in jobs:
-            job.done.wait(max(0.0, deadline - time.time()))
+            job.done.wait(max(0.0, deadline - time.monotonic()))

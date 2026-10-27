@@ -13,7 +13,8 @@ owner opens it with one click and never needs the terminal.
 - When the server prints `Værkstedet: http://127.0.0.1:<port>/`, it opens that URL in the
   default browser. Clicking the Dock icon again, or "Åbn Værkstedet" (⌘O), opens it again.
 - "Afslut WalkieTalkey Værksted" (⌘Q), and SIGTERM or SIGINT to the launcher, send SIGTERM to the
-  server's process group, wait up to 8 s, then SIGKILL. The server also stops by itself when the
+  server's process group, wait up to 20 s (the server needs about 10 s to stop its jobs and end
+  the recording session), then SIGKILL. The server also stops by itself when the
   launcher's pid is gone (`--parent-pid`), so a crashed launcher leaves nothing running.
 - If the server stops by itself, an alert ("Værkstedet stoppede") shows the last lines of the log,
   with "Vis log" (shows it in Finder) and "Luk"; then the launcher quits. A clean exit after the

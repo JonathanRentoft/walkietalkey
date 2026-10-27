@@ -18,8 +18,8 @@ connections. The contract with the page (``training/studio/``, built into ``dist
 Starting (:func:`main`): the page is built when its sources changed (:mod:`.build`); one
 server runs per work folder (``<work>/studio/server.json``: a second start opens the
 running one and exits); port 8780, or the next free one; ``Værkstedet: <url>`` is
-printed once it answers (the launcher reads that line). It stops on SIGTERM or SIGINT,
-or when ``--parent-pid`` is gone: the recording session ends (the phone returns to
+printed once it answers (the launcher reads that line). It stops on SIGTERM, SIGINT or
+SIGHUP, or when ``--parent-pid`` is gone: the recording session ends (the phone returns to
 normal), the jobs are stopped, ``server.json`` is removed.
 """
 
@@ -33,6 +33,7 @@ import signal
 import sys
 import threading
 import time
+import traceback
 import urllib.request
 import webbrowser
 from http.server import ThreadingHTTPServer
@@ -57,6 +58,10 @@ PORT_TRIES = 20
 PAGE_HEADER = "X-WT-Studio"
 READY = "Værkstedet: "
 PARENT_POLL_S = 1.0
+# How long the way out waits for the checks' thread (it is a daemon thread).
+REVIEW_STOP_S = 0.5
+# The launcher's wait after its SIGTERM before it sends SIGKILL (training/studio/launcher/).
+LAUNCHER_KILL_AFTER_S = 20
 
 CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; media-src 'self'; "
        "img-src 'self' data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; "
@@ -158,10 +163,14 @@ class StudioServer(ThreadingHTTPServer):
         return None
 
     def close(self) -> None:
-        """Everything the server started ends: the session, the jobs, the checks."""
+        """Everything the server started ends: the jobs (SIGINT to each group at once, then
+        SIGTERM and SIGKILL), the session (the app gets a moment to fetch its end meanwhile),
+        the checks. At most about 10 s, inside the launcher's 20 s before its SIGKILL."""
+        started = time.monotonic()
+        jobs = self.jobs.stop_all(wait=False)
         self.recorder.shutdown()
-        self.jobs.stop_all()
-        self.reviewer.stop()
+        self.jobs.wait_all(jobs, started)
+        self.reviewer.stop(REVIEW_STOP_S)
 
 
 class _Handler(LocalHandler):
@@ -177,15 +186,44 @@ class _Handler(LocalHandler):
         return same_origin and self.headers.get(PAGE_HEADER) == "1"
 
     def _answer(self, work) -> None:
-        """Run ``work()`` and answer its JSON, or the error the studio refused it with."""
+        """Run ``work()`` and answer its JSON, or the error the studio refused it with; anything
+        unexpected is a 500 ``internal`` (the traceback goes to the log)."""
         try:
-            return self._json(200, work())
+            result = work()
         except StudioError as e:
             return self._error(e.status, e.code, e.message)
+        except Exception as e:  # noqa: BLE001 - the page gets an answer, the server goes on
+            return self._internal(e)
+        return self._json(200, result)
+
+    def _internal(self, e: Exception) -> None:
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.flush()
+        if not self._answered:
+            self._error(500, "internal", f"{type(e).__name__}: {e}")
+
+    def _send(self, status: int, body: bytes, content_type: str, **kw) -> None:
+        self._answered = True
+        super()._send(status, body, content_type, **kw)
+
+    def _guarded(self, route) -> None:
+        self._answered = False
+        try:
+            route()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the browser went away
+        except Exception as e:  # noqa: BLE001 - see _answer
+            self._internal(e)
+
+    def do_GET(self) -> None:
+        self._guarded(self._get)
+
+    def do_POST(self) -> None:
+        self._guarded(self._post)
 
     # GET --------------------------------------------------------------------
 
-    def do_GET(self) -> None:
+    def _get(self) -> None:
         url = urlsplit(self.path)
         path = url.path
         if path.startswith("/app/"):
@@ -236,7 +274,7 @@ class _Handler(LocalHandler):
                 since = int(raw) if raw not in (None, "") else None
             except ValueError:
                 return self._error(400, "since", "since must be a number")
-            return self._json(200, srv.recorder.wait(since) if since is not None else srv.recorder.state())
+            return self._answer(lambda: srv.recorder.wait(since) if since is not None else srv.recorder.state())
         m = _TAKE.fullmatch(path)
         if m:
             wav = srv.take_file(unquote(m.group(1)), unquote(m.group(2)))
@@ -277,7 +315,7 @@ class _Handler(LocalHandler):
 
     # POST -------------------------------------------------------------------
 
-    def do_POST(self) -> None:
+    def _post(self) -> None:
         path = urlsplit(self.path).path
         if path.startswith("/app/"):
             return self.app_post()
@@ -501,8 +539,9 @@ def main(argv: list[str] | None = None) -> int:
     def on_signal(signum, frame) -> None:
         stop.set()
 
-    signal.signal(signal.SIGTERM, on_signal)
-    signal.signal(signal.SIGINT, on_signal)
+    # SIGHUP: the terminal it runs in closed.
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, on_signal)
     threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True,
                      name="studio-http").start()
     write_server_json(places.own, server.url)

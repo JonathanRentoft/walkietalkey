@@ -107,7 +107,7 @@ def start_server(places, *, transcriber=None, find_app=None, caffeinate=None, ha
 
 def stop_server(srv) -> None:
     srv.recorder.shutdown(wait_s=0)
-    srv.jobs.stop_all(timeout=5)
+    srv.jobs.stop_all()
     srv.reviewer.stop()
     srv.shutdown()
     srv.server_close()
