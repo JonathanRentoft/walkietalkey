@@ -30,6 +30,17 @@ packages = ["wt_train"]
 
 [dependency-groups]
 dev = ["pytest>=9,<10"]
+notebooks = [
+    "ipykernel>=6.29",
+    "jiwer>=4",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+]
+
+[tool.uv]
+# Run 11: the learning notebooks (training/notebooks/) run in this same environment, so
+# plain `uv run` installs their kernel and jiwer too.
+default-groups = ["dev", "notebooks"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
