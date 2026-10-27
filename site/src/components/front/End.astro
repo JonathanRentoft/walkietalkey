@@ -1,0 +1,14 @@
+---
+/* The last call to action, on the page itself: the app icon, the slogan, "Hent gratis" and the fine print. */
+import { AppIcon, ShinyButton } from "@walkietalkey/ui";
+import { CTA, FINE_PRINT, SLOGAN } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+---
+<section class="fp-end" aria-labelledby="fp-slut">
+  <div class="fp-end-in">
+    <AppIcon size={88} className="fp-end-icon" />
+    <p class="fp-end-title" id="fp-slut">{SLOGAN}</p>
+    <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+    <p class="fp-fine">{FINE_PRINT}</p>
+  </div>
+</section>

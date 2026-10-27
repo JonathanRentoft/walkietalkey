@@ -1,0 +1,29 @@
+---
+/* Run 10: the hero, run 8's page 2 (the owner's pick): the slogan, the product in one sentence, two buttons and the
+   fine print over the lit stage with the laptop and the phone (Stage.astro), on a light panel with 40 BarField bars
+   in wave mode. The bars stand still until the visitor moves the pointer, touches or scrolls, answer, and settle
+   back. Everything but the bars is static HTML and paints without JavaScript; the bars are a React island that starts
+   when the browser is idle, after load, and one of the page's living backgrounds ([data-fp-bg], front.ts). */
+import { ShinyButton } from "@walkietalkey/ui";
+import Live from "./Live";
+import Stage from "./Stage.astro";
+import { CTA, FINE_PRINT, ONE_LINER, SLOGAN } from "../../lib/features";
+import { PAGES } from "../../lib/site";
+---
+<section class="fp-hero" data-section="hero" data-fp-hero="bars" aria-labelledby="fp-h1">
+  <div class="fp-hero-panel">
+    <div class="fp-hero-bg" data-fp-bg="bars" data-paused>
+      <Live client:idle kind="bars" mode="wave" bars={40} interactive palette="morgengry" intensity={0.5} gap={8} />
+    </div>
+    <div class="fp-hero-copy">
+      <h1 class="fp-h1" id="fp-h1">{SLOGAN}</h1>
+      <p class="fp-lead">{ONE_LINER}</p>
+      <div class="fp-ctas">
+        <ShinyButton variant="ink" size="lg" href={PAGES.hent.path}>{CTA.download}</ShinyButton>
+        <ShinyButton variant="glass" size="lg" icon={false} href="#funktioner">{CTA.how}</ShinyButton>
+      </div>
+      <p class="fp-fine">{FINE_PRINT}</p>
+    </div>
+    <Stage />
+  </div>
+</section>

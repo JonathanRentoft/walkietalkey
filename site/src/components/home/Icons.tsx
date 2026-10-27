@@ -1,4 +1,4 @@
-/* The check of ForsideKomplet, drawn as in its preview (the front page's lists). */
+/* The check of ForsideKomplet, drawn as in its preview (the plans' lists on the front page and Privatliv). */
 export function Check(p: { s?: number }) {
   const s = p.s || 18;
   return (

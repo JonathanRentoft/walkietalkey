@@ -1,11 +1,50 @@
 ---
-/* Forside. Which front page this build holds is chosen at build time (run 6, lib/build.ts): astro.config.mjs points
-   @concept at src/concepts/<name>/, the current front page (production) without SITE_CONCEPT, else one of the three
-   concepts for the owner to compare. Base comes first, so the design system's CSS lands before the concept's. */
+/* Forside (run 10, the owner's pick of run 8's three pages; SITE-02). The hero of page 2: the light stage on 40
+   BarField bars that stand still until the visitor moves. Below it page 1's sections, every one a row with its words
+   on one side and its box on the other, right, left, right, left, all the way down (Row.astro):
+     the six features (Feature.astro, Devices.astro), privacy and open source on the night panel (Privacy.astro),
+     getting started and the price (Start.astro); then the questions and the last call to action.
+   Only one living background runs at a time and everything stands still with reduced motion (front.ts, front.css).
+   Base comes first, so the design system's CSS lands before the page's own. */
 import Base from "../layouts/Base.astro";
-import Home from "@concept/Home.astro";
-import { BUILD } from "../lib/build";
+import Header from "../components/Header.astro";
+import Devices from "../components/front/Devices.astro";
+import End from "../components/front/End.astro";
+import Faq from "../components/front/Faq.astro";
+import Feature from "../components/front/Feature.astro";
+import Hero from "../components/front/Hero.astro";
+import Intro from "../components/front/Intro.astro";
+import Privacy from "../components/front/Privacy.astro";
+import Start from "../components/front/Start.astro";
+import "../components/front/front.css";
 ---
-<Base page="home" concept={BUILD.concept}>
-  <Home />
+<Base page="home">
+  <script is:inline>document.documentElement.classList.add("fp-js")</script>
+  <Header current="home" />
+  <main id="indhold" class="fp-main">
+    <Hero />
+
+    <section class="fp-feats" aria-labelledby="funktioner">
+      <div class="fp-wrap fp-rows">
+        <Intro />
+        <Feature id="fn" />
+        <Feature id="phone" />
+        <Feature id="corrections" />
+        <Feature id="words" />
+        <Feature id="notify" />
+        <Devices />
+      </div>
+    </section>
+
+    <Privacy />
+    <div class="fp-wrap">
+      <Start />
+    </div>
+    <Faq />
+    <End />
+  </main>
 </Base>
+<script>
+  import { run } from "../components/front/front";
+  run();
+</script>

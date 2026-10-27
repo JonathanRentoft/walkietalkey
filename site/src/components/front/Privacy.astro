@@ -1,0 +1,134 @@
+---
+/* Run 10: privacy and open source on one night panel, FluidMesh in Nat behind it, following the pointer (run 8's
+   page 1). Two rows, alternating like the features (Row.astro):
+     - "Din stemme bliver hos dig": the words and the four facts that hold (spec 2.6), beside an annotated picture
+       where the phone locks the audio, it crosses the relay unreadable, and the words are made on the computer;
+     - "Open source": the same computer opened to its own code, beside the words and the link to GitHub.
+   The mesh is one of the page's living backgrounds ([data-fp-bg], front.ts): a soft pool of light around the picture,
+   wherever the picture stands (beside the words on a wide screen, under them on a phone), and night everywhere else,
+   so the words always stand on calm night. */
+import { DictationPill, Grain, LaptopFrame, Logo, PhoneApp, PhoneFrame } from "@walkietalkey/ui";
+import Live from "./Live";
+import Row from "./Row.astro";
+import { CTA, FEATURES, PRIVACY_FACTS, STAGE } from "../../lib/features";
+import { PAGES, REPO_URL } from "../../lib/site";
+
+/* the four facts, phone first: encrypted, no account; then the computer's: local, no audio kept */
+const [local, encrypted, noAudio, noAccount] = PRIVACY_FACTS;
+const ICON = {
+  lock: "M4.6 7.2V5.3a3.4 3.4 0 0 1 6.8 0v1.9M3.6 7.2h8.8v6.3H3.6Z",
+  laptop: "M3 4.2h10v6.6H3ZM1.6 12.6h12.8",
+  phone: "M5 1.8h6v12.4H5ZM7.2 12.2h1.6",
+  trash: "M3 4.6h10M6.2 4.6V3h3.6v1.6M4.4 4.6l.6 8.8h6l.6-8.8",
+};
+const facts = [
+  { f: local, icon: ICON.laptop },
+  { f: encrypted, icon: ICON.lock },
+  { f: noAudio, icon: ICON.trash },
+  { f: noAccount, icon: ICON.phone },
+];
+/* the path from the phone over the relay to the laptop, in the picture's design px */
+const ARC = "M 150 124 C 170 20, 470 4, 530 150";
+const tree = ["crates", "docs", "models", "packages", "phone", "relay", "site", "src", "src-tauri"];
+const license = [
+  "",
+  "                                 Apache License",
+  "                           Version 2.0, January 2004",
+  "                        http://www.apache.org/licenses/",
+  "",
+  "   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+  "",
+  "   1. Definitions.",
+  "",
+  "      \"License\" shall mean the terms and conditions for use,",
+  "      reproduction, and distribution as defined by Sections 1",
+  "      through 9 of this document.",
+];
+---
+<section class="fp-night" data-theme="dark" id="privatliv" aria-labelledby="fp-privatliv">
+  <div class="fp-night-panel">
+    <Grain />
+    <div class="fp-night-in">
+      <Row row="privacy" data-feature="privacy" class="fp-priv">
+        <Fragment slot="copy">
+          <p class="fp-kicker">{PAGES.privacy.nav}</p>
+          <h2 class="fp-h2" id="fp-privatliv">{FEATURES.privacy.title}</h2>
+          <p class="fp-text">{FEATURES.privacy.body}</p>
+          <ul class="fp-facts">
+            {facts.map(({ f, icon }) => (
+              <li class="fp-fact">
+                <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path d={icon} /></svg>
+                <div>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p class="fp-more"><a href={PAGES.privacy.path}>{STAGE.privacyMore}</a></p>
+        </Fragment>
+        <Fragment slot="box">
+        <div class="fp-night-bg" data-fp-bg="mesh" data-paused>
+          <Live client:visible kind="mesh" palette="nat" distortion={0.9} />
+        </div>
+        <div class="fp-dia" data-relay-demo role="img" aria-label={STAGE.privacyLabel}>
+          <div class="fp-dia-in" aria-hidden="true">
+            <span class="fp-dia-shade" style="--x: 92px; --w: 230px"></span>
+            <span class="fp-dia-shade" style="--x: 366px; --w: 600px"></span>
+            <div class="fp-dia-phone">
+              <PhoneFrame width={170} screen="dark"><PhoneApp state="send" device="MacBook" /></PhoneFrame>
+            </div>
+            <div class="fp-dia-laptop">
+              <LaptopFrame width={540}>
+                <div class="wt-desk">
+                  <div class="wt-mbar">
+                    <span class="wt-mbar-left"><i class="wt-mbar-dot"></i><b>Post</b><span>Arkiv</span></span>
+                    <span class="wt-mbar-right"><span class="wt-mbar-wt"><Logo variant="mark" tone="ink" size={11} decorative /></span><span>10.24</span></span>
+                  </div>
+                  <div class="fp-dia-pill"><DictationPill state="processing" mark /></div>
+                </div>
+              </LaptopFrame>
+            </div>
+            <svg class="fp-dia-arc" viewBox="0 0 640 470" width="640" height="470"><path d={ARC} /></svg>
+            {[0, 1, 2, 3].map((i) => <span class="fp-packet" data-packet style={`offset-path: path('${ARC}'); --k: ${i}`}></span>)}
+            <div class="fp-relay">
+              <svg viewBox="0 0 16 16" width="18" height="18"><path d={ICON.lock} /></svg>
+              <b>{STAGE.relay}</b>
+              <code>7f·c2·9a·e1</code>
+            </div>
+          </div>
+        </div>
+        </Fragment>
+      </Row>
+
+      <Row row="oss" data-feature="oss" class="fp-oss">
+        <Fragment slot="copy">
+          <p class="fp-kicker">Apache-2.0</p>
+          <h2 class="fp-h2" id="fp-open-source">{FEATURES.oss.title}</h2>
+          <p class="fp-text">{FEATURES.oss.body}</p>
+          <p class="fp-more"><a href={REPO_URL}>{CTA.repo}</a></p>
+        </Fragment>
+        <div slot="box" class="fp-oss-stage" role="img" aria-label={STAGE.ossLabel}>
+          <div class="fp-oss-in" aria-hidden="true">
+            <span class="fp-dia-shade" style="--x: 430px; --w: 900px; --y: 548px"></span>
+            <LaptopFrame width={760} screen="dark">
+              <div class="fp-code">
+                <div class="fp-code-side">
+                  <span class="fp-code-repo"><Logo variant="mark" tone="paper" size={10} decorative />walkietalkey</span>
+                  {tree.map((t) => <span class="fp-code-dir">{t}</span>)}
+                  <span class="fp-code-file fp-code-file--on">LICENSE</span>
+                  <span class="fp-code-file">README.md</span>
+                </div>
+                <div class="fp-code-main">
+                  <div class="fp-code-tabs"><span class="fp-code-tab">LICENSE</span></div>
+                  <pre class="fp-code-text">{license.map((l, i) => <span class="fp-code-ln"><i>{i + 1}</i>{l}</span>)}</pre>
+                  <div class="fp-code-status"><span>main</span><span>Apache-2.0</span></div>
+                </div>
+              </div>
+            </LaptopFrame>
+          </div>
+        </div>
+      </Row>
+    </div>
+  </div>
+</section>

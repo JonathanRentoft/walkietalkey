@@ -1,14 +1,16 @@
-/* Run 8: the sections the three final pages share (src/components/final/). Every rule starts with .fp- (lib/build.ts,
-   SHARED_PREFIX) or sits under one; each page adds its own rules with its own prefix (src/concepts/<page>/).
-   Design system tokens only: type from --type-*, spacing from --space-*, radii, shadows and colours from tokens.css;
-   text is ink, ink-muted, on-gradient or on-night, tone colours are surfaces. Whatever moves has its finished state as
-   its base style, so reduced motion and a missing script both show every part finished. */
+/* The front page's own rules (run 10; src/pages/index.astro, src/components/front/). Every rule starts with .fp-
+   (front page) or sits under one. Design system tokens only: type from --type-*, spacing from --space-*, radii, shadows
+   and colours from tokens.css; text is ink, ink-muted, on-gradient or on-night, tone colours are surfaces. Whatever
+   moves has its finished state as its base style, so reduced motion and a missing script both show every part
+   finished. The page is one column of rows (.fp-row): the words on one side and the row's box on the other,
+   alternating, and on a phone the words above the box. */
 
 /* ===================================================================== Page */
 .fp-main {
   --fp-gutter: 12px;
   --fp-max: 1200px;
   --fp-sec: var(--space-24);
+  --fp-row-gap: clamp(var(--space-24), 8.6vw, 128px);
   overflow-x: clip;
 }
 .fp-wrap {
@@ -24,32 +26,6 @@
 .fp-main :is(button, a, input, summary):focus-visible {
   outline: 2px solid #ffffff00;
   box-shadow: var(--focus-ring);
-}
-
-/* TODO(claim) in the draft previews (components/home/Claim.astro): visibly not a fact yet */
-.fp-main .claim {
-  outline: 1.5px dashed var(--rav-dyb);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.fp-main div.claim {
-  display: block;
-  position: relative;
-}
-.fp-main .claim-tag {
-  display: inline-block;
-  margin-left: 0.5em;
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--ink);
-  color: var(--on-ink);
-  font: 600 11px/1.5 var(--font-mono);
-  vertical-align: 0.15em;
-}
-.fp-main div.claim > .claim-tag {
-  position: absolute;
-  right: var(--space-3);
-  top: -10px;
 }
 
 /* ===================================================================== Type */
@@ -127,10 +103,7 @@
   padding: 0 var(--fp-gutter);
   background: var(--surface-100);
 }
-.fp-hero[data-theme="dark"] {
-  /* the dark hero sits on the light page: only the panel is night */
-  background: transparent;
-}
+/* a silver stage: light from above, a pale floor */
 .fp-hero-panel {
   position: relative;
   isolation: isolate;
@@ -142,10 +115,6 @@
   max-height: 1000px;
   border-radius: var(--radius-xl);
   color: var(--on-gradient);
-  background: var(--night);
-}
-.fp-hero[data-fp-hero="bars"] .fp-hero-panel {
-  /* concept B's silver stage: light from above, a pale floor */
   background:
     radial-gradient(58% 30% at 50% 86%, #ffffffb3 0%, #ffffff00 72%),
     linear-gradient(
@@ -167,33 +136,6 @@
 }
 .fp-hero-bg {
   z-index: 0;
-}
-/* the light stays under the words: night over the top where the copy is (LightWaves), and a calm pool behind the
-   copy over FluidMesh's own scrim (it calms the left and the top, and the words stand in the middle) */
-.fp-hero[data-fp-hero="metal"] .fp-hero-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: radial-gradient(
-    46% 34% at 50% 22%,
-    color-mix(in oklab, var(--night) 78%, #00000000) 30%,
-    #17161500 100%
-  );
-}
-.fp-hero[data-fp-hero="waves"] .fp-hero-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--night) 72%, #00000000) 0%,
-    color-mix(in oklab, var(--night) 48%, #00000000) 34%,
-    #17161500 56%
-  );
 }
 .fp-hero-bg .wt-barfield {
   background: transparent;
@@ -550,35 +492,49 @@
   }
 }
 
+/* ====================================================================== Rows
+   One row: the words in 5 parts, the box in 7, the box on the right or the left (Row.astro, data-box). */
+.fp-feats {
+  padding: var(--fp-sec) 0 0;
+}
+.fp-rows {
+  display: grid;
+  gap: var(--fp-row-gap);
+}
+.fp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-8) clamp(var(--space-8), 5.4vw, 88px);
+  align-items: center;
+}
+.fp-row--box-left {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+.fp-row--box-left > .fp-row-box {
+  grid-column: 1;
+  grid-row: 1;
+}
+.fp-row--box-left > .fp-row-copy {
+  grid-column: 2;
+  grid-row: 1;
+}
+.fp-row-copy,
+.fp-row-box {
+  min-width: 0;
+}
+.fp-row-copy > :first-child {
+  margin-top: 0;
+}
+
 /* ===================================================================== Intro */
+.fp-intro #funktioner {
+  scroll-margin-top: var(--space-12);
+}
 .fp-intro {
   display: flex;
   flex-direction: column;
-}
-.fp-intro--center {
-  align-items: center;
-  text-align: center;
-}
-.fp-intro--split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas:
-    "eyebrow eyebrow"
-    "title lead";
-  gap: 0 var(--space-16);
-  align-items: end;
-}
-.fp-intro--split .fp-eyebrow {
-  grid-area: eyebrow;
-}
-.fp-intro--split .fp-h2 {
-  grid-area: title;
-}
-.fp-intro--split .fp-intro-lead {
-  grid-area: lead;
-  margin: 0;
-  justify-self: end;
-  max-width: 44ch;
+  max-width: 760px;
+  margin-bottom: calc(var(--fp-row-gap) * -0.4);
 }
 .fp-intro-lead {
   margin: var(--space-6) 0 0;
@@ -589,85 +545,10 @@
 }
 
 /* ================================================================= Features */
-.fp-feat {
-  display: grid;
-  gap: var(--space-8) var(--space-16);
-  align-items: center;
-}
-.fp-feat--split {
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-}
-.fp-feat--split.fp-feat--flip {
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-}
-.fp-feat--split.fp-feat--flip .fp-feat-demo {
-  order: 2;
-}
-.fp-feat--stack {
-  align-content: start;
-  align-items: start;
-  gap: var(--space-6);
-}
-.fp-feat--wide {
-  gap: var(--space-6);
-}
-.fp-feat--wide .fp-feat-copy {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--space-2) var(--space-16);
-  align-items: start;
-}
-.fp-feat--wide .fp-feat-title {
-  grid-row: span 2;
-}
-.fp-feat--wide :is(.fp-feat-text, .fp-feat-body) {
-  margin-top: 0;
-}
-.fp-feat-demo {
-  position: relative;
-  min-width: 0;
-}
-.fp-feat-demo .wt-show {
-  box-shadow:
-    var(--shadow-float),
-    inset 0 0 0 1px var(--line);
-}
-/* the scene keeps a size a person would see on a screen, however wide the card gets */
-/* each scene has its own design width, so each gets its own cap: about 1.1 times its design size */
-.fp-feat-demo {
-  --fp-scene: 560px;
-}
-.fp-feat[data-showcase="notify"] .fp-feat-demo {
-  --fp-scene: 450px;
-}
-.fp-feat[data-showcase="corrections"] .fp-feat-demo,
-.fp-feat[data-showcase="mixed"] .fp-feat-demo {
-  --fp-scene: 470px;
-}
-.fp-feat[data-showcase="words"] .fp-feat-demo {
-  --fp-scene: 490px;
-}
-.fp-feat-demo .wt-show-scene--center {
-  left: 50%;
-  right: auto;
-  width: min(84%, var(--fp-scene));
-  transform: translate(-50%, -50%);
-}
-.fp-feat-demo .wt-show-stage {
-  container-type: size;
-}
-/* the phone is about twice as tall as it is wide: sized from the card's height, it stands whole in any card */
-.fp-feat-demo .wt-show-scene--phone {
-  top: 6%;
-  width: min(46%, 40cqh);
-}
-.fp-feat-copy {
-  min-width: 0;
-}
 .fp-feat-title {
   margin: 0;
   font: var(--type-title);
-  font-size: clamp(26px, 2.4vw, var(--type-title-size));
+  font-size: clamp(28px, 2.6vw, var(--type-title-size));
   letter-spacing: var(--type-title-tracking);
   color: var(--ink);
   text-wrap: balance;
@@ -686,23 +567,99 @@
   color: var(--ink-muted);
   text-wrap: pretty;
 }
-.fp-feat--stack .fp-feat-title {
-  font: var(--type-heading);
-  font-size: clamp(var(--type-heading-size), 1.9vw, 26px);
-  letter-spacing: var(--type-heading-tracking);
-}
-.fp-feat--stack .fp-feat-text {
-  margin-top: var(--space-2);
-  font: var(--type-body);
-}
-.fp-feat--stack .fp-feat-body {
+/* a measured fact under the words: a stopwatch and one line in ink */
+.fp-feat-fact {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  margin: var(--space-6) 0 0;
+  max-width: 46ch;
   font: var(--type-label);
-  font-weight: 400;
-  line-height: 1.55;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.fp-feat-fact svg {
+  margin-top: 3px;
+  fill: none;
+  stroke: var(--rav-dyb);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fp-feat-demo {
+  position: relative;
+  min-width: 0;
+}
+.fp-feat-demo .wt-show {
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1px var(--line);
+}
+/* the scene keeps a size a person would see on a screen, however wide the card gets */
+/* each scene has its own design width, so each gets its own cap: about 1.1 times its design size */
+.fp-feat-demo {
+  --fp-scene: 560px;
+}
+[data-showcase="notify"] .fp-feat-demo {
+  --fp-scene: 450px;
+}
+[data-showcase="corrections"] .fp-feat-demo {
+  --fp-scene: 470px;
+}
+[data-showcase="words"] .fp-feat-demo {
+  --fp-scene: 490px;
+}
+.fp-feat-demo .wt-show-scene--center {
+  left: 50%;
+  right: auto;
+  width: min(84%, var(--fp-scene));
+  transform: translate(-50%, -50%);
+}
+.fp-feat-demo .wt-show-stage {
+  container-type: size;
+}
+/* the phone is about twice as tall as it is wide: sized from the card's height, it stands whole in any card */
+.fp-feat-demo .wt-show-scene--phone {
+  top: 6%;
+  width: min(46%, 40cqh);
 }
 
-/* ===================================================================== Night */
+/* the devices scene stands on the page: no card, only a soft light under the devices */
+.fp-devices {
+  position: relative;
+  isolation: isolate;
+}
+.fp-devices::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 4%;
+  right: 4%;
+  top: 18%;
+  bottom: -6%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--perle) 70%, #ffffff00) 0%,
+    color-mix(in oklab, var(--sand) 26%, #ffffff00) 52%,
+    #ffffff00 100%
+  );
+  pointer-events: none;
+}
+.fp-devices-scene {
+  width: min(100%, 640px);
+  margin-inline: auto;
+}
+
+/* ===================================================================== Night
+   Privacy and open source on one night panel; FluidMesh in Nat lights the picture on the right of the first row and
+   is calm under the words on the left, and it fades into the night before the open code. */
 .fp-night {
+  margin-top: var(--fp-row-gap);
   padding: 0 var(--fp-gutter);
 }
 .fp-night-panel {
@@ -714,102 +671,33 @@
   background:
     radial-gradient(70% 40% at 50% 0%, #2a2724 0%, #17161500 70%), var(--night);
 }
-.fp-night-part {
+/* the mesh: a pool of light around the picture, fading into the night on every side */
+.fp-priv > .fp-row-box {
   position: relative;
-  padding: clamp(var(--space-16), 9vw, 128px) clamp(20px, 5vw, 72px);
-}
-.fp-night-part--oss {
-  padding-top: 0;
-  padding-bottom: clamp(var(--space-12), 6vw, var(--space-16));
 }
 .fp-night-bg {
   position: absolute;
-  inset: 0;
+  inset: -38% -34%;
   z-index: 0;
-}
-.fp-night--mesh .fp-night-bg {
-  /* the mesh fades into the night under the picture, so the open code stands on calm night */
-  -webkit-mask-image: linear-gradient(#000 62%, #0000 100%);
-  mask-image: linear-gradient(#000 62%, #0000 100%);
-}
-/* and it is calm where the words are: over the heading, and in the two columns of facts; it lights the picture */
-.fp-night--mesh .fp-night-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, var(--night) 8%, #17161500 36%),
-    radial-gradient(60% 34% at 50% 16%, var(--night) 40%, #17161500 100%),
-    linear-gradient(
-      90deg,
-      var(--night) 0%,
-      var(--night) 16%,
-      #17161500 32%,
-      #17161500 68%,
-      var(--night) 84%,
-      var(--night) 100%
-    );
-}
-.fp-night-part > .wt-grain {
-  z-index: 1;
-}
-/* B's light: a few soft pools of silver and brown that drift, each blurred on its own so moving it is cheap */
-.fp-light {
-  position: absolute;
-  inset: 0;
+  -webkit-mask-image: radial-gradient(closest-side, #000 30%, #0000 100%);
+  mask-image: radial-gradient(closest-side, #000 30%, #0000 100%);
   pointer-events: none;
 }
-.fp-light > i {
-  position: absolute;
-  display: block;
-  border-radius: 50%;
-  filter: blur(64px);
-  opacity: 0.32;
-  animation: fp-drift-1 var(--duration-drift) var(--ease-glide) infinite
-    alternate;
+.fp-priv .fp-dia {
+  z-index: 1;
 }
-.fp-light > i:nth-child(1) {
-  left: 16%;
-  top: -18%;
-  width: 54%;
-  height: 58%;
-  background: var(--rav-dyb);
+.fp-night-panel > .wt-grain {
+  z-index: 1;
 }
-.fp-light > i:nth-child(2) {
-  left: 46%;
-  top: -8%;
-  width: 46%;
-  height: 54%;
-  background: var(--platin-dyb);
-  animation-name: fp-drift-2;
-  animation-duration: calc(var(--duration-drift) * 1.24);
-}
-.fp-light > i:nth-child(3) {
-  left: 34%;
-  top: 48%;
-  width: 32%;
-  height: 34%;
-  background: var(--mokka-dyb);
-  opacity: 0.22;
-  animation-name: fp-drift-3;
-  animation-duration: calc(var(--duration-drift) * 0.86);
-}
-@keyframes fp-drift-1 {
-  to {
-    transform: translate3d(10%, 8%, 0) scale(1.12);
-  }
-}
-@keyframes fp-drift-2 {
-  to {
-    transform: translate3d(-12%, 6%, 0) scale(0.92);
-  }
-}
-@keyframes fp-drift-3 {
-  to {
-    transform: translate3d(14%, -10%, 0) scale(1.2);
-  }
+.fp-night-in {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: clamp(var(--space-16), 9vw, 144px);
+  width: min(var(--fp-max), calc(100% - 2 * var(--space-6)));
+  margin: 0 auto;
+  padding: clamp(var(--space-16), 9vw, 128px) 0
+    clamp(var(--space-12), 6vw, var(--space-16));
 }
 .fp-night .fp-kicker,
 .fp-night .fp-text,
@@ -826,50 +714,55 @@
 .fp-night .fp-more a {
   text-decoration-color: var(--on-night-muted);
 }
-.fp-priv,
-.fp-oss {
-  position: relative;
-  z-index: 2;
-}
-.fp-priv-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-.fp-priv-head .fp-text {
-  max-width: 52ch;
-}
-.fp-priv-stage {
+.fp-facts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) minmax(0, 1fr);
-  grid-template-areas:
-    "f1 dia f3"
-    "f2 dia f4";
-  gap: var(--space-12) clamp(20px, 3vw, var(--space-12));
-  align-items: center;
-  max-width: 1320px;
-  margin: clamp(var(--space-12), 6vw, 80px) auto 0;
+  gap: var(--space-5, 20px);
+  margin: var(--space-8) 0 0;
+  padding: var(--space-6) 0 0;
+  list-style: none;
+  box-shadow: inset 0 1px 0 var(--night-line);
+}
+.fp-fact {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.fp-fact svg {
+  display: block;
+  margin-top: 2px;
+  color: var(--on-night-muted);
+}
+.fp-fact h3 {
+  margin: 0;
+  font: var(--type-heading);
+  font-size: 17px;
+  letter-spacing: var(--type-heading-tracking);
+  color: var(--on-night);
+  text-wrap: balance;
+}
+.fp-fact p {
+  margin: var(--space-1) 0 0;
+  font: 400 15px/1.5 var(--font-sans);
 }
 .fp-dia {
-  grid-area: dia;
   position: relative;
-  aspect-ratio: 1100 / 470;
+  aspect-ratio: 640 / 470;
   container-type: inline-size;
 }
 .fp-dia-in {
   position: absolute;
   left: 0;
   top: 0;
-  width: 1100px;
+  width: 640px;
   height: 470px;
   transform-origin: 0 0;
-  transform: scale(tan(atan2(100cqw, 1100px)));
+  transform: scale(tan(atan2(100cqw, 640px)));
 }
 .fp-dia-shade {
   position: absolute;
   left: calc(var(--x) - var(--w) / 2);
-  top: var(--y, 400px);
+  top: var(--y, 430px);
   width: var(--w);
   height: 50px;
   border-radius: 50%;
@@ -877,14 +770,14 @@
 }
 .fp-dia-phone {
   position: absolute;
-  left: 46px;
-  top: 52px;
-  z-index: 2;
+  left: 6px;
+  top: 112px;
+  z-index: 4;
 }
 .fp-dia-laptop {
   position: absolute;
-  left: 530px;
-  top: 64px;
+  left: 96px;
+  top: 96px;
   z-index: 2;
 }
 .fp-dia-laptop .wt-laptop-lid,
@@ -906,9 +799,6 @@
   z-index: 3;
   overflow: visible;
   fill: none;
-}
-.fp-dia-arc--tall {
-  display: none;
 }
 .fp-dia-arc path {
   stroke: var(--on-night-muted);
@@ -948,8 +838,8 @@
 }
 .fp-relay {
   position: absolute;
-  left: 318px;
-  top: 30px;
+  left: 236px;
+  top: 0;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -981,61 +871,8 @@
   letter-spacing: 0.04em;
   color: var(--on-night-muted);
 }
-.fp-fact {
-  max-width: 300px;
-}
-.fp-fact--1 {
-  grid-area: f1;
-}
-.fp-fact--2 {
-  grid-area: f2;
-}
-.fp-fact--3 {
-  grid-area: f3;
-}
-.fp-fact--4 {
-  grid-area: f4;
-}
-.fp-fact--l {
-  justify-self: end;
-}
-.fp-fact svg {
-  display: block;
-  margin-bottom: var(--space-3);
-  color: var(--on-night-muted);
-}
-.fp-fact h3 {
-  margin: 0;
-  font: var(--type-heading);
-  font-size: 19px;
-  letter-spacing: var(--type-heading-tracking);
-  color: var(--on-night);
-  text-wrap: balance;
-}
-.fp-fact p {
-  margin: var(--space-2) 0 0;
-  font: 400 15px/1.55 var(--font-sans);
-}
-.fp-priv > .fp-more {
-  text-align: center;
-  margin-top: var(--space-12);
-}
-.fp-oss {
-  display: grid;
-  grid-template-columns: minmax(0, 37fr) minmax(0, 63fr);
-  align-items: center;
-  gap: clamp(var(--space-6), 4vw, var(--space-16));
-  max-width: 1320px;
-  margin: 0 auto;
-}
-.fp-oss-copy {
-  max-width: 420px;
-  justify-self: end;
-}
 .fp-oss-stage {
   container-type: inline-size;
-}
-.fp-oss-box {
   position: relative;
   aspect-ratio: 860 / 600;
 }
@@ -1144,38 +981,42 @@
   border-top: 1px solid var(--night-line);
 }
 
-/* ======================================================== Getting started and the price */
+/* ========================================================= Getting started and the price
+   Two rows; each box is GradientBars rising from the bottom, with a glass card of the product on it. */
 .fp-get {
-  padding: 0 var(--fp-gutter);
+  display: grid;
+  gap: var(--fp-row-gap);
+  margin-top: var(--fp-row-gap);
 }
-.fp-get-panel {
+.fp-get-box {
+  position: relative;
   overflow: hidden;
   border-radius: var(--radius-xl);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1px var(--line);
 }
 .fp-get-surface.wt-bars--glow {
-  padding: clamp(var(--space-12), 7vw, 112px) clamp(var(--space-4), 4vw, 72px)
-    clamp(var(--space-16), 10vw, 160px);
-}
-/* the bars rise from the bottom of the panel and glow through the two glass cards */
-.fp-get-surface .wt-bars-row {
-  top: 12%;
-}
-.fp-get-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
-  align-items: start;
-  gap: var(--space-6);
-  max-width: var(--fp-max);
-  margin: 0 auto;
-}
-.fp-start,
-.fp-free {
-  position: relative;
-  min-width: 0;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  padding: clamp(var(--space-6), 4vw, var(--space-12));
   box-sizing: border-box;
-  padding: var(--space-12) clamp(var(--space-6), 3vw, var(--space-12));
-  border-radius: var(--radius-xl);
+}
+/* the bars rise from the floor of the box and stand behind the glass card: up to its full height while they wave,
+   halfway with reduced motion */
+.fp-get-surface .wt-bars-row {
+  top: 0;
+  gap: 7px;
+  filter: blur(3px);
+}
+.fp-try {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 440px);
+  box-sizing: border-box;
+  padding: var(--space-6) var(--space-6) var(--space-8);
+  border-radius: var(--radius-lg);
   color: var(--ink);
   background: var(--glass);
   box-shadow:
@@ -1184,24 +1025,23 @@
   -webkit-backdrop-filter: blur(var(--blur-glass));
   backdrop-filter: blur(var(--blur-glass));
 }
-.fp-start {
-  display: flex;
-  flex-direction: column;
+.fp-try--price {
+  padding-top: var(--space-8);
 }
-.fp-get-h2 {
-  margin-top: 0;
-  font: var(--type-title);
-  font-size: clamp(30px, 2.8vw, 40px);
-  letter-spacing: -0.03em;
+/* the price's plans are long: its box stands at the top of the row and stays beside them while they pass */
+.fp-row[data-row="free"] {
+  align-items: start;
 }
-.fp-start > .fp-text {
-  font: var(--type-body);
-  margin-top: var(--space-3);
+@media (min-width: 900px) {
+  .fp-row[data-row="free"] > .fp-row-box {
+    position: sticky;
+    top: var(--space-8);
+  }
 }
 .fp-steps {
   display: flex;
   flex-direction: column;
-  margin: var(--space-8) 0 0;
+  margin: var(--space-6) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1250,27 +1090,29 @@
   color: var(--ink-muted);
 }
 .fp-perms {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 20px;
-  margin-top: 14px;
+  display: grid;
+  gap: 0;
 }
 .fp-perms .fp-tag {
-  flex-basis: 100%;
+  margin-bottom: var(--space-2);
+  font: var(--type-label);
+  color: var(--ink-muted);
 }
 .fp-switch {
   appearance: none;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 32px;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 52px;
   margin: 0;
-  padding: 2px 6px 2px 2px;
+  padding: 0 2px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: none;
-  font: 600 14px/1 var(--font-sans);
+  box-shadow: inset 0 -1px 0 var(--line);
+  font: 600 16px/1 var(--font-sans);
   color: var(--ink);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -1307,29 +1149,31 @@
 .fp-switch[aria-checked="true"] .fp-switch-knob {
   transform: translateX(18px);
 }
-.fp-step .fp-ready {
+.fp-ready {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 14px;
+  gap: var(--space-4);
+  margin: var(--space-6) 0 0;
   font: var(--type-label);
+  font-size: 16px;
   color: var(--ink-muted);
 }
 .fp-ready-key.wt-keycap {
+  flex: none;
   margin-bottom: 4px;
   transition: box-shadow var(--duration-slow) var(--ease-flow);
 }
-.fp-step[data-ready] .fp-ready {
+.fp-ready[data-ready] {
   color: var(--ink);
 }
-.fp-step[data-ready] .fp-ready-key.wt-keycap {
+.fp-ready[data-ready] .fp-ready-key.wt-keycap {
   box-shadow:
     0 0.42em 0 color-mix(in oklab, var(--surface-200) 72%, var(--ink)),
     0 0.8em 1.4em -0.4em #1b1a1966,
     inset 0 0 0 0.08em var(--line),
     var(--shadow-glow);
 }
-.fp-step:not([data-ready]) .fp-ready-key.wt-keycap {
+.fp-ready:not([data-ready]) .fp-ready-key.wt-keycap {
   opacity: 0.55;
 }
 .fp-price {
@@ -1337,7 +1181,6 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-4);
-  margin-top: var(--space-6);
 }
 .fp-price-n {
   display: inline-block;
@@ -1362,7 +1205,6 @@
   }
 }
 .fp-range {
-  max-width: 440px;
   margin-top: var(--space-6);
 }
 .fp-range label {
@@ -1425,56 +1267,48 @@
   font: var(--type-label);
   color: var(--ink);
 }
-.fp-plans {
+/* the two plans, as words stacked in the price's column (never two cards side by side) */
+.fp-plan-list {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-4);
   margin-top: var(--space-6);
 }
 .fp-plan {
+  position: relative;
+  padding: var(--space-6) 0;
+  box-shadow: inset 0 1px 0 var(--line);
+}
+.fp-plan-name {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-  padding: var(--space-6);
-  border-radius: var(--radius-lg);
-  color: var(--ink);
-  background: color-mix(in oklab, var(--surface-200) 78%, #ffffff00);
-  box-shadow:
-    var(--shadow-soft),
-    inset 0 0 0 1px var(--line);
-  transition: box-shadow var(--duration-slow) var(--ease-flow);
-}
-.fp-plan--help[data-lit] {
-  box-shadow:
-    0 0 0 2px var(--ink),
-    var(--shadow-glow);
-}
-.fp-plan h3 {
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
   margin: 0;
-  font: 600 16px/1.3 var(--font-sans);
+  font: var(--type-heading);
+  font-size: 19px;
+  letter-spacing: var(--type-heading-tracking);
 }
-.fp-plan-price {
-  margin: 6px 0 0;
-  font: 600 24px/1.2 var(--font-sans);
+.fp-plan-name span {
+  font: 600 19px/1.2 var(--font-sans);
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .fp-plan-note {
   margin: var(--space-1) 0 0;
-  font: 400 14px/1.45 var(--font-sans);
+  font: 400 15px/1.45 var(--font-sans);
   color: var(--ink-muted);
 }
 .fp-plan ul {
   display: grid;
   gap: var(--space-2);
-  margin: var(--space-4) 0 var(--space-6);
+  margin: var(--space-4) 0 var(--space-5, 20px);
   padding: 0;
   list-style: none;
 }
 .fp-plan li {
   display: flex;
   gap: var(--space-2);
-  font: 400 14px/1.45 var(--font-sans);
+  font: 400 15px/1.45 var(--font-sans);
 }
 .fp-plan li svg {
   flex: none;
@@ -1485,16 +1319,32 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-4);
-  margin-top: auto;
+}
+/* from 25 computers the paid help is the one to look at: its label lights up */
+.fp-plan--help .fp-plan-name span {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  transition:
+    background-color var(--duration-slow) var(--ease-flow),
+    box-shadow var(--duration-slow) var(--ease-flow);
+}
+.fp-plan--help[data-lit] .fp-plan-name span {
+  background: color-mix(in oklab, var(--sand) 60%, var(--surface-100));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--rav-dyb) 40%, #ffffff00);
 }
 .fp-plans-foot {
-  margin: var(--space-4) 0 0;
+  margin: 0;
+  padding-top: var(--space-4);
   font: var(--type-label);
   font-size: 13px;
   color: var(--ink-muted);
+  box-shadow: inset 0 1px 0 var(--line);
 }
 
 /* ====================================================================== FAQ */
+.fp-faq {
+  padding: var(--fp-row-gap) 0 var(--space-24);
+}
 .fp-faq-in {
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
@@ -1554,43 +1404,13 @@
 
 /* ====================================================================== End */
 .fp-end {
-  padding: 0 var(--fp-gutter);
-}
-.fp-end-panel {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-}
-.fp-end--mesh .fp-end-panel {
-  background: var(--night);
-  color: var(--on-night);
-}
-.fp-end-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-.fp-end--mesh .fp-end-bg::after {
-  /* calm behind the slogan and the button */
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: radial-gradient(
-    44% 62% at 50% 50%,
-    var(--night) 34%,
-    #17161500 100%
-  );
+  padding: 0 var(--fp-gutter) var(--space-24);
 }
 .fp-end-in {
-  position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-24) var(--space-6);
+  padding: 0 var(--space-6);
   text-align: center;
 }
 .fp-end-icon.wt-appicon {
@@ -1609,48 +1429,26 @@
 }
 
 /* ================================================== One living background at a time
-   final.ts sets data-paused on every host but the most visible one; its CSS surfaces hold their frame. */
+   front.ts sets data-paused on every host but the most visible one; its CSS surfaces hold their frame. */
 [data-fp-bg][data-paused]
   :is(
     .wt-blobs > *,
     .wt-gbg-layer,
     .wt-gbg-pool,
     .wt-bars-row > .wt-bar,
-    .wt-barfield-row > .wt-bf,
-    .fp-light > i
+    .wt-barfield-row > .wt-bf
   ) {
   animation-play-state: paused !important;
 }
 
 /* ==================================================================== Narrow */
-@media (max-width: 1100px) {
-  .fp-priv-stage {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "dia dia"
-      "f1 f3"
-      "f2 f4";
-    gap: var(--space-8) var(--space-12);
-    max-width: 760px;
-  }
-  .fp-fact,
-  .fp-fact--l {
-    justify-self: start;
-    max-width: none;
-  }
-  .fp-get-grid {
-    grid-template-columns: 1fr;
-    max-width: 720px;
-  }
-}
 @media (max-width: 899px) {
   .fp-main {
     --fp-gutter: 8px;
     --fp-sec: var(--space-16);
+    --fp-row-gap: var(--space-16);
   }
   .fp-hero-panel {
-    height: calc(100svh - 84px);
-    min-height: 680px;
     border-radius: var(--radius-lg);
   }
   .fp-hero-copy {
@@ -1692,53 +1490,40 @@
     font-size: 12.5px;
     text-wrap: balance;
   }
-  .fp-feat--split,
-  .fp-feat--split.fp-feat--flip {
-    grid-template-columns: 1fr;
-    gap: var(--space-6);
+  /* one column: the words, then the box */
+  .fp-row,
+  .fp-row--box-left {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
   }
-  .fp-feat--split.fp-feat--flip .fp-feat-demo {
-    order: 0;
-  }
-  .fp-feat--wide .fp-feat-copy {
-    grid-template-columns: 1fr;
-  }
-  .fp-intro--split {
-    grid-template-columns: 1fr;
-    grid-template-areas: "eyebrow" "title" "lead";
-  }
-  .fp-intro--split .fp-intro-lead {
-    justify-self: start;
-    margin-top: var(--space-4);
-  }
-  .fp-feat--wide .fp-feat-title {
+  .fp-row--box-left > .fp-row-box,
+  .fp-row--box-left > .fp-row-copy {
+    grid-column: auto;
     grid-row: auto;
   }
-  .fp-feat--wide .fp-feat-text {
-    margin-top: var(--space-2);
+  .fp-intro {
+    margin-bottom: 0;
   }
-  .fp-feat-demo .wt-show {
-    border-radius: var(--radius-lg);
-  }
+  .fp-feat-demo .wt-show,
   .fp-night-panel,
-  .fp-get-panel,
-  .fp-end-panel {
+  .fp-get-box {
     border-radius: var(--radius-lg);
-  }
-  .fp-oss {
-    grid-template-columns: 1fr;
-  }
-  .fp-oss-copy {
-    justify-self: start;
   }
   .fp-faq-in {
     grid-template-columns: 1fr;
     gap: var(--space-8);
   }
+  .fp-faq {
+    padding-bottom: var(--space-16);
+  }
+  .fp-end {
+    padding-bottom: var(--space-16);
+  }
 }
 @media (max-width: 640px) {
   .fp-wrap,
-  .fp-faq-in {
+  .fp-faq-in,
+  .fp-night-in {
     width: calc(100% - 2 * var(--space-4));
   }
   .fp-text {
@@ -1756,86 +1541,27 @@
     font-weight: 400;
     line-height: 1.55;
   }
-  /* the picture folds up: the phone in front of the laptop, the relay above them */
-  .fp-dia {
-    aspect-ratio: 640 / 470;
-  }
-  .fp-dia-in {
-    width: 640px;
-    transform: scale(tan(atan2(100cqw, 640px)));
-  }
-  .fp-dia-phone {
-    left: 6px;
-    top: 112px;
-    z-index: 4;
-  }
-  .fp-dia-laptop {
-    left: 96px;
-    top: 96px;
-  }
-  .fp-relay {
-    left: 236px;
-    top: 0;
-  }
-  .fp-dia-arc--wide {
-    display: none;
-  }
-  .fp-dia-arc--tall {
-    display: block;
-  }
-  .fp-packet {
-    offset-path: var(--tall);
-  }
-  .fp-dia-shade:first-child {
-    --x: 92px !important;
-    --y: 430px !important;
-  }
-  .fp-dia-shade:nth-child(2) {
-    --x: 366px !important;
-    --y: 430px !important;
-  }
-  .fp-priv-stage {
-    grid-template-columns: 1fr;
-    grid-template-areas: "dia" "f1" "f2" "f3" "f4";
-    gap: var(--space-6);
-  }
-  .fp-night-part {
-    padding: var(--space-16) 20px;
-  }
-  .fp-night-part--oss {
-    padding-top: 0;
+  .fp-night-in {
+    padding: var(--space-16) 0;
   }
   .fp-get-surface.wt-bars--glow {
-    padding: var(--space-3) var(--space-3) var(--space-24);
-  }
-  .fp-start,
-  .fp-free {
-    padding: var(--space-8) 20px;
-    border-radius: var(--radius-lg);
-  }
-  .fp-plans {
-    grid-template-columns: 1fr;
+    aspect-ratio: auto;
+    min-height: 340px;
+    padding: var(--space-6) var(--space-4) var(--space-12);
   }
   .fp-faq-list summary {
     font-size: 17px;
   }
-  /* page 2's bars stand in a band of their own under the stage */
-  .fp-hero[data-fp-hero="bars"] .fp-hero-panel {
+  /* the hero's bars stand in a band of their own under the stage */
+  .fp-hero-panel {
     padding-bottom: var(--space-16);
   }
   .fp-hero-bg .wt-barfield-row {
     top: 62%;
   }
-  /* page 3: the calm pool covers the whole copy, which is taller on a phone */
-  .fp-hero[data-fp-hero="metal"] .fp-hero-bg::after {
-    background: radial-gradient(
-      90% 42% at 50% 26%,
-      color-mix(in oklab, var(--night) 82%, #00000000) 40%,
-      #17161500 100%
-    );
-  }
   /* the demos take the phone's width, out to the page's gutter, and their scenes fill them */
-  .fp-feat-demo {
+  .fp-feat-demo,
+  .fp-get-box {
     margin-inline: calc(var(--fp-gutter) - var(--space-4));
   }
   .fp-feat-demo .wt-show-scene--center {
@@ -1849,7 +1575,7 @@
     padding: 0 var(--space-2);
   }
   .fp-end-in {
-    padding: var(--space-16) 20px;
+    padding: 0 20px;
   }
 }
 

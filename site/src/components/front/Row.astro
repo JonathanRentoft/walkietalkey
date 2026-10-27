@@ -1,0 +1,24 @@
+---
+/* Run 10: one row of the front page, the owner's "right, left, right, left": the row's words on one side and its box
+   (a demo or a picture) on the other. The side comes from the row's place in lib/features.ts (ROW_ORDER, boxSide), so
+   the page alternates all the way down whatever is added or moved. In the HTML the words always come first, so on a
+   phone, where the row is one column, the words stand above their box.
+     slot "copy"  the heading and the words
+     slot "box"   the demo or the picture; boxProps go on its wrapper (e.g. data-devices) */
+import { boxSide, type RowKey } from "../../lib/features";
+
+interface Props {
+  row: RowKey;
+  tag?: "article" | "section" | "div";
+  class?: string;
+  boxProps?: Record<string, string>;
+  [attr: string]: unknown;
+}
+const { row, tag: Tag = "article", class: cls, boxProps = {}, ...rest } = Astro.props;
+const side = boxSide(row);
+const { class: boxClass, ...boxAttrs } = boxProps;
+---
+<Tag class:list={["fp-row", `fp-row--box-${side}`, cls]} data-row={row} data-box={side} {...rest}>
+  <div class="fp-row-copy" data-row-copy><slot name="copy" /></div>
+  <div class:list={["fp-row-box", boxClass]} data-row-box {...boxAttrs}><slot name="box" /></div>
+</Tag>

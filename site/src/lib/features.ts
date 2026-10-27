@@ -1,10 +1,13 @@
-/* Everything the front page says, shared by the three final pages (run 8, src/concepts/), so each one shows every
-   feature with the same facts and only the way they are shown differs. Danish, sentence case, no em dashes, no
-   exclamation marks (spec Appendix A, design system). Only claims that are true (spec 2.6): what nobody has measured
-   yet sits in `claim` and is rendered through <Claim> (TODO(claim)), which production leaves out.
+/* Everything the front page says (src/pages/index.astro, src/components/front/). Danish, sentence case, no em dashes,
+   no exclamation marks (spec Appendix A, design system). Only claims that are true and measured (spec 2.6): what
+   nobody has measured yet is left out of the page entirely, with a TODO(claim) comment where it would go.
 
    The owner approved this text in run 8 (it comes from the production front page and run 6's concepts B and C), so
-   it carries no TODO(copy) marker. New strings are marked TODO(copy) where they are written.
+   it carries no TODO(copy) marker. Strings that are new or changed in run 10 carry TODO(copy) where they are written.
+
+   TODO(claim): whispering into the phone (the phone row and the questions) and how Edda writes English words inside
+   Danish sentences (the word list row) stay off the page until they are measured (spec 2.6, DESK-67; the workbench
+   records a whisper condition and developer-term sentences).
 
    Words always land at release: the app transcribes while you talk, but the text appears only when you let go
    (DESK-46, DESK-52). Every demo shows it that way. */
@@ -13,7 +16,6 @@ export type FeatureKey =
   | "fn"
   | "phone"
   | "corrections"
-  | "mixed"
   | "words"
   | "notify"
   | "privacy"
@@ -22,22 +24,14 @@ export type FeatureKey =
   | "start"
   | "faq";
 
-/** A sentence nobody has measured yet: shown only in draft previews, marked TODO(claim). */
-export interface Claim {
-  text: string;
-  /** what has to be measured before it may be said */
-  what: string;
-}
-
 export interface Feature {
   key: FeatureKey;
   /** a short heading, a few words */
   title: string;
   /** one line, for lists and tiles */
   short: string;
-  /** two or three sentences, for the concepts that give a feature room */
+  /** two or three sentences, for a row of its own */
   body: string;
-  claim?: Claim;
 }
 
 /** The slogan (design system, verbatim). */
@@ -47,7 +41,7 @@ export const SLOGAN = "Tal. Slip. Indsæt.";
 export const ONE_LINER =
   "Dansk tale til tekst. Hold fn nede, tal, og slip, så står teksten der, hvor du skriver.";
 
-/** The line under every hero's buttons. */
+/** The line under the hero's buttons. */
 export const FINE_PRINT =
   "Gratis og open source · Mac og Windows · Ingen konto";
 
@@ -76,21 +70,9 @@ export const PRODUCT = {
   encrypted: "Krypteret fra telefon til computer",
 };
 
-/** Sample dictations for the demos. Each is something a person would say at work, in Danish. */
+/** The dictation the hero's stage lands in the mail: something a person would say at work, in Danish. */
 export const SAMPLES = {
-  /** the hero sentence (spec 6.2, DESK-17, Appendix A uses "Hej, det her er min første diktering") */
-  first: "Hej, det her er min første diktering.",
   mail: "Jeg sender referatet fra mødet i morgen tidlig, så vi kan tage beslutningen torsdag.",
-  /** a self-correction, before and after AI cleanup (DESK-83) */
-  correctionSaid: "Lad os mødes onsdag, nej, torsdag klokken ti.",
-  correctionWritten: "Lad os mødes torsdag klokken ti.",
-  /** Danish and English in one sentence (DESK-67, DESK-70) */
-  mixed: "Jeg merger din pull request efter standup og deployer til staging.",
-  /** the word list: a name and a term (DESK-66) */
-  wordsSaid: "Send det til mette holm fra navigent",
-  wordsWritten: "Send det til Mette Holm fra Navigent.",
-  /** a phone dictation (DESK-52) */
-  phone: "Husk at bestille bord til fredag.",
 };
 
 export const FEATURES: Record<FeatureKey, Feature> = {
@@ -105,11 +87,8 @@ export const FEATURES: Record<FeatureKey, Feature> = {
     title: "Telefonen er din mikrofon",
     short:
       "Hold knappen på telefonen, tal, og slip. Teksten lander på din computer.",
-    body: "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt, står ved tavlen eller vil tale lavt.",
-    claim: {
-      text: "Du kan også hviske, så du ikke forstyrrer i et åbent kontor.",
-      what: "hvor godt talemodellen forstår hvisken i telefonen",
-    },
+    /* run 10 dropped "eller vil tale lavt": speaking quietly is not measured, like whispering */
+    body: "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt eller står ved tavlen.", // TODO(copy)
   },
   corrections: {
     key: "corrections",
@@ -117,16 +96,6 @@ export const FEATURES: Record<FeatureKey, Feature> = {
     short:
       "Siger du onsdag, nej, torsdag, står der torsdag. Med AI-oprydning, hvis du slår den til.",
     body: "Siger du onsdag, nej, torsdag, skriver den kun torsdag. Det gør AI-oprydning, som er valgfri og slået fra, indtil du selv slår den til. Så sendes teksten, ikke lyden, til den udbyder, du vælger, eller den bliver på din Mac med Apple Intelligence.",
-  },
-  mixed: {
-    key: "mixed",
-    title: "Dansk og engelsk i samme sætning",
-    short: "Tal, som du taler på arbejdet, med de engelske ord.",
-    body: "Ingen skifter sprog midt i en sætning med vilje, men alle gør det. Ordlisten Udviklerord kender pull request, deploy, standup og de andre engelske ord, vi bruger på dansk.",
-    claim: {
-      text: "Den skriver de engelske ord, som du siger dem.",
-      what: "hvor godt Edda skriver engelske ord i danske sætninger",
-    },
   },
   words: {
     key: "words",
@@ -171,21 +140,6 @@ export const FEATURES: Record<FeatureKey, Feature> = {
     body: "",
   },
 };
-
-/** The order a visitor meets them in, when a concept lists them all. */
-export const FEATURE_ORDER: FeatureKey[] = [
-  "fn",
-  "phone",
-  "corrections",
-  "mixed",
-  "words",
-  "notify",
-  "privacy",
-  "oss",
-  "free",
-  "start",
-  "faq",
-];
 
 /** Privacy in four facts that hold (spec 2.6, DESK-92, PRIV-01). The first two are Appendix A, verbatim. */
 export const PRIVACY_FACTS: { title: string; body: string }[] = [
@@ -254,11 +208,9 @@ export const PLANS = {
 export interface Question {
   q: string;
   a: string;
-  /** an answer nobody has measured yet: the whole question is a claim */
-  claim?: string;
 }
 
-/** A short FAQ (the rest is on /spoergsmaal). */
+/** A short FAQ (the rest is on /spoergsmaal). TODO(claim): "Kan jeg hviske?" comes back once whispering is measured. */
 export const FAQ: Question[] = [
   {
     q: "Er det virkelig gratis?",
@@ -280,37 +232,39 @@ export const FAQ: Question[] = [
     q: "Skal jeg have en konto?",
     a: "Nej. Der er intet login, ingen e-mail og ingen adgangskode. Telefonen og computeren finder hinanden, når du scanner en kode.",
   },
-  {
-    q: "Kan jeg hviske?",
-    a: "Ja. Talemodellen forstår også, når du hvisker i telefonen, så du kan diktere i et åbent kontor uden at forstyrre.",
-    claim: "hvor godt talemodellen forstår hvisken i telefonen",
-  },
 ];
 
-/* ------------------------------------------------------------------ Run 8: the production front page's features */
+/* ---------------------------------------------------------------------------------- The rows of the front page */
 
-/** The production front page's feature sections (walkietalkey.com, run 4), each with its own demo: a ShowcaseCard
-    scene from the design system. Title and text are the production cards'; `body` is the longer text from FEATURES
-    for the room the final pages give them. */
+/** The feature rows (run 10): each with its own demo, a ShowcaseCard scene from the design system (the devices row
+    has a frameless scene of its own). Titles and texts are the production cards'; `body` is the longer text from
+    FEATURES. Every heading makes sense on its own (the owner's brief, run 10), so "Eller tal ind i telefonen" and
+    "Lander som en notifikation" gave way to whole sentences. */
 export type ShowcaseKey =
-  "fn" | "phone" | "corrections" | "mixed" | "notify" | "devices" | "words";
+  "fn" | "phone" | "corrections" | "words" | "notify" | "devices";
 
 export interface Showcase {
   key: ShowcaseKey;
   /** the design system's ShowcaseCard scene */
   scene:
-    | "fn"
-    | "telefon"
-    | "renskriv"
-    | "sprog"
-    | "notifikation"
-    | "enheder"
-    | "ordliste";
+    "fn" | "telefon" | "renskriv" | "notifikation" | "enheder" | "ordliste";
   title: string;
   text: string;
   body?: string;
-  claim?: Claim;
+  /** a measured fact, in plain words, under the body */
+  fact?: string;
 }
+
+/** DESK-43, DESK-46: the wait after release, measured on the owner's 16-inch MacBook Pro (M1 Pro, Edda on Metal):
+    0.92 s for 16 s and 0.99 s for a two-minute dictation (docs/MODELS.md, run 4; 1.03 s and 0.99 s in run 5).
+    Nothing else is measured yet, so the sentence names the machine. */
+export const SPEED =
+  "Målt på en MacBook Pro med M1 Pro står teksten der omkring et sekund efter, at du slipper, også når du har talt i to minutter."; // TODO(copy)
+
+/** DESK-67: the built-in list exists and is on from the start; what it does for English words is not measured
+    (TODO(claim) in the header), so only that is said. */
+export const DEV_WORDS =
+  "Ordlisten Udviklerord med pull request, deploy, standup og andre engelske fagord er slået til fra start."; // TODO(copy)
 
 export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
   fn: {
@@ -319,14 +273,14 @@ export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
     title: "Hold fn, tal, slip",
     text: "Statuspillen lytter, mens du taler, og renskriver, når du slipper. Teksten ligger klar til ⌘V.",
     body: FEATURES.fn.body,
+    fact: SPEED,
   },
   phone: {
     key: "phone",
     scene: "telefon",
-    title: "Eller tal ind i telefonen",
+    title: FEATURES.phone.title,
     text: "Hold knappen, tal, slip. Teksten lander på den computer, du sidder ved.",
     body: FEATURES.phone.body,
-    claim: FEATURES.phone.claim,
   },
   corrections: {
     key: "corrections",
@@ -335,46 +289,57 @@ export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
     text: 'Slår du AI-oprydning til, bliver "onsdag, nej, torsdag" bare til torsdag. Fyldord forsvinder også uden den.',
     body: FEATURES.corrections.body,
   },
-  mixed: {
-    key: "mixed",
-    scene: "sprog",
-    title: "Dansk og engelsk i samme sætning",
-    text: "Sådan som udviklere og konsulenter faktisk taler.",
-    body: FEATURES.mixed.body,
-    claim: FEATURES.mixed.claim,
-  },
-  notify: {
-    key: "notify",
-    scene: "notifikation",
-    title: "Lander som en notifikation",
-    text: "Du vælger selv, hvor teksten skal stå.",
-    body: FEATURES.notify.body,
-  },
-  devices: {
-    key: "devices",
-    scene: "enheder",
-    title: "Til den computer, du sidder ved",
-    text: "Den computer, du bruger, får teksten. De andre får den ikke.",
-  },
   words: {
     key: "words",
     scene: "ordliste",
     title: "Dine ord, stavet rigtigt",
     text: "Kundenavne, fagord og produktnavne fra din egen ordliste.",
-    body: FEATURES.words.body,
+    body: `${FEATURES.words.body} ${DEV_WORDS}`,
+  },
+  notify: {
+    key: "notify",
+    scene: "notifikation",
+    title: "Teksten kommer som en notifikation", // TODO(copy): a whole sentence for "Lander som en notifikation"
+    text: "Du vælger selv, hvor teksten skal stå.",
+    /* run 10 left out the last sentence, which the next row says ("Har du flere computere, ...") */
+    body: "Taler du i telefonen, lægger computeren teksten i udklipsholderen og viser en lille besked: Tekst klar til at indsætte. Tryk ⌘V, hvor du vil have den.", // TODO(copy)
+  },
+  devices: {
+    key: "devices",
+    scene: "enheder",
+    title: FEATURES.notify.title,
+    text: "Den computer, du bruger, får teksten. De andre får den ikke.",
+    /* spec 5.5, PHONE-40 */
+    body: "Er telefonen parret med flere computere, sender den til den, du sidst har brugt. Teksten findes kun på den computer og kopieres aldrig til de andre eller til telefonen.", // TODO(copy)
   },
 };
 
-/** The order the production front page showed them in. */
+/** The feature rows, in the order a visitor meets them. */
 export const SHOWCASE_ORDER: ShowcaseKey[] = [
   "fn",
   "phone",
   "corrections",
-  "mixed",
+  "words",
   "notify",
   "devices",
-  "words",
 ];
+
+/** Every row of the page, features first: the box of each one sits on the other side of the one before it,
+    starting on the right (the owner's "right, left, right, left", run 10). */
+export type RowKey = ShowcaseKey | "privacy" | "oss" | "start" | "free";
+export const ROW_ORDER: RowKey[] = [
+  ...SHOWCASE_ORDER,
+  "privacy",
+  "oss",
+  "start",
+  "free",
+];
+/** Which side a row's box (its demo or picture) stands on beside its words; on a phone the words come first. */
+export function boxSide(row: RowKey): "right" | "left" {
+  const i = ROW_ORDER.indexOf(row);
+  if (i < 0) throw new Error(`unknown row ${row}`);
+  return i % 2 === 0 ? "right" : "left";
+}
 
 /** The intro over the features (production front page). */
 export const SHOWCASE_INTRO = {
@@ -383,24 +348,14 @@ export const SHOWCASE_INTRO = {
   lead: "Du taler, som du plejer. WalkieTalkey sætter tegn og staver dine egne ord rigtigt. Slår du AI-oprydning til, retter den også dine omformuleringer.",
 };
 
-/** Where the stage, the kickers and the demos need a word of their own (concepts B and C, run 6). */
-export const KICKER = {
-  fn: "På din Mac eller pc",
-  phone: "I telefonen",
-  notify: "På computeren",
-  corrections: "AI-oprydning",
-  mixed: "Udviklerord",
-  words: "Ordlisten",
-};
-
-/** Small labels on the stage and in the privacy picture (concept B). */
+/** Small labels on the stage and in the privacy picture. */
 export const STAGE = {
   relay: "Relæ",
   privacyMore: "Læs om privatliv",
   subject: "Mødet i morgen",
   to: "Mette Holm",
   newMessage: "Ny besked",
-  /** the hero's picture, for screen readers: concept B's hero and fn shot in one. */
+  /** the hero's picture, for screen readers */
   heroLabel:
     "En bærbar computer og en telefon. Du holder fn-tasten nede og taler, og computeren lytter. Først når du slipper, står teksten i mailen, og statuspillen siger Indsat.",
   privacyLabel:
@@ -408,7 +363,7 @@ export const STAGE = {
   ossLabel: "En computer med WalkieTalkeys kode åben, og licensen Apache-2.0.",
 };
 
-/** Getting started and the price, the demos' words (concept C). */
+/** Getting started and the price, the demos' words. */
 export const TRY = {
   permissionsTitle: "Prøv: slå dem til",
   ready: "Klar. Hold fn, og tal.",

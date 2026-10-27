@@ -1,8 +1,9 @@
 /* Shared facts for every page. User-facing strings are Danish; a new one is marked TODO(copy) where it is written until
    the owner approves it (run 8: scripts/walkietalkey/copy-approved-texts.json lists the approved ones). */
 
-/** Who operates the public relay and the website (decision 18.1, decided in run 2). */
-export const OPERATOR = "Navigent.io ApS (CVR 46285395)";
+/** Who operates the public relay and the website and is the data controller (decision 18.1; run 10: the owner
+    personally, who also holds the copyright, the Apple account and the Cloudflare account). */
+export const OPERATOR = "Jonathan Rentoft";
 
 export const REPO_URL = "https://github.com/JonathanRentoft/walkietalkey";
 export const ALL_RELEASES_URL = `${REPO_URL}/releases`;
