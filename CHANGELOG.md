@@ -25,7 +25,7 @@ All notable changes to WalkieTalkey are documented here. The format follows [Kee
 - For developers: `wt-train report <run>` shows an evaluation as one HTML page (WER and CER with 95 % intervals, per condition, substitutions, deletions and insertions, per English term, and the 25 worst clips with audio and a word diff), `--vs` compares two runs, and every page is attached to its MLflow run.
 - For developers: `wt-train pilot record --setup <name>` records 12 pilot sentences for any recording setup (never trained on), `wt-train pilot report` compares the setups (accuracy with base Edda and the audio: level, noise, SNR, clipping), and `wt-train check` sums up the latest recording session in at most 25 lines.
 - For developers: the recording mix is configurable (`wt-train plan --mix phone-whisper=40,...`) and has a Mac whisper condition; `wt-train fetch --overlap` checks that FLEURS test shares nothing with Edda's training clips.
-- The copyright holder is Jonathan Rentoft in LICENSE, NOTICE, the installers and About; Navigent.io ApS stays the operator of the public relay and the website.
+- The copyright holder is Jonathan Rentoft in LICENSE, NOTICE, the installers and About; he also operates the public relay and the website.
 - The owner approved the app's Danish text; on the Mac, the microphone messages name System Settings' pane as macOS does in Danish, "Anonymitet og sikkerhed".
 - For developers: the accuracy job's normaliser reads references and the model's text the same way (fractions, abbreviations, units, ordinals, dates, clock times, hyphenated compounds). With identical transcripts, Edda float16 on FLEURS da_dk test goes from 7.21 % to 6.32 % WER and the app path from 7.63 % to 6.72 %; FLEURS no longer reports term accuracy.
 
