@@ -248,15 +248,20 @@ def run(kind: str, name: str, *, parent: Run | str | None = None, tags: dict | N
     when the block ends, FAILED if it raises, KILLED when it is stopped (Ctrl+C, or
     Værkstedet's stop, run 9: ``KeyboardInterrupt``). ``parent`` (a run or a run id) nests it
     under a training run. ``change`` is ``pipeline`` or ``model`` (run 6); training and
-    exports change the model, and an eval measures a model unless it says otherwise."""
+    exports change the model, and an eval measures a model unless it says otherwise. Run 11:
+    every run is tagged with the WER normaliser's version (``normaliser.tags``)."""
     change = change or DEFAULT_CHANGE.get(kind)
     if change not in CHANGES:
         raise ValueError(f"a run changes the pipeline, model or data, not {change!r}")
     if not enabled():
         yield NO_RUN
         return
+    from . import normaliser
+
     c, experiment = client()
-    all_tags = {"wt.kind": kind, "wt.change": change, **git_tags(), **(tags or {})}
+    # Run 11: which normaliser counted the run's WERs (normaliser.py), so Værkstedet never
+    # compares numbers from before a normaliser fix with numbers after it.
+    all_tags = {"wt.kind": kind, "wt.change": change, **git_tags(), **normaliser.tags(), **(tags or {})}
     parent_id = parent if isinstance(parent, str) else (parent.id if parent is not None else "")
     if parent_id:
         all_tags["mlflow.parentRunId"] = parent_id

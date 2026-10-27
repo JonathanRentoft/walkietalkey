@@ -511,9 +511,12 @@ def run(argv: list[str], log=console.log) -> dict:
     metrics = per_condition.for_logging(main_summary, by_condition, name)
     if fleurs_summary is not None and name != FLEURS_TEST:
         metrics.update(per_condition.for_logging(fleurs_summary, {}, FLEURS_TEST))
+    from . import normaliser
+
+    # Run 11: the normaliser's version too, so the report page says which one counted.
     (out / "summary.json").write_text(json.dumps(
         {"backend": a.backend, "model": label, "results": dict(entries), "by_condition": by_condition,
-         "metrics": metrics}, indent=2, ensure_ascii=False) + "\n")
+         "metrics": metrics, "normaliser": normaliser.current()}, indent=2, ensure_ascii=False) + "\n")
 
     appended = [result_row(backend=a.backend, model=label, dataset=name, main=main_summary, fleurs=fleurs_summary,
                            run_config=run_config, notes=a.notes)]
