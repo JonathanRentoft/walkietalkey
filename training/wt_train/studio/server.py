@@ -45,6 +45,7 @@ from ..recorder.appapi import MAX_JSON, LocalHandler
 from ..recorder.takes import SAFE_ID, SAFE_SETUP
 from .data import DataView
 from .jobs import Jobs
+from .learn import Learn
 from .notebook import Notebook
 from .places import StudioPaths
 from .recording import HOST, Recorder, StudioError
@@ -103,7 +104,7 @@ class StudioServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, places: StudioPaths, port: int = DEFAULT_PORT, *, transcriber=None, handoff=None,
-                 find_app=None, caffeinate: list[str] | None = None):
+                 find_app=None, caffeinate: list[str] | None = None, launch=None):
         super().__init__((HOST, port), _Handler)
         self.places = places
         self.sources = Sources(places)
@@ -116,6 +117,8 @@ class StudioServer(ThreadingHTTPServer):
         self.data = DataView(places)
         self.runs = Runs(places, self.jobs, self.app)
         self.notebook = Notebook(places)
+        # Run 11: the learning notebooks; ``launch`` opens VS Code (tests pass a stand-in).
+        self.learn = Learn(places, launch=launch)
         self.reviewer.start()
 
     @property
@@ -265,6 +268,7 @@ class _Handler(LocalHandler):
             "/api/eval/runs": srv.runs.eval_runs,
             "/api/versions": srv.runs.versions,
             "/api/journal": srv.notebook.listing,
+            "/api/learn": srv.learn.listing,
         }
         if path in routes:
             return self._answer(routes[path])
@@ -348,6 +352,8 @@ class _Handler(LocalHandler):
             "/api/versions/use": lambda: srv.runs.use(body.get("version")),
             "/api/versions/export": lambda: srv.runs.export(body.get("run")),
             "/api/journal": lambda: srv.notebook.create(body.get("run")),
+            "/api/learn/open": lambda: srv.learn.open(body.get("name")),
+            "/api/learn/reset": lambda: srv.learn.reset(body.get("name")),
         }
         if path in routes:
             return self._answer(routes[path])
@@ -432,7 +438,7 @@ def parse(argv: list[str]) -> argparse.Namespace:
         prog="wt-train studio",
         description=("Værkstedet: the training workbench as a small app in the browser, on this Mac only "
                      f"(http://{HOST}:<port>/). Record, check the takes, look at the data, train, evaluate, "
-                     "switch versions and keep the lab journal."))
+                     "switch versions, keep the lab journal and open the learning notebooks."))
     p.add_argument("--port", type=int,
                    help=f"port on {HOST} (default {DEFAULT_PORT}, or the next free one; a given port must be free)")
     p.add_argument("--no-browser", action="store_true", help="do not open the page in the browser")
@@ -450,6 +456,8 @@ def parse(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--spelling", type=Path, default=d.spelling, help="spelling.yaml")
     p.add_argument("--configs", type=Path, default=d.configs, help="the experiment configs")
     p.add_argument("--journal", type=Path, default=d.journal, help="the lab journal's folder")
+    p.add_argument("--notebooks", type=Path, default=d.notebooks,
+                   help="the learning notebooks (training/notebooks; their working copies go to <work>/notebooks)")
     p.add_argument("--dist", type=Path, default=d.dist, help="the built page (training/studio/dist)")
     p.add_argument("--app-bin", type=Path, help="the WalkieTalkey binary (default: the installed app first)")
     p.add_argument("--app-url-file", type=Path,
@@ -460,7 +468,8 @@ def parse(argv: list[str]) -> argparse.Namespace:
 def places_of(a: argparse.Namespace) -> StudioPaths:
     return StudioPaths(recordings=a.recordings, pilot=a.pilot_dir, sentences=a.sentences, plan=a.plan,
                        exam=a.exam_file, pilot_sentences=a.pilot_sentences, spelling=a.spelling, configs=a.configs,
-                       journal=a.journal, dist=a.dist, app_bin=a.app_bin, app_url_file=a.app_url_file)
+                       journal=a.journal, dist=a.dist, app_bin=a.app_bin, app_url_file=a.app_url_file,
+                       notebooks=a.notebooks)
 
 
 def watch_parent(pid: int, stop: threading.Event) -> None:

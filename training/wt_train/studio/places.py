@@ -2,9 +2,10 @@
 end-to-end run point it at temporary folders (``wt-train studio --recordings ...``).
 
 The defaults are the workbench's (``wt_train.paths``): the recordings and the pilot's
-takes in ``training/data/``, the configs, the journal, and the work folder
-(``WT_WORK_DIR``) with the reports, the runs and Værkstedet's own files in
-``<work>/studio/`` (``server.json``, the training progress, the pilot comparison).
+takes in ``training/data/``, the configs, the journal, the learning notebooks, and the work
+folder (``WT_WORK_DIR``) with the reports, the runs, the notebooks' working copies and
+Værkstedet's own files in ``<work>/studio/`` (``server.json``, the training progress, the
+pilot comparison).
 """
 
 from __future__ import annotations
@@ -39,11 +40,20 @@ class StudioPaths:
     app_bin: Path | None = None
     app_url_file: Path | None = None
     app_models: Path = field(default_factory=paths.app_models_dir)
+    # Run 11: the learning notebooks as committed, and the folder VS Code opens as the
+    # workspace (training/, with .vscode/settings.json and the .venv).
+    notebooks: Path = paths.TRAINING / "notebooks"
+    workspace: Path = paths.TRAINING
 
     @property
     def own(self) -> Path:
         """Værkstedet's own files."""
         return self.work / "studio"
+
+    @property
+    def notebook_copies(self) -> Path:
+        """The owner's working copies of the notebooks (git-ignored, as the whole work folder)."""
+        return self.work / "notebooks"
 
     @property
     def reports(self) -> Path:

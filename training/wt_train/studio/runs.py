@@ -11,8 +11,14 @@ Evaluations are the tracked MLflow runs of kind ``eval`` and the imported baseli
 ``<dataset>/wer``, ``<dataset>/cer``, ``<dataset>/n`` and ``<dataset>/wer_ci95_low|high``
 (fractions); an imported row ``wer_pct``, ``cer_pct``, ``n``, ``wer_ci95_low_pct`` (percent).
 Their pages are ``wt-train report`` (``--vs`` for two), written as a job into
-``<work>/reports/`` without a browser and reused when they exist. MLflow loads slowly, so
+``<work>/reports/`` without a browser and reused when they exist (in today's format,
+``htmlpage.FORMAT``: an English page from before run 11 is written again). MLflow loads slowly, so
 it is only imported here, never on the recording screen's polls.
+
+Run 11: each evaluation also has a readable Danish ``title`` (``labels.eval_title``; a day, then a
+time, tells two apart that would share one), the ``normaliser`` that counted its WER
+(``wt_train.normaliser``: its tag, else the day it was measured), and its ``date`` is when it
+was measured (an imported row's own time, not the import's); the list is newest first by it.
 
 The pilot comparison is ``wt-train pilot report --json-out <work>/studio/pilot-comparison.json``
 as a job; the page reads the numbers per setup from that file.
@@ -27,8 +33,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .. import paths
+from .. import normaliser, paths
 from . import labels
+from .labels import eval_title, unique_titles
 from .jobs import Jobs, step_argv
 from .places import StudioPaths
 from .recording import StudioError
@@ -36,10 +43,6 @@ from .recording import StudioError
 REPORT_TIMEOUT_S = 600.0
 APP_RECHECK_S = 60.0
 COMPARISON = "pilot-comparison.json"
-
-
-def _iso_ms(ms: int | None) -> str | None:
-    return datetime.fromtimestamp(ms / 1000).astimezone().isoformat(timespec="seconds") if ms else None
 
 
 def _json(path: Path):
@@ -90,6 +93,19 @@ def bundle_version(binary: Path) -> str | None:
         return None
 
 
+def _measured(run) -> datetime | None:
+    """When a run was measured: an imported results.csv row's own time, else when it started."""
+    stamp = run.data.params.get("timestamp")
+    if stamp:
+        try:
+            when = datetime.fromisoformat(stamp)
+            return when if when.tzinfo else when.astimezone()
+        except ValueError:
+            pass
+    ms = run.info.start_time
+    return datetime.fromtimestamp(ms / 1000).astimezone() if ms else None
+
+
 def model_label(backend: str, model: str, train_run: str | None) -> str:
     if backend == "gguf":
         name = "edda-v0.2" if model == paths.SHIPPED_EDDA_ID else model.rsplit("/", 1)[-1].removesuffix(".gguf")
@@ -118,7 +134,10 @@ class Runs:
         return None
 
     def _page(self, name: str) -> str | None:
-        return f"/reports/{name}" if (Path(self.places.reports) / name).is_file() else None
+        """A page that exists in today's format (an English page from before run 11 is written again)."""
+        from ..htmlpage import is_current
+
+        return f"/reports/{name}" if is_current(Path(self.places.reports) / name) else None
 
     def eval_row(self, run) -> dict:
         tags, params, m = run.data.tags, run.data.params, run.data.metrics
@@ -131,8 +150,12 @@ class Runs:
             wer, cer, clips = pct("wer_pct"), pct("cer_pct"), m.get("n")
             low, high = pct("wer_ci95_low_pct"), pct("wer_ci95_high_pct")
         folder = self._folder(run)
-        return {"id": run.info.run_id, "name": run.info.run_name, "kind": tags.get("wt.kind"),
-                "date": _iso_ms(run.info.start_time), "dataset": dataset,
+        when = _measured(run)
+        return {"id": run.info.run_id, "name": run.info.run_name,
+                "title": eval_title(params.get("backend") or "", params.get("model") or "", dataset,
+                                    params.get("train_run")),
+                "normaliser": normaliser.of_run(tags, when), "kind": tags.get("wt.kind"),
+                "date": when.isoformat(timespec="seconds") if when else None, "dataset": dataset,
                 "model": model_label(params.get("backend") or "", params.get("model") or "", params.get("train_run")),
                 "backend": params.get("backend") or None, "clips": int(clips) if clips is not None else None,
                 "wer": round(wer, 6) if wer is not None else None,
@@ -145,7 +168,11 @@ class Runs:
 
         if not tracking.enabled():
             return []
-        return [self.eval_row(r) for r in tracking.find_runs() if r.data.tags.get("wt.kind") in ("eval", "baseline")]
+        found = [r for r in tracking.find_runs() if r.data.tags.get("wt.kind") in ("eval", "baseline")]
+        rows = sorted(((self.eval_row(r), _measured(r)) for r in found),
+                      key=lambda rw: rw[1].timestamp() if rw[1] else 0.0, reverse=True)
+        titles = unique_titles([{"title": row["title"], "when": when} for row, when in rows])
+        return [{**row, "title": title} for (row, _), title in zip(rows, titles)]
 
     def _eval_folder(self, run_id) -> Path:
         from .. import tracking
@@ -163,11 +190,13 @@ class Runs:
         return folder
 
     def _report_job(self, title: str, target: Path, args: list[str]) -> dict:
-        if target.is_file():
+        from ..htmlpage import is_current
+
+        if is_current(target):
             return {"url": f"/reports/{target.name}"}
         job = self.jobs.start("report", f"{labels.JOBS['report']}: {title}",
                               step_argv("report", *args, "--no-open", "--out", str(target)))
-        if not job.done.wait(REPORT_TIMEOUT_S) or not target.is_file():
+        if not job.done.wait(REPORT_TIMEOUT_S) or not is_current(target):
             raise StudioError(500, "report-failed", f"wt-train report did not write {target.name} (job {job.id})")
         return {"url": f"/reports/{target.name}", "job": job.id}
 
@@ -259,8 +288,11 @@ class Runs:
         raw = _json(Path(self.places.own) / COMPARISON)
         if not isinstance(raw, dict):
             return None
+        from ..htmlpage import is_current
+
         page = Path(str(raw.get("page") or ""))
-        inside = page.name and page.parent.resolve() == Path(self.places.reports).resolve()
+        # A page from before run 11 (English) is not shown; the next comparison writes a new one.
+        inside = page.name and page.parent.resolve() == Path(self.places.reports).resolve() and is_current(page)
         setups = []
         for name, s in (raw.get("setups") or {}).items():
             scores, audio = s.get("scores") or {}, s.get("audio") or {}

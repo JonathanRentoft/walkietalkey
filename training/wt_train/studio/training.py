@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .jobs import Jobs, step_argv
-from .labels import JOBS, SECTIONS, SETTINGS
+from .labels import ESSENTIALS, JOBS, SECTIONS, SETTINGS
 from .places import StudioPaths
 from .recording import StudioError
 
@@ -37,7 +37,8 @@ def caffeinate_command() -> list[str] | None:
 
 
 def settings(cfg) -> list[dict]:
-    """Every setting of the resolved config with its label, in the config's order."""
+    """Every setting of the resolved config with its label, in the config's order; the four a
+    beginner touches first (run 11, ``labels.ESSENTIALS``) also say what turning them does."""
     from ..config import to_dict
 
     out = []
@@ -46,10 +47,10 @@ def settings(cfg) -> list[dict]:
             for key, v in value.items():
                 full = f"{section}.{key}"
                 out.append({"key": full, "section": section, "value": v, "label": SETTINGS.get(full, full),
-                            "section_label": SECTIONS.get(section, section)})
+                            "section_label": SECTIONS.get(section, section), "help": ESSENTIALS.get(full)})
         else:
             out.append({"key": section, "section": None, "value": value, "label": SETTINGS.get(section, section),
-                        "section_label": None})
+                        "section_label": None, "help": ESSENTIALS.get(section)})
     return out
 
 
@@ -129,7 +130,7 @@ class Training:
 
         out = []
         for path in sorted(Path(self.places.configs).glob("*.yaml")):
-            row = {"name": path.stem, "file": f"configs/{path.name}", "settings": []}
+            row = {"name": path.stem, "file": f"configs/{path.name}", "essentials": list(ESSENTIALS), "settings": []}
             try:
                 row["settings"] = settings(load_config(path))
             except ConfigError as e:

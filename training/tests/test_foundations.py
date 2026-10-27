@@ -152,8 +152,17 @@ def test_the_diff_colours_substitutions_deletions_and_insertions():
 
 
 def test_tables_and_percentages():
+    # Run 11: Danish numbers, as in Værkstedet: a decimal comma, a point between thousands, a real minus.
     t = htmlpage.table(["Setup", "WER"], [["iphone-whisper", htmlpage.pct(0.0763)], ["<x>", "–"]])
-    assert "<th>Setup</th>" in t and "<td>7.63 %</td>" in t and "<td>&lt;x&gt;</td>" in t
+    assert "<th>Setup</th>" in t and "<td>7,63 %</td>" in t and "<td>&lt;x&gt;</td>" in t
     assert htmlpage.pct(None) == "–"
-    assert htmlpage.db(-0.02) == "0.0 dBFS" and htmlpage.db(-17.66) == "-17.7 dBFS" and htmlpage.db(None) == "–"
-    assert htmlpage.pct_ci(0.0763, (0.071, 0.0818)) == "7.63 % (7.10 to 8.18)"
+    assert htmlpage.db(-0.02) == "0,0 dBFS" and htmlpage.db(-17.66) == "\u221217,7 dBFS" and htmlpage.db(None) == "–"
+    assert htmlpage.pct_ci(0.0763, (0.071, 0.0818)) == "7,63 % (7,10 til 8,18)"
+    assert htmlpage.count(1041) == "1.041" and htmlpage.num(-1234.56, 2) == "\u22121.234,56"
+    assert htmlpage.num(-0.004, 2) == "0,00", "never a minus on a zero"
+    assert (htmlpage.signed(3), htmlpage.signed(-3), htmlpage.signed(0)) == ("+3", "\u22123", "0")
+    assert htmlpage.points(-0.004) == "\u22120,40 point" and htmlpage.points(0.004) == "+0,40 point"
+    assert htmlpage.points(0.0) == "0,00 point"
+    from datetime import datetime
+
+    assert htmlpage.when(datetime(2026, 10, 26, 17, 7)) == "26. okt. 2026 kl. 17.07" and htmlpage.when(None) == "–"

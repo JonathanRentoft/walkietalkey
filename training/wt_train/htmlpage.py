@@ -6,6 +6,10 @@ embedded as MP3 in ``data:`` URLs (about 4 kB per second of speech), and nothing
 loads from another origin, so a page opens from disk, from an MLflow artifact or
 from an e-mail, and works offline. Text is escaped on the way in; ``Raw`` marks
 HTML a caller built itself (a player, a diff).
+
+Run 11: the pages are in Danish, like the rest of Værkstedet, and so are their numbers: a
+decimal comma, a point between thousands and a real minus ("6,32 %", "1.041", "−17,7 dBFS",
+"95 %: 5,86 til 6,79", "+0,40 point"), and dates as "26. okt. 2026 kl. 17.07".
 """
 
 from __future__ import annotations
@@ -14,9 +18,16 @@ import base64
 import html
 import io
 from pathlib import Path
+from datetime import datetime
 from typing import Iterable, Sequence
 
 from .align import Op
+from .studio.labels import MONTHS
+
+MINUS = "\u2212"
+# Run 11: which page format a file is. A page without it (English, before run 11) is out of date:
+# Værkstedet writes it again instead of showing it.
+FORMAT = "wt-train page 2"
 
 CSS = """
 :root{--paper:#faf8f4;--card:#fff;--ink:#1b1a19;--muted:#625d56;--line:#e6e0d6;--sub:#f1dcb4;--del:#f3cdc7;
@@ -67,14 +78,46 @@ def cell(value: object) -> str:
 
 def page(title: str, body: str, subtitle: str = "") -> str:
     sub = f'<p class="sub">{esc(subtitle)}</p>' if subtitle else ""
-    return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+    return ("<!doctype html>\n<html lang=\"da\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+            f"<meta name=\"generator\" content=\"{FORMAT}\">"
             f"<title>{esc(title)}</title><style>{CSS}</style></head>"
             f"<body><main><h1>{esc(title)}</h1>{sub}{body}</main></body></html>\n")
 
 
+def num(value: float, digits: int = 1) -> str:
+    """A number the Danish way: -1234.5 as "−1.234,5"; never "−0,0"."""
+    text = f"{abs(value):,.{digits}f}".replace(",", "\0").replace(".", ",").replace("\0", ".")
+    return (MINUS if value < 0 and text.strip("0.,") else "") + text
+
+
+def count(n: int) -> str:
+    """A whole number with points between thousands: 1041 as "1.041"."""
+    return num(n, 0)
+
+
+def signed(n: int) -> str:
+    """A change in a count: "+3", "−3", "0"."""
+    return f"+{count(n)}" if n > 0 else num(n, 0)
+
+
+def is_current(path: Path) -> bool:
+    """Whether a page on disk is in today's format (``FORMAT``)."""
+    try:
+        with Path(path).open("rb") as f:
+            head = f.read(4096)
+    except OSError:
+        return False
+    return f'<meta name="generator" content="{FORMAT}">'.encode() in head
+
+
 def pct(value: float | None, digits: int = 2) -> str:
-    return "–" if value is None else f"{value * 100:.{digits}f} %"
+    return "–" if value is None else f"{num(value * 100, digits)} %"
+
+
+def ci_text(ci: Sequence[float], digits: int = 2, unit: str = "") -> str:
+    """A 95 % interval of two fractions in percent: "5,86 til 6,79"."""
+    return f"{num(ci[0] * 100, digits)} til {num(ci[1] * 100, digits)}{unit}"
 
 
 def pct_ci(value: float | None, ci: Sequence[float] | None) -> str:
@@ -82,13 +125,26 @@ def pct_ci(value: float | None, ci: Sequence[float] | None) -> str:
         return "–"
     if not ci:
         return pct(value)
-    return f"{pct(value)} ({ci[0] * 100:.2f} to {ci[1] * 100:.2f})"
+    return f"{pct(value)} ({ci_text(ci)})"
+
+
+def points(delta: float, digits: int = 2) -> str:
+    """A change of a fraction in percentage points: "+0,40 point", "−0,40 point", "0,00 point"."""
+    text = num(delta * 100, digits)
+    return f"{'+' if delta > 0 and text.strip('0.,') else ''}{text} point"
 
 
 def db(value: float | None, unit: str = "dBFS") -> str:
     if value is None:
         return "–"
-    return f"{0.0 if abs(value) < 0.05 else value:.1f} {unit}"  # never "-0.0"
+    return f"{num(0.0 if abs(value) < 0.05 else value, 1)} {unit}"  # never "−0,0"
+
+
+def when(moment: datetime | None) -> str:
+    """ "26. okt. 2026 kl. 17.07", or "–"."""
+    if moment is None:
+        return "–"
+    return f"{moment.day}. {MONTHS[moment.month - 1]} {moment.year} kl. {moment:%H.%M}"
 
 
 def table(headers: Sequence[str], rows: Iterable[Sequence[object]], numeric: Sequence[int] = ()) -> str:
@@ -138,7 +194,7 @@ def audio_tag(path: Path | str | None) -> str:
     import soundfile as sf
 
     if not path or not Path(path).is_file():
-        return Raw('<span class="muted">(audio not found)</span>')
+        return Raw('<span class="muted">(lyden blev ikke fundet)</span>')
     data, rate = sf.read(str(path), dtype="float32", always_2d=False)
     buf = io.BytesIO()
     try:
@@ -168,6 +224,7 @@ def diff_html(ops: Sequence[Op]) -> str:
     return Raw(" ".join(out))
 
 
-LEGEND = Raw('<div class="legend"><span><del class="w sub">said</del><ins class="w sub">written</ins> '
-             'substituted</span><span><del class="w del">word</del> missing (deleted)</span>'
-             '<span><ins class="w ins">word</ins> added (inserted)</span></div>')
+# TODO(copy): run 11 drafted every Danish string in this file (the reports' shared words).
+LEGEND = Raw('<div class="legend"><span><del class="w sub">sagt</del><ins class="w sub">skrevet</ins> '
+             'erstattet</span><span><del class="w del">ord</del> mangler (udeladt)</span>'
+             '<span><ins class="w ins">ord</ins> ekstra (tilføjet)</span></div>')
