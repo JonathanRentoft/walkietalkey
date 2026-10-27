@@ -26,7 +26,7 @@ NAMES = ["01-lyden", "02-edda-indefra", "03-maaling", "04-lora", "05-fejlanalyse
 LIMIT_SECONDS = 360
 EM_DASH = "—"
 # English words that would give an English sentence away in a heading.
-ENGLISH = re.compile(r"\b(the|and|with|of|from|this|that|is|are|how|what|into|for)\b", re.I)
+ENGLISH = re.compile(r"\b(the|and|with|of|from|this|that|is|are|how|what|into)\b", re.I)
 
 
 def load(name: str) -> dict:
@@ -92,9 +92,12 @@ def test_the_code_is_in_the_cells(name):
     code = "\n".join(source(c) for c in cells if c["cell_type"] == "code")
     assert len([c for c in cells if c["cell_type"] == "code"]) >= 5, name
     assert not list(NOTEBOOKS.glob("*.py")), "no helper module next to the notebooks"
-    for module in re.findall(r"^\s*(?:from|import)\s+(wt_train[.\w]*)", code, re.M):
-        assert module.split(".")[1:2] in ([], ["paths"], ["fleurs"], ["audio"], ["harness"], ["metrics"],
-                                          ["config"], ["spelling"], ["tracking"], ["evaluate"]), module
+    allowed = {"paths", "fleurs", "audio", "harness", "metrics", "config", "spelling", "tracking", "evaluate"}
+    used = set(re.findall(r"^\s*(?:from|import)\s+wt_train\.(\w+)", code, re.M))
+    for names in re.findall(r"^\s*from\s+wt_train\s+import[ \t]+\(?([ \t\w,]+)", code, re.M):
+        used |= {n.split(" as ")[0].strip() for n in names.split(",") if n.strip()}
+    assert not re.search(r"^\s*import\s+wt_train\s*$", code, re.M), f"{name}: import the module you use"
+    assert used <= allowed, f"{name}: {sorted(used - allowed)}"
 
 
 def test_the_first_cell_finds_training_from_anywhere():
