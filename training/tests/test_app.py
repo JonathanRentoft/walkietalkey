@@ -41,6 +41,18 @@ def test_transcribe_returns_one_result_per_clip(tmp_path, monkeypatch, clips, ba
         assert len(work) == 3 and all(c[0] == "-f" and c[c.index("--model") + 1] == "edda-ft-x" for c in work)
 
 
+@pytest.mark.parametrize("batch", [True, False])
+def test_the_fake_app_fails_only_a_clip_named_bad(tmp_path, monkeypatch, make_wav, batch):
+    # Run 11: a FLEURS clip's PCM copy is named <stem>-<24 hex>.wav (audio.pcm16_copy), and about one
+    # in 180 such names holds "bad"; the fake app failed those too, which made evals fail now and then.
+    binary, _ = fake_app.install(tmp_path, monkeypatch, batch=batch)
+    clips = [make_wav(tmp_path / name, seed=i) for i, name in
+             enumerate(["3000-1f0bad9c2e4a6b8d0c1e2f3a.wav", "bad-1f0e9c2e4a6b8d0c1e2f3a4b.wav"])]
+    results = App(binary).transcribe(clips, "edda-ft-x")
+    assert results[0].error is None and results[0].text == "hej"
+    assert results[1].error
+
+
 def test_check_model_lists_what_is_installed(tmp_path, monkeypatch):
     binary, _ = fake_app.install(tmp_path, monkeypatch, batch=True)
     app = App(binary)

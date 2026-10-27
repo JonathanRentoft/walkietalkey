@@ -79,6 +79,16 @@ async function runningBackgrounds(page: Page, ms = 450) {
   );
 }
 
+/** The backgrounds that keep running over two windows in a row. A paused surface paints its still frame when it
+    mounts (lib/gl.ts: the first draw and the resize observer's), and on a slow machine one window can catch that
+    paint; a background that runs keeps drawing in the next window too. */
+async function steadyBackgrounds(page: Page) {
+  const key = (r: { kind: string; top: number }) => `${r.kind}@${r.top}`;
+  const first = await runningBackgrounds(page);
+  const again = new Set((await runningBackgrounds(page)).map(key));
+  return first.filter((r) => again.has(key(r)));
+}
+
 /** Every endless animation on a background layer that no [data-fp-bg] host manages. */
 const unmanaged = (page: Page) =>
   page.evaluate(
@@ -367,7 +377,7 @@ test("runs one living background at a time, the most visible one, all the way do
   await page.waitForTimeout(1200);
   expect(await unmanaged(page)).toEqual([]);
   /* at the top only the hero's bars may run, and they wait for the visitor */
-  expect(await runningBackgrounds(page)).toEqual([]);
+  expect(await steadyBackgrounds(page)).toEqual([]);
   const height = await page.evaluate(
     () => document.documentElement.scrollHeight - innerHeight,
   );
@@ -377,7 +387,7 @@ test("runs one living background at a time, the most visible one, all the way do
   for (let y = 0; y <= height + step; y += step) {
     await page.evaluate((y) => scrollTo(0, y), y);
     await page.waitForTimeout(350);
-    const running = await runningBackgrounds(page);
+    const running = await steadyBackgrounds(page);
     expect(
       running.length,
       `at ${y}px: ${running.map((r) => `${r.kind}@${r.top}`).join(", ")}`,
