@@ -1,4 +1,3 @@
-# TODO(copy): the Danish labels in this file were drafted in run 9; the owner approves them.
 """The few Danish words Værkstedet's server hands the page (the page holds the rest of its
 text): a one-line label for every setting of an experiment config (``config.py``), the
 pilot's recording setups, the leakage checks of the data screen and the jobs' titles.

@@ -293,7 +293,6 @@ class _Handler(LocalHandler):
     def _missing_report(self) -> None:
         """A 404 the page's iframe can show: under the report CSP, since the page's own forbids
         framing and the browser would show its block message instead."""
-        # TODO(copy): drafted in run 9, the owner approves it.
         body = b"<!doctype html><meta charset=utf-8><p>Rapporten findes ikke.</p>"
         self._send(404, body, "text/html; charset=utf-8", csp=REPORT_CSP)
 

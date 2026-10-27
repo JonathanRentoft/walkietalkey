@@ -1,4 +1,3 @@
-// TODO(copy): drafted in run 9, the owner approves them
 /* Every text Værkstedet shows. Danish, du-form, short sentences, sentence case, no em dashes
    (test/strings.test.ts). Numbers come in already formatted (lib/format.ts). Where the recorder
    page (wt_train/recorder/static/app.js) already says a thing, the same words are used. */

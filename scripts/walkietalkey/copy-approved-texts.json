@@ -37,6 +37,10 @@
       "Tal ind i \\(.applicationName)",
       "Start diktering"
     ],
+    "packages/ui/src/components/SpeakToDesk.tsx": [
+      "Ikke i brug",
+      "Du holder knappen nede i WalkieTalkey på telefonen og taler. Teksten lander kun på den computer, du sidder ved: {inUse}, som er i brug, viser Tekst klar til at indsætte, og teksten sættes ind. {other}, som ikke er i brug, forbliver tom."
+    ],
     "phone/pwa.ts": ["Tal ind i telefonen. Teksten lander på din computer."],
     "phone/src/lib/strings.ts": [
       "Åbn WalkieTalkey på din computer, vælg Indstillinger, Telefon og Par en telefon. Scan så koden, der kommer frem.",
@@ -128,7 +132,13 @@
     "site/src/lib/features.ts": [
       "En bærbar computer og en telefon. Du holder fn-tasten nede og taler, og computeren lytter. Først når du slipper, står teksten i mailen, og statuspillen siger Indsat.",
       "Telefonen krypterer lyden og sender den gennem relæet til din computer. Relæet kan ikke læse den. Talen bliver til tekst på computeren.",
-      "En computer med WalkieTalkeys kode åben, og licensen Apache-2.0."
+      "En computer med WalkieTalkeys kode åben, og licensen Apache-2.0.",
+      "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt eller står ved tavlen.",
+      "Målt på en MacBook Pro med M1 Pro står teksten der omkring et sekund efter, at du slipper, også når du har talt i to minutter.",
+      "Ordlisten Udviklerord med pull request, deploy, standup og andre engelske fagord er slået til fra start.",
+      "Teksten kommer som en notifikation",
+      "Taler du i telefonen, lægger computeren teksten i udklipsholderen og viser en lille besked: Tekst klar til at indsætte. Tryk ⌘V, hvor du vil have den.",
+      "Er telefonen parret med flere computere, sender den til den, du sidst har brugt. Teksten findes kun på den computer og kopieres aldrig til de andre eller til telefonen."
     ],
     "site/src/lib/site.ts": [
       "Hold fn nede, eller tal ind i telefonen. Talen bliver til tekst på din egen computer. Gratis og open source, ingen konto.",
@@ -315,7 +325,8 @@
       "En virksomhed, der ikke vil have, at noget passerer servere, vi driver, kan køre sit eget relæ og sin egen udgave af telefonappen og hente talemodellerne fra sin egen server. Søgning efter opdateringer går stadig til GitHub, medmindre virksomheden slår automatiske opdateringer fra og installerer dem selv. Se Virksomheder.",
       "Dine rettigheder",
       "Der er ingen konto, så vi kender hverken dit navn eller din e-mail, og vi kan ikke knytte relæets data til dig. Har du spørgsmål om dine data, så skriv til {CONTACT_EMAIL}. Du kan også klage til Datatilsynet.",
-      "Senest opdateret 24. oktober 2026."
+      "Senest opdateret 24. oktober 2026.",
+      "Det offentlige relæ og denne hjemmeside drives af {OPERATOR}. {OPERATOR} er dataansvarlig for de få data, der findes på relæet og hjemmesiden. Du kan skrive til os på {CONTACT_EMAIL}."
     ],
     "site/src/pages/saadan-virker-det.astro": [
       "Sådan virker det",
@@ -520,6 +531,13 @@
     ],
     "src-tauri/src/walkietalkey/speed.rs": [
       "Din computer brugte {danish_seconds} sekunder på 10 sekunders tale, så en hurtigere model giver dig teksten hurtigere."
+    ],
+    "training/wt_train/studio/labels.py": [
+      "The few Danish words Værkstedet's server hands the page (the page holds the rest of its\ntext): a one-line label for every setting of an experiment config (``config.py``), the\npilot's recording setups, the leakage checks of the data screen and the jobs' titles.\n\nEvery field of every dataclass in ``config.py`` has a label here (a test keeps it so);\nnone has an em dash.\n"
+    ],
+    "training/wt_train/studio/server.py": [
+      "<!doctype html><meta charset=utf-8><p>Rapporten findes ikke.</p>",
+      "text/html; charset=utf-8"
     ]
   }
 }
