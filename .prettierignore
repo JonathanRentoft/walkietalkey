@@ -44,3 +44,6 @@ models/*/licenses/
 # Local site builds and reports
 site/.visual
 site/.variants
+
+# The lab journal: pages wt-train card and Værkstedet write, with the owner's own notes in them (run 11).
+training/journal/
