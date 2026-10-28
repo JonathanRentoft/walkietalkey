@@ -34,12 +34,17 @@ def untracked(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def private(tmp_path_factory, monkeypatch):
-    """Run 12: no test reads the app's real dictation history or writes the owner's own words:
-    both point into a folder of the test's own unless it names others."""
+def no_own_data(tmp_path_factory, monkeypatch):
+    """Run 12: no test reads the app's real dictation history or the owner's own words and
+    sentences (training/data/local/): both point into a folder of the test's own, which a test
+    that asks for this fixture gets back (as its local folder) to write files into."""
     own = tmp_path_factory.mktemp("private")
     monkeypatch.setenv("WT_APP_HISTORY_DB", str(own / "no-history.db"))
-    monkeypatch.setenv("WT_LOCAL_DIR", str(own / "local"))
+    folder = own / "local"
+    folder.mkdir()
+    monkeypatch.setenv("WT_LOCAL_DIR", str(folder))
+    monkeypatch.delenv("WT_TEST_USE_SOURCE", raising=False)
+    return folder
 
 
 @pytest.fixture
@@ -84,6 +89,59 @@ def takes_config(folder: Path, sentences: Path, spelling: Path, **sections):
     for section, values in sections.items():
         raw.setdefault(section, {}).update(values)
     return config_from_dict(raw)
+
+
+OWNER_CONDITIONS = ("phone-whisper", "phone-normal", "mac-normal")
+OWNER_SPELLING = ("terms:\n  deploy:\n    forms: [deploye, deployer]\n    also:\n      deploy'e: deploye\n"
+                  "  kafka:\n    forms: [Kafka]\n")
+
+
+def write_condition_take(recordings: Path, condition: str, sid: str, text: str, seed: int, **meta) -> Path:
+    """One take as the recorder saves it: ``<condition>/<sid>.wav|txt|json``."""
+    folder = recordings / condition
+    wav = write_wav(folder / f"{sid}.wav", seed=seed)
+    (folder / f"{sid}.txt").write_text(text + "\n", encoding="utf-8")
+    style = "whisper" if condition.endswith("whisper") else "normal"
+    device = "iphone" if condition.startswith("phone") else "mac"
+    body = {"id": sid, "condition": condition, "device": device, "style": style, "microphone": "x", **meta}
+    (folder / f"{sid}.json").write_text(__import__("json").dumps(body), encoding="utf-8")
+    return wav
+
+
+def owner_text(i: int) -> tuple[str, str]:
+    """Sentence i of owner_takes(): deploy (i % 3 == 0), Kafka (1) or plain (2)."""
+    word = WORDS[i % len(WORDS)]
+    if i % 3 == 0:
+        return f"Vi skal deploye {word} nummer {i} i dag.", "terms"
+    if i % 3 == 1:
+        return f"Vi bruger Kafka til {word} nummer {i}.", "terms"
+    return f"Der er en {word} nummer {i} i haven.", "plain"
+
+
+def owner_takes(root: Path, n: int = 48) -> tuple[Path, Path, Path]:
+    """n sentences in ``root/data`` (two terms, deploy and Kafka, and plain ones), each recorded
+    once, in the conditions round robin; returns (recordings, sentences.csv, spelling.yaml)."""
+    data = root / "data"
+    recordings = data / "recordings"
+    rows = ["id,text,kind"]
+    for i in range(n):
+        sid = f"s{i:04d}"
+        text, kind = owner_text(i)
+        rows.append(f'{sid},"{text}",{kind}')
+        write_condition_take(recordings, OWNER_CONDITIONS[i % 3], sid, text, seed=1000 + i)
+    (data / "sentences.csv").write_text("\n".join(rows) + "\n", encoding="utf-8")
+    (data / "spelling.yaml").write_text(OWNER_SPELLING, encoding="utf-8")
+    return recordings, data / "sentences.csv", data / "spelling.yaml"
+
+
+def owner_config(recordings: Path, sentences: Path, spelling: Path, name: str = "owner", **data):
+    """A config over owner_takes() output (no rehearsal); ``data`` updates its data section."""
+    from wt_train.config import config_from_dict
+
+    return config_from_dict({"name": name, "data": {"recordings": str(recordings), "sentences": str(sentences),
+                                                    "spelling": str(spelling), "validation_fraction": 0.2,
+                                                    "test_fraction": 0.2, "seed": 3, **data},
+                             "rehearsal": {"share": 0.0, "validation_share": 0.0}})
 
 
 def write_fleurs(root: Path, split: str, rows: list[tuple[str, str, str]], seed0: int) -> Path:

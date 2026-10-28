@@ -6,10 +6,10 @@ import shutil
 import pytest
 
 from conftest import WORDS, takes_config, write_takes
-from wt_train import dataset
+from wt_train import dataset, splits
 from wt_train.dataset import (
     HeldOut, Item, LeakageError, build, check_leakage, fleurs_test_held_out, load_build, rehearsal_count,
-    split_by_sentence,
+    split_by_record,
 )
 from wt_train.spelling import Spelling, Term
 
@@ -27,25 +27,45 @@ def item(i, text, split_hash=None, kind="plain", source="recording", audio=None)
                 audio_sha256=split_hash or f"h{i}", seconds=1.0)
 
 
-def test_split_by_sentence_keeps_a_sentence_in_one_split():
-    # The same sentence read three times, differing only in case and punctuation.
-    items = [item(0, "Hej med dig."), item(1, "hej med dig"), item(2, "HEJ, med dig!")]
+def test_every_take_of_a_sentence_goes_to_the_split_of_its_sentence_in_the_record():
+    items = [Item(id=f"s1.{c}", audio=f"/x/{c}.wav", text="Hej med dig.", kind="plain", source="recording",
+                  audio_sha256=c, seconds=1.0, sentence="s1", condition=c) for c in ("phone-whisper", "mac-normal")]
     items += [item(10 + i, f"Sætning nummer {w}") for i, w in enumerate(WORDS)]
-    splits = split_by_sentence(items, 0.2, 0.2, seed=1)
-    where = {i.id: name for name, its in splits.items() for i in its}
-    assert where["i0"] == where["i1"] == where["i2"]
-    assert sum(len(v) for v in splits.values()) == len(items)
+    record = {"s1": "test"} | {f"i{10 + i}": ("validation" if i % 4 == 0 else "train") for i in range(len(WORDS))}
+    parts, skipped = split_by_record(items, record)
+    assert [i.id for i in parts["test"]] == ["s1.mac-normal", "s1.phone-whisper"] and not skipped
+    assert sum(len(v) for v in parts.values()) == len(items)
+    assert {i.id for i in parts["validation"]} == {f"i{10 + i}" for i in range(0, len(WORDS), 4)}
+    # A take of a train or validation sentence with a held-out term is left out, with the reason.
+    spelling = Spelling([Term("hund", ("hund",))])
+    parts, skipped = split_by_record(items, record, held_out_terms=("hund",), spelling=spelling)
+    assert skipped == [{"id": "i11", "reason": "holds the held-out term hund (its sentence is in train)"}]
 
 
-def test_splits_are_deterministic_and_stable_as_takes_are_added():
-    items = [item(i, f"Sætning nummer {w}") for i, w in enumerate(WORDS)]
-    a = split_by_sentence(items, 0.2, 0.2, seed=7)
-    b = split_by_sentence(list(reversed(items)), 0.2, 0.2, seed=7)
-    assert a == b
-    more = split_by_sentence(items + [item(99, "En helt ny sætning")], 0.2, 0.2, seed=7)
-    for name in a:
-        assert set(i.id for i in a[name]) <= set(i.id for i in more[name])
-    assert split_by_sentence(items, 0.2, 0.2, seed=8) != a
+def test_the_build_follows_the_split_record_and_says_what_each_split_covers(tmp_path, make_wav, fleurs_root):
+    folder, sentences, spelling = make_takes(tmp_path, make_wav)
+    b = build(config(folder, sentences, spelling), out_dir=tmp_path / "build", fleurs_root=fleurs_root,
+              log=lambda *_: None)
+    record, params = splits.read_record(sentences.with_name("splits.csv"))
+    assert params == splits.Params(seed=3, validation_fraction=0.25, test_fraction=0.25)
+    for name, items in b.splits.items():
+        assert all(record[i.sentence] == name for i in items if i.source == "recording")
+    info = b.summary["split_record"]
+    assert info["path"] == str(sentences.with_name("splits.csv")) and info["locked"] is False
+    assert info["sentences"] == {s: list(record.values()).count(s) for s in ("train", "validation", "test")}
+    assert info["warnings"] == [] and info["moved"] == 0
+    assert all(b.summary["splits"][name]["terms_below"] == [] for name in ("train", "validation", "test"))
+    text = dataset.format_summary(b)
+    assert "split record" in text and "seed 3" in text
+    # A term without enough recorded test sentences is named, per split.
+    for i in b.splits["test"]:
+        if i.kind == "terms":
+            __import__("pathlib").Path(i.audio).unlink()
+    b = build(config(folder, sentences, spelling), out_dir=tmp_path / "build", fleurs_root=fleurs_root,
+              log=lambda *_: None)
+    assert b.summary["splits"]["test"]["terms_below"] == [{"term": "deploy", "sentences": 0}]
+    assert b.summary["splits"]["validation"]["terms_below"] == []
+    assert "below" in dataset.format_summary(b) and "deploy" in dataset.format_summary(b)
 
 
 def test_rehearsal_share_is_a_fraction_of_the_final_split():

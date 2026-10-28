@@ -1,5 +1,5 @@
 """The session plan: one condition per sentence, the mix (40/40/20/0 by default, or what
-``wt-train plan --mix`` sets) within every split."""
+``wt-train plan --mix`` sets) within every split of the split record (run 12, ``splits.py``)."""
 
 from __future__ import annotations
 
@@ -7,11 +7,13 @@ from collections import Counter
 
 import pytest
 
-from wt_train import plan
+from wt_train import plan, splits
 from wt_train.conditions import DEFAULT_MIX, IDS
-from wt_train.dataset import sentence_key, split_of
-from wt_train.paths import MIX_YAML, PLAN_CSV, SENTENCES_CSV
+from wt_train.paths import MIX_YAML, PLAN_CSV, SENTENCES_CSV, SPLITS_CSV
 from wt_train.sentences import Sentence, load_sentences
+from wt_train.spelling import Spelling, Term
+
+SPELLING = Spelling([Term("deploy", ("deploy",))])
 
 
 def sentences(n: int, start: int = 0) -> list[Sentence]:
@@ -19,8 +21,13 @@ def sentences(n: int, start: int = 0) -> list[Sentence]:
                      kind="terms" if i % 3 else "plain") for i in range(start, start + n)]
 
 
-def split(s: Sentence) -> str:
-    return split_of(sentence_key(s.text), **plan.REFERENCE_SPLIT)
+def record(items: list[Sentence]) -> dict[str, str]:
+    """The split of each sentence, dealt as ``wt-train plan`` deals it."""
+    return splits.deal(items, SPELLING, splits.Params())[0]
+
+
+def assign(items: list[Sentence], **kw) -> dict[str, str]:
+    return plan.assign(items, splits=record(items), **kw)
 
 
 # The conditions the default mix deals to.
@@ -31,16 +38,17 @@ def share(cid: str, mix_: dict[str, int] = DEFAULT_MIX) -> float:
     return mix_[cid] / 100
 
 
-def mix(assigned: dict[str, str], items: list[Sentence]) -> dict[str, Counter]:
+def mix(assigned: dict[str, str], items: list[Sentence], dealt: dict[str, str] | None = None) -> dict[str, Counter]:
+    dealt = dealt if dealt is not None else record(items)
     out: dict[str, Counter] = {}
     for s in items:
-        out.setdefault(split(s), Counter())[assigned[s.id]] += 1
+        out.setdefault(dealt[s.id], Counter())[assigned[s.id]] += 1
     return out
 
 
 def test_every_sentence_gets_one_condition_and_the_mix_holds_in_every_split():
     items = sentences(1000)
-    assigned = plan.assign(items)
+    assigned = assign(items)
     assert set(assigned) == {s.id for s in items}
     assert set(assigned.values()) == set(DEALT) == {"phone-whisper", "phone-normal", "mac-normal"}
     by_split = mix(assigned, items)
@@ -54,7 +62,7 @@ def test_every_sentence_gets_one_condition_and_the_mix_holds_in_every_split():
 
 def test_both_kinds_are_spread_over_the_conditions():
     items = sentences(600)
-    assigned = plan.assign(items)
+    assigned = assign(items)
     for kind in ("terms", "plain"):
         group = [s for s in items if s.kind == kind]
         counts = Counter(assigned[s.id] for s in group)
@@ -63,10 +71,10 @@ def test_both_kinds_are_spread_over_the_conditions():
 
 
 def test_a_sentence_keeps_its_condition_when_sentences_are_added_or_removed():
-    first = plan.assign(sentences(300))
-    grown = plan.assign(sentences(360), existing=first)
+    first = assign(sentences(300))
+    grown = assign(sentences(360), existing=first)
     assert {k: grown[k] for k in first} == first
-    shrunk = plan.assign(sentences(200), existing=grown)
+    shrunk = assign(sentences(200), existing=grown)
     assert set(shrunk) == {f"s{i:04d}" for i in range(200)}
     assert all(shrunk[k] == first[k] for k in shrunk)
     # The added sentences fill the gaps: the mix still holds.
@@ -78,12 +86,12 @@ def test_a_sentence_keeps_its_condition_when_sentences_are_added_or_removed():
 
 def test_the_plan_is_deterministic():
     items = sentences(120)
-    assert plan.assign(items) == plan.assign(list(reversed(items)))
+    assert assign(items) == assign(list(reversed(items)))
 
 
 def test_plan_file_round_trip_and_unknown_conditions(tmp_path):
     path = tmp_path / "plan.csv"
-    assigned = plan.assign(sentences(30))
+    assigned = assign(sentences(30))
     plan.write_plan(path, assigned)
     assert path.read_text(encoding="utf-8").splitlines()[0] == "id,condition"
     assert plan.read_plan(path) == assigned
@@ -94,7 +102,7 @@ def test_plan_file_round_trip_and_unknown_conditions(tmp_path):
 
 def test_ensure_extends_the_plan_file_for_new_sentences(tmp_path):
     path = tmp_path / "plan.csv"
-    plan.write_plan(path, plan.assign(sentences(40)))
+    plan.write_plan(path, assign(sentences(40)))
     before = plan.read_plan(path)
     current, changes = plan.ensure(sentences(45), path)
     assert changes == {"added": 5, "removed": 0, "moved": 0}
@@ -105,7 +113,7 @@ def test_ensure_extends_the_plan_file_for_new_sentences(tmp_path):
 
 def test_progress_counts_per_condition():
     items = sentences(10)
-    assigned = plan.assign(items)
+    assigned = assign(items)
     recorded = {cid: set() for cid in IDS}
     first = next(s.id for s in items if assigned[s.id] == "phone-whisper")
     recorded["phone-whisper"].add(first)
@@ -127,7 +135,9 @@ def test_the_committed_plan_covers_the_sentence_list_with_the_mix():
     assert set(assigned) == {s.id for s in items}
     committed = plan.read_mix(MIX_YAML)
     assert plan.mix_path(PLAN_CSV) == MIX_YAML and MIX_YAML.is_file()
-    for name, counts in mix(assigned, items).items():
+    dealt, _ = splits.read_record(SPLITS_CSV)
+    assert splits.record_path(PLAN_CSV) == SPLITS_CSV and set(dealt) == set(assigned)
+    for name, counts in mix(assigned, items, dealt).items():
         n = sum(counts.values())
         for cid in IDS:
             assert abs(counts[cid] - share(cid, committed) * n) <= 2, (name, cid, counts)
@@ -183,13 +193,13 @@ def test_the_mix_file_round_trip_and_refusals(tmp_path):
 def test_a_mix_deals_only_to_conditions_with_a_share_and_holds_in_every_split():
     items = sentences(1000)
     m = plan.parse_mix("phone-whisper=30,phone-normal=30,mac-normal=20,mac-whisper=20")
-    assigned = plan.assign(items, mix=m)
+    assigned = assign(items, mix=m)
     assert set(assigned.values()) == set(IDS)
     for name, counts in mix(assigned, items).items():
         n = sum(counts.values())
         for cid in IDS:
             assert abs(counts[cid] - share(cid, m) * n) <= 2, (name, cid, counts)
-    only_two = plan.assign(items, mix=plan.parse_mix("phone-whisper=50,mac-whisper=50"))
+    only_two = assign(items, mix=plan.parse_mix("phone-whisper=50,mac-whisper=50"))
     assert set(only_two.values()) == {"phone-whisper", "mac-whisper"}
 
 
@@ -210,14 +220,15 @@ def test_the_mix_is_kept_next_to_the_plan(tmp_path):
 def test_a_new_mix_keeps_recorded_sentences_and_deals_the_rest_again(tmp_path):
     path = tmp_path / "plan.csv"
     items = sentences(600)
-    before, _ = plan.ensure(items, path)
+    dealt = record(items)
+    before, _ = plan.ensure(items, path, splits=dealt)
     # Some sentences have a take in their planned condition; one has a take only elsewhere.
     by_condition = {cid: [sid for sid, c in sorted(before.items()) if c == cid] for cid in IDS}
     recorded = {"phone-whisper": set(by_condition["phone-whisper"][:50]),
                 "mac-normal": set(by_condition["mac-normal"][:20]),
                 "phone-normal": {by_condition["mac-normal"][-1]}}
     m = plan.parse_mix("phone-whisper=20,phone-normal=40,mac-normal=10,mac-whisper=30")
-    after, changes = plan.ensure(items, path, mix=m, recorded=recorded)
+    after, changes = plan.ensure(items, path, mix=m, recorded=recorded, splits=dealt)
     kept = recorded["phone-whisper"] | recorded["mac-normal"]
     assert all(after[sid] == before[sid] for sid in kept)
     assert changes["added"] == changes["removed"] == 0
@@ -229,17 +240,17 @@ def test_a_new_mix_keeps_recorded_sentences_and_deals_the_rest_again(tmp_path):
         for cid in IDS:
             assert abs(counts[cid] - share(cid, m) * n) <= 0.03 * n + 2, (name, cid, counts)
     # The same mix again changes nothing, and re-planning with it keeps every sentence.
-    again, changes = plan.ensure(items, path, mix=m, recorded={})
+    again, changes = plan.ensure(items, path, mix=m, recorded={}, splits=dealt)
     assert again == after and changes["moved"] == 0
 
 
 def test_a_new_mix_without_takes_deals_everything_again(tmp_path):
     path = tmp_path / "plan.csv"
     items = sentences(300)
-    plan.ensure(items, path)
+    plan.ensure(items, path, splits=record(items))
     m = plan.parse_mix("phone-normal=50,mac-whisper=50")
-    after, _ = plan.ensure(items, path, mix=m, recorded={})
-    assert after == plan.assign(items, mix=m)
+    after, _ = plan.ensure(items, path, mix=m, recorded={}, splits=record(items))
+    assert after == assign(items, mix=m)
 
 
 def test_wt_train_plan_mix_on_the_command_line(tmp_path, capsys):
