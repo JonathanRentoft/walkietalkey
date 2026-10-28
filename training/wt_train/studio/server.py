@@ -13,7 +13,9 @@ connections. The contract with the page (``training/studio/``, built into ``dist
   request with an ``Origin``, and the page never sees the token;
 * the page gets a Content-Security-Policy that lets it talk to this server only; the
   report pages (``/reports/``, one self-contained file each: inline styles, ``data:``
-  audio) get their own, and may be framed by the page only.
+  audio) get their own, and may be framed by the page only;
+* run 12: the words of the owner's own dictations (:mod:`.words`) travel in POST bodies
+  only, never in a path or a query string, and nothing here logs a request line.
 
 Starting (:func:`main`): the page is built when its sources changed (:mod:`.build`); one
 server runs per work folder (``<work>/studio/server.json``: a second start opens the
@@ -46,6 +48,8 @@ from ..recorder.takes import SAFE_ID, SAFE_SETUP
 from .data import DataView
 from .jobs import Jobs
 from .learn import Learn
+from .measure import Measure
+from .mix import MixView
 from .notebook import Notebook
 from .places import StudioPaths
 from .recording import HOST, Recorder, StudioError
@@ -53,6 +57,7 @@ from .review import Reviewer
 from .runs import AppInfo, Runs
 from .sources import Sources
 from .training import Training
+from .words import OwnWords
 
 DEFAULT_PORT = 8780
 PORT_TRIES = 20
@@ -119,6 +124,10 @@ class StudioServer(ThreadingHTTPServer):
         self.notebook = Notebook(places)
         # Run 11: the learning notebooks; ``launch`` opens VS Code (tests pass a stand-in).
         self.learn = Learn(places, launch=launch)
+        # Run 12: the owner's own words, the mix, and measuring on validation (test on purpose).
+        self.words = OwnWords(places)
+        self.mix = MixView(places, self.sources, self.recorder)
+        self.measure = Measure(places, self.jobs)
         self.reviewer.start()
 
     @property
@@ -269,6 +278,10 @@ class _Handler(LocalHandler):
             "/api/versions": srv.runs.versions,
             "/api/journal": srv.notebook.listing,
             "/api/learn": srv.learn.listing,
+            "/api/ownwords": srv.words.view,
+            "/api/mix": srv.mix.view,
+            "/api/eval/measure": srv.measure.targets,
+            "/api/eval/testset": srv.measure.testset,
         }
         if path in routes:
             return self._answer(routes[path])
@@ -354,6 +367,11 @@ class _Handler(LocalHandler):
             "/api/journal": lambda: srv.notebook.create(body.get("run")),
             "/api/learn/open": lambda: srv.learn.open(body.get("name")),
             "/api/learn/reset": lambda: srv.learn.reset(body.get("name")),
+            "/api/ownwords/tick": lambda: srv.words.tick(body),
+            "/api/ownwords/sentence": lambda: srv.words.add_sentence(body),
+            "/api/mix/preview": lambda: srv.mix.preview(body),
+            "/api/mix/deal": lambda: srv.mix.deal(body),
+            "/api/eval/measure": lambda: srv.measure.start(body),
         }
         if path in routes:
             return self._answer(routes[path])
@@ -437,8 +455,9 @@ def parse(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="wt-train studio",
         description=("Værkstedet: the training workbench as a small app in the browser, on this Mac only "
-                     f"(http://{HOST}:<port>/). Record, check the takes, look at the data, train, evaluate, "
-                     "switch versions, keep the lab journal and open the learning notebooks."))
+                     f"(http://{HOST}:<port>/). Record, check the takes, set the mix, look at the data and "
+                     "the English words of your own dictations, train, evaluate, switch versions, keep the lab "
+                     "journal and open the learning notebooks."))
     p.add_argument("--port", type=int,
                    help=f"port on {HOST} (default {DEFAULT_PORT}, or the next free one; a given port must be free)")
     p.add_argument("--no-browser", action="store_true", help="do not open the page in the browser")
@@ -462,6 +481,11 @@ def parse(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--app-bin", type=Path, help="the WalkieTalkey binary (default: the installed app first)")
     p.add_argument("--app-url-file", type=Path,
                    help="write the app's link (with its token) to this file instead of handing it over (tests)")
+    p.add_argument("--history-db", type=Path, default=d.history_db,
+                   help="the app's dictation history, read-only (default: history.db beside its models folder, "
+                        "or WT_APP_HISTORY_DB)")
+    p.add_argument("--test-lock", type=Path, default=d.test_lock,
+                   help="the frozen test set's lock file (training/data/test-lock.json)")
     return p.parse_args(argv)
 
 
@@ -469,7 +493,7 @@ def places_of(a: argparse.Namespace) -> StudioPaths:
     return StudioPaths(recordings=a.recordings, pilot=a.pilot_dir, sentences=a.sentences, plan=a.plan,
                        exam=a.exam_file, pilot_sentences=a.pilot_sentences, spelling=a.spelling, configs=a.configs,
                        journal=a.journal, dist=a.dist, app_bin=a.app_bin, app_url_file=a.app_url_file,
-                       notebooks=a.notebooks)
+                       notebooks=a.notebooks, history_db=a.history_db, test_lock=a.test_lock)
 
 
 def watch_parent(pid: int, stop: threading.Event) -> None:

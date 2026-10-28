@@ -77,7 +77,9 @@ SETUP_DEVICES = {
 STYLES = {"whisper": "hvisket", "normal": "almindelig stemme"}
 
 # The jobs' titles on the page ("Træning: first-frozen-encoder").
-JOBS = {"train": "Træning", "export": "Eksport", "pilot": "Pilotens sammenligning", "report": "Rapport"}
+JOBS = {"train": "Træning", "export": "Eksport", "pilot": "Pilotens sammenligning", "report": "Rapport",
+        # Run 12: a measurement (kind eval) on the validation, or on the test set.
+        "eval": "Måling på valideringen", "test": "Måling på testsættet"}
 
 LEAKAGE = {
     "splits": "Træning, validering og test deler ingen sætninger",
@@ -152,6 +154,11 @@ def _model_title(backend: str, model: str, train_run: str | None) -> str:
         run = train_run or model
         return m["lora"].format(config=_RUN_STAMP.sub("", run)) if run else m["unknown"]
     return short or m["unknown"]
+
+
+def model_title(backend: str, model: str, train_run: str | None = None) -> str:
+    """The model half of an evaluation's readable name (run 12: a measurement's job title)."""
+    return _model_title(backend or "", model or "", train_run)
 
 
 def _data_title(dataset: str) -> str:

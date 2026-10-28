@@ -33,6 +33,15 @@ def untracked(monkeypatch):
     monkeypatch.setenv("WT_TRACKING", "0")
 
 
+@pytest.fixture(autouse=True)
+def private(tmp_path_factory, monkeypatch):
+    """Run 12: no test reads the app's real dictation history or writes the owner's own words:
+    both point into a folder of the test's own unless it names others."""
+    own = tmp_path_factory.mktemp("private")
+    monkeypatch.setenv("WT_APP_HISTORY_DB", str(own / "no-history.db"))
+    monkeypatch.setenv("WT_LOCAL_DIR", str(own / "local"))
+
+
 @pytest.fixture
 def make_wav():
     return write_wav

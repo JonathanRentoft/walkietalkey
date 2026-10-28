@@ -66,6 +66,8 @@ CLAUDE.local.md
 # downloads, caches, runs and exported models stay in the work folder.
 training/data/recordings/
 training/data/pilot/
+# Run 12: the owner's own words and sentences (Værkstedet's "Dine egne ord").
+training/data/local/
 training/work/
 # Værkstedet (wt-train studio): the built page, rebuilt from training/studio/ when its sources change.
 training/studio/dist/

@@ -137,6 +137,20 @@ class Spelling:
             return []
         return [m.group(0) for m in self._also_re.finditer(text)]
 
+    def spans(self, text: str) -> list[tuple[int, int]]:
+        """Run 12: where ``text`` holds a form or an ``also`` spelling, as (start, end), the
+        same whole-word, case-insensitive matching as :meth:`find_terms`."""
+        found = [(m.start(), m.end()) for m in self._forms_re.finditer(text)]
+        if self._also_re is not None:
+            found += [(m.start(), m.end()) for m in self._also_re.finditer(text)]
+        return sorted(found)
+
+    def covers(self, spelling: str) -> bool:
+        """Run 12: whether ``spelling`` is exactly a form or an ``also`` spelling (case and
+        runs of spaces do not count)."""
+        key = _squash(spelling.strip())
+        return key in self._form_of or key in self._also
+
 
 def _squash(spelling: str) -> str:
     return re.sub(r"\s+", " ", spelling).casefold()
