@@ -466,7 +466,13 @@ mix within each split). Answers the new view with `moved` (what moved) and `chan
   "config": "first-frozen-encoder",
   "configs": ["first-frozen-encoder", "smoke", "top4-encoder"],
   "fractions": { "validation": 0.1, "test": 0.1 },
-  "sentences": { "total": 1041, "plain": 300, "terms": 741, "recorded": 120, "own": 0 },
+  "sentences": {
+    "total": 1041,
+    "plain": 300,
+    "terms": 741,
+    "recorded": 120,
+    "own": 0
+  },
   "conditions": [
     {
       "id": "phone-whisper",
@@ -485,7 +491,12 @@ mix within each split). Answers the new view with `moved` (what moved) and `chan
   ],
   "rehearsal": { "share": 0.3, "validation_share": 0.3 },
   "split": {
-    "params": { "seed": 1, "validation_fraction": 0.1, "test_fraction": 0.1, "held_out_terms": [] },
+    "params": {
+      "seed": 1,
+      "validation_fraction": 0.1,
+      "test_fraction": 0.1,
+      "held_out_terms": []
+    },
     "sentences": { "train": 833, "validation": 104, "test": 104 },
     "locked": false,
     "moved": 0,
