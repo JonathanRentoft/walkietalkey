@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FakeApp, pcmOf, type Command } from "./fake-app";
@@ -369,4 +376,208 @@ test("a first start: Evaluering, Versioner and Træning say what comes, and afte
       "Her kommer dine træninger med deres bedste epoke og ordfejl.",
     ),
   ).toBeVisible();
+});
+
+/* ------------------------------------------------------------------- run 12 */
+
+test("the mix: a preview that writes nothing, then dealing again", async ({
+  page,
+}) => {
+  const plan = join(work(), "plan.csv");
+  const mix = join(work(), "mix.yaml");
+  const before = [readFileSync(plan, "utf8"), readFileSync(mix, "utf8")];
+  await page.goto("/optag");
+  const panel = page.getByRole("region", { name: "Skift mixet" });
+  const share = (label: string) =>
+    panel.getByRole("spinbutton", { name: `Andel for ${label} i procent` });
+  await expect(share("Telefonen, hvisket")).toHaveValue("50");
+  await expect(panel.getByText("I alt 100 %")).toBeVisible();
+  await expect(panel.getByText("pilotens tempo").first()).toBeVisible();
+
+  await share("Telefonen, hvisket").fill("25");
+  await expect(panel.getByRole("alert")).toContainText("Nu giver de 75 %");
+  await share("Mac'en, hvisket").fill("25");
+  await expect(panel.locator(".mix-moved")).toContainText("Det flytter");
+  expect([readFileSync(plan, "utf8"), readFileSync(mix, "utf8")]).toEqual(
+    before,
+  );
+
+  await panel.getByRole("button", { name: "Del ud igen" }).click();
+  await expect(panel.getByText(/Sætningerne er delt ud igen/)).toBeVisible();
+  expect(readFileSync(mix, "utf8")).toContain(
+    "mix:\n  phone-whisper: 25\n  phone-normal: 25\n  mac-normal: 25\n  mac-whisper: 25\n",
+  );
+  // The sentences with a take keep their condition.
+  const dealt = readFileSync(plan, "utf8");
+  for (const line of [
+    "s0001,phone-whisper",
+    "s0002,phone-whisper",
+    "s0004,mac-normal",
+  ])
+    expect(dealt).toContain(line);
+  await expect(
+    page.getByRole("region", { name: "Fremskridt mod mixet" }),
+  ).toContainText("Mac'en, hvisket: 25 %");
+});
+
+test("Dine egne ord: the words of his own dictations, ticked, with a sentence of his own", async ({
+  page,
+}) => {
+  const history = join(work(), "app", "history.db");
+  const bytes = readFileSync(history);
+  await page.goto("/ord");
+  await expect(
+    page.getByRole("heading", { name: "Dine egne ord", level: 1 }),
+  ).toBeVisible();
+  const list = page.getByRole("list", { name: "Nye ord at sætte flueben ved" });
+  await expect(list.locator(".word-row").first()).toContainText(
+    "Grafana3 gange · i 2 dikteringer · 50,0 % af dikteringerne",
+  );
+  await expect(list).toContainText("Terraform");
+  await expect(list).toContainText("load balancer");
+  await expect(page.getByText("Fundet i 4 dikteringer.")).toBeVisible();
+  // Only words: no sentence of the history is on the page.
+  const text = (await page.locator("main").textContent()) ?? "";
+  for (const fragment of ["nede igen", "kigger på", "flyttet til torsdag"])
+    expect(text).not.toContain(fragment);
+
+  // The word moves to "Dine ord" at once, so the box itself never shows a tick.
+  await list.getByRole("checkbox", { name: /Grafana/ }).click();
+  const mine = page.getByRole("list", { name: "Ord med flueben" });
+  await expect(mine.getByRole("heading", { name: "Grafana" })).toBeVisible();
+  const local = join(work(), "local");
+  expect(readFileSync(join(local, "own-words.yaml"), "utf8")).toMatch(
+    /\nwords: \[Grafana\]\n$/,
+  );
+
+  await mine
+    .getByRole("textbox", { name: "En sætning med Grafana" })
+    .fill("Vi tjekker Grafana, før vi går hjem.");
+  await mine.getByRole("button", { name: "Tilføj sætningen" }).click();
+  await expect(mine.getByText("Sætningen er tilføjet.")).toBeVisible();
+  await expect(mine).toContainText("own-0001");
+  expect(readFileSync(join(local, "sentences.csv"), "utf8")).toBe(
+    'id,text,kind\nown-0001,"Vi tjekker Grafana, før vi går hjem.",terms\n',
+  );
+  await mine
+    .getByRole("textbox", { name: "En sætning med Grafana" })
+    .fill("Grafana er nede.");
+  await mine.getByRole("button", { name: "Tilføj sætningen" }).click();
+  await expect(mine.getByRole("alert")).toHaveText(
+    "En sætning skal have 4 til 20 ord.",
+  );
+  // The history is read, never written.
+  expect(readFileSync(history).equals(bytes)).toBe(true);
+  expect(readdirSync(local).sort()).toEqual([
+    "own-words.yaml",
+    "sentences.csv",
+  ]);
+});
+
+test("Evaluering: measure on the validation, the test set only after a confirm, every use shown", async ({
+  page,
+}) => {
+  // A finished training with an adapter and both splits, and a build of a config for Edda.
+  const run = join(work(), "work", "runs", "train", "e2e-tiny-20261028-120000");
+  mkdirSync(join(run, "adapter"), { recursive: true });
+  mkdirSync(join(run, "dataset"), { recursive: true });
+  writeFileSync(join(run, "config.json"), "{}");
+  writeFileSync(join(run, "adapter", "adapter_config.json"), "{}");
+  writeFileSync(join(run, "best.json"), '{"epoch": 1, "validation_wer": 0.12}');
+  for (const s of ["validation", "test"])
+    writeFileSync(join(run, "dataset", `${s}.jsonl`), "");
+  mkdirSync(join(work(), "work", "builds", "first-frozen-encoder"), {
+    recursive: true,
+  });
+  writeFileSync(
+    join(work(), "work", "builds", "first-frozen-encoder", "validation.jsonl"),
+    "",
+  );
+
+  await page.goto("/evaluering");
+  const measure = page.getByRole("region", { name: "Mål en model" });
+  await expect(measure.getByRole("combobox", { name: "Model" })).toContainText(
+    "Edda finjusteret (e2e-tiny)",
+  );
+  await measure.getByRole("button", { name: "Mål på valideringen" }).click();
+  await expect(measure.locator(".job-title")).toHaveText(
+    "Måling på valideringen: Edda finjusteret (e2e-tiny)",
+  );
+  await expect(
+    measure.getByText("Målingen er færdig. Den står i listen nedenfor."),
+  ).toBeVisible();
+
+  const testset = page.getByRole("region", { name: "Testsættet" });
+  await expect(testset).toContainText(
+    "Låst den 28. okt. 2026: 3 sætninger og 9 klip.",
+  );
+  await expect(testset.getByRole("heading", { level: 3 })).toHaveText(
+    "Brugt 1 gang",
+  );
+  await measure.getByRole("button", { name: "Mål på testsættet" }).click();
+  await expect(
+    measure.getByRole("group", { name: "Brug testsættet" }),
+  ).toContainText("Testsættet er til den endelige måling.");
+  await measure.getByRole("button", { name: "Ja, mål på testsættet" }).click();
+  await expect(measure.locator(".job-title")).toHaveText(
+    "Måling på testsættet: Edda finjusteret (e2e-tiny)",
+  );
+  await expect(testset.getByRole("heading", { level: 3 })).toHaveText(
+    "Brugt 2 gange",
+  );
+  await expect(testset.getByText("fra Værkstedet")).toBeVisible();
+
+  // Edda on the build, without FLEURS.
+  await measure.getByRole("combobox", { name: "Model" }).selectOption("edda");
+  await measure
+    .getByRole("combobox", { name: "Datasæt" })
+    .selectOption("first-frozen-encoder");
+  await measure.getByRole("checkbox", { name: /Spring FLEURS over/ }).check();
+  await measure.getByRole("button", { name: "Mål på valideringen" }).click();
+  await expect(measure.locator(".job-title")).toHaveText(
+    "Måling på valideringen: Edda, original · first-frozen-encoder",
+  );
+  await expect(measure.getByText(/Målingen er færdig/)).toBeVisible();
+
+  const calls = readFileSync(join(work(), "eval.log"), "utf8")
+    .split("---\n")
+    .filter(Boolean)
+    .map((c) => c.trim().split("\n"));
+  const spelling = join(work(), "spelling.yaml");
+  expect(calls).toEqual([
+    [
+      "source=studio",
+      "--backend",
+      "lora",
+      "--run",
+      "e2e-tiny-20261028-120000",
+      "--dataset",
+      "validation",
+      "--spelling",
+      spelling,
+    ],
+    [
+      "source=studio",
+      "--backend",
+      "lora",
+      "--run",
+      "e2e-tiny-20261028-120000",
+      "--dataset",
+      "test",
+      "--spelling",
+      spelling,
+    ],
+    [
+      "source=studio",
+      "--backend",
+      "hf",
+      "--build",
+      "first-frozen-encoder",
+      "--dataset",
+      "validation",
+      "--spelling",
+      spelling,
+      "--no-fleurs",
+    ],
+  ]);
 });

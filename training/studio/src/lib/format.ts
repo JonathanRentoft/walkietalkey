@@ -72,6 +72,20 @@ export function minutes(m: number | null | undefined): string {
   return `${decimal(m, 1)}${NBSP}min`;
 }
 
+/** A stretch of time given in minutes, to the whole minute: 0.4 → "under 1 min", 45 → "45 min",
+    72 → "1 t 12 min", 120 → "2 t" (run 12: the recording time left). */
+export function duration(mins: number | null | undefined): string {
+  if (!finite(mins)) return "ingen";
+  const m = Math.round(mins);
+  if (mins > 0 && m < 1) return `under 1${NBSP}min`;
+  if (m < 60) return `${int(m)}${NBSP}min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest
+    ? `${int(h)}${NBSP}t ${int(rest)}${NBSP}min`
+    : `${int(h)}${NBSP}t`;
+}
+
 export function seconds(s: number | null | undefined): string {
   if (!finite(s)) return "ingen";
   return `${decimal(s, 1)}${NBSP}s`;

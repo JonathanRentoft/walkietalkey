@@ -1,11 +1,20 @@
 /* Evaluering: the MLflow runs with their key numbers, a run's report inside Værkstedet, and two
    runs compared (the --vs page). Reports open on the report screen (Report.tsx). Run 11: each run
    under its readable name (the slug small, for the command line), grouped by the normaliser that
-   counted it, since run 8's fix on 26 October changed every number without changing the model. */
+   counted it, since run 8's fix on 26 October changed every number without changing the model.
+   Run 12: a model is measured here on the validation (the test set only after a confirm), a test
+   result is marked as test, every use of the test set is listed, and the comparison offers the
+   validation results first. */
 import { useState } from "react";
 import { ApiError, api, paths } from "../api/client";
 import { sleep, usePoll, useResource } from "../api/hooks";
-import type { EvalRun, Job, Overview, ReportAnswer } from "../api/types";
+import type {
+  EvalRun,
+  Job,
+  Overview,
+  ReportAnswer,
+  TestSet,
+} from "../api/types";
 import {
   Button,
   Card,
@@ -16,10 +25,12 @@ import {
   Notice,
   PageHeader,
   Section,
+  Segmented,
 } from "../components/ui";
 import { dateTime, int, interval, pct } from "../lib/format";
 import { navigate, reportHref } from "../router";
 import { errorText, S } from "../strings";
+import { MeasurePanel, TestSetPanel } from "./evaluation/Measure";
 
 const E = S.evaluation;
 /** A first evaluation that needs nothing but the workbench: base Edda on FLEURS (a command, not copy). */
@@ -103,8 +114,25 @@ function ReportJob() {
   ) : null;
 }
 
+/** What a run measured on, as a small mark beside its name: the test set stands out. */
+function SplitMark({ run }: { run: EvalRun }) {
+  if (run.split === "test")
+    return (
+      <span className="tag tag--test" title={E.badgeTestLabel}>
+        {E.badgeTest}
+      </span>
+    );
+  if (run.split === "validation")
+    return <span className="tag tag--quiet">{E.badgeValidation}</span>;
+  return null;
+}
+
+type Show = "validation" | "all";
+
 export function EvaluationScreen() {
   const runs = useResource<EvalRun[]>("/api/eval/runs");
+  const testset = useResource<TestSet>("/api/eval/testset");
+  const [show, setShow] = useState<Show | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [a, setA] = useState("");
@@ -149,7 +177,14 @@ export function EvaluationScreen() {
       (Math.max(0.05, ...list.map((r) => r.wer_ci?.[1] ?? r.wer ?? 0)) * 100) /
         5,
     ) * 0.05;
-  const label = (r: EvalRun) => `${r.title ?? r.name} (${pct(r.wer, 1)})`;
+  const label = (r: EvalRun) =>
+    `${r.title ?? r.name}${r.split === "test" ? ` · ${E.badgeTest}` : ""} (${pct(r.wer, 1)})`;
+  // The comparison offers the validation results first (test is for the final measurement).
+  const hasValidation = list.some((r) => r.split === "validation");
+  const shown: Show = show ?? (hasValidation ? "validation" : "all");
+  const choices = byNormaliser(
+    shown === "all" ? list : list.filter((r) => r.split === "validation"),
+  );
   const runA = list.find((r) => r.id === a);
   const runB = list.find((r) => r.id === b);
   const mixed =
@@ -158,7 +193,7 @@ export function EvaluationScreen() {
   const picker = (value: string, set: (v: string) => void) => (
     <select value={value} onChange={(e) => set(e.target.value)}>
       <option value="">{E.choose}</option>
-      {groups.map((g) => (
+      {choices.map((g) => (
         <optgroup key={String(g.version)} label={groupTitle(g.version)}>
           {g.runs.map((r) => (
             <option key={r.id} value={r.id}>
@@ -180,10 +215,25 @@ export function EvaluationScreen() {
         </p>
       )}
       {opening !== null && <ReportJob />}
+      <MeasurePanel
+        onMeasured={() => {
+          runs.reload();
+          testset.reload();
+        }}
+      />
       {!runs.data ? (
         !runs.error && <Loading />
       ) : list.length === 0 ? (
-        <Empty what={E.emptyWhat} when={E.emptyWhen} code={EVAL_EXAMPLE} />
+        <>
+          <Section id="runs" title={E.runsTitle}>
+            <Empty what={E.emptyWhat} when={E.emptyWhen} code={EVAL_EXAMPLE} />
+          </Section>
+          <TestSetPanel
+            testset={testset.data}
+            error={testset.data ? null : testset.error}
+            onRetry={testset.reload}
+          />
+        </>
       ) : (
         <>
           {groups.length > 1 && (
@@ -234,6 +284,7 @@ export function EvaluationScreen() {
                       <tr key={r.id}>
                         <th scope="row">
                           <span className="run-name">{r.title ?? r.name}</span>
+                          <SplitMark run={r} />
                           <span className="run-meta">
                             {dateTime(r.date)}
                             {r.title && (
@@ -279,8 +330,36 @@ export function EvaluationScreen() {
             </Section>
           ))}
 
-          <Section id="compare" title={E.compareTitle} help={E.compareHelp}>
+          <TestSetPanel
+            testset={testset.data}
+            error={testset.data ? null : testset.error}
+            onRetry={testset.reload}
+          />
+
+          <Section
+            id="compare"
+            title={E.compareTitle}
+            help={E.compareHelp}
+            aside={
+              <Segmented<Show>
+                label={E.compareShow}
+                value={shown}
+                onChange={(v) => {
+                  setShow(v);
+                  setA("");
+                  setB("");
+                }}
+                options={[
+                  { value: "validation", label: E.compareValidation },
+                  { value: "all", label: E.compareAll },
+                ]}
+              />
+            }
+          >
             <Card className="compare">
+              {choices.length === 0 && (
+                <p className="help compare-none">{E.compareNoValidation}</p>
+              )}
               <label className="field">
                 <span>{E.a}</span>
                 {picker(a, setA)}

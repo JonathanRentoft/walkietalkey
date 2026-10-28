@@ -66,6 +66,21 @@ describe("strings", () => {
       "text",
       "exists",
       "no-vscode",
+      // Run 12: the mix, measuring, Dine egne ord.
+      "mix",
+      "recording",
+      "confirm",
+      "dataset",
+      "backend",
+      "no-build",
+      "no-split",
+      "word",
+      "length",
+      "dash",
+      "no-word",
+      "duplicate",
+      "own-words",
+      "own-sentences",
     ];
     expect(codes.filter((c) => !S.errors[c])).toEqual([]);
     expect(errorText("busy", "training")).toBe(

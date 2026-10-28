@@ -14,6 +14,7 @@ export const S = {
     label: "Værkstedets sider",
     optag: "Optagelse",
     data: "Data",
+    ord: "Dine egne ord",
     traening: "Træning",
     evaluering: "Evaluering",
     versioner: "Versioner",
@@ -92,6 +93,23 @@ export const S = {
     exists: "Den findes allerede.",
     "no-vscode":
       "VS Code er ikke fundet på Mac'en. Installér VS Code, og prøv igen.",
+    mix: "Andelene skal være hele procent, der giver 100 tilsammen.",
+    recording: "Stop optagelsen først. Så kan sætningerne deles ud igen.",
+    confirm: "Bekræft først, at du vil bruge testsættet.",
+    dataset: "Vælg valideringen eller testsættet.",
+    backend: "Vælg en model at måle.",
+    "no-build":
+      "Datasættet er ikke bygget endnu. Byg det i terminalen, og prøv igen.",
+    "no-split": "Træningen har ikke gemt den del af datasættet.",
+    word: "Ordet kunne ikke gemmes. Hent siden igen.",
+    length: "En sætning skal have 4 til 20 ord.",
+    dash: "Brug komma eller punktum i stedet for tankestreg.",
+    "no-word": "Ordet skal stå i sætningen.",
+    duplicate: "Den sætning findes allerede.",
+    "own-words":
+      "Filen med dine ord kan ikke læses. Ret den i hånden, eller slet den.",
+    "own-sentences":
+      "Filen med dine sætninger har en forkert første linje. Ret den i hånden.",
   } as Record<string, string>,
 
   errorsIn: {
@@ -106,6 +124,17 @@ export const S = {
       unknown: "Konfigurationen findes ikke.",
     },
     evaluation: { unknown: "Kørslen findes ikke længere i MLflow." },
+    measure: {
+      busy: "Der kører allerede en måling.",
+      unknown:
+        "Træningen eller datasættet findes ikke længere. Hent siden igen.",
+    },
+    mix: {
+      busy: "Sætningerne bliver allerede delt ud. Vent et øjeblik.",
+    },
+    ownwords: {
+      text: "Sætningen kunne ikke læses. Prøv igen.",
+    },
     versions: {
       busy: "Der kører allerede en eksport.",
       unknown: "Træningen har ingen adapter, der kan eksporteres.",
@@ -527,6 +556,140 @@ export const S = {
       "Her kommer målingerne af modellerne: ordfejl, tegnfejl og hvor sikre tallene er.",
     emptyWhen:
       "De første kommer, når du har kørt en evaluering i terminalen, for eksempel af Edda på FLEURS:",
+
+    runsTitle: "Målingerne",
+    measureTitle: "Mål en model",
+    measureHelp:
+      "Mål på valideringen, når du sammenligner undervejs. Testsættet gemmer du til den endelige måling.",
+    model: "Model",
+    build: "Datasæt",
+    notBuilt: (name: string) => `${name} (ikke bygget)`,
+    buildFirst: "Byg datasættet i terminalen først:",
+    skipFleurs: "Spring FLEURS over, så går det hurtigere",
+    skipFleursHelp:
+      "FLEURS tjekker, at Edda stadig kan almindeligt dansk. Det er den del, der tager længst tid.",
+    onValidation: "Mål på valideringen",
+    onTest: "Mål på testsættet",
+    measuring: "Måler",
+    confirmLabel: "Brug testsættet",
+    confirmText:
+      "Testsættet er til den endelige måling. Hver gang du bruger det, bliver det skrevet ned. Vil du måle på testsættet nu?",
+    confirmYes: "Ja, mål på testsættet",
+    confirmNo: "Nej, ikke nu",
+    measured: "Målingen er færdig. Den står i listen nedenfor.",
+    measureFailed: "Målingen fejlede. Se loggen.",
+    measureStopped: "Målingen blev stoppet.",
+    measureEmptyWhat: "Her kan du måle Edda og dine træninger på valideringen.",
+    measureEmptyWhen:
+      "Det kan du, når du har trænet en model eller bygget et datasæt, for eksempel sådan:",
+
+    testsetTitle: "Testsættet",
+    testsetHelp:
+      "Testsættet bruges kun til den endelige måling. Hver brug bliver skrevet ned her.",
+    locked: (date: string, sentences: string, clips: string) =>
+      `Låst den ${date}: ${sentences} sætninger og ${clips} klip.`,
+    lockedUndated: (sentences: string, clips: string) =>
+      `Låst: ${sentences} sætninger og ${clips} klip.`,
+    lockedFrom: (build: string) => `Fra datasættet ${build}.`,
+    notLocked: "Testsættet er ikke låst endnu.",
+    used: (n: string) => `Brugt ${n} gange`,
+    usedOnce: "Brugt 1 gang",
+    unused: "Ikke brugt endnu.",
+    usesLabel: "Hver brug af testsættet",
+    fromStudio: "fra Værkstedet",
+    fromCli: "fra terminalen",
+
+    badgeTest: "Test",
+    badgeTestLabel: "Målt på testsættet",
+    badgeValidation: "Validering",
+    compareShow: "Vis målinger",
+    compareValidation: "Validering",
+    compareAll: "Alle",
+    compareNoValidation:
+      "Der er ingen målinger på valideringen endnu. Mål en model ovenfor, eller vis alle målinger.",
+  },
+
+  mix: {
+    title: "Skift mixet",
+    help: "Sæt andelen for hvert forhold. Sætninger, du har optaget, bliver, hvor de er. De andre deles ud igen, præcis som wt-train plan --mix gør.",
+    colCondition: "Forhold",
+    colShare: "Andel",
+    colSentences: "Sætninger",
+    colLeft: "Tilbage",
+    colPace: "Tempo",
+    colTime: "Tid tilbage",
+    shareLabel: (label: string) => `Andel for ${label} i procent`,
+    total: (p: string) => `I alt ${p}`,
+    totalWrong: (p: string) =>
+      `Andelene skal give 100 % tilsammen. Nu giver de ${p}.`,
+    notWhole: "Skriv et helt tal fra 0 til 100 i hvert felt.",
+    pace: (s: string) => `${s} pr. sætning`,
+    paceOwn: "dit tempo",
+    pacePilot: "pilotens tempo",
+    paceHelp:
+      "Tiden er sætningerne tilbage gange dit tempo i det forhold. Indtil du har optaget nok, bruges pilotens målte tempo.",
+    time: (t: string) => `ca. ${t}`,
+    timeTotal: (t: string) => `Ca. ${t} tilbage i alt`,
+    moved: (n: string) => `Det flytter ${n} sætninger:`,
+    movedOne: "Det flytter 1 sætning:",
+    movedNone: "Ingen sætninger flytter.",
+    movedPair: (n: string, from: string, to: string) =>
+      `${n} fra ${from} til ${to}`,
+    unchanged: "Det er det mix, du har nu.",
+    deal: "Del ud igen",
+    dealing: "Deler ud",
+    dealt: (n: string) => `Sætningerne er delt ud igen. ${n} flyttede.`,
+    reset: "Fortryd",
+    recording: "Stop optagelsen først. Så kan sætningerne deles ud igen.",
+    previewing: "Regner efter",
+  },
+
+  ownwords: {
+    title: "Dine egne ord",
+    intro:
+      "Engelske ord fra dine egne dikteringer, som stavelisten ikke kender endnu. Sæt flueben ved dem, Edda skal lære.",
+    privacy:
+      "Værkstedet læser WalkieTalkeys historik på denne Mac uden at ændre den. Kun ordene, og hvor tit du siger dem, bliver vist. Ingen af dine sætninger bliver vist eller gemt.",
+    source: (n: string) => `Fundet i ${n} dikteringer.`,
+    newTitle: "Nye ord",
+    newHelp: "Det, du siger oftest, står øverst.",
+    listLabel: "Nye ord at sætte flueben ved",
+    times: (n: string) => `${n} gange`,
+    once: "1 gang",
+    inDictations: (n: string) => `i ${n} dikteringer`,
+    inOne: "i 1 diktering",
+    share: (p: string) => `${p} af dikteringerne`,
+    phrase: "Udtryk",
+    more: (n: string) => `Og ${n} mere, som du siger sjældnere.`,
+    mineTitle: "Dine ord",
+    mineHelp:
+      "Ordene med flueben. Skriv gerne nogle sætninger med hvert ord, så kommer de med, når du indtaler.",
+    mineLabel: "Ord med flueben",
+    untick: "Fjern flueben",
+    untickLabel: (w: string) => `Fjern fluebenet ved ${w}`,
+    notInHistory: "Ikke i historikken lige nu",
+    noSentences: "Ingen sætninger endnu.",
+    sentenceLabel: (w: string) => `En sætning med ${w}`,
+    add: "Tilføj sætningen",
+    adding: "Tilføjer",
+    added: "Sætningen er tilføjet.",
+    rules:
+      "4 til 20 ord, med ordet i, uden tankestreg, og ikke en sætning, der findes i forvejen.",
+    files: (words: string, sentences: string) =>
+      `Fluebenene gemmes i ${words} og sætningerne i ${sentences}. Git ser ingen af dem.`,
+    noHistoryWhat: "Her kommer de engelske ord, du siger, når du dikterer.",
+    noHistoryWhen:
+      "De kommer, når du har dikteret med WalkieTalkey på denne Mac. Værkstedet leder efter historikken her:",
+    unreadable:
+      "Historikken kunne ikke læses lige nu. Prøv igen om lidt, eller luk WalkieTalkey et øjeblik.",
+    noWordsWhat:
+      "Ingen nye engelske ord. Stavelisten kender allerede dem, du siger.",
+    noWordsWhen: "Kig forbi igen, når du har dikteret mere.",
+    allTicked:
+      "Du har sat flueben ved alle ordene. De står under Dine ord nedenfor.",
+    mineWhat:
+      "Her kommer de ord, du sætter flueben ved, med dine egne sætninger.",
+    mineWhen: "Sæt flueben ved et ord ovenfor.",
   },
 
   report: {
@@ -661,7 +824,10 @@ export type ErrorArea =
   | "evaluation"
   | "versions"
   | "journal"
-  | "learn";
+  | "learn"
+  | "measure"
+  | "mix"
+  | "ownwords";
 
 /** The Danish text for an error code (API.md: the page names each code itself), by route. */
 export function errorText(

@@ -11,6 +11,7 @@ import type {
 import { stopPlayback } from "../components/take";
 import { Button, ErrorBox, Loading, PageHeader } from "../components/ui";
 import { S } from "../strings";
+import { MixPanel } from "./recording/MixPanel";
 import { PilotPanel, ProgressPanel } from "./recording/Panels";
 import { Picker } from "./recording/Picker";
 import { RowList } from "./recording/Rows";
@@ -105,6 +106,13 @@ export function RecordingScreen() {
         progress={progress.data}
         error={progress.data ? null : progress.error}
         onRetry={progress.reload}
+      />
+      <MixPanel
+        reloadKey={state ? `${pickKey}:${state.active}:${!!state.pick}` : null}
+        onDealt={() => {
+          reloadOptions();
+          reloadProgress();
+        }}
       />
       <PilotPanel
         pilot={pilot.data}

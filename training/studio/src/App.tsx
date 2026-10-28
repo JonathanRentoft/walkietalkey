@@ -1,4 +1,4 @@
-/* The layout: a quiet navigation on the left (the W, "Værkstedet", the seven screens, and a small
+/* The layout: a quiet navigation on the left (the W, "Værkstedet", the eight screens, and a small
    status at the bottom), the screen on the right. */
 import { Logo } from "@walkietalkey/ui";
 import { useEffect, useRef, type ReactNode } from "react";
@@ -12,12 +12,14 @@ import {
   IconMic,
   IconTrain,
   IconVersions,
+  IconWords,
 } from "./components/icons";
 import { href, Link, SCREENS, useRoute, type NavScreen } from "./router";
 import { DataScreen } from "./screens/Data";
 import { EvaluationScreen } from "./screens/Evaluation";
 import { JournalScreen } from "./screens/Journal";
 import { LearnScreen } from "./screens/Learn";
+import { OwnWordsScreen } from "./screens/OwnWords";
 import { RecordingScreen } from "./screens/Recording";
 import { ReportScreen } from "./screens/Report";
 import { TrainingScreen } from "./screens/Training";
@@ -27,6 +29,7 @@ import { S } from "./strings";
 const ICONS: Record<NavScreen, () => ReactNode> = {
   optag: IconMic,
   data: IconData,
+  ord: IconWords,
   traening: IconTrain,
   evaluering: IconEval,
   versioner: IconVersions,
@@ -179,6 +182,9 @@ export function App() {
       break;
     case "data":
       screen = <DataScreen />;
+      break;
+    case "ord":
+      screen = <OwnWordsScreen />;
       break;
     case "traening":
       screen = <TrainingScreen />;

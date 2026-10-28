@@ -8,6 +8,7 @@ import {
   copyFileSync,
   writeFileSync,
 } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,8 +17,10 @@ import { fileURLToPath } from "node:url";
    training/studio/). One studio server runs on 127.0.0.1:8796, outside the 8780 to 8799 range a
    real Værkstedet takes by default only in that it is given its port, with every path a
    temporary folder: sentences, plan and mix, exam, pilot, spelling, configs, recordings, pilot
-   takes, journal, the learning notebooks and the work folder. Nothing touches training/data/ or
-   training/work/, and VS Code is never opened (WT_OPEN is a stand-in that logs its arguments).
+   takes, journal, the learning notebooks and the work folder; run 12 adds a made-up dictation
+   history, the owner's own words' folder, the test set's lock and its use log. Nothing touches
+   training/data/, training/work/ or the app's own history, VS Code is never opened (WT_OPEN is a
+   stand-in that logs its arguments) and nothing is measured (WT_STUDIO_EVAL is a stand-in too).
 
    The spec plays the WalkieTalkey app: the studio writes the app's link with its token to a
    file (--app-url-file) instead of handing it to a running app, and the spec talks to the app
@@ -146,6 +149,74 @@ writeFileSync(
   JSON.stringify(notebook(2, "Edda indefra", "Følg en sætning gennem Edda.")),
 );
 
+// Run 12: a made-up dictation history (never the app's own), written by the training project's
+// Python as history.rs lays it out; the owner's own words go to local/.
+mkdirSync(join(work, "app"), { recursive: true });
+mkdirSync(join(work, "work"), { recursive: true });
+execFileSync(join(repo, "training/.venv/bin/python"), [
+  "-c",
+  `
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+CREATE TABLE IF NOT EXISTS transcription_history (id INTEGER PRIMARY KEY AUTOINCREMENT,
+  file_name TEXT NOT NULL, timestamp INTEGER NOT NULL, saved BOOLEAN NOT NULL DEFAULT 0,
+  title TEXT NOT NULL, transcription_text TEXT NOT NULL, post_processed_text TEXT,
+  post_process_prompt TEXT, post_process_requested BOOLEAN NOT NULL DEFAULT 0);
+DELETE FROM transcription_history;
+""")
+rows = [("Grafana er nede igen, så vi kigger på Grafanaen i morgen.", None),
+        ("vi skal deploye terraform", "Vi skal deploye med Terraform, før Grafana virker."),
+        ("Kibanaen viser en load balancer fejl, og load balancer er nede.", None),
+        ("Mødet er flyttet til torsdag.", None)]
+for n, (raw, post) in enumerate(rows):
+    con.execute("INSERT INTO transcription_history (file_name, timestamp, title, transcription_text,"
+                " post_processed_text) VALUES (?, ?, ?, ?, ?)", (f"wt-{n}.wav", 1761600000 + n, f"#{n}", raw, post))
+con.commit()
+`,
+  join(work, "app", "history.db"),
+]);
+
+// Run 12: the frozen test set's lock, one use of it from the terminal, and a stand-in for
+// `wt-train eval` (WT_STUDIO_EVAL) that writes down its arguments and, for the test set, logs a
+// use as the real one does (with the source the studio gave it).
+writeFileSync(
+  join(work, "test-lock.json"),
+  JSON.stringify({
+    created: "2026-10-28T21:04:00+01:00",
+    build: "first-frozen-encoder",
+    sentences: ["s0002", "s0005", "s0006"],
+    clips: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `c${n}`),
+    sha256: "ab".repeat(32),
+  }),
+);
+writeFileSync(
+  join(work, "work", "test-uses.jsonl"),
+  JSON.stringify({
+    at: "2026-10-27T12:42:10+01:00",
+    runs: ["first-frozen-encoder-20261026-2112"],
+    backend: "lora",
+    build: null,
+    eval_run: "lora-test-split-2026-10-27",
+    source: "cli",
+  }) + "\n",
+);
+const fakeEval = join(work, "fake-eval");
+writeFileSync(
+  fakeEval,
+  [
+    "#!/bin/sh",
+    `log=${JSON.stringify(join(work, "eval.log"))}`,
+    'printf \'%s\\n\' "source=$WT_TEST_USE_SOURCE" "$@" "---" >> "$log"',
+    'case " $* " in *" --dataset test "*)',
+    '  printf \'{"at": "2026-10-28T23:30:00+01:00", "runs": ["e2e-tiny-20261028-120000"], "backend": "lora", "build": null, "eval_run": "e2e-eval", "source": "%s"}\\n\' "$WT_TEST_USE_SOURCE" >> "$WT_WORK_DIR/test-uses.jsonl";;',
+    "esac",
+    "echo 'eval: done'",
+    "",
+  ].join("\n"),
+);
+chmodSync(fakeEval, 0o755);
+
 // VS Code is never opened: a stand-in for `open` writes its arguments to open.log, one a line.
 const fakeOpen = join(work, "fake-open");
 writeFileSync(
@@ -187,6 +258,8 @@ const server = {
     flag("dist", join(repo, "training/studio/dist")),
     flag("app-bin", fakeApp),
     flag("app-url-file", join(work, "app-url")),
+    flag("history-db", join(work, "app", "history.db")),
+    flag("test-lock", join(work, "test-lock.json")),
   ].join(" "),
   url: `http://127.0.0.1:${STUDIO_PORT}/api/ping`,
   reuseExistingServer: false,
@@ -198,6 +271,9 @@ const server = {
     WT_CAFFEINATE: "0",
     WT_OPEN: fakeOpen,
     WT_CODE: "",
+    WT_APP_HISTORY_DB: join(work, "app", "history.db"),
+    WT_LOCAL_DIR: join(work, "local"),
+    WT_STUDIO_EVAL: fakeEval,
     FAKE_APP_BATCH: "1",
     FAKE_APP_LOG: join(work, "fake-app.log"),
     FAKE_APP_MODELS: "walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf",
