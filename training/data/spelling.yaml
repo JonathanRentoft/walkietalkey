@@ -8,7 +8,8 @@
 #   also:   other spellings of those same spoken forms, each mapped to the
 #           form it means ("PR-en: PR'en"). Optional. Never put a different
 #           spoken form here ("deployed" is not "deployede"), only another
-#           way of writing the same one.
+#           way of writing the same one. Never an ordinary Danish word either:
+#           the dataset builder rewrites `also` spellings in FLEURS text too.
 #
 # Who reads this file:
 #   * The dataset builder (wt-train build) rewrites every `also` spelling in a
@@ -24,7 +25,13 @@
 # Matching: whole words, case does not count ("Deployet" at a sentence start
 # is "deployet"). An apostrophe ending belongs to the word, so "PR" does not
 # match in "PR'en". A hyphen ends a word, so "React-appen" contains "React".
-# The longest form wins: "pull requesten" before "pull request" before "PR".
+# A hyphen inside a form is part of the form ("fine-tunede", "merge-konflikten"),
+# and neither half counts on its own; every such form has its closed spelling
+# under `also` ("finetunede"). The WER normaliser splits a hyphen like a space
+# and joins it where the other text writes the word closed, so all three
+# spellings score the same.
+# The longest form wins: "pull requesten" before "pull request" before "PR",
+# "Claude Code" before "Claude", "merge-konflikten" before "merge".
 #
 # Rules the loader enforces (it stops with a message naming the spelling):
 #   * a spelling is listed once in the whole file, as a form or under also;
@@ -47,16 +54,26 @@
 #   * Compounds: a name or an abbreviation joins a Danish word with a hyphen
 #     (React-appen, API-kald). The sentences avoid closed compounds of English
 #     terms ("stagingmiljøet"), because the evaluation would not see the term.
+#   * Where Danish developers say a Danish word instead of the English one, the
+#     term's forms are that Danish word, under the English term's name:
+#     komponent, pakke, datasæt, klone, integrationstest, vektordatabase,
+#     merge-konflikt. Where the English word is still what is said, it stays
+#     (library, schema, queue), and the Danish word (bibliotek, skema, kø) is
+#     plain Danish, not a form. Each choice is noted at its term.
 #
 # A few forms are ordinary Danish words too (test, database, migration,
-# sprint, rust): plain-Danish text that uses them counts them as terms.
+# sprint, rust, server, agent, session, container, cookie, demo, flow, pakke,
+# komponent, staten): plain-Danish text that uses them counts them as terms, so
+# the plain sentences avoid them. Matching ignores case, so the Danish plural
+# "teams" counts as Teams and "rust" as Rust: the sentences write a form with
+# capitals exactly as listed, and say "holdet" for a team.
 #
 # To change a convention: edit the form here, put the old spelling under
 # `also` (so older transcripts follow), then fix the sentences the tests name
 # and record those takes again; the recorder marks a take whose text changed.
 
 terms:
-  # Git and code review
+  # Git and GitHub
   pull request:
     forms: [pull request, pull requesten, pull requests]
     also:
@@ -97,6 +114,21 @@ terms:
     forms: [merge, merger, mergede, merget, merges]
     also:
       merge'et: merget
+  merge conflict:
+    # Danish developers say "merge-konflikt": the English verb and the Danish
+    # noun, joined with a hyphen so the term stays visible. The longest form
+    # wins, so "merge-konflikten" is a merge conflict and not a merge.
+    forms:
+      [merge-konflikt, merge-konflikten, merge-konflikter, merge-konflikterne]
+    also:
+      mergekonflikt: merge-konflikt
+      mergekonflikten: merge-konflikten
+      mergekonflikter: merge-konflikter
+      mergekonflikterne: merge-konflikterne
+      merge konflikt: merge-konflikt
+      merge konflikten: merge-konflikten
+      merge konflikter: merge-konflikter
+      merge conflict: merge-konflikt
   rebase:
     forms: [rebase, rebaser, rebasede, rebaset]
   push:
@@ -114,7 +146,7 @@ terms:
       code-reviews: code reviews
   review:
     # Noun (et review, reviewet, reviews) and verb (reviewe ...).
-    forms: [review, reviewet, reviews, reviewe, reviewer, reviewede]
+    forms: [review, reviewet, reviews, reviewe, reviewer, reviewede, reviewes]
     also:
       review'et: reviewet
       review'e: reviewe
@@ -122,6 +154,69 @@ terms:
     forms: [repo, repoet, repos, repository]
     also:
       repo'et: repoet
+  Git:
+    forms: [Git]
+  GitHub:
+    forms: [GitHub]
+    also:
+      Git Hub: GitHub
+      Git-Hub: GitHub
+  GitHub Actions:
+    # Longer than GitHub, so it wins.
+    forms: [GitHub Actions]
+  clone:
+    # Danish developers say "klone repoet": the Danish verb at klone, spelled
+    # the Danish way. The English spellings of the same forms go under also;
+    # the bare "clone" does not, because "git clone" is said in English.
+    forms: [klone, kloner, klonede, klonet]
+    also:
+      clonede: klonede
+      clonet: klonet
+  fork:
+    # Noun (et fork, forket, forks) and verb (forke, forkede, forket).
+    forms: [fork, forket, forks, forke, forkede]
+  checkout:
+    forms: [checkout, checkouten]
+    also:
+      checkout'en: checkouten
+  stash:
+    forms: [stash, stashe, stasher, stashede, stashet]
+    also:
+      stash'e: stashe
+  cherry-pick:
+    forms:
+      [cherry-pick, cherry-picke, cherry-picker, cherry-pickede, cherry-picket]
+    also:
+      cherrypick: cherry-pick
+      cherrypicke: cherry-picke
+      cherrypicker: cherry-picker
+      cherrypickede: cherry-pickede
+      cherrypicket: cherry-picket
+      cherry pick: cherry-pick
+      cherry picke: cherry-picke
+  squash:
+    # Also the Danish word for fruit cordial; the plain sentences avoid it.
+    forms: [squash, squashe, squasher, squashede, squashet]
+  revert:
+    # Noun (et revert, revertet) and verb (reverte ...) share "revertet".
+    forms: [revert, reverte, reverter, revertede, revertet]
+  diff:
+    forms: [diff, diffen, diffs]
+  tag:
+    # A git tag: et tag, tagget, tags; verb tagge, taggede. The bare "tag" is
+    # left out: it is the Danish imperative "take" and the noun "roof", in
+    # nearly every plain sentence. The sentences read the other forms.
+    forms: [tags, tagget, tagge, tagger, taggede]
+  changelog:
+    forms: [changelog, changeloggen]
+    also:
+      changelogen: changeloggen
+      changelog'en: changeloggen
+      change log: changelog
+  workflow:
+    forms: [workflow, workflowet, workflows]
+    also:
+      workflow'et: workflowet
 
   # Build, deploy and release
   deploy:
@@ -182,7 +277,60 @@ terms:
       hot-fix: hotfix
       hotfix'et: hotfixet
 
-  # Features, bugs and code
+  # Cloud and operations
+  container:
+    # The Danish word, Danish plural: containere.
+    forms: [container, containeren, containere, containerne]
+  server:
+    # The Danish word, Danish plural: servere (also the verb "to serve",
+    # which the plain sentences avoid).
+    forms: [server, serveren, servere, serverne]
+  serverless:
+    forms: [serverless]
+  CDN:
+    forms: [CDN, CDN'et]
+    also:
+      CDN-et: CDN'et
+      CDNet: CDN'et
+  DNS:
+    forms: [DNS]
+  SSL:
+    forms: [SSL]
+  logs:
+    # Nouns only: en log, loggen, logs, loggene. The bare "log" and the verb
+    # "logge" are left out: "log ind" and "logge ind" are everyday Danish.
+    forms: [logs, loggen, loggene]
+  monitoring:
+    forms: [monitoring]
+  alert:
+    forms: [alert, alerten, alerts]
+  incident:
+    forms: [incident, incidenten, incidents]
+  downtime:
+    forms: [downtime]
+    also:
+      down time: downtime
+      down-time: downtime
+  Sentry:
+    forms: [Sentry]
+  AWS:
+    forms: [AWS]
+  Docker:
+    forms: [Docker]
+  Kubernetes:
+    forms: [Kubernetes]
+  Cloudflare:
+    forms: [Cloudflare]
+    also:
+      Cloud Flare: Cloudflare
+  Vercel:
+    forms: [Vercel]
+  Supabase:
+    forms: [Supabase]
+  Azure:
+    forms: [Azure]
+
+  # Code and testing
   feature flag:
     forms: [feature flag, feature flaget, feature flags]
     also:
@@ -220,6 +368,43 @@ terms:
   test:
     forms:
       [test, testen, tests, testene, teste, tester, testede, testet, testes]
+  unit test:
+    # An English open compound with a Danish ending, like "pull requesten".
+    # Longer than "test", so "unit testen" is a unit test.
+    forms: [unit test, unit testen, unit tests, unit testene]
+    also:
+      unittest: unit test
+      unit-test: unit test
+      unittesten: unit testen
+      unit-testen: unit testen
+      unittests: unit tests
+      unit-tests: unit tests
+      unittestene: unit testene
+      unit-testene: unit testene
+  integration test:
+    # Danish developers say "integrationstest", the Danish compound with its
+    # linking s ("integration" is a Danish word); one word, so "test" is not
+    # counted inside it.
+    forms:
+      [
+        integrationstest,
+        integrationstesten,
+        integrationstests,
+        integrationstestene,
+      ]
+  end-to-end test:
+    # An English compound, written as English writes it.
+    forms:
+      [end-to-end test, end-to-end testen, end-to-end tests, end-to-end testene]
+    also:
+      end-to-end-test: end-to-end test
+      end-to-end-testen: end-to-end testen
+      end-to-end-tests: end-to-end tests
+      end-to-end-testene: end-to-end testene
+      end to end test: end-to-end test
+      end to end testen: end-to-end testen
+      end to end tests: end-to-end tests
+      end to end testene: end-to-end testene
   mock:
     forms: [mock, mocken, mocks, mocke, mocker, mockede, mocket]
     also:
@@ -241,8 +426,71 @@ terms:
       time-outs: timeouts
   dependency:
     forms: [dependency, dependencies]
+  component:
+    # Danish developers say "komponent" (a React-komponent), the Danish word.
+    forms: [komponent, komponenten, komponenter, komponenterne]
+  props:
+    # Plural only: the singular "prop" is the Danish word for a cork.
+    forms: [props]
+  state:
+    # "staten" is also the Danish word for the state (the government); the
+    # plain sentences avoid it.
+    forms: [state, staten]
+  hook:
+    forms: [hook, hooken, hooks]
+    also:
+      hook'en: hooken
+  async:
+    forms: [async]
+  error:
+    forms: [error, erroren, errors]
+  exception:
+    forms: [exception, exceptionen, exceptions]
+  stack trace:
+    forms: [stack trace, stack tracen, stack traces]
+    also:
+      stacktrace: stack trace
+      stack-trace: stack trace
+      stacktracen: stack tracen
+      stack-tracen: stack tracen
+      stacktraces: stack traces
+      stack-traces: stack traces
+  coverage:
+    forms: [coverage, coveragen]
+  linter:
+    forms: [linter, linteren, linters]
+  framework:
+    forms: [framework, frameworket, frameworks]
+    also:
+      framework'et: frameworket
+  library:
+    # "library" is what is said in code talk (et library, libraryet, like
+    # partyet). The Danish "bibliotek" is said too, a different word: it stays
+    # plain Danish.
+    forms: [library, libraryet, libraries]
+  package:
+    # Danish developers say "pakke" (en npm-pakke, pakken), the Danish word. It
+    # is also the everyday word for a parcel and the verb "to pack", which the
+    # plain sentences avoid.
+    forms: [pakke, pakken, pakker, pakkerne]
+  setup:
+    # Et setup, setuppet (the doubling of standuppen).
+    forms: [setup, setuppet, setups]
+    also:
+      set-up: setup
+      setupet: setuppet
+      setup'et: setuppet
+  edge case:
+    forms: [edge case, edge casen, edge cases]
+    also:
+      edgecase: edge case
+      edge-case: edge case
+      edgecasen: edge casen
+      edge-casen: edge casen
+      edgecases: edge cases
+      edge-cases: edge cases
 
-  # Architecture and data
+  # Data and APIs
   endpoint:
     forms: [endpoint, endpointet, endpoints]
     also:
@@ -278,6 +526,138 @@ terms:
     forms: [dashboard, dashboardet, dashboards]
     also:
       dashboard'et: dashboardet
+  Postgres:
+    # Both names are said; PostgreSQL is the one its owners write.
+    forms: [Postgres, PostgreSQL]
+  Redis:
+    forms: [Redis]
+  schema:
+    # The database or JSON schema: et schema, schemaet. The Danish "skema" is
+    # a form or a timetable in everyday Danish; it stays plain Danish.
+    forms: [schema, schemaet, schemas]
+    also:
+      schema'et: schemaet
+  query:
+    forms: [query, queryen, queries]
+    also:
+      query'en: queryen
+  index:
+    # A database index, spelled the English way; the Danish "indeks" (a price
+    # index) stays plain Danish.
+    forms: [index, indexet, indexes]
+  queue:
+    # A message or job queue. "Køen" is said too, but it is the Danish word,
+    # which the model already writes; it stays plain Danish.
+    forms: [queue, queuen, queues]
+    also:
+      queue'en: queuen
+  cron job:
+    forms: [cron job, cron jobbet, cron jobs]
+    also:
+      cronjob: cron job
+      cron-job: cron job
+      cronjobbet: cron jobbet
+      cron-jobbet: cron jobbet
+      cronjobs: cron jobs
+      cron-jobs: cron jobs
+  webhook:
+    forms: [webhook, webhooken, webhooks]
+    also:
+      web hook: webhook
+      web-hook: webhook
+  SDK:
+    forms: [SDK, SDK'et, SDK'er]
+    also:
+      SDK-et: SDK'et
+      SDKet: SDK'et
+      SDK-er: SDK'er
+      SDKer: SDK'er
+  CLI:
+    forms: [CLI, CLI'en]
+    also:
+      CLI-en: CLI'en
+      CLIen: CLI'en
+  OAuth:
+    forms: [OAuth]
+  SSO:
+    forms: [SSO]
+  JWT:
+    forms: [JWT, JWT'en]
+    also:
+      JWT-en: JWT'en
+      JWTen: JWT'en
+  session:
+    forms: [session, sessionen, sessioner]
+  cookie:
+    forms: [cookie, cookien, cookies]
+  CORS:
+    forms: [CORS]
+  rate limit:
+    forms: [rate limit, rate limiten, rate limits, rate limiting]
+    also:
+      ratelimit: rate limit
+      rate-limit: rate limit
+      ratelimiten: rate limiten
+      rate-limiten: rate limiten
+      ratelimits: rate limits
+      rate-limits: rate limits
+      ratelimiting: rate limiting
+      rate-limiting: rate limiting
+  JSON:
+    forms: [JSON]
+  YAML:
+    forms: [YAML]
+  CSV:
+    forms: [CSV]
+  request:
+    # Shorter than "pull request", which wins where both fit.
+    forms: [request, requesten, requests]
+  URL:
+    forms: [URL, URL'en, URL'er]
+    also:
+      URL-en: URL'en
+      URLen: URL'en
+      URL-er: URL'er
+      URLer: URL'er
+  SQL:
+    forms: [SQL]
+
+  # Apps and platforms
+  CSS:
+    forms: [CSS]
+  HTML:
+    forms: [HTML]
+  Tailwind:
+    forms: [Tailwind]
+  Vite:
+    forms: [Vite]
+  iOS:
+    forms: [iOS]
+  macOS:
+    forms: [macOS]
+    also:
+      Mac OS: macOS
+  Android:
+    forms: [Android]
+  App Store:
+    forms: [App Store]
+    also:
+      AppStore: App Store
+  TestFlight:
+    forms: [TestFlight]
+    also:
+      Test Flight: TestFlight
+  Xcode:
+    forms: [Xcode]
+  Swift:
+    forms: [Swift]
+  iPhone:
+    forms: [iPhone]
+  Chrome:
+    # With extension below, the brief's "Chrome extension".
+    forms: [Chrome]
+  extension:
+    forms: [extension, extensionen, extensions]
 
   # Planning
   standup:
@@ -297,10 +677,12 @@ terms:
     forms: [issue, issuet, issues]
     also:
       issue'et: issuet
+  ticket:
+    forms: [ticket, ticketen, tickets]
   deadline:
     forms: [deadline, deadlinen, deadlines]
 
-  # AI tools
+  # AI work
   prompt:
     forms: [prompt, prompten, prompts]
   token:
@@ -313,10 +695,79 @@ terms:
       LLM-er: LLM'er
       LLMer: LLM'er
       LLM-erne: LLM'erne
-
-  # Names: as written, no endings.
+  AI:
+    # Inside OpenAI it is no word of its own, so it does not count there.
+    forms: [AI]
+  agent:
+    # The Danish word, Danish plural: agenter (AI-agenter).
+    forms: [agent, agenten, agenter, agenterne]
+  fine-tune:
+    # The English verb with Danish endings, hyphen kept. The Danish
+    # "finjustere" is said too, a different word: it stays plain Danish.
+    forms:
+      [fine-tune, fine-tuner, fine-tunede, fine-tunet, fine-tunes, fine-tuning]
+    also:
+      finetune: fine-tune
+      finetuner: fine-tuner
+      finetunede: fine-tunede
+      finetunet: fine-tunet
+      finetunes: fine-tunes
+      finetuning: fine-tuning
+      fine tune: fine-tune
+      fine tuning: fine-tuning
+  LoRA:
+    forms: [LoRA, LoRA'en]
+    also:
+      LoRA-en: LoRA'en
+  embedding:
+    forms: [embedding, embeddingen, embeddings]
+  vector database:
+    # The Danish compound "vektordatabase" (vektor and database are both
+    # Danish words); one word, so "database" is not counted inside it.
+    forms: [vektordatabase, vektordatabasen, vektordatabaser]
+    also:
+      vector database: vektordatabase
+      vectordatabase: vektordatabase
+  RAG:
+    forms: [RAG]
+  eval:
+    forms: [eval, evalen, evals]
+  benchmark:
+    forms: [benchmark, benchmarket, benchmarks, benchmarke]
+  inference:
+    forms: [inference]
+  context window:
+    forms: [context window, context windowet]
+    also:
+      contextwindow: context window
+      context-window: context window
+      context-windowet: context windowet
+  hallucination:
+    # The Danish words (hallucination, hallucinere), as Danish developers
+    # say them about a model.
+    forms:
+      [hallucination, hallucinationer, hallucinere, hallucinerer, hallucinerede]
+  MCP:
+    forms: [MCP]
+  GPU:
+    forms: [GPU, GPU'en, GPU'er]
+    also:
+      GPU-en: GPU'en
+      GPUen: GPU'en
+      GPU-er: GPU'er
+      GPUer: GPU'er
+  dataset:
+    # Spelled the Danish way, datasæt (as Værkstedet's own copy does); the
+    # English spelling of the same word goes under also.
+    forms: [datasæt, datasættet, datasættene]
+    also:
+      dataset: datasæt
+      datasettet: datasættet
   Claude Code:
     forms: [Claude Code]
+  Claude:
+    # Shorter than Claude Code, which wins where both fit.
+    forms: [Claude]
   ChatGPT:
     forms: [ChatGPT]
     also:
@@ -324,16 +775,146 @@ terms:
       Chat-GPT: ChatGPT
   Cursor:
     forms: [Cursor]
+  Codex:
+    forms: [Codex]
+  Copilot:
+    forms: [Copilot]
+  Gemini:
+    forms: [Gemini]
+  Whisper:
+    forms: [Whisper]
+  Hugging Face:
+    forms: [Hugging Face]
+    also:
+      HuggingFace: Hugging Face
+  OpenAI:
+    forms: [OpenAI]
+    also:
+      Open AI: OpenAI
+  Anthropic:
+    forms: [Anthropic]
+
+  # Product and business
+  onboarding:
+    # The noun and the verb: onboarde en kunde, kunden er onboardet.
+    forms: [onboarding, onboardingen, onboarde, onboardet]
+  MVP:
+    forms: [MVP, MVP'en]
+    also:
+      MVP-en: MVP'en
+      MVPen: MVP'en
+  roadmap:
+    forms: [roadmap, roadmappen, roadmaps]
+    also:
+      roadmapen: roadmappen
+      roadmap'en: roadmappen
+      road map: roadmap
+  scope:
+    # Noun (et scope, scopet) and verb (scope, scoper, scopede) share "scopet".
+    forms: [scope, scopet, scoper, scopede]
+  feedback:
+    forms: [feedback, feedbacken]
+  demo:
+    forms: [demo, demoen, demoer]
+  pricing:
+    forms: [pricing, pricingen]
+  churn:
+    # Noun (churn) and verb (kunderne churner).
+    forms: [churn, churner, churnede]
+  lead:
+    # A sales lead: et lead, leadet, leads.
+    forms: [lead, leadet, leads]
+  CRM:
+    forms: [CRM, CRM'et]
+    also:
+      CRM-et: CRM'et
+      CRMet: CRM'et
+  SaaS:
+    forms: [SaaS]
+  KPI:
+    forms: [KPI, KPI'en, KPI'er, KPI'erne]
+    also:
+      KPI-en: KPI'en
+      KPIen: KPI'en
+      KPI-er: KPI'er
+      KPIer: KPI'er
+      KPI-erne: KPI'erne
+      KPIerne: KPI'erne
+  analytics:
+    forms: [analytics]
+  follow-up:
+    # En follow-up, follow-uppen (the doubling of standuppen), hyphen kept.
+    forms: [follow-up, follow-uppen, follow-ups]
+    also:
+      followup: follow-up
+      follow up: follow-up
+      followuppen: follow-uppen
+      followups: follow-ups
+  flow:
+    forms: [flow, flowet, flows]
+  use case:
+    forms: [use case, use casen, use cases]
+    also:
+      usecase: use case
+      use-case: use case
+      usecasen: use casen
+      use-casen: use casen
+      usecases: use cases
+      use-cases: use cases
+  launch:
+    # Noun (launchen) and verb (launche ...); the Danish "lancere" is a
+    # different word and stays plain Danish.
+    forms: [launch, launchen, launche, launcher, launchede]
+  pitch:
+    forms: [pitch, pitchen, pitche, pitcher, pitchede]
+  startup:
+    forms: [startup, startuppen, startups]
+    also:
+      start-up: startup
+      startupen: startuppen
+
+  # Everyday tools
+  Linear:
+    forms: [Linear]
+  Slack:
+    forms: [Slack]
+  Figma:
+    forms: [Figma]
+  Notion:
+    forms: [Notion]
+  Jira:
+    forms: [Jira]
+  Teams:
+    # Microsoft Teams. The Danish plural "teams" would count as Teams too, so
+    # the sentences say "holdene" for teams of people.
+    forms: [Teams]
+  Outlook:
+    forms: [Outlook]
+  Gmail:
+    forms: [Gmail]
+  Google Drive:
+    forms: [Google Drive]
+  Excel:
+    forms: [Excel]
+  PowerPoint:
+    forms: [PowerPoint]
+    also:
+      Power Point: PowerPoint
+  Zoom:
+    forms: [Zoom]
+  Stripe:
+    forms: [Stripe]
+  LinkedIn:
+    forms: [LinkedIn]
+    also:
+      Linked In: LinkedIn
+
+  # Languages, frameworks and developer tools: names, as written, no endings.
   VS Code:
     forms: [VS Code]
     also:
       VSCode: VS Code
       VS-Code: VS Code
-  GitHub:
-    forms: [GitHub]
-    also:
-      Git Hub: GitHub
-      Git-Hub: GitHub
   TypeScript:
     forms: [TypeScript]
     also:
@@ -364,23 +945,3 @@ terms:
     forms: [npm]
   Bun:
     forms: [Bun]
-  Docker:
-    forms: [Docker]
-  Kubernetes:
-    forms: [Kubernetes]
-  Cloudflare:
-    forms: [Cloudflare]
-    also:
-      Cloud Flare: Cloudflare
-  Vercel:
-    forms: [Vercel]
-  Supabase:
-    forms: [Supabase]
-  Azure:
-    forms: [Azure]
-  Linear:
-    forms: [Linear]
-  Slack:
-    forms: [Slack]
-  Figma:
-    forms: [Figma]

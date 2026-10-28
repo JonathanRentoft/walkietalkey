@@ -1,1042 +1,1047 @@
 id,text,kind
-s0001,"Hvor længe skal tokens gælde, før man skal logge ind igen?",terms
-s0002,"Deadlines er fine, men de skal komme fra dem, der laver arbejdet.",terms
-s0003,"Vercel er nemt at starte med, men det kan blive dyrt.",terms
-s0004,"Hunden vil ikke ud, når det regner.",plain
-s0005,Featuren er slået fra indtil videre.,terms
-s0006,"Vi har skrevet hele den nye app i TypeScript og React, og det har været en god oplevelse.",terms
-s0007,"Jeg elsker, når det dufter af regn på varm asfalt.",plain
-s0008,"Skal vi slå de commits sammen, før vi merger?",terms
-s0009,"Deploy ikke om fredagen, medmindre det er en akut rettelse.",terms
-s0010,"Staging er nede, så vi kan ikke prøve noget i øjeblikket.",terms
-s0011,Fiskesuppen på kroen i Ribe er værd at køre efter.,plain
-s0012,"Vi deployer kun om formiddagen, så der er folk på arbejde, hvis noget går galt.",terms
-s0013,Vi har lavet et internt API til at sende beskeder.,terms
-s0014,"Det er den varmeste sommer, jeg kan huske.",plain
-s0015,Hvor mange PR'er har du åbne lige nu?,terms
-s0016,Vi har brug for et nyt endpoint til at hente fakturaer.,terms
-s0017,"Frontenden er lavet i React, og backenden kører på Node.",terms
-s0018,Morgensolen kommer ind ad køkkenvinduet om sommeren.,plain
-s0019,"Kan du give mig adgang til staging, så jeg kan prøve det selv?",terms
-s0020,"Generer et nyt token, det gamle er lækket i en skærmoptagelse.",terms
-s0021,Vi grillede pølser og majs i haven i går.,plain
-s0022,"Jeg har slået featuren fra igen, fordi kunderne klagede.",terms
-s0023,Prod har været nede i ti minutter.,terms
-s0024,"Vi får et crash, hver gang nogen sender en stor fil.",terms
-s0025,Har du husket at købe gave til din søsters fødselsdag?,plain
-s0026,"Der er så mange previews, at vi snart løber tør for plads.",terms
-s0027,"Jeg har flyttet domænet til Vercel, men mailen virker stadig.",terms
-s0028,Hunden skal til dyrlæge på fredag klokken halv ni.,plain
-s0029,"Kubernetes er nok for meget, men kunden insisterer.",terms
-s0030,Åbn projektet i VS Code.,terms
-s0031,Jeg har givet din pull request et hurtigt review og skrevet to kommentarer.,terms
-s0032,I morgen bliver det op til 25 grader i København.,plain
-s0033,API'et svarer med en tom liste i stedet for en fejl.,terms
-s0034,"Kan du mocke API'et, så vi kan teste frontenden alene?",terms
-s0035,"Husk, at vi skifter til sommertid på søndag.",plain
-s0036,Vi har hævet timeouten.,terms
-s0037,"Frontenden er klar, men backenden mangler stadig to endpoints, før det hele hænger sammen.",terms
-s0038,Migrationen er kørt uden fejl.,terms
-s0039,Min bil har kørt 180.000 kilometer.,plain
-s0040,"Vi skal have en rollback klar, før vi releaser, for sidste gang gik det galt midt om natten.",terms
-s0041,"Tauri-appen er skrevet i Rust, og frontenden i den er en almindelig React-app.",terms
-s0042,Vi skal have gæster til middag lørdag aften.,plain
-s0043,"Claude Code kan ikke se vores hemmelige nøgler, og sådan skal det blive.",terms
-s0044,"React-komponenten genindlæser hele listen, hver gang man skriver et bogstav.",terms
-s0045,Hvem administrerer vores organisation på GitHub?,terms
-s0046,Der er kø på Storebæltsbroen hver fredag eftermiddag.,plain
-s0047,"Kald endpointet med et gyldigt token, ellers får du en fejl.",terms
-s0048,"Koden er refactoret, så den er meget nemmere at læse nu.",terms
-s0049,"Solen skinner, så vi spiser frokost ude i haven.",plain
-s0050,Featuren med mørk tilstand er den mest efterspurgte lige nu.,terms
-s0051,Hvilken version af Tauri bruger vi i den nye desktopapp?,terms
-s0052,API'et skal svare på under hundrede millisekunder.,terms
-s0053,Kan du give mig et lift til stationen i morgen?,plain
-s0054,Vi skal have rettet de værste bugs inden sommerferien.,terms
-s0055,"Er der nogen, der har tid til et code review inden frokost?",terms
-s0056,Min datter øver sig på klaver hver eftermiddag.,plain
-s0057,"Mocken returnerer de forkerte data, derfor fejler testen.",terms
-s0058,Jeg overvejer at skrive den nye tjeneste i Rust i stedet for Python.,terms
+s0001,Kan du dele dit setup til VS Code med mig?,terms
+s0002,Vi tester OAuth og JWT med en mock af login-tjenesten.,terms
+s0003,"Hunden vil ikke ud, når det regner.",plain
+s0004,"GPU'en på serveren er optaget af træningen, så inference må vente.",terms
+s0005,"Jeg er ved at rebase, så lad være med at pushe til branchen lige nu.",terms
+s0006,"Jeg elsker, når det dufter af regn på varm asfalt.",plain
+s0007,"Backenden kører serverless på Vercel, og databasen ligger i Supabase.",terms
+s0008,"Vi lægger den bag et feature flag, så vi slipper for en rollback.",terms
+s0009,"Vi kunne ikke cherry-picke rettelsen, så vi revertede hele PR'en.",terms
+s0010,Fiskesuppen på kroen i Ribe er værd at køre efter.,plain
+s0011,"Kan Codex køre testene selv, eller skal jeg gøre det bagefter?",terms
+s0012,"Kan du lægge grafen fra Excel ind i PowerPoint, før mødet på Teams?",terms
+s0013,"Det er den varmeste sommer, jeg kan huske.",plain
+s0014,"Har du ændret DNS for domænet, så vi kan få et nyt certifikat til SSL?",terms
+s0015,Vi gennemgår backloggen efter standuppen hver anden torsdag.,terms
+s0016,Der kommer et nyt framework til JavaScript hver uge.,terms
+s0017,Morgensolen kommer ind ad køkkenvinduet om sommeren.,plain
+s0018,Jeg stashede mine ændringer i stedet for at committe og glemte dem i en uge.,terms
+s0019,"Vi har fundet et dansk datasæt på Hugging Face, som vi kan bruge til evalen.",terms
+s0020,Vi grillede pølser og majs i haven i går.,plain
+s0021,"Regningen fra Azure er steget med fyrre procent, mens AWS er uændret.",terms
+s0022,"Vi når ikke deadlinen for MVP'en, hvis vi ikke får hjælp.",terms
+s0023,Hvor mange databaser har vi egentlig kørende i Azure?,terms
+s0024,Har du husket at købe gave til din søsters fødselsdag?,plain
+s0025,"Login med OAuth fejler kun i production, fordi URL'en er forkert.",terms
+s0026,Vi flytter langsomt hele kodebasen fra JavaScript til TypeScript.,terms
+s0027,Hunden skal til dyrlæge på fredag klokken halv ni.,plain
+s0028,"Codex fandt buggen på fem minutter, efter Claude Code havde ledt i en time.",terms
+s0029,"Tailwind skriver CSS for os, men vi skal stadig forstå, hvad den gør.",terms
+s0030,Kunden kan ikke installere appen fra TestFlight på sin iPhone.,terms
+s0031,I morgen bliver det op til 25 grader i København.,plain
+s0032,Den nye version af iOS-appen skal i App Store inden fredag.,terms
+s0033,Previewet af ændringen ligger som et link i pull requesten.,terms
+s0034,"Husk, at vi skifter til sommertid på søndag.",plain
+s0035,"Hvem reviewer PR'erne, mens Sofie er på ferie?",terms
+s0036,"Next.js er et framework, der gør det nemt at komme i gang, men svært at forstå.",terms
+s0037,"En async funktion i en hook kan give en error, som ingen ser.",terms
+s0038,Min bil har kørt 180.000 kilometer.,plain
+s0039,"Jeg har lavet et preview af den nye forside, så designeren kan give feedback, før vi merger.",terms
+s0040,"Vi scopede MVP'en til tre uger, men det tog seks.",terms
+s0041,Vi skal have gæster til middag lørdag aften.,plain
+s0042,"Agenterne skriver koden, men jeg læser alt igennem, før det bliver merget.",terms
+s0043,"Der findes alt for mange vektordatabaser, og de gemmer alle bare embeddings.",terms
+s0044,"Er der nogen, der har tid til et code review af feature flaget inden frokost?",terms
+s0045,Der er kø på Storebæltsbroen hver fredag eftermiddag.,plain
+s0046,Linket til mødet på Teams ligger i mailen fra Outlook.,terms
+s0047,"Jeg kloner lige repoet igen, for min lokale kopi er helt i stykker.",terms
+s0048,"Solen skinner, så vi spiser frokost ude i haven.",plain
+s0049,"Erroren fra Stripe siger, at kortet er afvist.",terms
+s0050,"Linteren fanger ikke den slags exceptions, det gør kun en unit test.",terms
+s0051,Skal vi squashe eller rebase fremover?,terms
+s0052,Kan du give mig et lift til stationen i morgen?,plain
+s0053,Jeg har gemt indstillingerne i en JSON-fil i repoet.,terms
+s0054,"Kan vi holde standup lidt kortere, det tager tit en halv time?",terms
+s0055,Min datter øver sig på klaver hver eftermiddag.,plain
+s0056,Jeg har prøvet Cursor og VS Code side om side i en uge og er stadig i tvivl.,terms
+s0057,"Setuppet med Docker og Postgres virker kun, hvis man følger guiden helt præcist.",terms
+s0058,"Sessionen gemmes i Redis, og cookien udløber efter en uge.",terms
 s0059,"Kan du lægge vasketøjet sammen, mens jeg laver mad?",plain
-s0060,"Vi merger først, når designeren har sagt god for det.",terms
-s0061,Kører vi testene på GitHub eller hos os selv?,terms
-s0062,Jeg har skrevet tre nye tests til login-siden.,terms
-s0063,Kan du sende mig referatet fra mødet i går?,plain
-s0064,"Vi tør ikke røre ved prod, før Henrik er tilbage.",terms
-s0065,Jeg rebaser lige og pusher igen om fem minutter.,terms
+s0060,"Alerts fra Sentry havner i Teams hos kunden, men ingen reagerer på dem.",terms
+s0061,Jeg har bedt Codex om at refactore hele CLI'en til TypeScript.,terms
+s0062,Kan du sende mig referatet fra mødet i går?,plain
+s0063,"Git siger, at mit stash er tomt, men jeg er sikker på, at det var der.",terms
+s0064,"Kan du reverte den sidste merge, så kigger vi på det i morgen?",terms
+s0065,"YAML og JSON kan det samme, men YAML er lettere at læse.",terms
 s0066,Jeg har set en flok traner over marken ved Ringkøbing.,plain
-s0067,"Code reviewet tog længere tid end forventet, fordi koden var rodet.",terms
-s0068,Rollbacken virkede heldigvis med det samme.,terms
-s0069,Den feature har vi aldrig lovet nogen.,terms
-s0070,"Det knirker i sneen, når det er rigtig koldt.",plain
-s0071,Hvorfor er der pushet direkte til main uden godkendelse?,terms
-s0072,"Backloggen er blevet alt for lang, vi må rydde op i den.",terms
-s0073,Jeg har meldt mig til et kursus i keramik om torsdagen.,plain
-s0074,Releasen er planlagt til torsdag klokken ti.,terms
-s0075,"Jeg mocker kaldet ud, så testen kører på et sekund.",terms
-s0076,Jeg har lavet et grundigt code review af betalingsmodulet.,terms
-s0077,Suppen skal simre i mindst en time.,plain
-s0078,Supabase har gjort det meget nemmere at komme i gang.,terms
-s0079,Kunden har bedt om en ny feature til eksport af data.,terms
-s0080,Temperaturen faldt med ti grader på en time.,plain
-s0081,Jeg har tømt cachen.,terms
-s0082,Han debugger stadig den samme fejl som i går.,terms
-s0083,"Vi releaser på mandag, hvis staging holder hele weekenden.",terms
-s0084,"Det har sneet hele formiddagen, og vejene er glatte.",plain
-s0085,Supabase er langsom i dag.,terms
-s0086,Tilføjer tests til betalingerne og mocker den eksterne løsning.,terms
-s0087,Vi har brug for flere stole til mødet på fredag.,plain
-s0088,"Vi deployer kun fra main, aldrig fra en tilfældig branch.",terms
-s0089,"Vi har over hundrede bugs, som ingen har kigget på i et år.",terms
-s0090,"Jeg har sat tre issues på dig, kig lige på dem i dag.",terms
-s0091,Vi har fået en ny vejrstation på taget af skolen.,plain
-s0092,"Vi har en rollback klar, hvis migrationen går galt.",terms
-s0093,"Testene er grønne, men det betyder ikke, at det virker.",terms
-s0094,"Ved du, om der ligger et apotek tæt på stationen i Horsens?",plain
-s0095,"Efter rollbacken virker det hele igen, men vi ved stadig ikke hvorfor.",terms
-s0096,"Tokenet udløber efter en time, og så skal brugeren logge ind igen.",terms
-s0097,"Opdaterer dependencies og fjerner to pakker, vi ikke bruger.",terms
-s0098,Vi har købt hus i Vejle med en stor have.,plain
-s0099,"I den her sprint fokuserer vi på bugs og teknisk gæld, ikke på nye features.",terms
-s0100,Der er for mange deadlines i december.,terms
-s0101,Regningen i supermarkedet blev på 1.240 kroner.,plain
-s0102,Har du set de nye skitser i Figma?,terms
-s0103,Jeg bruger Claude Code til at skrive de første udkast.,terms
-s0104,Spørg Claude Code om det.,terms
-s0105,Hvor lang tid tager det med tog fra Aarhus til Aalborg?,plain
-s0106,Vi har brug for en mock af betalingsløsningen til testene.,terms
-s0107,"Fejlen sker kun i prod, og vi kan ikke genskabe den lokalt.",terms
-s0108,"Jeg kommer ti minutter for sent, toget holder stille.",plain
-s0109,"Skriv lige din status i tråden, hvis du ikke kan være med til standup.",terms
-s0110,"Hvad sagde du til standup om pipelinen, jeg hørte det ikke helt?",terms
-s0111,"GitHub var nede i morges, så vi kunne ikke merge noget.",terms
-s0112,Husk at skrive dig på listen til julefrokosten.,plain
-s0113,"Ryd cachen og prøv igen, så tror jeg, det virker.",terms
-s0114,Det script kræver en nyere version af Node.,terms
-s0115,Vi så en rigtig god film i biografen i går.,plain
-s0116,"Hun tester altid sin kode grundigt, før hun beder om et review.",terms
-s0117,Hvilket repo ligger den gamle kode i?,terms
+s0067,"Queuen med mails hænger, fordi en container er gået ned.",terms
+s0068,"Funktionerne i AWS kører serverless og bliver langsomme, når de ikke har været brugt længe.",terms
+s0069,"Det knirker i sneen, når det er rigtig koldt.",plain
+s0070,"Scopet er blevet dobbelt så stort, siden startuppen fik penge.",terms
+s0071,Scriptet i SQL kører som et cron job hver søndag nat.,terms
+s0072,Jeg har meldt mig til et kursus i keramik om torsdagen.,plain
+s0073,"Kan vi se i analytics, hvor i flowet folk falder fra?",terms
+s0074,"Jeg har installeret pakken med npm, men Bun kan ikke finde den.",terms
+s0075,"Pricingen skal testes på nye kunder, ikke på dem, vi allerede har.",terms
+s0076,Suppen skal simre i mindst en time.,plain
+s0077,"Når migrationen er kørt på staging, deployer jeg til prod, og så holder jeg øje med dashboardet.",terms
+s0078,Vi har ingen monitoring på containerne i Kubernetes.,terms
+s0079,Temperaturen faldt med ti grader på en time.,plain
+s0080,"Send mig URL'en til previewet, så kigger jeg på det.",terms
+s0081,Hvor mange tokens kan der være i context windowet hos Gemini?,terms
+s0082,Loggene viser en exception med en stack trace på tre hundrede linjer.,terms
+s0083,"Det har sneet hele formiddagen, og vejene er glatte.",plain
+s0084,"Monitoring af queuen viser, at mails ligger og venter i en time.",terms
+s0085,Frameworket til JavaScript kommer i en ny version hver tredje måned.,terms
+s0086,Vi har brug for flere stole til mødet på fredag.,plain
+s0087,"Flowet til SSO er det første, nye kunder møder.",terms
+s0088,"Backenden deployes kun manuelt, fordi migrationerne skal køres først.",terms
+s0089,SDK'et sender alle requests gennem den samme forbindelse.,terms
+s0090,Vi har fået en ny vejrstation på taget af skolen.,plain
+s0091,SDK'et oversætter JSON fra API'et til rigtige typer i Swift.,terms
+s0092,"Vi viser ikke errors til brugeren, vi skriver dem i loggen.",terms
+s0093,"Ved du, om der ligger et apotek tæt på stationen i Horsens?",plain
+s0094,"CRM'et sender en mail fra Outlook, når et lead ikke har svaret i en uge.",terms
+s0095,Filen i Figma og opgaven i Linear er linket fra PR'en.,terms
+s0096,"Jeg bruger Git fra terminalen, men Signe klarer det hele i VS Code.",terms
+s0097,Vi har købt hus i Vejle med en stor have.,plain
+s0098,"Er RAG overhovedet nødvendigt, når context windowet er så stort?",terms
+s0099,Hvilken use case skal vi vise i demoen på fredag?,terms
+s0100,Regningen i supermarkedet blev på 1.240 kroner.,plain
+s0101,"Kan du lave en query i SQL, der viser, hvilke kunder der churner?",terms
+s0102,"Codex har lavet en pull request, mens jeg holdt frokost.",terms
+s0103,"Outlook har lagt kundens mail i spam igen, men i Gmail kom den frem.",terms
+s0104,Hvor lang tid tager det med tog fra Aarhus til Aalborg?,plain
+s0105,"CORS og cookies driller altid, når frontend og backend ligger på hver sit domæne.",terms
+s0106,"Jeg har lagt designet i Figma, så I kan give feedback direkte.",terms
+s0107,"Jeg kommer ti minutter for sent, toget holder stille.",plain
+s0108,"Code reviewet fandt tre bugs, som testene ikke fangede.",terms
+s0109,"Kubernetes genstarter containerne hele tiden, men det løser ikke problemet.",terms
+s0110,"Jeg har lavet et nyt workflow, der deployer til staging ved hver merge.",terms
+s0111,Husk at skrive dig på listen til julefrokosten.,plain
+s0112,"Cookien med sessionen bliver ikke sendt med, når requesten går til et andet domæne.",terms
+s0113,"Der findes et SDK til Python, men det er ret gammelt.",terms
+s0114,Vi så en rigtig god film i biografen i går.,plain
+s0115,"Integrationstesten mod Stripe fejler, fordi nøglen til testmiljøet er udløbet.",terms
+s0116,"Serverne bliver opdateret i nat, så forvent lidt downtime.",terms
+s0117,"Monitoring og alerts skal være sat op, før vi launcher.",terms
 s0118,Byen har omkring 60.000 indbyggere.,plain
-s0119,"Jeg sidder mest med frontend for tiden, men hjælper gerne med backend.",terms
-s0120,"Jeg merger din branch nu, medmindre du har noget imod det.",terms
-s0121,"Jeg pusher lige en rettelse til PR'en, så du skal ikke reviewe den gamle version.",terms
-s0122,Vi får fiskefrikadeller og remoulade til frokost.,plain
-s0123,"Der er fire reviews, der venter på mig, så jeg starter med dem.",terms
-s0124,"Vi har et lille script i Python, der rydder op i databasen.",terms
+s0119,"AI-agenter er gode til kedelige opgaver, men de skal holdes i kort snor.",terms
+s0120,"Ticketen i Jira er lukket, men buggen er der stadig.",terms
+s0121,Vi får fiskefrikadeller og remoulade til frokost.,plain
+s0122,"Jeg stasher altid, før jeg henter, så jeg undgår en merge-konflikt.",terms
+s0123,"Props bliver sendt ned gennem fem komponenter, og det er for mange.",terms
+s0124,"Supabase sender en mail, når databasen er ved at være fuld.",terms
 s0125,"Tillykke med det nye job, du fortjener det.",plain
-s0126,Har du husket at opdatere pakkerne med npm?,terms
-s0127,Hvilken LLM bruger appen?,terms
-s0128,"Hvad er den bedste måde at debugge det her på, når det kun sker om natten?",terms
-s0129,Kan du hente børnene i børnehaven i dag?,plain
-s0130,"Jeg har lavet et preview af den nye forside, så designeren kan give feedback, før vi merger.",terms
-s0131,Er PR'en klar til et kig?,terms
+s0126,"Vi har prøvet tre forskellige LLM'er til opsummeringer, og ChatGPT var den dårligste.",terms
+s0127,Hvor lang tid tager integrationstesten på CI'en?,terms
+s0128,Kan du hente børnene i børnehaven i dag?,plain
+s0129,Pricingen på vores SaaS skal kunne forstås på ti sekunder.,terms
+s0130,"OAuth er svært at debugge, når fejlen sker hos den anden part.",terms
+s0131,Notion er blevet vores fælles hukommelse.,terms
 s0132,"Teen er for stærk, jeg har ladet den trække for længe.",plain
-s0133,Hvem har ansvaret for at deploye i næste uge?,terms
-s0134,Jeg har lagt fem nye ting i backloggen efter mødet med kunden.,terms
-s0135,"Hun refactorer datalaget, mens vi andre laver nye ting.",terms
-s0136,"Skal vi bestille mad i aften, eller orker du at lave noget?",plain
-s0137,"Den builder fint hos mig, men fejler i CI'en.",terms
-s0138,"Kan du pushe det, du har, så kigger jeg på det i aften?",terms
+s0133,"App Store har afvist appen igen, fordi der mangler en knap til at slette kontoen.",terms
+s0134,"Scope det ned til en MVP, vi kan launche før sommerferien.",terms
+s0135,"Skal vi bestille mad i aften, eller orker du at lave noget?",plain
+s0136,"Lav et fork af repoet, hvis du vil eksperimentere uden at forstyrre os andre.",terms
+s0137,"Den buildede fint i går, men i dag fejler den i Xcode.",terms
+s0138,"Alt kører i AWS, men vi overvejer at flytte til Azure.",terms
 s0139,"Jeg er vegetar, så jeg springer kødet over.",plain
-s0140,"Hvem ejer egentlig det repository, som rapporterne ligger i?",terms
-s0141,"Pushet gik igennem, men jeg kan ikke se ændringen i repoet endnu.",terms
-s0142,"Next.js har ændret, hvordan sider bliver cachet, så vi skal læse op på det.",terms
-s0143,"Vi har bestilt en ny sofa, men den kommer først om seks uger.",plain
-s0144,"Buildet tager over ti minutter, det må vi kunne gøre hurtigere.",terms
-s0145,Vi refactorede hele modulet i sidste uge.,terms
+s0140,Vi starter alle nye projekter med Vite og Bun.,terms
+s0141,"LoRA'en fylder så lidt, at vi kan træne den uden at leje GPU'er.",terms
+s0142,"Vi har bestilt en ny sofa, men den kommer først om seks uger.",plain
+s0143,"Workflowet i GitHub Actions deployer kun, når der er tagget en version.",terms
+s0144,Det er nemmest at klone repoet og installere det hele med Bun.,terms
+s0145,"Eksporten ligger i en queue, så den ikke får en timeout efter tredive sekunder.",terms
 s0146,Jeg har ryddet op i garagen og fundet mine gamle skøjter.,plain
-s0147,"Jeg har testet alle tre browsere, og det virker i dem alle.",terms
-s0148,Hvem har lavet hotfixet?,terms
-s0149,"Kan du kigge på, hvorfor appen crasher, når man logger ud og ind igen meget hurtigt?",terms
-s0150,Jeg laver frikadeller og kartoffelsalat til aftensmad.,plain
-s0151,"Timeouten på betalinger skal være kortere, så kunden ikke venter for længe.",terms
-s0152,Skriv den nye kode i TypeScript.,terms
+s0147,"Hver request bliver logget, og loggen er blevet enorm.",terms
+s0148,"Vi har forket libraryet, fordi vedligeholderen ikke svarer længere.",terms
+s0149,Jeg laver frikadeller og kartoffelsalat til aftensmad.,plain
+s0150,"Coverage på unit testene er fin, men vi mangler en integrationstest for betalingen.",terms
+s0151,Vi bruger Vite til frontenden og Bun til alt det andet.,terms
+s0152,"Kan du dele skærmen på Zoom og vise os, hvordan den PowerPoint ser ud?",terms
 s0153,Kan vi tage mødet over telefonen i stedet?,plain
-s0154,"Vercel tager sig af alt det med servere, så vi slipper.",terms
-s0155,"Svaret er cachet i en time, så du skal vente lidt.",terms
-s0156,"Kan du committe dine ændringer, så jeg kan prøve dem lokalt?",terms
-s0157,Jeg har lovet at hjælpe min nabo med at flytte.,plain
-s0158,"Opdater npm, før du starter.",terms
-s0159,Hvilken LLM bruger I til at sortere supporthenvendelser?,terms
+s0154,API'erne fra kunden er kun beskrevet i et gammelt Excel-ark.,terms
+s0155,"Vi har skiftet library til datoer, og nu fejler halvdelen af vores unit tests.",terms
+s0156,Jeg har lovet at hjælpe min nabo med at flytte.,plain
+s0157,"Launchen er rykket en uge, fordi App Store ikke har godkendt appen.",terms
+s0158,"Context windowet fylder op med logs, hvis agenten læser for meget.",terms
+s0159,"Incidenten kostede en times downtime, fordi indexet var slettet.",terms
 s0160,"Hvor længe skal ægget koge, hvis det skal være blødt?",plain
-s0161,Har du opdateret til den nyeste Node.js?,terms
-s0162,Kan Node.js klare så mange forbindelser på én gang?,terms
-s0163,"PR'erne fra i går er stadig ikke merget, fordi CI'en fejler.",terms
-s0164,Vi skal til bryllup i en lille kirke på Møn.,plain
-s0165,"Det kræver noget debugging at finde ud af, hvorfor den hænger.",terms
-s0166,Vi flytter langsomt hele kodebasen fra JavaScript til TypeScript.,terms
+s0161,Jeg har cherry-picket hotfixet over på main og tagget en ny version.,terms
+s0162,Kan du skrive issuet om extensionen lidt mere præcist?,terms
+s0163,Vi skal til bryllup i en lille kirke på Møn.,plain
+s0164,"Debug ikke i production, lav en kopi af databasen.",terms
+s0165,"Jeg har lavet slides i PowerPoint om, hvordan vores RAG virker.",terms
+s0166,Hvorfor bruger vi både npm og Bun i det samme projekt?,terms
 s0167,"Kan du smage på suppen og sige, om den mangler noget?",plain
-s0168,"Prompten til opsummeringen er for lang, så vi bruger alt for mange tokens per kald.",terms
-s0169,"Buildet er grønt, previewet ser fint ud, så jeg merger nu.",terms
-s0170,Den dependency kan vi undvære.,terms
-s0171,"Vi har fået en hundehvalp, og den hedder Bamse.",plain
-s0172,Vi bruger Kubernetes i Azure og Docker på vores egne maskiner.,terms
-s0173,Hvor mange deployments laver vi egentlig om ugen?,terms
+s0168,Hvilken linter bruger I til Python?,terms
+s0169,"Vi pitchede for ti investorer, og to vil gerne se roadmappen.",terms
+s0170,"Vi har fået en hundehvalp, og den hedder Bamse.",plain
+s0171,Main merges ind i release-branchen hver fredag.,terms
+s0172,Vi lægger alle issues i Linear fra nu af.,terms
+s0173,"Cherry-pick kun det nødvendige, ellers får du merge-konflikter.",terms
 s0174,Vi har lavet hjemmelavet pizza med børnene.,plain
-s0175,"Kan vi få et dashboard over, hvor lang tid siderne tager at åbne?",terms
-s0176,Det er en kendt bug.,terms
+s0175,Hun pushede hotfixet klokken elleve og gik hjem.,terms
+s0176,"Kan du tegne flowet i Figma, før vi bygger det?",terms
 s0177,"Der er højvande i Esbjerg, så havnen er lukket.",plain
-s0178,"Retter buggen, hvor tokenet ikke blev fornyet efter en time.",terms
-s0179,Den gamle JavaScript fra 2016 må vi skrive om på et tidspunkt.,terms
-s0180,"Vi deployede uden at køre migrationen, og så gik det galt.",terms
+s0178,Datasættene til fine-tuning ligger kun på min egen maskine.,terms
+s0179,"Codex skrev testene, og de fangede en edge case med tomme lister.",terms
+s0180,Jeg rebasede hele branchen og fik ryddet op i historikken.,terms
 s0181,Mine børn spiser kun pasta med ketchup for tiden.,plain
-s0182,"Kan du vise mig, hvordan man laver et feature flag i backenden?",terms
-s0183,CI'en er endelig grøn.,terms
+s0182,"Der er ingen stack trace, kun en tom side, og sådan har det været i tre sprints.",terms
+s0183,"URL'en til webhooken skal ændres, når vi skifter domæne.",terms
 s0184,"Kan du lukke døren efter dig, når du går?",plain
-s0185,Next.js-appen er blevet langsom efter den sidste opgradering.,terms
-s0186,Vi bruger code review som en måde at lære hinanden at kende på.,terms
-s0187,Tusind tak for reviewet.,terms
+s0185,Hvem har lavet alle de cron jobs på den gamle server?,terms
+s0186,"Vi har fine-tunet Whisper på dansk, og fagordene er blevet meget bedre.",terms
+s0187,"Bun og Node opfører sig forskelligt, når det kommer til filer.",terms
 s0188,Græsset er gult efter den lange tørke.,plain
-s0189,Der er kommet tyve nye issues siden sidste release.,terms
-s0190,Jeg har lukket issuet.,terms
+s0189,"Er Redis overhovedet nødvendigt som queue, når vi har så få brugere?",terms
+s0190,"Hooken kører to gange, når props ændrer sig, og det giver dobbelte kald.",terms
 s0191,Kan du lære mig at spille skak?,plain
-s0192,Browseren cachede den gamle version af siden.,terms
-s0193,Hvor bliver tokenet gemt i frontenden?,terms
-s0194,"Cursor er hurtig til små ting, men jeg er ikke vild med den til store ændringer.",terms
+s0192,"Vi har en rollback klar, hvis migrationen går galt.",terms
+s0193,"Retter buggen, hvor tokenet ikke blev fornyet efter en time.",terms
+s0194,"Skal vi bruge en vektordatabase, eller kan Postgres klare det?",terms
 s0195,Frederiksberg Have er smukkest om foråret.,plain
-s0196,"Hvis du er færdig før tid, så tag noget fra toppen af backloggen.",terms
-s0197,Har vi virkelig brug for Kubernetes til så lille en app?,terms
+s0196,"Et stort context window hjælper ikke, hvis prompten er rodet.",terms
+s0197,"Stack tracen peger på en fil, som vi ifølge Git slettede for en måned siden.",terms
 s0198,"Vi har fået en ny kollega, som starter på mandag.",plain
-s0199,"Vi har en regel om, at ingen reviewer deres egen kode.",terms
-s0200,Tauri gør appen meget mindre end den gamle version.,terms
-s0201,Hvorfor bruger vi både npm og Bun i det samme projekt?,terms
-s0202,"Jeg er nødt til at gå, jeg skal hente min søn.",plain
-s0203,"Jeg slår notifikationerne i Slack fra, når jeg skal koncentrere mig.",terms
-s0204,"Hele backenden kører på én server, og det bekymrer mig.",terms
+s0199,"Hvem har adgang til DNS hos kunden, hvis vi skal skifte domæne?",terms
+s0200,"Hver release til App Store tager tre dage, så hotfixes er et problem.",terms
+s0201,"Jeg er nødt til at gå, jeg skal hente min søn.",plain
+s0202,"Kan du committe dine ændringer, så jeg kan klone branchen og prøve dem?",terms
+s0203,"Læg en ticket i backloggen, så tager vi det op senere.",terms
+s0204,"Stashet forsvandt, da jeg skiftede computer, så en dags arbejde er væk.",terms
 s0205,Vi skal huske at bestille blomster til receptionen.,plain
-s0206,"Lav et feature flag, så kan vi prøve det af på en lille gruppe.",terms
-s0207,"Releasen blev udskudt, fordi der dukkede en alvorlig fejl op.",terms
-s0208,Vi bruger Supabase til login og database.,terms
-s0209,Vi kørte forkert ved Randers og endte i Hobro.,plain
-s0210,Der ligger seks pull requests og venter på en godkendelse.,terms
-s0211,"Hvilken dependency er det, der trækker hele den gamle version med?",terms
+s0206,Hvor mange pakker fra npm har vi egentlig i projektet?,terms
+s0207,"Vi deler datasættet op, så testen aldrig bruger sætninger fra træningen.",terms
+s0208,Vi kørte forkert ved Randers og endte i Hobro.,plain
+s0209,"ChatGPT er det, de fleste af vores kunder kender, men Gemini vinder frem.",terms
+s0210,"Featuren ligger bag et feature flag, så vi kan deploye den i dag og slå den til på mandag.",terms
+s0211,Leads fra LinkedIn spørger altid først om pricingen.,terms
 s0212,"Det er længe siden, vi har set hinanden, skal vi spise sammen snart?",plain
-s0213,"Rebaset gik fint, men nu kan koden ikke længere bygges.",terms
-s0214,"Der kører tre pipelines på samme tid, og det sløver det hele.",terms
-s0215,"Det virker på staging, men ikke i production.",terms
-s0216,Din pakke ligger hos naboen i nummer 14.,plain
-s0217,Hvor mange endpoints har API'et efterhånden?,terms
-s0218,Vi har brugt hele dagen på at få buildet til at virke igen.,terms
+s0213,Branchen med den nye feature er rebaset på main og klar til review.,terms
+s0214,"Lav en checkout af tagget fra sidste release, så kan vi sammenligne.",terms
+s0215,Din forsendelse ligger hos naboen i nummer 14.,plain
+s0216,"Pipelinen er skrevet i YAML, og ingen tør røre ved den.",terms
+s0217,"KPI'erne for sprinten er alle grønne, undtagen antal bugs.",terms
+s0218,"Der ligger hundredvis af danske modeller på Hugging Face, men ingen benchmarks for fagord.",terms
 s0219,Den nye letbane i Odense kører helt ud til universitetet.,plain
-s0220,"Jeg har skrevet scriptet om fra JavaScript til Python, så det er nemmere at vedligeholde.",terms
-s0221,Har du prøvet at bruge Cursor til større ændringer?,terms
-s0222,"Docker-billedet er på over to gigabyte, det må vi kunne gøre mindre.",terms
-s0223,Jeg har sparet 20.000 kroner op til en ny cykel.,plain
-s0224,"Vi har aftalt, at alle PR'er skal have mindst én godkendelse.",terms
-s0225,"Kan du skrive i Slack, når du har deployet, så kundeservice ved, at fejlen er rettet?",terms
+s0220,Jeg kan ikke finde noget i loggene fra Supabase.,terms
+s0221,"Requesten tager tre sekunder, og det meste er ventetid på databasen.",terms
+s0222,Jeg har sparet 20.000 kroner op til en ny cykel.,plain
+s0223,"Jeg har tre demoer i morgen, så jeg er ikke på Slack.",terms
+s0224,Designeren vil hellere skrive almindelig CSS end Tailwind.,terms
+s0225,"Jeg har lavet en MCP-server, så Claude kan læse vores tickets i Linear.",terms
 s0226,Turen over Lillebælt var helt rolig i dag.,plain
-s0227,"Tauri bruger systemets egen browser, så appen bliver meget lille.",terms
-s0228,"Claude Code har skrevet testene, men jeg har læst dem alle igennem.",terms
-s0229,"Er det her cachet, eller kommer det direkte fra serveren?",terms
-s0230,Der er en regnbue over marken bag huset.,plain
-s0231,"Vi har ændret prompten, og nu er svarene meget kortere.",terms
-s0232,"Jeg har rettet buggen i login, skrevet en test, der fanger den, og pushet det hele til branchen.",terms
+s0227,Kan vi genbruge frontenden fra Next.js i Tauri-appen?,terms
+s0228,"Startuppen har tre use cases, men ingen betalende kunder endnu.",terms
+s0229,Der er en regnbue over marken bag huset.,plain
+s0230,"Vi kører inference på vores egne servere, så kundens data bliver i Danmark.",terms
+s0231,Docker og Kubernetes er for meget til vores lille backend.,terms
+s0232,"Tauri bruger systemets egen browser, så appen kan klare sig uden Node.",terms
 s0233,Æblerne fra haven er perfekte til most.,plain
-s0234,Databasen var låst under hele migrationen.,terms
-s0235,"Kør scriptet med Bun, så går det meget hurtigere.",terms
+s0234,Jeg kommer lidt for sent til standuppen i dag.,terms
+s0235,"Jeg reverter ikke noget, før jeg har set diffen.",terms
 s0236,Vores kor synger i domkirken op til jul.,plain
-s0237,"Pipelinen er rød igen, og jeg aner ikke hvorfor.",terms
-s0238,"Har du testet det på en telefon, eller kun på computeren?",terms
-s0239,Hvor mange tests har vi egentlig på betalingerne?,terms
+s0237,Workflowet til releases bygger appen til både iOS og Android.,terms
+s0238,GitHub Actions bruger YAML til alle workflows.,terms
+s0239,"LLM'en får hele historikken med i prompten, og det koster mange tokens.",terms
 s0240,Middagen kostede 850 kroner for to personer.,plain
-s0241,"I den sidste sprint fik vi kun lavet halvdelen af det, vi havde lovet.",terms
-s0242,"Jeg har lagt en kommentar i pull requesten om navngivningen, men ellers ser den rigtig fin ud.",terms
+s0241,"Jeg får en error, så snart jeg åbner siden på staging.",terms
+s0242,"Fejlen med SSL skyldtes, at CDN'et havde et gammelt certifikat.",terms
 s0243,Vi ses om fjorten dage til julefrokosten.,plain
-s0244,"Den nye feature er populær, halvdelen af kunderne bruger den allerede.",terms
-s0245,Har du givet Claude Code adgang til hele repoet eller kun en mappe?,terms
-s0246,Vercel har givet os en ny adresse til previewet.,terms
+s0244,"Det kan tage et døgn, før en ændring i DNS slår igennem, og SSL virker først bagefter.",terms
+s0245,"Extensionen virker i Chrome, men brugerne på macOS vil hellere have en rigtig app.",terms
+s0246,"JWT'en ligger i en cookie, så frontenden aldrig kan læse den.",terms
 s0247,Jeg drikker min kaffe sort uden sukker.,plain
-s0248,Hvilken model bruger du i Cursor?,terms
-s0249,"Hele vores stak er TypeScript, React og Supabase.",terms
+s0248,"Rate limiting på webhooken beskytter os, hvis Stripe sender tusind kald i sekundet.",terms
+s0249,"JSON fra webhooken er ikke gyldig, så indlæsningen fejler.",terms
 s0250,Vi skal til barnedåb hos min kusine på søndag.,plain
-s0251,"Har nogen tjekket, om previewet virker på en telefon?",terms
-s0252,Tag et code review af den.,terms
-s0253,Builds på main skal altid være grønne.,terms
+s0251,"Queryen til dashboardet tager tyve sekunder, så vi cacher den.",terms
+s0252,Leads fra hjemmesiden ryger direkte ind i CRM'et via en webhook.,terms
+s0253,"Hooken i React skal være async, ellers fryser komponenten.",terms
 s0254,Mit tog holdt stille i en halv time ved Fredericia.,plain
-s0255,JavaScript uden typer er svært at vedligeholde i et stort projekt.,terms
-s0256,"Linear lukker opgaverne af sig selv, når vi merger på GitHub.",terms
+s0255,"CORS-fejlen kom først, da vi deployede frontenden til Vercel.",terms
+s0256,"Checkouten af den gamle version tog evigheder, fordi repoet er så stort.",terms
 s0257,"Vandet ved Skagen var koldt, men vi badede alligevel.",plain
-s0258,"Pipelinen hænger, ligesom i går.",terms
-s0259,"Testene tester ikke det, de påstår, så vi skriver dem om.",terms
-s0260,"Jeg åbner en PR i aften, så kan du kigge på den i morgen.",terms
+s0258,"Props sendes ned, og state ligger så højt oppe, som det er nødvendigt.",terms
+s0259,Et crash i checkouten koster os rigtige penge.,terms
+s0260,"Support har oprettet tickets for alt, hvad kunden skrev i mailen.",terms
 s0261,"Vi plantede tulipaner i oktober, og nu blomstrer de.",plain
-s0262,Kan du flytte opgaverne fra mailen over i Linear?,terms
-s0263,"Har du deployet rettelsen, eller ligger den stadig på din maskine?",terms
+s0262,"Vi har brugt en hel dag på CORS, og det var en enkelt linje i YAML.",terms
+s0263,"Dashboardet med analytics viser, at ingen bruger den nye feature.",terms
 s0264,"Undskyld, at jeg ikke svarede i går, jeg var helt smadret.",plain
-s0265,Gode code reviews handler om at stille spørgsmål.,terms
-s0266,Er det dit commit?,terms
-s0267,Kan du give mig redigeringsadgang til filen i Figma?,terms
+s0265,"Reviewet tog en hel dag, fordi diffen var så stor.",terms
+s0266,"Vi har købt licenser til Cursor til alle, der skriver Python.",terms
+s0267,Den exception ender i Sentry hundrede gange om dagen.,terms
 s0268,Vi kører til Skagen i påskeferien.,plain
-s0269,"Den refactoring tog længere tid, end vi havde regnet med.",terms
-s0270,Hvor mange tokens bruger vi om dagen på de her kald?,terms
+s0269,"Staten i React hører hjemme i den komponent, der bruger den.",terms
+s0270,"Kunderne giver feedback i appen, og den ryger direkte ind i Linear.",terms
 s0271,Det sner sjældent til jul i Danmark efterhånden.,plain
-s0272,"Hvem pushede den ændring, der slettede halvdelen af oversættelserne?",terms
-s0273,"Frontenden viser den gamle pris, selvom backenden er opdateret.",terms
-s0274,"Main er låst, så du skal gennem en pull request.",terms
+s0272,Hvor mange tokens bruger agenten på en almindelig opgave?,terms
+s0273,"Vi har monitoring på alle endpoints, men ingen kigger på den.",terms
+s0274,Prøv at lave det i Cursor ud fra skitserne i Figma.,terms
 s0275,Vores ældste har fået kørekort.,plain
-s0276,"Vi skal have en LLM, der forstår dansk ordentligt.",terms
-s0277,Jeg debuggede hele formiddagen og fandt ingenting.,terms
+s0276,"Prisen hos Anthropic afhænger af, hvor mange tokens der går gennem context windowet.",terms
+s0277,Hvem har sat den deadline uden at spørge nogen af os?,terms
 s0278,Gulerødderne skal skrælles og skæres i tynde skiver.,plain
-s0279,Databasen bliver kopieret hver nat klokken tre.,terms
-s0280,Jeg committer lige det her og går så hjem.,terms
-s0281,Vi refactorede for tidligt og måtte lave det hele om igen.,terms
+s0279,"SDK'et til Android crasher, hvis man ikke har internet.",terms
+s0280,"Tailwind og Vite er sat op i det nye repo, så du kan gå i gang med det samme.",terms
+s0281,Roadmappen for næste kvartal skal præsenteres for hele holdet på mandag.,terms
 s0282,Jeg har skrevet en lang mail til kommunen om vores vej.,plain
-s0283,Vi skal skrive en test først.,terms
-s0284,Hvorfor har vi tre forskellige caches til de samme data?,terms
+s0283,"Hvor er det cron job, der skulle tømme cachen hver time?",terms
+s0284,Kan du skrue ned for alerts fra staging?,terms
 s0285,Der er så mange myg ved sommerhuset i år.,plain
-s0286,"Er der nogen, der har testet eksporten med rigtig store filer?",terms
-s0287,"Deployer vi stadig om torsdagen, eller er det rykket?",terms
-s0288,Er alle mine commits kommet med i den seneste version?,terms
+s0286,"Vi har ændret schemaet, så kolonnen hedder noget andet nu.",terms
+s0287,"Kan Swift og Rust tale sammen, eller skal vi have en bro imellem?",terms
+s0288,"Inference på telefonen er for langsom, så RAG kører på serveren.",terms
 s0289,Der er varslet storm over hele Jylland i nat.,plain
-s0290,Kan vi bruge Cloudflare til at beskytte login-siden?,terms
-s0291,Testen fejler stadig hos mig.,terms
+s0290,"Husk at committe låsefilen, ellers får CI'en andre pakker end du.",terms
+s0291,"Follow-uppen efter mødet på Zoom skal ud i dag, mens de stadig husker os.",terms
 s0292,Vi skal betale regningen inden den 15. i måneden.,plain
-s0293,"Vi når ikke den deadline, hvis vi ikke får hjælp.",terms
-s0294,"Vi har alt for mange gamle feature flags, som nogen burde fjerne.",terms
-s0295,"Kaffen er løbet ud, kan du købe en pakke mere?",plain
-s0296,"Den gamle kode er i JavaScript, og der er ingen tests.",terms
-s0297,"ChatGPT foreslog en løsning, der slet ikke virkede.",terms
-s0298,"Pakken på npm er blevet overtaget af en fremmed, så vi fjerner den.",terms
+s0293,"SSL og CORS er det første, jeg tjekker, når et kald fejler i production.",terms
+s0294,"Vi glemmer alt for mange follow-ups, fordi ingen bruger CRM'et.",terms
+s0295,Vi henter modellen fra Hugging Face med et lille script i Python.,terms
+s0296,"Kaffen er løbet ud, kan du købe en pose mere?",plain
+s0297,"Cursor har gjort mig hurtigere end Copilot, men også mere doven.",terms
+s0298,"Jeg rebasede på main, og så forsvandt merge-konflikten.",terms
 s0299,Vandrestien langs kysten ved Stevns er fantastisk.,plain
-s0300,"Hvorfor er der stadig JavaScript-filer i et projekt, der skulle være TypeScript?",terms
-s0301,"Det er et rigtig godt review, tak, fordi du tog dig tid.",terms
-s0302,Toget til Aarhus kører ti minutter over syv.,plain
-s0303,"Migrationen fejlede halvvejs, og nu er databasen i en mærkelig tilstand.",terms
-s0304,"Det er mocket i testene, men ikke i den rigtige app.",terms
-s0305,"Der er en fejl i backenden, som vi kun ser i production, når der er travlt.",terms
+s0300,Outlook viser vores mails i HTML uden billeder.,terms
+s0301,Vi bruger en lille model fra Hugging Face til embeddings.,terms
+s0302,"Benchmarket siger, at Whisper er hurtig, men det passer ikke på vores data.",terms
+s0303,Toget til Aarhus kører ti minutter over syv.,plain
+s0304,"Vi har to servere i AWS, men den ene står og laver ingenting.",terms
+s0305,"Eksporten er async nu, så timeouten behøver ikke at være længere.",terms
 s0306,Hvem henter Emma fra fodbold i aften?,plain
-s0307,Kubernetes er slet ikke nødvendigt her.,terms
-s0308,Kan nogen give min PR et review i dag?,terms
-s0309,"Det blev pludselig mørkt, og så kom der hagl på størrelse med ærter.",plain
-s0310,"Vi har alt for mange mocks, og så viser testene ingenting.",terms
-s0311,At teste det manuelt hver gang er alt for langsomt i længden.,terms
-s0312,Prøv at lave det i Cursor.,terms
+s0307,"Hver kunde har sin egen opsætning af OAuth, og det gør SSO dyrt for os.",terms
+s0308,"Coverage siger intet om, hvorvidt testene tester det rigtige.",terms
+s0309,"Endpointet returnerer en JWT, som frontenden gemmer i en cookie.",terms
+s0310,"Det blev pludselig mørkt, og så kom der hagl på størrelse med ærter.",plain
+s0311,"Opdater Node.js og npm, før du starter.",terms
+s0312,Hun klonede alle vores repos i går og havde det hele kørende på en time.,terms
 s0313,Vi holder sølvbryllup til august.,plain
-s0314,"Hvorfor kører CI ikke, når jeg åbner en pull request?",terms
-s0315,"Vi har tre dashboards, der viser de samme tal på hver sin måde.",terms
-s0316,Jeg glæder mig til at se jer alle sammen til sommer.,plain
-s0317,"Hvem tager vagten, hvis der skal laves et hotfix i weekenden?",terms
-s0318,"Kan en LLM skrive vores dokumentation, eller bliver det noget rod?",terms
-s0319,"Designet ligger i Figma, men det er ikke helt færdigt.",terms
+s0314,"Vi har flyttet appen fra Azure til Cloudflare, og regningen er halveret.",terms
+s0315,Hvorfor ser knappen anderledes ud i Chrome end på min iPhone?,terms
+s0316,"AI-agenten må gerne læse i Gmail, men den må aldrig sende noget selv.",terms
+s0317,Jeg glæder mig til at se jer alle sammen til sommer.,plain
+s0318,AI-funktionen i appen bruger en model fra OpenAI og et index i Postgres.,terms
+s0319,"Buildet i Xcode virker, men TestFlight afviser det uden en forklaring.",terms
 s0320,"Husk at give blomsterne vand, mens vi er væk.",plain
-s0321,"Featuren er klar, men vi venter med at slå den til.",terms
-s0322,Den nye udgave af React gør det nemmere at hente data.,terms
-s0323,Min bror flytter til Aarhus efter sommerferien.,plain
-s0324,Kan du teste den nye version på din telefon?,terms
-s0325,Hvem bruger egentlig det gamle dashboard?,terms
-s0326,"Det er kun CI, der fejler, alt virker fint lokalt.",terms
+s0321,"Alerten gik i gang klokken tre, og rollbacken var færdig, før nogen vågnede.",terms
+s0322,Vi har lavet et datasæt med tusind optagelser til evalen.,terms
+s0323,"Android-appen er bygget i React, men iOS-appen er skrevet i Swift.",terms
+s0324,Min bror flytter til Aarhus efter sommerferien.,plain
+s0325,"Kan du mocke API'et, så vi kan teste frontenden alene?",terms
+s0326,"Agenten opretter selv issues i Linear gennem en MCP, vi har skrevet.",terms
 s0327,Vi har lejet en hytte i Norge i vinterferien.,plain
-s0328,"Mock databasen, så testene ikke afhænger af netværket.",terms
-s0329,Den er merget og ude.,terms
+s0328,"Benchmarks og evals er ikke det samme, men begge er nødvendige.",terms
+s0329,"SaaS betyder, at vi får penge hver måned i stedet for en enkelt gang.",terms
 s0330,Kirken er fra 1200-tallet og er en af de ældste på øen.,plain
-s0331,"Backenden logger alt, også ting, der burde være hemmelige.",terms
-s0332,Cloudflare har problemer igen.,terms
-s0333,Jeg har lavet et nyt projekt i Supabase til demoen på fredag.,terms
+s0331,"Changeloggen viser, hvilke issues der er lukket i hver release.",terms
+s0332,"Kan du publicere pakken på npm, når testene er grønne?",terms
+s0333,"Startuppen bruger Supabase og Vercel, så de har ingen servere selv.",terms
 s0334,Hvordan har din mor det efter operationen?,plain
-s0335,"Den crashede to gange under demoen, det var lidt pinligt.",terms
-s0336,Jeg sidder stadig og debugger.,terms
+s0335,Extensionen til VS Code er skrevet i TypeScript.,terms
+s0336,Containeren i AWS har ikke skrevet logs i to dage.,terms
 s0337,"Vi sad på terrassen til klokken elleve, fordi det var så lunt.",plain
-s0338,"Hvis du rebaser din branch på main nu, kan jeg merge den, inden jeg går til frokost.",terms
-s0339,"Kan du rebase og løse konflikterne, så merger jeg bagefter?",terms
-s0340,Spørg ikke ChatGPT om noget med kundedata.,terms
+s0338,Jeg skriver hellere SQL selv end at lade et framework gøre det.,terms
+s0339,"Kunden har spurgt, om vi bruger ChatGPT eller anden AI til deres data.",terms
+s0340,"Vi bruger Gmail og Google Drive til det hele, også kalenderen.",terms
 s0341,Isen på søen er ikke tyk nok til at gå på endnu.,plain
-s0342,"Hvem tager sig af frontenden, nu hvor Camilla er stoppet?",terms
-s0343,"Er det din branch, der er blevet slettet ved en fejl?",terms
+s0342,"Hvilken dependency er det, der trækker den gamle version af Next.js med?",terms
+s0343,"Async funktioner i en hook skal ryddes op, når komponenten forsvinder.",terms
 s0344,Vi cyklede hele vejen fra Odense til Svendborg.,plain
-s0345,"Skriv migrationer, der kan køres baglæns, hvis noget går galt.",terms
-s0346,"Tokenet har ikke de rigtige rettigheder, derfor får du afslag.",terms
-s0347,Vi spiser smørrebrød med sild og æg til frokost.,plain
-s0348,"Hvem har ansvaret for sprinten, mens Lars er væk?",terms
-s0349,"Jeg committede det hele i går aftes, men glemte at pushe.",terms
-s0350,Mange af vores API'er bruger stadig en gammel form for login.,terms
+s0345,"Indexet blev slettet i migrationen, og så gik databasen i stå.",terms
+s0346,"Den fine-tunede LoRA er bedre til fagordene, men lidt dårligere til almindeligt dansk.",terms
+s0347,"Vi squasher altid, når en pull request bliver merget.",terms
+s0348,Vi spiser smørrebrød med sild og æg til frokost.,plain
+s0349,"Analytics viser, at nye kunder bruger appen mest, lige efter de er onboardet.",terms
+s0350,"KPI'erne ligger i et dashboard, som alle kan se.",terms
 s0351,"Lægen sagde, at jeg skal tage to piller om dagen i en uge.",plain
-s0352,"Standuppen trak ud, så jeg er lidt forsinket.",terms
-s0353,Hvem har slået CI fra på den her branch?,terms
-s0354,Der er vejarbejde på motorvejen ved Kolding.,plain
-s0355,Jeg har lavet en kanal i Slack til den nye kunde.,terms
-s0356,Feature flaget er slået til for halvdelen af brugerne.,terms
-s0357,"Fin PR, men jeg synes, der mangler noget fejlhåndtering.",terms
+s0352,"Vi deployede til staging i går, men releasen til production venter på kundens test.",terms
+s0353,"Vi har lagt et index på sessioner, fordi login var blevet langsomt.",terms
+s0354,Kan Cursor bruge en af de billige LLM'er til at læse vores dokumentation?,terms
+s0355,Der er vejarbejde på motorvejen ved Kolding.,plain
+s0356,Cron jobbet eksporterer alle ordrer som CSV hver nat klokken to.,terms
+s0357,Vi får CORS-fejl på hver request fra appen på telefonen.,terms
 s0358,"Vi så sæler på Rømø, da vi gik ud ved lavvande.",plain
-s0359,"Der er et issue fra en kunde, som vi skal svare på i dag.",terms
-s0360,Kunne du reviewe den inden fyraften?,terms
-s0361,Vi tog til Aalborg for at spise på den nye restaurant ved fjorden.,plain
-s0362,Tauri passer fint til det.,terms
-s0363,"Jeg har opdateret alle vores dependencies med Bun, men to af testene fejler nu.",terms
-s0364,"Skriv det i Slack, så alle kan se det.",terms
+s0359,Vi launcher MVP'en for de første kunder i næste måned.,terms
+s0360,"Gemini har det største context window, men Claude skriver den bedste kode.",terms
+s0361,Jeg sender en follow-up til kunden på LinkedIn i morgen.,terms
+s0362,Vi tog til Aalborg for at spise på den nye restaurant ved fjorden.,plain
+s0363,"Der kører tre pipelines på samme tid, og ingen af dem slår feature flaget til.",terms
+s0364,"Jeg har fjernet en dependency, som linteren sagde, at vi slet ikke brugte.",terms
 s0365,"Bøgen er sprunget ud, nu er det rigtigt forår.",plain
-s0366,"Den skal crashe højlydt, i stedet for at fortsætte med forkerte data.",terms
-s0367,Supabase giver os både database og login i én pakke.,terms
-s0368,"Tak for i dag, vi ses i morgen.",plain
-s0369,Vi testede den nye version med fem kunder i sidste uge.,terms
-s0370,"Vi skal have opdateret Node på alle servere, før den gamle version holder op med at få rettelser.",terms
-s0371,"Det gamle endpoint skal fjernes, når alle apps er opdateret.",terms
+s0366,"Hvor meget koster AI-delen per kunde, og hvordan skal den med i pricingen?",terms
+s0367,"Follow-uppen med kunden på Zoom endte med, at de vil have en demo.",terms
+s0368,"Det gamle repository ligger stadig på GitHub, men det er arkiveret.",terms
+s0369,"Tak for i dag, vi ses i morgen.",plain
+s0370,"Hvis du gør den async, skal du også håndtere fejlene.",terms
+s0371,"Rate limiten hos Anthropic er højere end hos OpenAI, når man har betalt nok.",terms
 s0372,Fødselsdagen er lørdag den 9. maj klokken to.,plain
-s0373,Vi holder standup klokken ni hver morgen.,terms
-s0374,Backenden og frontenden ligger i samme repo.,terms
-s0375,"Jeg læser en bog om vikingerne, som jeg ikke kan lægge fra mig.",plain
-s0376,"Husk at rebase din branch på main, før du laver en pull request.",terms
-s0377,"Kan du reviewe den her, inden vi mødes i morgen?",terms
-s0378,"Kan du sende mig et preview, inden vi viser det til kunden?",terms
+s0373,Hvor mange schemas har vi efterhånden i databasen?,terms
+s0374,Min plan for i dag er at reviewe PR'er og rette buggen i dashboardet.,terms
+s0375,"Vi revertede committet og squashede resten, før vi mergede.",terms
+s0376,"Jeg læser en bog om vikingerne, som jeg ikke kan lægge fra mig.",plain
+s0377,"Stack traces fra Rust er lange, men de er faktisk til at læse.",terms
+s0378,Vi betaler mere for inference end for alt andet i AWS.,terms
 s0379,"Vi har fået nye naboer, og de virker meget søde.",plain
-s0380,"Den må ikke crashe, bare fordi netværket forsvinder et øjeblik.",terms
-s0381,"Azure er dyrere, end vi havde regnet med.",terms
-s0382,"Kan du dække bord, mens jeg skærer brødet?",plain
-s0383,"Skriver migrationen om, så den kan køres flere gange uden fejl.",terms
-s0384,"Hun rebaser altid, før hun beder om et review.",terms
-s0385,Hvornår committer du den nye oversættelse?,terms
+s0380,"Kunden har forket vores SDK for at tilføje en funktion, de mangler.",terms
+s0381,Coveragen fra end-to-end testene bliver ikke talt med i rapporten.,terms
+s0382,"Frameworket trækker en dependency med, der fylder mere end resten af appen.",terms
+s0383,"Kan du dække bord, mens jeg skærer brødet?",plain
+s0384,"Hvor stort skal et datasæt være, før det giver mening at fine-tune?",terms
+s0385,Jeg har lavet præsentationen i PowerPoint og delt den i Teams.,terms
 s0386,Hvem har spist den sidste is i fryseren?,plain
-s0387,"Endpointet til login svarer langsomt, fordi det slår brugeren op i databasen to gange.",terms
-s0388,Vi lægger alle issues i Linear fra nu af.,terms
-s0389,"Jeg holder fri på fredag, fordi jeg skal flytte.",plain
-s0390,Vi har en backlog med over tre hundrede punkter.,terms
-s0391,API'et giver en mærkelig fejl.,terms
-s0392,Buildet er grønt igen nu.,terms
+s0387,"Jeg stashede ændringerne, lavede en checkout af main og kunne genskabe buggen.",terms
+s0388,Prompts skal reviewes på samme måde som al anden kode.,terms
+s0389,Kan Claude skrive en changelog ud fra de sidste tyve commits?,terms
+s0390,"Jeg holder fri på fredag, fordi jeg skal flytte.",plain
+s0391,"Vi releasede version to i går, og der er allerede kommet tre issues.",terms
+s0392,"Hvem scoper opgaven, når vi skal onboarde den næste kunde?",terms
 s0393,"Der er meldt sol hele weekenden, så vi tager til stranden.",plain
-s0394,"Laura spørger, om vi kan nå at release før påske, men det tror jeg ikke.",terms
-s0395,Feature flaget virker ikke.,terms
-s0396,"Kan du huske, hvornår vi sidst var hos tandlægen?",plain
-s0397,Vi laver to releases om måneden fra nu af.,terms
-s0398,Hvor meget bruger vi om måneden på Claude Code og ChatGPT tilsammen?,terms
-s0399,Vi kører det hele i Docker.,terms
+s0394,Skal vi skrive en end-to-end test for hele onboardingen?,terms
+s0395,"I den her sprint fokuserer vi på bugs og teknisk gæld, ikke på nye features.",terms
+s0396,Jeg har cherry-picket tre rettelser og squashet resten sammen.,terms
+s0397,"Kan du huske, hvornår vi sidst var hos tandlægen?",plain
+s0398,"Det er en SaaS til små virksomheder, og vores pricing starter ved hundrede kroner.",terms
+s0399,Async funktioner uden timeout kan hænge for evigt.,terms
 s0400,"Kan du tømme opvaskemaskinen, når du kommer hjem?",plain
-s0401,"Lav et issue, så vi ikke glemmer det.",terms
-s0402,Den nye dependency fylder mere end resten af appen tilsammen.,terms
-s0403,"Om vinteren er det mørkt, når jeg går hjemmefra, og mørkt, når jeg kommer hjem.",plain
-s0404,"Jeg har refactoret hele betalingsmodulet, så det er nemmere at teste, men reviewet bliver stort.",terms
-s0405,"Vi releasede lidt for tidligt, og det kunne kunderne mærke.",terms
-s0406,Kan du låne mig en oplader til min telefon?,plain
-s0407,Backenden svarer ikke på kald.,terms
-s0408,"Vi debuggede det sammen over skærmdeling, og så var det løst på ti minutter.",terms
-s0409,"Vi lægger den bag et feature flag, så vi kan slå den fra igen.",terms
-s0410,Jeg er født den 23. oktober 1987.,plain
-s0411,Deadlinen er rykket til slutningen af måneden.,terms
-s0412,"Den PR er for stor, kan du dele den op i flere mindre?",terms
-s0413,"Køleskabet er tomt, vi må handle i morgen tidlig.",plain
-s0414,Hvem har adgang til at deploye til prod?,terms
-s0415,Vi skal blive bedre til små code reviews i stedet for kæmpestore.,terms
-s0416,Migrationen kørte i tyve minutter på production.,terms
-s0417,Pigerne har bygget en hule af puder i stuen.,plain
-s0418,"Kan du committe det, du har lavet, selvom det ikke er færdigt, så jeg kan se retningen?",terms
-s0419,"Vi skal versionere API'erne, så vi ikke ødelægger noget for kunderne.",terms
-s0420,"Tandlægen ringede og spurgte, om jeg kan komme en time tidligere.",plain
-s0421,Den gamle branch er slettet.,terms
-s0422,"Jeg kan ikke deploye, fordi pipelinen hænger.",terms
-s0423,"Deploy den til staging, tak.",terms
-s0424,Vi har bestilt sommerhuset fra den 5. juli.,plain
-s0425,"Kan vi køre pipelinen manuelt, eller skal jeg pushe igen?",terms
-s0426,"Hej Peter, standuppen er rykket til klokken ti i dag, fordi halvdelen af os er til møde.",terms
-s0427,Vi har set næsten alle slottene på Sjælland.,plain
-s0428,Kunden vil have det hele kørende i Azure.,terms
-s0429,"Mocken skal opføre sig som den rigtige server, ellers kan vi ikke bruge den.",terms
-s0430,"Der er tre PR'er, der rører ved den samme fil.",terms
-s0431,Klitterne ved Vesterhavet flytter sig lidt hvert år.,plain
-s0432,"Kan nogen sætte en pipeline op, der kun kører for releases?",terms
-s0433,"Cloudflare var nede i en halv time, og så var vi også nede.",terms
-s0434,Vi skal have fjernet vores gamle køleskab torsdag mellem ti og to.,plain
-s0435,Staging kører igen efter nedbruddet.,terms
-s0436,"Vi kan ikke merge, før Mads har kigget på pull requesten.",terms
-s0437,"Serveren crashede klokken to i nat, og ingen fik besked.",terms
-s0438,"Bladene er begyndt at falde, og haven er fuld af dem.",plain
-s0439,"Bun er hurtigere til at installere pakker, men vi har haft lidt problemer.",terms
-s0440,"Kunne du reviewe min ændring til forsiden, når du har et øjeblik?",terms
-s0441,Der er gratis parkering bag rådhuset om søndagen.,plain
-s0442,"Vi har alt for mange gamle branches liggende, som nogen burde rydde op i.",terms
-s0443,"Cloudflare sender os en mail, når certifikatet skal fornyes.",terms
-s0444,Hvem skriver prompten til opsummeringen af møderne?,terms
-s0445,Lufthavnen i Kastrup var fyldt med folk i går.,plain
-s0446,Hvornår releasede vi sidst noget til kunderne?,terms
-s0447,"Jeg har ryddet op i npm-pakkerne, og nu er installationen dobbelt så hurtig.",terms
-s0448,"Vinden kommer fra vest, så det bliver koldt på stranden.",plain
-s0449,VS Code bruger halvdelen af min hukommelse.,terms
-s0450,"Kan du tilføje et felt til endpointet, så vi også får adressen med?",terms
-s0451,Hvilken prompt gav det bedste resultat i jeres forsøg?,terms
-s0452,Vi har været gift i tolv år i dag.,plain
-s0453,Vi kører sprints på to uger.,terms
-s0454,"Reviewet er færdigt, så du må gerne merge, når du er klar.",terms
-s0455,"Jeg bliver nok lidt sent hjem i aften, vent ikke med maden.",plain
-s0456,"Vi ser timeouts hver dag omkring frokost, når alle logger ind.",terms
-s0457,"Endpoints, der ikke bliver brugt, slukker vi efter sommerferien.",terms
-s0458,Jeg kommer lidt for sent til standuppen i dag.,terms
+s0401,"Jeg har skrevet al vores CSS om til Tailwind, og det fjernede halvdelen af koden.",terms
+s0402,"Kan du teste den edge case med end-to-end testene, før vi releaser?",terms
+s0403,"Gmail klipper vores mails af, fordi der er for meget HTML i dem.",terms
+s0404,"Om vinteren er det mørkt, når jeg går hjemmefra, og mørkt, når jeg kommer hjem.",plain
+s0405,"Copilot i VS Code er god til små ting, men Claude Code klarer de store ændringer.",terms
+s0406,"Der er for mange deadlines i december til et launch, så vi venter til januar.",terms
+s0407,Kan du låne mig en oplader til min telefon?,plain
+s0408,Vi bruger Redis som queue til de tunge jobs.,terms
+s0409,"Vi har lavet en extension til Chrome, der gemmer artikler direkte i Notion.",terms
+s0410,"Jeg går ikke så meget op i coverage, så længe de vigtige ting er testet.",terms
+s0411,Jeg er født den 23. oktober 1987.,plain
+s0412,Vi viser MVP'en for kunden på Zoom på torsdag.,terms
+s0413,"Releasen til App Store er klar, vi venter bare på godkendelsen.",terms
+s0414,"Køleskabet er tomt, vi må handle i morgen tidlig.",plain
+s0415,"Hvad sagde du til standup om pipelinen, jeg hørte det ikke helt?",terms
+s0416,Vi har flyttet queuen fra Redis til Postgres for at have én ting mindre at passe.,terms
+s0417,Vercel bygger et preview af hver pull request helt automatisk.,terms
+s0418,Pigerne har bygget en hule af puder i stuen.,plain
+s0419,"Vores CRM er et regneark i Google Drive, og det holder ikke længere.",terms
+s0420,"SSO er det, vi oftest bliver spurgt om af større virksomheder.",terms
+s0421,"Tandlægen ringede og spurgte, om jeg kan komme en time tidligere.",plain
+s0422,Vi har flyttet alle leads fra Excel til et rigtigt CRM.,terms
+s0423,Hvor meget bruger vi om måneden på Claude Code og ChatGPT tilsammen?,terms
+s0424,"Det nye deployment fejlede, fordi containeren ikke kunne starte.",terms
+s0425,Vi har bestilt sommerhuset fra den 5. juli.,plain
+s0426,"Vi har tre dashboards, der viser KPI'en på hver sin måde.",terms
+s0427,"Jira sender så mange mails, at jeg har lavet en regel i Outlook.",terms
+s0428,Vi har set næsten alle slottene på Sjælland.,plain
+s0429,Vi laver embeddings af alle dokumenterne og gemmer dem i en vektordatabase.,terms
+s0430,"Kunden lægger alle ønsker i Jira, og vi kopierer dem over i Linear.",terms
+s0431,"Det er releaset til de første hundrede brugere, og de læser faktisk vores changelog.",terms
+s0432,Klitterne ved Vesterhavet flytter sig lidt hvert år.,plain
+s0433,"SSO og OAuth skal være klar, før den store kunde vil skrive under.",terms
+s0434,"Kan du sende et nyt build til TestFlight, så Mette kan teste på sin iPhone?",terms
+s0435,Vi skal have fjernet vores gamle køleskab torsdag mellem ti og to.,plain
+s0436,"Certifikatet til SSL fornyes automatisk på serveren, men i går fejlede det.",terms
+s0437,Setuppet med Kubernetes er for meget til så lille en app.,terms
+s0438,"Kan CLI'en eksportere til CSV, eller skal jeg skrive det selv?",terms
+s0439,"Bladene er begyndt at falde, og haven er fuld af dem.",plain
+s0440,Vi har alt for mange gamle branches liggende på GitHub.,terms
+s0441,Vi har sammenlignet tre modeller fra Hugging Face med vores egen LoRA.,terms
+s0442,Der er gratis parkering bag rådhuset om søndagen.,plain
+s0443,"Push det til en ny branch, så kigger jeg på det.",terms
+s0444,"Timeouten er sat alt for lavt i Kubernetes, så store rapporter fejler.",terms
+s0445,"Refactor det, når du alligevel er inde i filen.",terms
+s0446,Lufthavnen i Kastrup var fyldt med folk i går.,plain
+s0447,"Forket af libraryet er tre måneder bagud, så vi skal hente ændringerne ind.",terms
+s0448,"Redis bliver tømt, hver gang serveren genstarter.",terms
+s0449,"Vinden kommer fra vest, så det bliver koldt på stranden.",plain
+s0450,"Kan du stashe det, du sidder med, og hjælpe mig med et hotfix?",terms
+s0451,"Analytics viser, at brugerne aldrig kommer forbi tredje trin i flowet.",terms
+s0452,"Kan du klone branchen og se, om fejlen også opstår hos dig?",terms
+s0453,Vi har været gift i tolv år i dag.,plain
+s0454,"Jeg lod Claude Code refactore modulet, og det gik overraskende godt.",terms
+s0455,"CDN'et cacher den gamle version, så du skal tømme cachen.",terms
+s0456,"Jeg bliver nok lidt sent hjem i aften, vent ikke med maden.",plain
+s0457,"Evalen viser, at LLM'en hallucinerer mindre med RAG.",terms
+s0458,"Postgres kører i Supabase, så vi skal ikke selv vedligeholde den.",terms
 s0459,Fristen for at søge om plads er den 1. februar.,plain
-s0460,"Vi releaser den nye version, når de sidste fejl er rettet.",terms
-s0461,"Jeg har skrevet en lille udvidelse til VS Code, der viser vores egne fejlkoder.",terms
-s0462,Jeg har bestået køreprøven i første forsøg.,plain
-s0463,"Kan du publicere pakken på npm, når testene er grønne?",terms
-s0464,Vi har opgraderet til den nyeste version af React.,terms
-s0465,Fuglene begynder at synge allerede klokken fire om morgenen.,plain
-s0466,"Vi bygger kundeportalen i Next.js, fordi resten af teamet kender det.",terms
-s0467,Er det React eller Next.js?,terms
-s0468,"Jeg vil hellere have en realistisk deadline end en, vi ikke kan holde.",terms
-s0469,Har du været på Bornholm om sommeren?,plain
-s0470,"Appen crasher, når man åbner indstillingerne på en gammel telefon.",terms
-s0471,"Er det her repository offentligt, eller skal man have adgang?",terms
-s0472,Jeg har strikket en sweater til min nevø.,plain
-s0473,"I dag sidder jeg med cachen, der giver gamle priser, og bagefter kigger jeg på jeres PR'er.",terms
-s0474,"Cachen blev aldrig tømt, så kunderne så de gamle priser i to dage.",terms
-s0475,"Prompten skal være meget mere præcis, hvis vi vil have gode svar.",terms
-s0476,Jeg er syg i dag og bliver hjemme.,plain
-s0477,Python bruger vi kun til dataanalyse og små scripts.,terms
-s0478,Hvorfor er alle PR'erne fra Jonas lukket uden kommentarer?,terms
-s0479,Mormor fylder halvfems år på søndag.,plain
-s0480,Kør altid testene først.,terms
-s0481,"Jeg deployer til staging, så snart buildet er grønt.",terms
-s0482,Har du debugget det i browseren eller kun i loggen?,terms
-s0483,Toget mellem Roskilde og København er forsinket igen.,plain
-s0484,Buggene i den gamle version bliver ikke rettet.,terms
-s0485,"Hotfixet er ude, og fejlen er væk.",terms
-s0486,Hvornår går den sidste færge fra Hundested?,plain
-s0487,Jeg har lagt et link til PR'en i tråden.,terms
-s0488,"Kan vi holde standup lidt kortere, det tager tit en halv time?",terms
-s0489,"Det ser ud, som om main er gået i stykker efter nattens ændringer.",terms
-s0490,Vi skal betale 4.500 kroner i depositum for lejligheden.,plain
-s0491,"Rust-koden er hurtig, men det tager lang tid at bygge den.",terms
-s0492,"Pull requesten mangler en beskrivelse af, hvad den egentlig ændrer.",terms
-s0493,"Jeg tager en kop kaffe, vil du også have en?",plain
-s0494,"Vi kan ikke lave et hotfix, før vi ved, hvad der er galt.",terms
-s0495,Prompten virker meget bedre nu.,terms
-s0496,"Den gamle kode er aldrig blevet refactoret, og det kan man se.",terms
-s0497,Til fødselsdagen laver jeg lagkage med flødeskum og jordbær.,plain
-s0498,"Deployet i nat gik fint, men cachen blev ikke tømt, så nogle kunder så den gamle forside.",terms
-s0499,Deadlinen er allerede i dag.,terms
-s0500,Vi skal stemme til kommunalvalget i november.,plain
-s0501,"Figma er langsomt i dag, så jeg venter med designet til i morgen.",terms
-s0502,Claude Code foreslog at dele funktionen op i tre mindre dele.,terms
-s0503,Efter tre sprints med nye ting skal vi bruge en på at rydde op.,terms
-s0504,Jeg har meldt mig til at være frivillig ved byfesten.,plain
-s0505,Hvilke features skal med i næste version?,terms
-s0506,"Kan du kigge på min PR, inden du går hjem i dag?",terms
-s0507,Grøntsagerne fra torvet er meget bedre end dem fra supermarkedet.,plain
-s0508,Kan Cursor læse vores interne dokumentation?,terms
-s0509,Er den skrevet i Rust?,terms
-s0510,Det er bedre at deploye små ændringer ofte end store sjældent.,terms
-s0511,Bussen kommer hvert tyvende minut i weekenden.,plain
-s0512,"Jeg bad Claude Code om at forklare den gamle kode, før jeg rørte ved den.",terms
-s0513,"Kan du builde appen lokalt og se, om fejlen også er der?",terms
-s0514,Vi skal male børneværelset i weekenden.,plain
-s0515,"Deployet fejlede, fordi der manglede en miljøvariabel.",terms
-s0516,"Merge ikke noget i dag, vi fryser koden inden udgivelsen.",terms
-s0517,"Lad os mocke betalingerne, så vi ikke bruger rigtige penge i testene.",terms
-s0518,Kan du række mig saltet?,plain
-s0519,"Jeg har fjernet en dependency, som vi slet ikke brugte.",terms
-s0520,Hvorfor er alle builds fra i nat røde?,terms
-s0521,Vi blev fanget i en byge på vej hjem fra skole.,plain
-s0522,Previewet af ændringen ligger som et link i pull requesten.,terms
-s0523,Hvilket endpoint bruger appen til at hente profilbilledet?,terms
-s0524,Jeg har brækket armen og kan ikke skrive i hånden.,plain
-s0525,"Dashboardet opdaterer kun én gang i timen, det er for sjældent.",terms
-s0526,Endpointet til søgning er alt for langsomt.,terms
-s0527,"Jeg har fået adgang til Kubernetes, men jeg tør ikke røre ved noget endnu.",terms
-s0528,Jeg har fri hele næste uge.,plain
-s0529,"Det skal testes grundigt, før vi tør sende det ud.",terms
-s0530,Hvem i teamet kender React bedst?,terms
-s0531,Jeg har bestilt bord til fire klokken halv otte.,plain
-s0532,"Skriv en prompt, der beder om svaret i punktform.",terms
-s0533,"Lukker du lige de pull requests, som ingen bruger længere?",terms
-s0534,"Der er tre endpoints, der stadig bruger den gamle database.",terms
-s0535,Jeg har glemt at tage kødet op af fryseren.,plain
-s0536,Vi træner modellen i Python og kører den bagefter fra Rust.,terms
-s0537,"Jeg har lagt koden på GitHub, så du kan se den.",terms
-s0538,Mødet er flyttet til den 14. marts.,plain
-s0539,Har du en god opsætning af VS Code til Rust?,terms
-s0540,"Kør lige testene igen, jeg tror, det var en tilfældig fejl.",terms
-s0541,Hvor mange gange er serveren crashet i denne uge?,terms
-s0542,Jeg har tid til en kop kaffe klokken halv elleve.,plain
-s0543,Hvor mange databaser har vi egentlig kørende i Azure?,terms
-s0544,Vi har fået mange timeouts fra betalingsløsningen i dag.,terms
-s0545,"Lægen siger, at jeg skal hvile mig i en uge.",plain
-s0546,"Vi har fundet en fejl i Tauri, som vi har meldt til udviklerne.",terms
-s0547,Backenden skal kunne klare ti gange så mange brugere til jul.,terms
-s0548,"Kan vi release i dag, eller skal vi vente til mandag?",terms
-s0549,"Det småregner, men det er ikke værre, end vi kan gå en tur.",plain
-s0550,"Jeg har en lokal branch, som jeg ikke har pushet endnu.",terms
-s0551,"Vi har flyttet frontenden til Vercel og databasen til Supabase, så nu mangler vi kun backenden.",terms
-s0552,Fiskehandleren havde friske rødspætter i dag.,plain
-s0553,"Cachen giver gamle data, selvom vi har opdateret databasen.",terms
-s0554,"React har ændret sig meget, siden jeg sidst brugte det.",terms
-s0555,"Hvis LLM'en ikke er sikker, skal den sige det i stedet for at finde på et svar.",terms
-s0556,Juleferien varer fra den 21. december til den 3. januar.,plain
-s0557,Prompts skal gennemgås lige så grundigt som kode.,terms
-s0558,"Hvis vi mocker betalingsløsningen i testene, kan CI køre uden adgang til internettet.",terms
-s0559,Bussen til Amager Strand kører fra Rådhuspladsen.,plain
-s0560,"Hvem reviewer PR'erne, mens Sofie er på ferie?",terms
-s0561,"Den dependency er ikke vedligeholdt mere, så vi må finde en anden.",terms
-s0562,"Kan Claude Code køre i vores pipeline, eller skal det være lokalt?",terms
-s0563,"Kan du købe mælk, rugbrød og æg på vej hjem?",plain
-s0564,"Branchen med det nye design er tre uger gammel, så den bliver svær at merge.",terms
-s0565,Vi har skiftet til Bun i alle vores små værktøjer.,terms
-s0566,Vi så nordlys over Bornholm i går aftes.,plain
-s0567,"Timeouten er sat alt for lavt, så store rapporter fejler.",terms
-s0568,"Jeg har lavet en fil til Docker, så alle kan starte projektet med én kommando.",terms
-s0569,"Jeg har oprettet tre issues i Linear om de bugs, kunden fandt under testen i går.",terms
-s0570,Hvilken dag passer dig bedst i næste uge?,plain
-s0571,"Hvorfor er der så mange gamle issues, som ingen har rørt i et år?",terms
-s0572,"Vi laver en rollback, hvis fejlene stiger efter deployet.",terms
-s0573,Vi har lagt nøglen under måtten til dig.,plain
-s0574,"Cursor har gjort mig hurtigere, men også mere doven.",terms
-s0575,"Han tester kun, når alt går godt, aldrig hvad der sker ved fejl.",terms
-s0576,"Kunden kører alt i Azure, så det må vi også.",terms
-s0577,Vi har cyklet rundt om hele Ærø på en dag.,plain
-s0578,"Buildet fejler på main, fordi nogen har opdateret en dependency uden at køre testene lokalt først.",terms
-s0579,"Rollbacken kræver, at migrationen kan køres baglæns.",terms
-s0580,Farmor og farfar bor stadig i det samme hus på Fyn.,plain
-s0581,"Jeg har lukket alle de issues, der handlede om den gamle app.",terms
-s0582,"Hvor mange migrationer har vi, der aldrig er blevet ryddet op?",terms
-s0583,Vi skal have ny kaffemaskine på kontoret.,plain
-s0584,"Jeg skriver noterne til releasen, når alt er på plads.",terms
-s0585,Kan vi flytte databasen fra Supabase til vores egen server senere?,terms
-s0586,Vi tager de vigtigste issues med i næste sprint.,terms
-s0587,Jeg løb fem kilometer på under tredive minutter i morges.,plain
-s0588,Jeg har oprettet opgaven i Linear og sat dig på.,terms
-s0589,"Den dependency har en licens, vi ikke må bruge.",terms
-s0590,"Tak for den fine gave, den blev jeg rigtig glad for.",plain
-s0591,"Kan du deploye det til staging, så kunden kan se det i morgen?",terms
-s0592,"Opgaverne ligger i Linear, ikke i mailen.",terms
-s0593,"Hej Jonas, buildet på din branch fejler, fordi en test afhænger af, hvad klokken er.",terms
-s0594,Svømmehallen har åbent til klokken ni om aftenen.,plain
-s0595,"Vi har to deadlines på samme dag, det går ikke.",terms
-s0596,"Der ligger to migrationer, som ikke er kørt på staging endnu.",terms
-s0597,Jeg har lovet at bage kage til kollegaens afsked.,plain
-s0598,Er feature flaget slået til for alle kunder nu?,terms
-s0599,Kan vi tage den op til standup i stedet for at holde et møde?,terms
-s0600,"Vi mergede alt for mange ting på én gang, og nu kan ingen finde fejlen.",terms
-s0601,Min datter går til håndbold to gange om ugen.,plain
-s0602,"Det er en fejl i frontend, ikke i backend.",terms
-s0603,"Vi har lavet tre hotfixes på en uge, det er for mange.",terms
-s0604,Svigermor kommer på besøg i en uge.,plain
-s0605,"Det her issue er blevet åbnet igen, fordi fejlen kom tilbage efter sidste deploy.",terms
-s0606,"Vi har brug for en, der kan Python, til det nye dataprojekt.",terms
-s0607,"Bun og Node opfører sig forskelligt, når det kommer til filer.",terms
-s0608,Vi overnattede på et lille hotel i Ribe.,plain
-s0609,"CI'en tager alt for lang tid, når den skal køre det hele.",terms
-s0610,Hvem har adgang til at ændre feature flags i production?,terms
-s0611,Ungerne er endelig faldet i søvn.,plain
-s0612,"Repoet er blevet så stort, at det tager evigheder at hente det ned.",terms
-s0613,Opgaven ligger i Linear.,terms
-s0614,"Jeg har slået feature flaget til for vores egne brugere, så vi kan prøve det i et par dage.",terms
-s0615,Kan du ringe tilbage efter klokken fire?,plain
-s0616,Docker fylder hele disken på min maskine.,terms
-s0617,"Jeg er ved at lære Rust, og det er sværere, end jeg troede.",terms
-s0618,"Er det rigtigt, at det bliver hedebølge i næste uge?",plain
-s0619,Kan du give mig læseadgang til databasen i production?,terms
-s0620,"Skal vi bruge React til den lille interne side, eller er det for meget?",terms
-s0621,Et token må aldrig ligge i koden eller i et repo.,terms
-s0622,Vi er ved at bygge en ny terrasse bag huset.,plain
-s0623,"Linear er meget hurtigere end det system, vi brugte før.",terms
-s0624,Hvem har ødelagt main i nat?,terms
-s0625,Jeg har købt to kilo æbler til en æblekage.,plain
-s0626,Vi har prøvet tre forskellige LLM'er til opsummeringer.,terms
-s0627,Det er cachet i en time.,terms
-s0628,Vi kører den nye løsning i production fra næste uge.,terms
-s0629,Vaskemaskinen er gået i stykker midt i et program.,plain
-s0630,Jeg har sat VS Code op med de samme indstillinger som dig.,terms
-s0631,"VS Code hænger, når jeg åbner den store logfil.",terms
-s0632,Vi spillede kort til langt ud på natten.,plain
-s0633,"Databaserne ligger i Frankfurt, så kundernes data bliver i Europa.",terms
-s0634,"Det står langt nede i backloggen, så det bliver ikke i år.",terms
-s0635,"Hvad koster Supabase, hvis vi får ti tusind brugere?",terms
-s0636,Færgen til Samsø sejler hver anden time.,plain
-s0637,"Hotfixet skal også med ind på main, ellers mister vi det.",terms
-s0638,Jeg har brugt ChatGPT til at formulere teksten til kunden.,terms
-s0639,Jeg skal flyve fra Billund til London på mandag.,plain
-s0640,Hvor mange af jer har skrevet noget i Rust før?,terms
-s0641,"Frontenden kalder API'et alt for mange gange, når siden åbner.",terms
-s0642,Huslejen stiger med 300 kroner om måneden fra januar.,plain
-s0643,"Issuet er lukket, men fejlen er der stadig.",terms
-s0644,Næste år vil jeg gerne lære Next.js ordentligt.,terms
-s0645,Er det her testet ordentligt?,terms
-s0646,Fodboldkampen blev aflyst på grund af regnen.,plain
-s0647,"Vi har ingen, der rigtig kender Kubernetes, og det er et problem.",terms
-s0648,"Tilføjer cache til endpointet med produkter, så forsiden åbner hurtigere.",terms
-s0649,Min far har lige fået nyt knæ og må ikke gå på trapper.,plain
-s0650,"Kan du tjekke loggen i Vercel og se, hvad der gik galt i nat?",terms
-s0651,"Kan du skrive issuet lidt mere præcist, så andre kan forstå det?",terms
-s0652,Appen er skrevet i Rust med Tauri ovenpå.,terms
-s0653,Lederen har indkaldt til et møde om budgettet.,plain
-s0654,"Kan du rydde op i de gamle PR'er, så listen bliver overskuelig?",terms
-s0655,Alle repos skal have en beskrivelse og en ejer.,terms
-s0656,Hvor mange kartofler skal der i til seks personer?,plain
-s0657,"Hvad sker der, når kaldet får en timeout midt i en betaling?",terms
-s0658,"Hvem har lavet API'et til kalenderen, så jeg kan stille et par spørgsmål?",terms
-s0659,Hvorfor crasher den kun på Android?,terms
-s0660,Isbaren ved havnen åbner først i maj.,plain
-s0661,Er Vercel nede lige nu?,terms
-s0662,"Retter fejlen i dashboardet, hvor datoer blev vist med forkert tidszone.",terms
-s0663,"Min mor laver den bedste rødkål, jeg har smagt.",plain
-s0664,Det issue har ligget i backloggen siden sidste sommer.,terms
-s0665,"Den merges automatisk, så snart to personer har godkendt den.",terms
-s0666,"Rust tvinger dig til at tænke over, hvem der ejer dataene.",terms
-s0667,"Kan du skifte pæren i gangen, jeg kan ikke nå?",plain
-s0668,"I går fik jeg merget PR'en om fakturaer, og i dag kigger jeg på pipelinen, der stadig er rød.",terms
-s0669,"Hvilken LLM er billigst, når vi bruger så mange tokens?",terms
-s0670,"Mit pas udløber til marts, så jeg må forny det.",plain
-s0671,Hvor kan jeg finde previewet?,terms
-s0672,"Cloudflare blokerede vores egne kald, fordi de lignede et angreb.",terms
-s0673,Det nye deployment kører på Vercel nu.,terms
-s0674,Vi plukkede jordbær og lavede syltetøj hele eftermiddagen.,plain
-s0675,"Vi skal have et hotfix ud i aften, før kunderne vågner.",terms
-s0676,"Rebase ikke en branch, som andre også arbejder på.",terms
-s0677,Blæsten tog to tagsten fra naboens hus i nat.,plain
-s0678,"LLM'en svarer på engelsk, selvom vi skriver på dansk.",terms
-s0679,"Jeg har brug for hjælp fra en, der kender backenden godt.",terms
-s0680,Den crasher stadig ved opstart.,terms
-s0681,Vi gik en tur langs fjorden i Vejle.,plain
-s0682,"Rollbacken tog under et minut, så ingen opdagede noget.",terms
-s0683,Hvor ligger konfigurationen til Next.js i det nye repo?,terms
-s0684,Der er for meget salt i sovsen.,plain
-s0685,"Jeg bruger ChatGPT til at skrive udkast til mails, men aldrig til kode.",terms
-s0686,Hvem deployede klokken fire i nat?,terms
-s0687,"Henrik har lavet et dashboard, der viser alle deployments og hvor lang tid de tog.",terms
-s0688,Jeg har booket tid til synet af bilen den 30. september.,plain
-s0689,Vi har købt licenser til Cursor til hele teamet.,terms
-s0690,Skitsen ligger i Figma.,terms
-s0691,Kan du give mig en kop te med honning?,plain
-s0692,"Testen af eksporten er ustabil, så den fejler cirka én gang ud af ti i pipelinen.",terms
-s0693,"Jeg pusher aldrig direkte til main, det er en fast regel hos os.",terms
-s0694,Bageren på hjørnet har de bedste kanelsnegle i byen.,plain
-s0695,Jeg har sat dig som reviewer på PR'en om betalinger.,terms
-s0696,"Er der nogen, der kan forklare mig de nye regler i TypeScript?",terms
-s0697,"Kunden har spurgt, om vi bruger ChatGPT til deres data.",terms
-s0698,"Min bil er til service, så jeg tager bussen i denne uge.",plain
-s0699,Det koster for mange tokens at sende hele dokumentet med.,terms
-s0700,Staging og production skal have præcis de samme indstillinger.,terms
-s0701,Ferien starter fredag efter skole.,plain
-s0702,"Hvor mange dependencies har vi, der ikke er opdateret i over et år?",terms
-s0703,"Hvis repoet bliver ved med at vokse, skal vi overveje at dele det op.",terms
-s0704,Mock det eksterne kald væk.,terms
-s0705,"Vi skal have tagrenderne renset, før det bliver vinter.",plain
-s0706,"Til standup i morgen vil jeg gerne snakke om, hvordan vi håndterer hotfixes fremover.",terms
-s0707,Jeg har prøvet Cursor og VS Code side om side i en uge og er stadig i tvivl.,terms
-s0708,"Frisøren har aflyst min tid, så jeg skal finde en ny.",plain
-s0709,"Kubernetes genstarter tjenesten hele tiden, og jeg kan ikke se hvorfor.",terms
-s0710,Hvilken version af Node kører vi på serveren?,terms
-s0711,"Læg det i backloggen, så tager vi det op senere.",terms
-s0712,Jeg har skrevet en indkøbsseddel og sat den på køleskabet.,plain
-s0713,"Featuren ligger bag et feature flag, så vi kan deploye den i dag og slå den til på mandag.",terms
-s0714,Docker på min Mac bruger alt for meget strøm.,terms
-s0715,Jeg har ventet i telefonkø i fyrre minutter.,plain
-s0716,"Hvordan sikrer vi, at LLM'erne ikke ser persondata?",terms
-s0717,"Production er nede, alle hænder på dæk.",terms
-s0718,Hvad kommer med i den næste release?,terms
-s0719,Jeg har glemt min mors fødselsdag for første gang.,plain
-s0720,"Jeg mockede uret, så testen ikke afhænger af, hvilken dag det er.",terms
-s0721,"Vi har sendt prompten og svaret til leverandøren, så de kan se fejlen.",terms
-s0722,Vi tog en tur til Helsingør og så Kronborg.,plain
-s0723,"Jeg har rullet committet tilbage, fordi det ødelagde forsiden.",terms
-s0724,"Vi bruger code review til at dele viden, ikke til at finde skyldige.",terms
-s0725,"Han mocker alt, også ting, der slet ikke behøver det.",terms
-s0726,Har vi nok mel til at bage boller i morgen?,plain
-s0727,Committet med rettelsen til betalingssiden ligger på branchen nu.,terms
-s0728,"Refactor ikke for meget på én gang, så bliver det umuligt at overskue.",terms
-s0729,Vi skal have stegt flæsk med persillesovs i aften.,plain
-s0730,"Kan JavaScript-delen af appen fjernes helt, når den nye version er klar?",terms
-s0731,"GitHub sender alt for mange mails om ting, jeg ikke har bedt om.",terms
-s0732,"Kan du merge main ind i din branch og se, om fejlen stadig er der?",terms
-s0733,Jeg har en aftale med banken onsdag eftermiddag.,plain
-s0734,"Figma-filen er blevet så stor, at den næsten ikke kan åbnes.",terms
-s0735,"Skal vi lave et offentligt API, eller kun bruge det internt?",terms
-s0736,Børnene vil gerne have en trampolin i haven.,plain
-s0737,"Er det deployet til alle, eller kun til de første kunder?",terms
-s0738,Har du set mine kommentarer i reviewet af datamodellen?,terms
-s0739,"Supabase sender en mail, når databasen er ved at være fuld.",terms
-s0740,"Husk paraplyen, det ligner regn i eftermiddag.",plain
-s0741,"Hvor mange sprints har vi tilbage, før lanceringen?",terms
-s0742,"Push din kode, inden du går på weekend, så den ikke kun ligger lokalt.",terms
-s0743,Min søster og jeg ringer sammen næsten hver dag.,plain
-s0744,Jeg skiftede fra VS Code til Cursor i sidste måned.,terms
-s0745,"Feature flaget skal fjernes, når alle har fået den nye side.",terms
-s0746,"Vi skal opdatere vores dependencies, der er flere sikkerhedshuller.",terms
-s0747,"Babyen sover bedst, når vi kører en tur i bil.",plain
-s0748,"Vi har brug for et API, som andre firmaer kan bygge på.",terms
-s0749,Dashboardet viser ikke de rigtige tal fra i går.,terms
-s0750,Printeren på anden sal er løbet tør for papir.,plain
-s0751,Jeg har sat en grænse på tokens per bruger om dagen.,terms
-s0752,"Cloudflare cacher vores billeder, så serveren slipper for de fleste kald.",terms
-s0753,Hvornår går solen ned i aften?,plain
-s0754,"Ved du, hvem der lavede buggen med datoerne?",terms
-s0755,"Der er tre commits, som ikke burde være med i PR'en.",terms
-s0756,"Lad os starte med et lille API og udvide det, når vi ved mere.",terms
-s0757,Kagen skal bage i 40 minutter ved 180 grader.,plain
-s0758,"Vi tester altid på staging, før noget går i production.",terms
-s0759,"Den cacher alt for aggressivt, og så ser ingen deres ændringer.",terms
-s0760,Brunkagerne skal hvile i køleskabet natten over.,plain
-s0761,"Der var en bug i testen, ikke i koden.",terms
-s0762,"Featuren virker ikke, når man er logget ind som administrator.",terms
-s0763,Jeg skriver til dig på Slack.,terms
-s0764,Vi har været i Legoland med børnene tre gange.,plain
-s0765,Vi deployede den nye version i går aftes uden problemer.,terms
-s0766,"Der er en fejl i prod, som vi skal kigge på med det samme.",terms
-s0767,"Sneen smeltede på én dag, og nu er alt mudder.",plain
-s0768,Hvor finder jeg previewet til den nye forside?,terms
-s0769,"Der er en konflikt i merget, så jeg kigger på det i morgen tidlig.",terms
-s0770,"Det er merget og kører allerede, så du kan prøve det med det samme.",terms
-s0771,Kan du sætte en påmindelse til i morgen klokken syv?,plain
-s0772,"Debugging i production er ikke noget, vi har lyst til at gøre igen.",terms
-s0773,"Sprinten er slut, så vi holder et kort tilbageblik klokken to.",terms
-s0774,"Det er så fugtigt i kælderen, at vi må have en affugter.",plain
-s0775,"Vi har aftalt med kunden, at deadlinen flytter, hvis de ikke leverer data i tide.",terms
-s0776,"Jeg har deployet til staging, men ikke rørt ved prod.",terms
-s0777,"Kan du lave et dashboard, der viser antallet af fejl i timen?",terms
-s0778,Om efteråret går vi tit tur i skoven efter svampe.,plain
-s0779,"Deadlinen holder ikke, det må vi sige til kunden nu.",terms
-s0780,"Lav en ny branch til hver opgave, så holder vi det overskueligt.",terms
-s0781,Min søn har fået sin første tand.,plain
-s0782,"Når migrationen er kørt på staging, deployer jeg til prod, og så holder jeg øje med dashboardet.",terms
-s0783,"Endpointet returnerer en fejl, når brugeren ikke er logget ind.",terms
-s0784,Har nogen ændret noget i pipelinen siden i går?,terms
-s0785,Vi har købt en halv gris hos en landmand på Lolland.,plain
-s0786,Hvilke udvidelser har du installeret i VS Code?,terms
-s0787,"Til standuppen sagde Peter, at han er færdig med eksporten.",terms
-s0788,"Kan du lukke vinduet, det trækker.",plain
-s0789,"Kan du lave en tråd i Slack til fejlen, så vi samler snakken der?",terms
-s0790,Vi skal have sat en pipeline op til det nye repo.,terms
-s0791,"Det er bare et feature flag, så du kan slå det til for din egen bruger.",terms
-s0792,"Rigtig god weekend, og pas godt på jer selv.",plain
-s0793,"Testen er ustabil, den fejler cirka hver tiende gang.",terms
-s0794,Azure er blevet dyrt.,terms
-s0795,Hvordan gik det med eksamen i går?,plain
-s0796,"Sprinten slutter på fredag, og vi er langt bagud.",terms
-s0797,Jeg laver en rollback nu.,terms
-s0798,Hvem ejer det her repo?,terms
-s0799,Jeg har sovet dårligt i hele denne uge.,plain
-s0800,Hvor lang tid tager det at lære Rust godt nok til at være produktiv?,terms
-s0801,Til standup i morgen fortæller jeg om migrationen.,terms
-s0802,"Kartoflerne er færdige, når kniven glider let igennem.",plain
-s0803,"Vi har brug for en LLM, der kører lokalt, af hensyn til persondata.",terms
-s0804,Vercel bygger et preview af hver pull request helt automatisk.,terms
-s0805,"Jeg er syg i dag, så jeg springer standuppen over.",terms
-s0806,Der faldt tredive millimeter regn på en enkelt time.,plain
-s0807,Sprinten starter i morgen tidlig.,terms
-s0808,Det er bare almindelig JavaScript.,terms
-s0809,"Jeg har ondt i hovedet, så jeg går tidligt hjem.",plain
-s0810,Hvor mange pakker fra npm har vi egentlig i projektet?,terms
-s0811,"Appen er crashet tre gange siden releasen, og det skyldes den samme fejl hver gang.",terms
-s0812,Jeg har altid drømt om at se Grønland.,plain
-s0813,"Jeg lod Claude Code refactore modulet, og det gik overraskende godt.",terms
-s0814,"Commit lidt oftere, så er det nemmere at følge med i, hvad du laver.",terms
-s0815,"Åbn pull requesten tidligt, så kan vi følge med undervejs.",terms
-s0816,Den sidste bus går et kvarter over tolv.,plain
-s0817,Vi kører Node.js på serveren og React i browseren.,terms
-s0818,"Slack har været nede i en time, så vi har mailet i stedet.",terms
-s0819,"Restauranten i Nyhavn var alt for dyr til det, man fik.",plain
-s0820,"Pipelinen deployer selv, når der er merget til main.",terms
-s0821,Ligger koden på GitHub?,terms
-s0822,"TypeScript fanger mange af de fejl, vi før først så hos kunderne.",terms
-s0823,Hun har været på barsel i et år og starter igen i august.,plain
-s0824,Kaldet giver en timeout efter tredive sekunder.,terms
-s0825,"Vi har kørt fire deploys i dag, og alle gik igennem.",terms
-s0826,Der er forældremøde på skolen torsdag klokken syv.,plain
-s0827,ChatGPT og Claude Code giver tit forskellige svar på det samme spørgsmål.,terms
-s0828,"Vi bør cache billederne, de bliver hentet igen hver gang.",terms
-s0829,"Hvis du alligevel er i Figma, så tjek lige ikonerne på forsiden.",terms
-s0830,Det er min tur til at lave madpakker i denne uge.,plain
-s0831,Jeg buildede en ny version til kunden i morges.,terms
-s0832,"Vi kører alt i Docker, også når vi udvikler lokalt.",terms
-s0833,Har du lyst til at tage i Tivoli på lørdag?,plain
-s0834,"Kubernetes giver os mere arbejde, end det sparer.",terms
-s0835,Jeg har lige pushet en ny branch med rettelserne til login.,terms
-s0836,"Jeg har opdateret npm, og nu virker ingenting.",terms
-s0837,Hvornår lukker posthuset om lørdagen?,plain
-s0838,"Det er ikke en bug, det er en misforståelse af, hvordan det skal virke.",terms
-s0839,"Tag lige et kig på pull requesten om sprog, den er ret kort.",terms
-s0840,Vi flyttede ind i huset i 2015.,plain
-s0841,"Vi får en regning fra Vercel, der er dobbelt så stor som sidste måned.",terms
-s0842,"Designet i Figma passer ikke helt med det, der er bygget, så vi tager et møde om det.",terms
-s0843,"Slack er alt for larmende, jeg lukker det om eftermiddagen.",terms
-s0844,Kan vi mødes på torsdag i stedet for onsdag?,plain
-s0845,Hvem har merget den her branch uden code review?,terms
-s0846,"Vi gemmer alle vores prompts i repoet, så alle kan se dem.",terms
-s0847,Har nogen set mine bilnøgler?,plain
-s0848,"Kan nogen hjælpe mig med at debugge CI'en, den fejler kun på den ene maskine?",terms
-s0849,Kan du debugge det sammen med mig efter frokost?,terms
-s0850,Jeg har reviewet halvdelen og tager resten efter mødet.,terms
-s0851,Jeg har mistet mit rejsekort et sted i bussen.,plain
-s0852,Vi har flyttet alle vores repos over på GitHub.,terms
-s0853,Jeg har lavet en lille Tauri-app til at se logfilerne.,terms
-s0854,Min chef har bedt mig om at holde et oplæg i næste uge.,plain
-s0855,"Vi skal have styr på backloggen, før vi planlægger næste sprint, ellers tager vi de forkerte ting.",terms
-s0856,"Jeg refactorer lige navngivningen, før jeg sender det til review.",terms
-s0857,"Testen fejler kun, når den kører på CI.",terms
-s0858,Vi skal hjælpe Oliver med at lære at cykle i weekenden.,plain
-s0859,"Det deployes automatisk til staging, når noget bliver merget.",terms
-s0860,API'erne fra leverandøren er dårligt dokumenterede.,terms
-s0861,"Koncerten starter klokken otte, men dørene åbner en time før.",plain
-s0862,"Tauri-appen starter på under et sekund, også på gamle maskiner.",terms
-s0863,Endpointet svarer igen efter genstarten.,terms
-s0864,"API'et er nede, så appen viser ingen data.",terms
-s0865,Vi har aftalt at mødes ved springvandet klokken to.,plain
-s0866,Hvem har prioriteret backloggen i denne uge?,terms
-s0867,"Jeg tager det issue, hvis ingen andre har tid.",terms
-s0868,Det tager cirka to timer at køre fra Odense til Aalborg.,plain
-s0869,"Kan vi flytte deadlinen en uge, hvis vi skærer lidt fra?",terms
-s0870,"Mocks er fine, men de må ikke erstatte rigtige tests mod databasen.",terms
-s0871,Min bedstefar fortæller altid den samme historie om krigen.,plain
-s0872,Vi gennemgår backloggen sammen hver anden torsdag.,terms
-s0873,Fjerner det gamle feature flag til nyt design.,terms
-s0874,JavaScript i browseren er ikke det samme som på serveren.,terms
-s0875,Lillesøster er begyndt i skole og er meget stolt.,plain
-s0876,"Next.js gør det nemt at komme i gang, men svært at forstå, hvad der sker.",terms
-s0877,Jeg merger den om lidt.,terms
-s0878,Han løber maraton i Berlin til september.,plain
-s0879,Vi skal have færre features og bedre kvalitet.,terms
-s0880,"LLM'erne bliver bedre hver måned, men de laver stadig fejl.",terms
-s0881,"Jeg har rettet buggen, men jeg forstår stadig ikke helt, hvorfor den opstod.",terms
-s0882,"Der var frost i nat, så jeg måtte skrabe ruderne.",plain
-s0883,"Kunden melder om timeouts på endpointet til rapporter, så jeg prioriterer det over alt andet i dag.",terms
-s0884,Hvor mange penge bruger vi på Azure om måneden?,terms
-s0885,Der er tre uger til vores ferie.,plain
-s0886,"Det er deployet, men cachen viser stadig den gamle side.",terms
-s0887,Hvorfor har pull requesten over to tusind ændrede linjer?,terms
-s0888,"Hvem har sat den deadline, uden at spørge nogen af os?",terms
-s0889,"Jeg har fået en ny elcykel, og nu cykler jeg til Roskilde.",plain
-s0890,Har du Docker installeret på din nye maskine?,terms
-s0891,Hotfixet er på vej ud.,terms
-s0892,Pakken bliver leveret mellem klokken otte og tolv.,plain
-s0893,"Rasmus har refactoret søgningen, så den nu bruger det nye endpoint i stedet for det gamle.",terms
-s0894,"Kan du skrive en migration, der tilføjer den nye kolonne?",terms
-s0895,Vi cacher svaret i fem minutter for at skåne backenden.,terms
-s0896,"Kan du skrive under på papirerne, inden du går?",plain
-s0897,"Hver pull request får sit eget preview, så designerne kan se ændringerne.",terms
-s0898,Vi bruger tre forskellige API'er til at hente vejrdata.,terms
-s0899,Billetterne kostede 395 kroner stykket.,plain
-s0900,"Er cachen delt mellem alle brugere, eller har hver bruger sin egen?",terms
-s0901,"TypeScript klager over typen, men koden virker fint.",terms
-s0902,Skal jeg rebase først?,terms
-s0903,Vi skal huske at forny forsikringen på huset.,plain
-s0904,"Domænet ligger hos Cloudflare, og det gør certifikaterne også.",terms
-s0905,Vi har flyttet alle domæner over til Cloudflare.,terms
-s0906,Min kone har fået nyt job i Odense.,plain
-s0907,"Buildet fejler på et manglende billede, så det er en hurtig rettelse.",terms
-s0908,Har du husket at committe?,terms
-s0909,Releasen er ude hos kunderne.,terms
-s0910,Der var over 40.000 mennesker til koncerten.,plain
-s0911,"Der er gået noget galt under rebaset, og nu mangler der to filer.",terms
-s0912,"Kan du hjælpe mig med at debugge, hvorfor billederne ikke vises?",terms
-s0913,Vi har fået hindbær fra naboens have.,plain
-s0914,"Jeg har fundet buggen, den skyldtes en forkert tidszone.",terms
-s0915,Vi gemmer aldrig tokens i klartekst.,terms
-s0916,"Buggen dukker kun op, når to brugere gemmer på samme tid.",terms
-s0917,Opvasken står stadig fra i går.,plain
-s0918,"Bun kan køre TypeScript direkte, uden at vi skal bygge først.",terms
-s0919,"Build den med de rigtige indstillinger, før du måler hastigheden.",terms
-s0920,Kirsebærtræerne i parken blomstrer kun i en uge eller to.,plain
-s0921,Frontenden er deployet til alle.,terms
-s0922,Vi overvejer at flytte fra Node til Bun.,terms
-s0923,"Vi cachede alt i starten, og nu er det svært at finde ud af, hvad der er friskt.",terms
-s0924,Den bedste is i Aarhus købes nede ved havnen.,plain
-s0925,"Python er fint til prototyper, men det går for langsomt her.",terms
-s0926,Vi rammer loftet for databasen hver mandag morgen.,terms
-s0927,"Haven trænger til vand, det har ikke regnet i tre uger.",plain
-s0928,"Vi har fået kreditter til Azure, som vi skal bruge inden nytår.",terms
-s0929,"Hej Sofie, kan du give min pull request et review i dag, så vi kan nå at deploye inden weekenden?",terms
-s0930,"Æbletræet bærer så mange æbler, at grenene knækker.",plain
-s0931,"Jeg er ved at rebase, så lad være med at pushe til branchen lige nu.",terms
-s0932,"Vi har to databaser, en til kunderne og en til rapporter.",terms
-s0933,"CI'en kører nu på under fem minutter, efter vi har cachet pakkerne.",terms
-s0934,Personalemødet er rykket til klokken tre.,plain
-s0935,"Når I reviewer, så husk at køre koden selv, i stedet for kun at læse den.",terms
-s0936,"Ledelsen vil have flere dashboards, men ingen kigger på dem, vi har.",terms
-s0937,"Min mand er god til at bage, jeg er bedre til at lave suppe.",plain
-s0938,Vi har ikke haft et eneste hotfix i denne måned.,terms
-s0939,Siden er bygget med Next.js og ligger på Vercel.,terms
-s0940,"PR'en er godkendt, så jeg merger den efter frokost.",terms
-s0941,Min onkel har lært mig at fiske.,plain
-s0942,"Vi skal beslutte, om vi vil bruge Python eller TypeScript til den nye tjeneste.",terms
-s0943,Hvor mange branches har vi egentlig åbne lige nu?,terms
-s0944,Vi skal på ferie i Italien i tre uger.,plain
-s0945,"Branchen hedder noget med fakturaer, men jeg kan ikke huske præcis hvad.",terms
-s0946,"Skal vi refactore nu eller vente, til vi ved mere?",terms
-s0947,Jeg har oprettet et issue om fejlen på GitHub.,terms
-s0948,Kan du nå at være her klokken halv fire?,plain
-s0949,"Der er en bug i betalingen, når man betaler med kort.",terms
-s0950,"Jeg har skrevet en migration, der flytter adresserne til en ny tabel, men den er ikke kørt endnu.",terms
-s0951,Katten har væltet blomsterpotten i stuen igen.,plain
-s0952,"Jeg har gemt den prompt, der virkede, i en fil i repoet.",terms
-s0953,"Det er tredje gang, vi reviewer den samme ændring.",terms
-s0954,Kan du pushe én gang til?,terms
-s0955,"Jeg har bagt rugbrød for første gang, og det blev faktisk godt.",plain
-s0956,"Den er releaset, så kunderne kan begynde at bruge den nu.",terms
-s0957,Databasen svarer slet ikke.,terms
-s0958,"Mit nummer er stadig det samme, du kan bare ringe.",plain
-s0959,"Vi har opgraderet Next.js, og nu fejler halvdelen af siderne.",terms
-s0960,"Hotfixet er merget til main og deployet til prod, og fejlraten er tilbage på normalt niveau.",terms
-s0961,Det nye API skal være klar til den eksterne partner inden deadlinen den første marts.,terms
-s0962,Min mor ringer hver søndag klokken seks.,plain
-s0963,"Hold main grøn, ellers kan ingen af os arbejde.",terms
-s0964,"Jeg vil gerne refactore den her funktion, før vi bygger videre på den.",terms
-s0965,Herning har fået en ny svømmehal.,plain
-s0966,"Jeg skriver det meste i TypeScript nu, også på serveren.",terms
-s0967,Hvem mergede ændringen i konfigurationen i fredags?,terms
-s0968,"Branchen er forældet, så vi lukker den og starter forfra.",terms
-s0969,Tordenvejret slog strømmen ud i hele landsbyen.,plain
-s0970,"Smid lige et link i Slack, når den er klar.",terms
-s0971,Dashboardet er gået i stykker efter den sidste ændring.,terms
-s0972,Det er for blæsende til at cykle over broen i dag.,plain
-s0973,"Frontenden er blevet tung, den tager fem sekunder at åbne.",terms
-s0974,Tokenet er udløbet igen.,terms
-s0975,Jeg rebasede hele branchen og fik ryddet op i historikken.,terms
-s0976,Søen ved Silkeborg var helt blank i morges.,plain
-s0977,Kører den på Bun nu?,terms
-s0978,Kan vi slå caching til i Cloudflare for hele siden?,terms
-s0979,Kan du minde mig om at ringe til forsikringen?,plain
-s0980,"Jeg har debugget i tre timer, og nu skal jeg have kaffe.",terms
-s0981,"Vi starter en ny sprint på mandag, så tænk over, hvad du vil tage.",terms
-s0982,"Jeg har committet og pushet, så nu er det din tur.",terms
-s0983,"Tågen ligger så tæt, at man næsten ikke kan se vejen.",plain
-s0984,"Timeouten skal være længere for eksporten, den tager tit et par minutter.",terms
-s0985,"Rul tilbage til den forrige version, hvis det nye deploy fejler.",terms
-s0986,Jeg skal være på arbejde klokken seks i morgen.,plain
-s0987,Vi har aldrig haft brug for en rollback før i dag.,terms
-s0988,Vi har bedt Claude Code om at gennemgå alle fejlbeskederne i appen.,terms
-s0989,"Der er rabat på jordbær, når man køber to bakker.",plain
-s0990,Alle API'erne skal kræve login fra næste måned.,terms
-s0991,"Vi deployer hver dag nu, og det har gjort os meget roligere.",terms
-s0992,"Jeg har pushet en rettelse, men den er ikke merget endnu.",terms
-s0993,Leverpostejen er hjemmelavet efter min mormors opskrift.,plain
-s0994,"Har du en konto på GitHub, så jeg kan give dig adgang?",terms
-s0995,"Der er noget galt med pushet fra i går, for intet virker længere.",terms
-s0996,Hun er blevet valgt som formand for grundejerforeningen.,plain
-s0997,Kan vi slette repoet med den gamle hjemmeside?,terms
-s0998,"Backenden svarer for langsomt, når der er mange brugere på én gang.",terms
-s0999,"Kan du se på dashboardet, om der var flere fejl end normalt i nat?",terms
-s1000,"Jeg tager altid cyklen på arbejde, når det ikke regner.",plain
-s1001,"Sprinten er for fuld, vi må skubbe noget til den næste.",terms
-s1002,Det bliver testet af kunden i næste uge.,terms
-s1003,Jeg har tid hos lægen tirsdag klokken kvart over ni.,plain
-s1004,"Har du set det crash, der kom ind fra en kunde i morges?",terms
-s1005,Vi bruger Python til analyserne.,terms
-s1006,"Jeg har bedt Mads og Ida om at reviewe, fordi de kender den del af koden bedst.",terms
-s1007,Jeg har sendt fakturaen til kunden i morges.,plain
-s1008,"Er der nogen, der har erfaring med Tauri på Windows?",terms
-s1009,"Jeg har brugt Claude Code til at skrive testene til API'et, men jeg har selv læst dem igennem bagefter.",terms
-s1010,Vi spiser altid risengrød hos mine forældre juleaften.,plain
-s1011,"CI'en har været rød i to dage, og ingen har sagt noget.",terms
-s1012,"Previewet virker ikke, fordi det mangler en adgangsnøgle.",terms
-s1013,"Vi kører testene i Docker, så de opfører sig ens på alle maskiner og i pipelinen.",terms
-s1014,Kantinen serverer fiskefilet med remoulade i dag.,plain
-s1015,"LLM'en finder på ting, hvis den ikke får nok kontekst.",terms
-s1016,Hvad skal vi nå i den her sprint?,terms
-s1017,"Mødet varede tre timer, og vi nåede ingenting.",plain
-s1018,Vi har slået to-faktor-login til for alle på GitHub.,terms
-s1019,"Kubernetes-klyngen i Azure er blevet opgraderet, og nu starter to af tjenesterne ikke.",terms
-s1020,"Linear sender en notifikation, hver gang nogen ændrer en opgave.",terms
-s1021,Det har regnet i fjorten dage i træk.,plain
-s1022,"ChatGPT kan godt hjælpe med at forklare en fejlbesked, men den kender ikke vores kode.",terms
-s1023,Vi deler frontend og backend op i to repos fra næste måned.,terms
-s1024,Min veninde bor på Nørrebro tæt på søerne.,plain
-s1025,"Har du committet koden til eksporten, eller ligger den kun hos dig?",terms
-s1026,Dashboardet er opdateret med gårsdagens tal.,terms
-s1027,"Figma har fået en ny funktion, der laver kode ud fra designet.",terms
-s1028,"Det var en rigtig hyggelig aften, tak for maden.",plain
-s1029,"Der er kommentarer i PR'en, som du lige skal svare på.",terms
-s1030,"Jeg mergede Signes branch ved en fejl, så nu ruller jeg det tilbage.",terms
-s1031,Tilbuddet på smør gælder kun til lørdag.,plain
-s1032,"Debug det lokalt først, før du begynder at ændre noget på staging.",terms
-s1033,"Jeg reviewede din kode i morges, og det ser rigtig fint ud.",terms
-s1034,"Hvor ligger vores data i Azure, er det i Europa?",terms
-s1035,Skolen holder lukket fra den 12. til den 16. oktober.,plain
-s1036,Jeg har skrevet dokumentationen til API'et færdig.,terms
-s1037,"Lav et commit for hver logisk ændring, ikke ét kæmpe commit til sidst.",terms
-s1038,Hvad skal vi have til dessert på søndag?,plain
-s1039,Vi skal have staging op at køre igen inden demoen.,terms
-s1040,ChatGPT tog fejl igen.,terms
-s1041,Jeg har fået influenza og ligger i sengen.,plain
+s0460,"En hallucination i en kontrakt er dyr, så vi bruger RAG med kundens egne dokumenter.",terms
+s0461,"Buildet er grønt, previewet ser fint ud, så jeg merger nu.",terms
+s0462,"Churn er den KPI, jeg kigger mest på hver mandag.",terms
+s0463,Jeg har bestået køreprøven i første forsøg.,plain
+s0464,"Webhooken fra GitHub rammer et endpoint, der ikke findes mere.",terms
+s0465,Vores workflows i GitHub Actions er blevet alt for komplicerede.,terms
+s0466,Fuglene begynder at synge allerede klokken fire om morgenen.,plain
+s0467,"Flowet i onboardingen har syv trin, og det er mindst tre for mange.",terms
+s0468,"Unit testene fejler kun på CI'en, fordi tidszonen er en anden.",terms
+s0469,"Vi har sammenlignet Claude, Gemini og Codex på den samme opgave.",terms
+s0470,Har du været på Bornholm om sommeren?,plain
+s0471,"Setuppet på min nye computer tog en hel dag, mest på grund af Docker.",terms
+s0472,MCP gør det nemt at give agenten adgang til Jira og Notion.,terms
+s0473,Jeg har strikket en sweater til min nevø.,plain
+s0474,Jeg har lavet en diff af schemaet før og efter migrationen.,terms
+s0475,Vi har en backlog i Linear med over tre hundrede issues.,terms
+s0476,Outlook og Teams hører sammen hos de fleste store kunder.,terms
+s0477,Jeg er syg i dag og bliver hjemme.,plain
+s0478,"Coverage er ikke et mål i sig selv, men unit testene skal dække det vigtigste.",terms
+s0479,Skal vi forke pakken eller bare vente på en ny version?,terms
+s0480,Mormor fylder halvfems år på søndag.,plain
+s0481,"AI er ikke svaret på alt, men den sparer os mange timer.",terms
+s0482,"Det ligger stashet lokalt, så det er ikke pushet nogen steder.",terms
+s0483,Use cases fra kunderne er det bedste materiale til pitchen.,terms
+s0484,Toget mellem Roskilde og København er forsinket igen.,plain
+s0485,Vi fine-tuner en LoRA oven på Whisper i stedet for at træne hele modellen.,terms
+s0486,Outlook og Gmail viser vores mails helt forskelligt.,terms
+s0487,Hvornår går den sidste færge fra Hundested?,plain
+s0488,Databaserne bliver kopieret til en anden region hver nat i AWS.,terms
+s0489,"Xcode har opdateret sig selv, og nu kan jeg ikke bygge til App Store.",terms
+s0490,"Rate limiten gælder per token, ikke per bruger.",terms
+s0491,Vi skal betale 4.500 kroner i depositum for lejligheden.,plain
+s0492,Leadet fra LinkedIn vil gerne have en demo på torsdag.,terms
+s0493,Vi har en rate limit på hundrede kald i minuttet.,terms
+s0494,"Jeg tager en kop kaffe, vil du også have en?",plain
+s0495,"Hver request til API'et kræver en JWT, ellers får man en fejl.",terms
+s0496,"Kan vi bruge modellerne fra Anthropic gennem Azure, så vores data bliver i Europa?",terms
+s0497,"Kunden bruger kun Teams, så vi har lagt Zoom på hylden.",terms
+s0498,Til fødselsdagen laver jeg lagkage med flødeskum og jordbær.,plain
+s0499,"Vektordatabasen ligger i Postgres, så vi slipper for en tjeneste mere.",terms
+s0500,"Copilot har skrevet halvdelen af den her komponent, og det kan man se.",terms
+s0501,Vi skal stemme til kommunalvalget i november.,plain
+s0502,"Vi har prøvet tre frameworks til frontenden, og alle har deres problemer.",terms
+s0503,"Kan du sende stack tracen for den exception, du fik i går?",terms
+s0504,"Sentry viser, at fejlen kun rammer brugere på Android.",terms
+s0505,Jeg har meldt mig til at være frivillig ved byfesten.,plain
+s0506,"Vi har bygget SSO oven på OAuth, så det virker med kundens eget login.",terms
+s0507,Kan du få CI'en til at vise coverage på hver pull request?,terms
+s0508,Grøntsagerne fra torvet er meget bedre end dem fra supermarkedet.,plain
+s0509,Jeg laver en rollback nu.,terms
+s0510,"Til standup i morgen vil jeg gerne snakke om, hvordan vi håndterer hotfixes fremover.",terms
+s0511,Appen til macOS er bygget med Tauri og Rust.,terms
+s0512,Bussen kommer hvert tyvende minut i weekenden.,plain
+s0513,"Kan du give mig feedback på setuppet, før jeg viser det til holdet?",terms
+s0514,Har du husket at opdatere pakkerne med npm?,terms
+s0515,Vi skal male børneværelset i weekenden.,plain
+s0516,"Frontenden er lavet i React, og backenden kører på Node.",terms
+s0517,"Kunden melder om timeouts på endpointet til rapporter, så jeg prioriterer det over alt andet i dag.",terms
+s0518,Hvert framework har sin egen måde at håndtere errors på.,terms
+s0519,Kan du række mig saltet?,plain
+s0520,Vi launcher på Android og iOS samme dag.,terms
+s0521,"Python kaster exceptions for ingenting, og det er helt fint.",terms
+s0522,Vi blev fanget i en byge på vej hjem fra skole.,plain
+s0523,Vi kører integrationstests mod en rigtig database i Docker.,terms
+s0524,"Copilot skrev en hook, der kørte i ring og crashede browseren.",terms
+s0525,Jeg tager en follow-up på Zoom med kunden i næste uge.,terms
+s0526,Jeg har brækket armen og kan ikke skrive i hånden.,plain
+s0527,Efter rollbacken lavede vi et grundigt code review af betalingsmodulet.,terms
+s0528,"Integrationstestene er langsomme, så de kører kun på main.",terms
+s0529,Jeg har fri hele næste uge.,plain
+s0530,Kan du klone repoet på serveren og køre migrationen?,terms
+s0531,"Startuppen har lavet en roadmap, men har ingen pricing endnu.",terms
+s0532,"Unit testen dækker de fleste edge cases, men ikke dem med tidszoner.",terms
+s0533,Jeg har bestilt bord til fire klokken halv otte.,plain
+s0534,"Jeg reverter lige committet, det ødelagde login på staging.",terms
+s0535,"Vi refactorede databasen i sidste sprint, og nu er alle queries hurtigere.",terms
+s0536,Jeg har glemt at tage kødet op af fryseren.,plain
+s0537,"Kunden rammer vores rate limits og får timeouts, fordi de sender alt på én gang.",terms
+s0538,"Checkouten i webshoppen fejler, når kunden betaler med Stripe.",terms
+s0539,"Vi skal have styr på backloggen, før vi planlægger næste sprint, ellers tager vi de forkerte ting.",terms
+s0540,Mødet er flyttet til den 14. marts.,plain
+s0541,"Kan du lave knappen i ren HTML, så den også virker uden JavaScript?",terms
+s0542,JavaScript i den gamle frontend skal skrives om til TypeScript.,terms
+s0543,Jeg har tid til en kop kaffe klokken halv elleve.,plain
+s0544,CLI'en virker kun på macOS indtil videre.,terms
+s0545,Hvornår skal vi launche på LinkedIn?,terms
+s0546,"Henrik har lavet et dashboard, der viser alle deployments og hvor lang tid de tog.",terms
+s0547,"Lægen siger, at jeg skal hvile mig i en uge.",plain
+s0548,"Modellen hallucinerer mindre, når prompten siger, at den gerne må svare ved ikke.",terms
+s0549,Sessionen deles mellem appen og hjemmesiden via en cookie.,terms
+s0550,"Det småregner, men det er ikke værre, end vi kan gå en tur.",plain
+s0551,En SaaS-startup lever og dør med sin churn.,terms
+s0552,Vi henter Whisper fra Hugging Face og fine-tuner den med en LoRA på vores egen GPU.,terms
+s0553,"Kunderne vil have AI i vores SaaS, men de ved ikke helt hvorfor.",terms
+s0554,Fiskehandleren havde friske rødspætter i dag.,plain
+s0555,"Sprinten er for fuld, vi må skubbe noget til den næste.",terms
+s0556,"Vi bruger både OpenAI og Anthropic, så vi ikke er afhængige af én leverandør.",terms
+s0557,Juleferien varer fra den 21. december til den 3. januar.,plain
+s0558,"Vi har opgraderet PostgreSQL, og alle testene er grønne.",terms
+s0559,"Context windowet er fyldt op, så den glemmer det, vi sagde i starten.",terms
+s0560,"Det workflow, vi har med kunden i Jira, er alt for langsomt.",terms
+s0561,Bussen til Amager Strand kører fra Rådhuspladsen.,plain
+s0562,"TypeScript brokker sig, fordi props mangler en type.",terms
+s0563,Vi træner modellen i Python og kører den bagefter fra Rust.,terms
+s0564,"Kan du købe mælk, rugbrød og æg på vej hjem?",plain
+s0565,"Tauri-appen starter på under et sekund på macOS, også på gamle maskiner.",terms
+s0566,"Buggene i den gamle app retter vi ikke mere, alle bruger den nye feature.",terms
+s0567,"Vi kører API'et serverless på Cloudflare, og det har aldrig været nede.",terms
+s0568,Vi så nordlys over Bornholm i går aftes.,plain
+s0569,"Vi har lagt en ny KPI ind i dashboardet, så vi kan se churn hver dag.",terms
+s0570,"Vores end-to-end tests kører hver nat, og der er ingen mocks i dem.",terms
+s0571,Hvilken dag passer dig bedst i næste uge?,plain
+s0572,Google Drive er fyldt med gamle kopier af præsentationen i PowerPoint.,terms
+s0573,"Vite bygger frontenden på få sekunder, og Tailwind fjerner al den CSS, vi ikke bruger.",terms
+s0574,"Vi har bygget en AI-agent, der læser supportmails og foreslår svar.",terms
+s0575,Vi har lagt nøglen under måtten til dig.,plain
+s0576,"Linteren til TypeScript er så streng, at den fejler på kommentarer.",terms
+s0577,Vi testede den nye onboarding på fem kunder i går.,terms
+s0578,Vi har cyklet rundt om hele Ærø på en dag.,plain
+s0579,"Tailwind gør, at designeren og udvikleren taler samme sprog.",terms
+s0580,LoRA'en er trænet på en enkelt GPU på under en time.,terms
+s0581,"Vi har en app til macOS og en extension til Chrome, og begge skal opdateres.",terms
+s0582,Farmor og farfar bor stadig i det samme hus på Fyn.,plain
+s0583,RAG med embeddings fra vores egne dokumenter virker bedre end fine-tuning.,terms
+s0584,Hooks i React skal altid kaldes i samme rækkefølge.,terms
+s0585,Vi skal have ny kaffemaskine på kontoret.,plain
+s0586,"Kan du builde appen til Android, så jeg kan prøve den i aften?",terms
+s0587,"Lav et feature flag til featuren, så kan vi prøve den af på en lille gruppe.",terms
+s0588,Jeg cherry-picker lige rettelsen over på release-branchen.,terms
+s0589,Jeg løb fem kilometer på under tredive minutter i morges.,plain
+s0590,"En embedding er bare en liste af tal, der beskriver teksten.",terms
+s0591,"Den hallucinerede en funktion, der slet ikke findes i libraryet.",terms
+s0592,"Tak for den fine gave, den blev jeg rigtig glad for.",plain
+s0593,Hvor mange queues har vi oprettet i Cloudflare nu?,terms
+s0594,ChatGPT og Claude Code giver tit forskellige svar på det samme spørgsmål.,terms
+s0595,Svømmehallen har åbent til klokken ni om aftenen.,plain
+s0596,"Tauri gør, at vi kan bruge React til desktopappen og Rust bagved.",terms
+s0597,"Kubernetes-klyngen i Azure er blevet opgraderet, og nu starter to af tjenesterne ikke.",terms
+s0598,"Edge casen med tomme navne fandt vi først, da kunden fik en error.",terms
+s0599,Jeg har lovet at bage kage til kollegaens afsked.,plain
+s0600,CSV-filen fra kunden ligger som vedhæftning i Gmail.,terms
+s0601,"Extensionen virker i Chrome, men den skal godkendes igen efter hver opdatering.",terms
+s0602,Min datter går til håndbold to gange om ugen.,plain
+s0603,"Onboardingen er for lang, halvdelen falder fra før sidste trin.",terms
+s0604,Hun reviewede hele PR'en på en time og fandt tre bugs.,terms
+s0605,"Appen er crashet to gange i dag, begge gange på iPhone.",terms
+s0606,Svigermor kommer på besøg i en uge.,plain
+s0607,"Efter rebaset er der diffs på over tusind linjer, som ingen læser.",terms
+s0608,Vi overvejer at flytte fra Node til Bun.,terms
+s0609,Vi overnattede på et lille hotel i Ribe.,plain
+s0610,"Send mig hele stack tracen, ikke kun erroren i den sidste linje.",terms
+s0611,"Jeg har lavet en CLI, der tagger releasen og opdaterer changeloggen.",terms
+s0612,"Vi har ingen analytics i vores SaaS, fordi vi har lovet kunderne ikke at spore dem.",terms
+s0613,Ungerne er endelig faldet i søvn.,plain
+s0614,Vi revertede hele releasen og deployede den gamle version igen.,terms
+s0615,Hvordan får vi Gemini til ikke at hallucinere navne på kunder?,terms
+s0616,Kan du ringe tilbage efter klokken fire?,plain
+s0617,Kan du benchmarke den nye server mod den gamle?,terms
+s0618,Vi har skrevet vores egne SDK'er til JavaScript og Swift.,terms
+s0619,"End-to-end testen fangede en edge case, som ingen havde tænkt på.",terms
+s0620,"Er det rigtigt, at det bliver hedebølge i næste uge?",plain
+s0621,"Generer et nyt token, det gamle er lækket i en skærmoptagelse.",terms
+s0622,Vercel har givet os en ny adresse til previewet.,terms
+s0623,Vi er ved at bygge en ny terrasse bag huset.,plain
+s0624,"Edge casen opstår kun, når to brugere gemmer i samme session.",terms
+s0625,"Jeg har lavet en lille CLI, der importerer kunderne fra en CSV-fil.",terms
+s0626,"Staten bliver nulstillet, når man skifter side, og det er en bug.",terms
+s0627,Jeg har købt to kilo æbler til en æblekage.,plain
+s0628,"Kan du pitche produktet for kunden, mens jeg viser demoen?",terms
+s0629,"Hun laver mest frontend, men kan også lidt Swift.",terms
+s0630,Vaskemaskinen er gået i stykker midt i et program.,plain
+s0631,Embeddingen af hele vores dokumentation tog under et minut med OpenAI.,terms
+s0632,Hver incident starter med en alert i Slack og slutter med en rapport.,terms
+s0633,"Downtime under en migration er det, kunderne klager mest over.",terms
+s0634,Vi spillede kort til langt ud på natten.,plain
+s0635,"Når nogen refactorer, er flere små code reviews bedre end et kæmpestort.",terms
+s0636,"Der er alt for mange queries per side, og ingen af dem bruger vores indexes.",terms
+s0637,Færgen til Samsø sejler hver anden time.,plain
+s0638,"Vi har sat rate limiting på login i den serverless funktion, så ingen kan gætte adgangskoder.",terms
+s0639,"Efter standuppen tager vi et fælles code review, så vi lærer hinandens kode at kende.",terms
+s0640,Læg leadet ind i CRM'et og sæt en follow-up til næste uge.,terms
+s0641,Jeg skal flyve fra Billund til London på mandag.,plain
+s0642,"I code reviewet spurgte jeg, hvorfor vi trækker en ny dependency ind.",terms
+s0643,Kunderne på macOS kan installere appen uden om App Store.,terms
+s0644,Huslejen stiger med 300 kroner om måneden fra januar.,plain
+s0645,Kan du squashe dine commits og skrive en ordentlig besked i changeloggen?,terms
+s0646,"Kan vi køre inference lokalt på macOS, så lyden aldrig forlader computeren?",terms
+s0647,Vi bruger Postgres til alt og Redis til cachen.,terms
+s0648,Fodboldkampen blev aflyst på grund af regnen.,plain
+s0649,Opdateringen af vores dependencies har ligget i backloggen i over et år.,terms
+s0650,"Mailen er skrevet i HTML med CSS direkte i koden, ellers forstår Outlook den ikke.",terms
+s0651,Min far har lige fået nyt knæ og må ikke gå på trapper.,plain
+s0652,"Vi gemmer kun et id i sessionen og i JWT'en, aldrig personlige oplysninger.",terms
+s0653,"Vite og Bun gør, at frontenden starter, før man har sluppet tasten.",terms
+s0654,"Props og state er det første, man skal forstå i React.",terms
+s0655,Lederen har indkaldt til et møde om budgettet.,plain
+s0656,"En PowerPoint med tredive slides er ikke en pitch, det er en roman.",terms
+s0657,Hooken henter data fra API'et og gemmer det i staten.,terms
+s0658,Hvor mange kartofler skal der i til seks personer?,plain
+s0659,Feedbacken på det nye design i Figma har været god.,terms
+s0660,"Nye udviklere skriver tit en hook, hvor props havde været nok.",terms
+s0661,"Vi kører testene i Docker, så de opfører sig ens på alle maskiner og i pipelinen.",terms
+s0662,Isbaren ved havnen åbner først i maj.,plain
+s0663,Codex og Copilot kan begge bruge modeller fra OpenAI.,terms
+s0664,"Kan du lave en graf i Excel over, hvor mange sætninger der er i datasættet?",terms
+s0665,"Min mor laver den bedste rødkål, jeg har smagt.",plain
+s0666,"Uden monitoring havde vi ikke set, at backenden crashede hver nat.",terms
+s0667,Med Tauri kan vi genbruge al vores JavaScript fra hjemmesiden.,terms
+s0668,Diffen er alt for stor til at reviewe på en eftermiddag.,terms
+s0669,"Kan du skifte pæren i gangen, jeg kan ikke nå?",plain
+s0670,"Vi skal opdatere vores dependencies med npm, for der er flere sikkerhedshuller.",terms
+s0671,"Async kode i JavaScript ser enkel ud, men den er svær at debugge.",terms
+s0672,"Mit pas udløber til marts, så jeg må forny det.",plain
+s0673,Siden er bygget med Next.js og ligger på Vercel.,terms
+s0674,"Next.js-appen er blevet langsom, så vi overvejer at skifte til Vite.",terms
+s0675,Datasættet til LoRA'en har vi selv lavet med danske fagord.,terms
+s0676,Vi plukkede jordbær og lavede syltetøj hele eftermiddagen.,plain
+s0677,"SQL-queryen bruger ikke indexet, så den læser hele tabellen.",terms
+s0678,"Jira har en rate limit, så vores import tog hele dagen.",terms
+s0679,Blæsten tog to tagsten fra naboens hus i nat.,plain
+s0680,"En ny LoRA fine-tunes hver nat på de sætninger, jeg har læst op i løbet af dagen.",terms
+s0681,Builds på GitHub Actions er dobbelt så hurtige med cachen.,terms
+s0682,"Kan du flytte referatet fra Notion over i Google Drive, så kunden kan se det?",terms
+s0683,Vi gik en tur langs fjorden i Vejle.,plain
+s0684,"Den SQL, Claude skrev, manglede et index og tog ti sekunder.",terms
+s0685,"Kør en eval på den nye prompt, før du deployer den.",terms
+s0686,Der er for meget salt i sovsen.,plain
+s0687,"Claude er overraskende god til at skrive SQL, men tjek altid resultatet.",terms
+s0688,"Vi har tre extensions til Chrome, der alle læser fra det samme API.",terms
+s0689,"Migrationen er bare en SQL-fil, som CI'en kører før deployet.",terms
+s0690,Jeg har booket tid til synet af bilen den 30. september.,plain
+s0691,RAG er kun så god som dokumenterne i vektordatabasen.,terms
+s0692,"Monitoring i Sentry fangede fejlen, før kunderne opdagede den.",terms
+s0693,Kan du give mig en kop te med honning?,plain
+s0694,CORS er sat forkert op på det nye endpoint.,terms
+s0695,"To kunder churnede i sidste måned, og begge nævnte vores pricing.",terms
+s0696,"Det står langt nede i backloggen, så det kommer ikke på roadmappen i år.",terms
+s0697,Bageren på hjørnet har de bedste kanelsnegle i byen.,plain
+s0698,"TestFlight-versionen udløber efter tre måneder, så kunden skal have en ny.",terms
+s0699,"Læg alle leads ind i CRM'et, ellers glemmer vi dem.",terms
+s0700,"Min bil er til service, så jeg tager bussen i denne uge.",plain
+s0701,"Vi har lavet embeddings af alle tickets, så agenten kan finde lignende fejl.",terms
+s0702,"Det kræver noget debugging at finde ud af, hvorfor den hænger.",terms
+s0703,"Kør linteren, før du pusher, så slipper vi for de små kommentarer.",terms
+s0704,Ferien starter fredag efter skole.,plain
+s0705,"Stash det, du har, så kan jeg vise dig diffen på min skærm.",terms
+s0706,Cursor og Copilot gør stort set det samme for mig.,terms
+s0707,"Vi skal have tagrenderne renset, før det bliver vinter.",plain
+s0708,"Hvis vi hæver prisen, stiger churn, men det kan godt betale sig.",terms
+s0709,Har du en god opsætning af VS Code til Rust?,terms
+s0710,Setuppet til evals kører på min egen GPU om natten.,terms
+s0711,"Frisøren har aflyst min tid, så jeg skal finde en ny.",plain
+s0712,"Hvem skriver prompten til ChatGPT, når vi skal opsummere møderne?",terms
+s0713,Vi skriver den native del i Swift og resten i React.,terms
+s0714,Jeg har skrevet en indkøbsseddel og sat den på køleskabet.,plain
+s0715,Hvem har prioriteret backloggen efter de nye KPI'er?,terms
+s0716,"Hvor meget downtime kan kunden leve med, når vi opgraderer databasen?",terms
+s0717,"Anthropic har lavet en MCP, der giver Claude adgang til GitHub.",terms
+s0718,Jeg har ventet i telefonkø i fyrre minutter.,plain
+s0719,"Pipelinen stopper, hvis YAML-filen ikke passer til schemaet.",terms
+s0720,"CORS-fejlen i Chrome forsvinder, når man kalder API'et fra samme domæne.",terms
+s0721,Jeg har glemt min mors fødselsdag for første gang.,plain
+s0722,Jeg pitcher for tre investorer på fredag og skal finde de bedste use cases.,terms
+s0723,"Vi gemmer sessioner i Redis, så det er lige meget, hvilken server man rammer.",terms
+s0724,Vi tog en tur til Helsingør og så Kronborg.,plain
+s0725,"Han pitchede startuppen så godt, at de ville investere med det samme.",terms
+s0726,"Exceptions fra SDK'et bliver slugt, så vi ser dem aldrig.",terms
+s0727,"Vi har alt for mange gamle feature flags, som nogen burde fjerne.",terms
+s0728,Har vi nok mel til at bage boller i morgen?,plain
+s0729,"Vi har lavet en extension, der sender CSV direkte fra Excel til vores API.",terms
+s0730,"Embeddings fra OpenAI er billige, men vektordatabasen koster noget.",terms
+s0731,Vi skal have stegt flæsk med persillesovs i aften.,plain
+s0732,"Husk at tagge committet, før du laver releasen.",terms
+s0733,"Feedbacken fra demoen er, at flowet til betaling er for langt.",terms
+s0734,"Copilot foreslog en query, der slettede alle rækker i tabellen.",terms
+s0735,Jeg har en aftale med banken onsdag eftermiddag.,plain
+s0736,"Mocken af API'et returnerer altid den samme bruger, så testen er værdiløs.",terms
+s0737,Pitchen til investorerne handler mest om churn og pricing.,terms
+s0738,Børnene vil gerne have en trampolin i haven.,plain
+s0739,"Hun mockede hele API'et, så frontenden kunne bygges først.",terms
+s0740,"DNS for det nye domæne peger på Vercel, men CDN'et er ikke sat op.",terms
+s0741,Hvad står der i erroren fra Supabase?,terms
+s0742,"Husk paraplyen, det ligner regn i eftermiddag.",plain
+s0743,"Lad os scope det ned til det, vi kan nå før deadlinen.",terms
+s0744,Vi har flyttet frontenden fra den gamle opsætning til Vite og Tailwind.,terms
+s0745,Min søster og jeg ringer sammen næsten hver dag.,plain
+s0746,"Rettelsen er cherry-picket, men nogen taggede den forkerte version i går.",terms
+s0747,"Codex lavede en pull request, der fiksede buggen, men brød to tests.",terms
+s0748,Vi har fundet en fejl i Tauri og lavet et issue til udviklerne.,terms
+s0749,"Babyen sover bedst, når vi kører en tur i bil.",plain
+s0750,"Checkouten crasher, når kunden har mere end ti varer i kurven.",terms
+s0751,"Gem ikke en JWT i browserens lager, brug en cookie.",terms
+s0752,Printeren på anden sal er løbet tør for papir.,plain
+s0753,"Queryen er skrevet i ren SQL, fordi frameworket lavede noget rod.",terms
+s0754,End-to-end testen i GitHub Actions tager tyve minutter.,terms
+s0755,Hvilket benchmark bruger I til at sammenligne Whisper med de andre?,terms
+s0756,Hvornår går solen ned i aften?,plain
+s0757,"Vi kører evals på hver ny prompt, før den kommer i production.",terms
+s0758,"Vi genererer et JSON-schema fra typerne, så API'et altid er dokumenteret.",terms
+s0759,Kagen skal bage i 40 minutter ved 180 grader.,plain
+s0760,Integrationstestene mod Postgres tager fire minutter på CI'en.,terms
+s0761,"Er det mocket, eller kalder testen den rigtige server?",terms
+s0762,Hvorfor deler de to faner den samme session efter login med OAuth?,terms
+s0763,Brunkagerne skal hvile i køleskabet natten over.,plain
+s0764,"Jeg har skrevet en lille CLI i Rust, der læser YAML og laver JSON.",terms
+s0765,Coveragen er faldet til halvtreds procent efter den store refactoring.,terms
+s0766,Vi har været i Legoland med børnene tre gange.,plain
+s0767,Vi har sendt et udkast til roadmappen til alle på Teams.,terms
+s0768,"Hvis vi mocker betalingsløsningen i testene, kan CI køre uden adgang til internettet.",terms
+s0769,"Hver gang vi squasher, mister vi historikken for det enkelte commit.",terms
+s0770,"Sneen smeltede på én dag, og nu er alt mudder.",plain
+s0771,Benchmarket kører hver nat i CI'en og skriver resultatet i Slack.,terms
+s0772,"Jeg får en CORS-fejl, når frontenden kalder API'et lokalt.",terms
+s0773,Kan du sætte en påmindelse til i morgen klokken syv?,plain
+s0774,Vi kører hver tjeneste i sin egen container med Docker.,terms
+s0775,"Kan vi køre pipelinen manuelt, eller skal jeg pushe igen?",terms
+s0776,"Præsentationen til investorerne er i PowerPoint, men jeg vil hellere bruge Figma.",terms
+s0777,"Det er så fugtigt i kælderen, at vi må have en affugter.",plain
+s0778,Vi cherry-pickede to commits fra main over i hotfixet.,terms
+s0779,"Den gamle side er ren HTML og CSS, og den virker stadig fint.",terms
+s0780,Om efteråret går vi tit tur i skoven efter svampe.,plain
+s0781,"Vite starter på et sekund med Node.js, hvor den gamle opsætning tog et halvt minut.",terms
+s0782,"Der er så mange previews, at vi har over tusind URL'er at holde styr på.",terms
+s0783,"API'et tager imod JSON, men den gamle CLI sender stadig CSV.",terms
+s0784,Min søn har fået sin første tand.,plain
+s0785,Vi har et regneark i Google Drive med alle leads fra LinkedIn.,terms
+s0786,Har du debugget det i browseren eller kun i loggen?,terms
+s0787,Vi har købt en halv gris hos en landmand på Lolland.,plain
+s0788,Sentry samler stack traces fra alle brugerne et sted.,terms
+s0789,"Rollbacken tog fem minutter, fordi vi havde et feature flag klar.",terms
+s0790,"Eksporten til CSV virker ikke i Excel, fordi tegnene bliver forkerte.",terms
+s0791,"Kan du lukke vinduet, det trækker.",plain
+s0792,"Vi skriver en kort rapport efter hver incident, også dem, monitoring ikke fangede.",terms
+s0793,Efter incidenten har vi lavet en rollback-plan for alle migrationer.,terms
+s0794,"Rigtig god weekend, og pas godt på jer selv.",plain
+s0795,"Den dependency har en licens, vi ikke må bruge.",terms
+s0796,"Checkouten skal have et nyt flow, der også virker på telefonen.",terms
+s0797,"Previewet på Vercel viser den gamle version, fordi cachen ikke er tømt.",terms
+s0798,Hvordan gik det med eksamen i går?,plain
+s0799,Gmail har sorteret mailen fra Stripe fra som reklame.,terms
+s0800,Git er stadig det sværeste for de nye i onboardingen.,terms
+s0801,Jeg har sovet dårligt i hele denne uge.,plain
+s0802,Whisper kører fint på en almindelig computer uden GPU.,terms
+s0803,"URL'en til staging står i Slack, men den ændrer sig ved hvert deploy.",terms
+s0804,"Komponenten får en tom liste som props, og så crasher den.",terms
+s0805,"Kartoflerne er færdige, når kniven glider let igennem.",plain
+s0806,"Next.js har ændret, hvordan sider bliver cachet, så vi skal læse op på det.",terms
+s0807,"Findes der en MCP til Notion, eller skal vi selv lave den?",terms
+s0808,Der faldt tredive millimeter regn på en enkelt time.,plain
+s0809,"Hvis du rebaser oftere, slipper du for de store merge-konflikter.",terms
+s0810,"Når du har klonet koden, står resten af opsætningen i Notion.",terms
+s0811,"Tagget for version to er pushet, så GitHub Actions bygger releasen nu.",terms
+s0812,"Jeg har ondt i hovedet, så jeg går tidligt hjem.",plain
+s0813,CDN'et fra Cloudflare har sparet os for halvdelen af regningen.,terms
+s0814,"Git kan ikke løse merge-konflikten, så det må du gøre selv.",terms
+s0815,Jeg har altid drømt om at se Grønland.,plain
+s0816,Git har lavet en merge-konflikt i changeloggen igen.,terms
+s0817,"Agenten kører i Claude Code og må kun læse, ikke skrive.",terms
+s0818,"Det er uden for scope, fordi det er en helt anden use case.",terms
+s0819,Den sidste bus går et kvarter over tolv.,plain
+s0820,"Linteren og end-to-end testene kører, før noget bliver merget til main.",terms
+s0821,Gemini og ChatGPT kan begge læse et billede af skærmen og forklare fejlen.,terms
+s0822,"Restauranten i Nyhavn var alt for dyr til det, man fik.",plain
+s0823,"Diffen i GitHub er nem at læse, men i Git i terminalen bliver jeg forvirret.",terms
+s0824,"Sentry sender en alert til Slack, hver gang der kommer en ny fejl.",terms
+s0825,"Vi har fire pull requests, der venter på review fra Mads.",terms
+s0826,Hun har været på barsel i et år og starter igen i august.,plain
+s0827,"Kunden vil have rapporten som PowerPoint, ikke som et link til Google Drive.",terms
+s0828,"Hvilken LLM er billigst, når vi bruger så mange tokens?",terms
+s0829,Der er forældremøde på skolen torsdag klokken syv.,plain
+s0830,"ChatGPT og Cursor er det, de fleste nye udviklere bruger.",terms
+s0831,"Coveragen er høj, men vi har ingen tests af edge cases.",terms
+s0832,"SSO er en feature, som kun de store kunder betaler for.",terms
+s0833,Det er min tur til at lave madpakker i denne uge.,plain
+s0834,Vi har flyttet cron jobbet til en serverless funktion hos Cloudflare.,terms
+s0835,"Der er over tusind forks af projektet, men ingen har skrevet en integrationstest.",terms
+s0836,Har du lyst til at tage i Tivoli på lørdag?,plain
+s0837,"Browseren advarer om SSL, fordi certifikatet kun dækker hoveddomænet.",terms
+s0838,Kan du lægge et udtræk af KPI'erne i Excel til bestyrelsen?,terms
+s0839,"Webhooken fra Stripe kommer, før vi har gemt ordren i databasen.",terms
+s0840,Hvornår lukker posthuset om lørdagen?,plain
+s0841,"Jira er for tungt til så lille et hold, vi bruger Linear i stedet.",terms
+s0842,"Revert merget, hvis buildet stadig er rødt om en time.",terms
+s0843,Vi flyttede ind i huset i 2015.,plain
+s0844,"Modellen fra Hugging Face er gratis, men den fra Anthropic er bedre til dansk.",terms
+s0845,"Revertet er pushet, så prod burde være stabil igen.",terms
+s0846,Kontrakten ligger i Google Drive i mappen med kunder.,terms
+s0847,Kan vi mødes på torsdag i stedet for onsdag?,plain
+s0848,"Kan Gemini bruge vores MCP, eller virker den kun med Claude?",terms
+s0849,"Libraryet er en dependency, som ingen har vedligeholdt i to år.",terms
+s0850,Har nogen set mine bilnøgler?,plain
+s0851,Schemaet i Supabase passer ikke med typerne i TypeScript.,terms
+s0852,Hvor mange tickets har vi tilbage i den her sprint?,terms
+s0853,Jeg har mistet mit rejsekort et sted i bussen.,plain
+s0854,"DNS peger stadig på den gamle server, så kunderne ser den gamle side.",terms
+s0855,Hvor mange containere kører der egentlig i production lige nu?,terms
+s0856,"Vi har lavet en MCP til Sentry, så agenten selv kan læse stack tracen.",terms
+s0857,Min chef har bedt mig om at holde et oplæg i næste uge.,plain
+s0858,Forket ligger under vores egen organisation på GitHub.,terms
+s0859,"Login med OAuth sender brugeren til en URL, som ikke findes på staging.",terms
+s0860,Vi skal hjælpe Oliver med at lære at cykle i weekenden.,plain
+s0861,"Vi launchede på samme dag som to andre deadlines, og det gik ikke godt.",terms
+s0862,"Xcode skal opdateres, før vi kan bygge til den nye iPhone.",terms
+s0863,"Staten i formularen forsvinder, når man går tilbage i Chrome.",terms
+s0864,"Koncerten starter klokken otte, men dørene åbner en time før.",plain
+s0865,"Git siger, at der er ændringer, som ikke er committet.",terms
+s0866,"Vi har tre caches og et CDN, og ingen ved, hvilken der giver den gamle pris.",terms
+s0867,Vi har aftalt at mødes ved springvandet klokken to.,plain
+s0868,"Hvem tager follow-uppen med den kunde, der churnede i sidste uge?",terms
+s0869,"SaaS-kunder forventer, at onboardingen kan klares uden et møde.",terms
+s0870,"Vi har tre forskellige setups og to linters, og det er for meget.",terms
+s0871,Det tager cirka to timer at køre fra Odense til Aalborg.,plain
+s0872,"LLM'erne bliver bedre hver måned, men de hallucinerer stadig.",terms
+s0873,"JWT'en og cookien skal begge fornyes, når brugeren skifter adgangskode.",terms
+s0874,Min bedstefar fortæller altid den samme historie om krigen.,plain
+s0875,"Xcode bruger al hukommelsen, når jeg bygger til både iOS og macOS.",terms
+s0876,Cron jobs i Kubernetes er svære at holde øje med.,terms
+s0877,"Serverless er fint til webhooks, men ikke til lange jobs.",terms
+s0878,Lillesøster er begyndt i skole og er meget stolt.,plain
+s0879,Follow-ups efter hver demo skrives ind i CRM'et samme dag.,terms
+s0880,"Vi har sat et CDN foran API'et, og svartiden er faldet til det halve.",terms
+s0881,Han løber maraton i Berlin til september.,plain
+s0882,Changeloggen bliver lavet automatisk ud fra tags i GitHub Actions.,terms
+s0883,"Tilføjer cache til endpointet med produkter, så forsiden åbner hurtigere.",terms
+s0884,Med RAG og en vektordatabase slipper vi for at fylde hele context windowet.,terms
+s0885,"Der var frost i nat, så jeg måtte skrabe ruderne.",plain
+s0886,"Det er nemt at deploye serverless, men svært at debugge bagefter.",terms
+s0887,"Copilot er god til CSS og HTML, men dårlig til arkitektur.",terms
+s0888,Der er tre uger til vores ferie.,plain
+s0889,Inference med Whisper på en almindelig processor tager længere tid end selve optagelsen.,terms
+s0890,"Supabase havde downtime i nat, og vi kunne kun vente.",terms
+s0891,"Mange startups laver en roadmap, før de har talt med kunderne.",terms
+s0892,"Jeg har fået en ny elcykel, og nu cykler jeg til Roskilde.",plain
+s0893,"Vi bruger SSO fra kundens konto i Teams, så de ikke skal huske endnu et login.",terms
+s0894,"Hvem builder appen til iOS, når Mads er på ferie?",terms
+s0895,Varerne bliver leveret mellem klokken otte og tolv.,plain
+s0896,Libraryet til grafer fylder mere end resten af frontenden tilsammen.,terms
+s0897,"Deadlinen for sprinten er fredag, og backloggen er stadig lang.",terms
+s0898,"Hvad er dit workflow, når du skal reviewe en stor PR?",terms
+s0899,"Kan du skrive under på papirerne, inden du går?",plain
+s0900,Vi kører Node.js på serveren og React i browseren.,terms
+s0901,"Kan du eksportere listen som CSV, så økonomi kan åbne den i Excel?",terms
+s0902,Billetterne kostede 395 kroner stykket.,plain
+s0903,"Roadmappen for kvartalet ligger i Notion, men scopet er ikke helt på plads.",terms
+s0904,Benchmarks fra Hugging Face passer sjældent på danske data.,terms
+s0905,Hvilken LLM bruger I til at sortere tickets fra supporten?,terms
+s0906,Vi skal huske at forny forsikringen på huset.,plain
+s0907,Hvor mange libraries trækker vi egentlig ind i frontenden?,terms
+s0908,"Jeg er syg i dag, så jeg skriver min standup i Slack.",terms
+s0909,Min kone har fået nyt job i Odense.,plain
+s0910,Anthropic og OpenAI har begge lavet en ny model i denne uge.,terms
+s0911,Incidenten startede med en alert fra Sentry klokken fire om morgenen.,terms
+s0912,Cloudflare er både vores CDN og vores DNS.,terms
+s0913,Der var over 40.000 mennesker til koncerten.,plain
+s0914,"Jeg har pushet et hotfix til main, og pipelinen deployer det til prod nu.",terms
+s0915,Anthropic har et SDK til Python og et til TypeScript.,terms
+s0916,Vi har fået hindbær fra naboens have.,plain
+s0917,"Jeg sender dig en diff i Slack, så kan du se, hvad jeg mener.",terms
+s0918,Datasættet til benchmarket har vi selv optaget.,terms
+s0919,Jeg har flyttet vores pipeline fra Azure til GitHub Actions.,terms
+s0920,Opvasken står stadig fra i går.,plain
+s0921,Hotfixet til timeouten på endpointet er merget og deployet.,terms
+s0922,"Rasmus har refactoret søgningen, så den nu bruger det nye endpoint i stedet for det gamle.",terms
+s0923,Kirsebærtræerne i parken blomstrer kun i en uge eller to.,plain
+s0924,Merge-konflikterne i låsefilen løser jeg ved at installere forfra.,terms
+s0925,Hvilke KPI'er kigger investorerne på hos en startup som vores?,terms
+s0926,"Gemini hallucinerer sjældnere end før, men den finder stadig på kilder.",terms
+s0927,Den bedste is i Aarhus købes nede ved havnen.,plain
+s0928,Fjerner det gamle feature flag til designet fra Figma.,terms
+s0929,"Vi skal have en URL til webhooken, før Stripe kan sende noget.",terms
+s0930,"Haven trænger til vand, det har ikke regnet i tre uger.",plain
+s0931,Vores MVP er en SaaS med en enkelt use case og ti betalende kunder.,terms
+s0932,Redis og Postgres kører i hver sin container med Docker.,terms
+s0933,"Tailwind gør det svært at reviewe CSS, fordi alt står i HTML.",terms
+s0934,"Æbletræet bærer så mange æbler, at grenene knækker.",plain
+s0935,"Jobbene i queuen bliver kørt af en container, der skalerer op om natten.",terms
+s0936,Incidenten gav en halv times downtime for alle kunder i Norge.,terms
+s0937,Personalemødet er rykket til klokken tre.,plain
+s0938,Vi tester på en iPhone og en billig telefon med Android.,terms
+s0939,"Mocks af Stripe gør testene hurtige, men de fanger ikke alt.",terms
+s0940,"Kunderne så en advarsel om SSL, fordi DNS stadig pegede på den gamle server.",terms
+s0941,"Min mand er god til at bage, jeg er bedre til at lave suppe.",plain
+s0942,"Vi har sat en MCP op til Postgres, så Claude kan læse schemaet.",terms
+s0943,"JWT'en indeholder brugerens id, og backenden tjekker den ved hver request.",terms
+s0944,Min onkel har lært mig at fiske.,plain
+s0945,"Unit tests og integrationstests kører på hver PR, men end-to-end testene kun om natten.",terms
+s0946,Optagelsen fra mødet på Zoom ligger i Google Drive.,terms
+s0947,"Komponenten bliver tegnet igen, hver gang staten ændrer sig.",terms
+s0948,Vi skal på ferie i Italien i tre uger.,plain
+s0949,"Code review handler om at dele viden, og reviews må ikke hænge i flere dage.",terms
+s0950,Jeg skriver changeloggen ud fra commits og PR'er.,terms
+s0951,Kan du nå at være her klokken halv fire?,plain
+s0952,"Code reviewet blev forsinket af en merge-konflikt, som ingen ville løse.",terms
+s0953,Jeg har lagt en video af demoen på LinkedIn.,terms
+s0954,"Vi har to API'er med hver sin URL, et til appen og et til partnerne.",terms
+s0955,Katten har væltet blomsterpotten i stuen igen.,plain
+s0956,Inference på en GPU i skyen koster os omkring tre kroner i timen.,terms
+s0957,YAML-filen til workflowet er tre hundrede linjer lang.,terms
+s0958,"Jeg har bagt rugbrød for første gang, og det blev faktisk godt.",plain
+s0959,"Vi har haft tre incidents i AWS på en måned, og det er for mange.",terms
+s0960,"Kunden sender feature requests fra Gmail, og de ender som issues hos os.",terms
+s0961,"Use casen er enkel, men de har tusind brugere og kræver SSO.",terms
+s0962,"Mit nummer er stadig det samme, du kan bare ringe.",plain
+s0963,"Mit setup er VS Code, en terminal og Claude Code ved siden af.",terms
+s0964,Komponenterne fra designsystemet ligger i en pakke for sig.,terms
+s0965,Min mor ringer hver søndag klokken seks.,plain
+s0966,"Swift og Xcode er det første, nye udviklere på iOS-appen skal lære.",terms
+s0967,"Brugerne på Android får opdateringen før dem på iPhone, fordi godkendelsen går hurtigere.",terms
+s0968,"Deadlinen holder ikke, så kunden må vælge, hvad der ryger ud af scopet.",terms
+s0969,Herning har fået en ny svømmehal.,plain
+s0970,"Vi har sat monitoring op i Cloudflare, så vi ser det, hvis siden er nede.",terms
+s0971,TestFlight-buildet crasher på den nyeste version af iOS.,terms
+s0972,Tordenvejret slog strømmen ud i hele landsbyen.,plain
+s0973,Jeg skiftede fra VS Code til Cursor i sidste måned.,terms
+s0974,Lav en hook til at hente brugeren og gemme ham i staten.,terms
+s0975,CDN'et cachede en fejlside i en hel time.,terms
+s0976,Det er for blæsende til at cykle over broen i dag.,plain
+s0977,Jeg sidder stadig og debugger Tauri-appen på den gamle maskine.,terms
+s0978,Jeg bruger Claude til tekster og Claude Code til koden.,terms
+s0979,Søen ved Silkeborg var helt blank i morges.,plain
+s0980,"Jeg committede det hele i går aftes, men glemte at pushe.",terms
+s0981,"Cron jobbet kørte ikke i nat, så vi har oprettet en incident.",terms
+s0982,Kan du minde mig om at ringe til forsikringen?,plain
+s0983,"Swift er rart at skrive, men Xcode er langsom.",terms
+s0984,Node og Bun giver forskellige fejl på det samme script.,terms
+s0985,"Squash og rebase er to forskellige ting, selvom resultatet ser ens ud.",terms
+s0986,"Tågen ligger så tæt, at man næsten ikke kan se vejen.",plain
+s0987,"Exceptionen kommer fra et library, vi ikke selv har skrevet.",terms
+s0988,"Whisper laver hallucinationer, når der er stille på optagelsen.",terms
+s0989,Jeg skal være på arbejde klokken seks i morgen.,plain
+s0990,"Cherry-pick rettelsen til den gamle branch, så laver jeg en ny release.",terms
+s0991,"Figma-filen er blevet så stor, at den næsten ikke kan åbnes.",terms
+s0992,"Queryen tager otte sekunder, fordi der mangler et index.",terms
+s0993,"Der er rabat på jordbær, når man køber to bakker.",plain
+s0994,"GitHub squashede mine commits automatisk, da jeg trykkede på knappen.",terms
+s0995,Async kode i Rust er stadig svær at læse for mig.,terms
+s0996,Leverpostejen er hjemmelavet efter min mormors opskrift.,plain
+s0997,"Vi logger hver exception, men ingen læser loggene.",terms
+s0998,Vi bruger Kubernetes i Azure og Docker på vores egne maskiner.,terms
+s0999,"Linket til TestFlight ligger i Slack, hvis du vil teste appen.",terms
+s1000,Hun er blevet valgt som formand for grundejerforeningen.,plain
+s1001,"Den må ikke crashe, bare fordi netværket forsvinder et øjeblik.",terms
+s1002,"Kan vi se i analytics, hvor mange der kommer fra LinkedIn?",terms
+s1003,"Jeg tager altid cyklen på arbejde, når det ikke regner.",plain
+s1004,"Vi rammer rate limiten hos OpenAI, når vi kører alle evals på én gang.",terms
+s1005,Jeg har lavet en ticket i Jira og linket til optagelsen fra Zoom.,terms
+s1006,"Rollbacken tog under et minut, så der var næsten ingen downtime.",terms
+s1007,Jeg har tid hos lægen tirsdag klokken kvart over ni.,plain
+s1008,"Valider din JSON mod et schema, før du gemmer den.",terms
+s1009,Inference på GPU er tyve gange hurtigere end på processoren.,terms
+s1010,Jeg har sendt fakturaen til kunden i morges.,plain
+s1011,"Siden er ren HTML, så den loader på et øjeblik.",terms
+s1012,"Jeg bygger appen i Xcode og sender den til TestFlight, før den kommer i App Store.",terms
+s1013,Delen med analytics kører serverless og koster næsten ingenting.,terms
+s1014,Vi spiser altid risengrød hos mine forældre juleaften.,plain
+s1015,Frontenden i Next.js kalder backenden i Python via et REST-API.,terms
+s1016,"Lav en kort demo, som vi kan dele på LinkedIn.",terms
+s1017,Kantinen serverer fiskefilet med remoulade i dag.,plain
+s1018,"Kan en LLM skrive vores dokumentation, hvis prompten er god nok?",terms
+s1019,Vi har tre deploys om dagen og lover stadig højst en times downtime om året.,terms
+s1020,Har du klonet det nye repo fra GitHub endnu?,terms
+s1021,"Mødet varede tre timer, og vi nåede ingenting.",plain
+s1022,"Checkouten giver en timeout, når betalingsløsningen er langsom.",terms
+s1023,CLI'en læser indstillingerne fra en YAML-fil i projektet.,terms
+s1024,Det har regnet i fjorten dage i træk.,plain
+s1025,Jeg debuggede hele formiddagen og endte med at refactore det hele.,terms
+s1026,"Jeg har ryddet op i npm-pakkerne, og nu er installationen dobbelt så hurtig.",terms
+s1027,"Vi har flyttet DNS til Cloudflare, og SSL virker nu på alle underdomæner.",terms
+s1028,Min veninde bor på Nørrebro tæt på søerne.,plain
+s1029,"Jeg vil hellere have en realistisk deadline for MVP'en end en, vi ikke kan holde.",terms
+s1030,"Jeg har delt komponenten op i tre mindre, så props er nemmere at forstå.",terms
+s1031,"Det var en rigtig hyggelig aften, tak for maden.",plain
+s1032,Use casen for vektordatabasen er søgning i kundens dokumenter.,terms
+s1033,"Vi bygger MVP'en i Next.js, så vi kan deploye den på Vercel.",terms
+s1034,Hun forkede projektet og sendte en pull request med rettelsen samme aften.,terms
+s1035,Tilbuddet på smør gælder kun til lørdag.,plain
+s1036,Feedback fra kunderne læser vi højt til standup hver fredag.,terms
+s1037,Vi samler al feedback i en tabel i Notion.,terms
+s1038,Skolen holder lukket fra den 12. til den 16. oktober.,plain
+s1039,"Cron jobbet kører hver nat og sender en alert, hvis backuppen fejler.",terms
+s1040,"Roadmaps med datoer hører ikke hjemme i en pitch, de holder aldrig.",terms
+s1041,TestFlight er den nemmeste måde at få appen ud til kunderne på iPhone.,terms
+s1042,Hvad skal vi have til dessert på søndag?,plain
+s1043,"Vores egen analytics viser, at ingen forstår vores tre flows til betaling.",terms
+s1044,"Linteren kører automatisk, før du committer.",terms
+s1045,Jeg har fået influenza og ligger i sengen.,plain
+s1046,Edge cases som skudår fanger vi med en unit test.,terms
