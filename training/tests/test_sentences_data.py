@@ -3,12 +3,18 @@
 The owner reads these sentences aloud, in id order, for fine-tuning. The checks
 keep the list the size and mix the brief asks for, varied, consistent with the
 spelling conventions, and apart from the owner's held-out test sentences.
+
+Run 12: the term list covers how the owner talks (about 200 terms, BRIEF_TERMS),
+and every term is read in 8 to 25 sentences, so no term crowds out the others
+and the list stays as short as that coverage allows (the owner records every
+sentence).
 """
 
 from __future__ import annotations
 
 import itertools
 import re
+import statistics
 from collections import Counter, defaultdict
 from functools import cache
 
@@ -38,8 +44,58 @@ BRIEF_FORMS = (
     "Tauri", "Rust", "React",
 )  # fmt: skip
 
+# Run 12: the terms the brief names, by group. Each is a term name in spelling.yaml, except
+# the ones in BRIEF_TERM_NAMES, which spelling.yaml covers under other names.
+BRIEF_TERMS = {
+    "Git and GitHub": (
+        "clone", "fork", "checkout", "stash", "cherry-pick", "squash", "revert", "diff",
+        "merge conflict", "tag", "changelog", "GitHub Actions", "workflow",
+    ),
+    "Cloud and operations": (
+        "container", "server", "serverless", "CDN", "DNS", "SSL", "logs", "monitoring", "alert",
+        "incident", "downtime", "Sentry", "AWS",
+    ),
+    "Data and APIs": (
+        "Postgres", "Redis", "schema", "query", "index", "queue", "cron job", "webhook", "SDK", "CLI",
+        "OAuth", "SSO", "JWT", "session", "cookie", "CORS", "rate limit", "JSON", "YAML", "CSV",
+    ),
+    "Code and testing": (
+        "component", "props", "state", "hook", "async", "error", "exception", "stack trace",
+        "unit test", "integration test", "end-to-end test", "coverage", "linter", "framework",
+        "library", "package",
+    ),
+    "Apps and platforms": (
+        "CSS", "HTML", "Tailwind", "Vite", "iOS", "macOS", "Android", "App Store", "TestFlight",
+        "Xcode", "Swift", "Chrome extension",
+    ),
+    "AI work": (
+        "agent", "fine-tune", "LoRA", "embedding", "vector database", "RAG", "eval", "benchmark",
+        "inference", "context window", "hallucination", "MCP", "GPU", "dataset", "Hugging Face",
+        "OpenAI", "Anthropic", "Claude", "Codex", "Copilot", "Gemini", "Whisper",
+    ),
+    "Product and business": (
+        "onboarding", "MVP", "roadmap", "scope", "feedback", "demo", "pricing", "churn", "lead",
+        "CRM", "SaaS", "KPI", "analytics", "follow-up",
+    ),
+    "Everyday tools": (
+        "Notion", "Jira", "Teams", "Outlook", "Gmail", "Google Drive", "Excel", "PowerPoint",
+        "Zoom", "Stripe", "LinkedIn",
+    ),
+}  # fmt: skip
+# A brief term that spelling.yaml covers as more than one term: "Chrome extension" is the name
+# Chrome and the noun extension, so "Chrome-appen" and "en extension til Slack" count as well.
+BRIEF_TERM_NAMES = {"Chrome extension": ("Chrome", "extension")}
+
+MIN_TERMS, MAX_TERMS = 190, 215
 MIN_USES_PER_TERM = 8
+# Run 12: no term in more than 25 sentences, so the common ones (test, deploy, merge) leave
+# room for the rest and the list stays short.
+MAX_USES_PER_TERM = 25
 MIN_USES_PER_BRIEF_FORM = 3
+MIN_PLAIN = 300
+# Run 11's list had a mean of 9.9 words and a median of 10; the new list keeps that rhythm.
+MEAN_WORDS = (8.9, 10.9)
+MEDIAN_WORDS = (9, 11)
 # Word-set overlap (Jaccard) at or above which two sentences count as near-duplicates.
 NEAR_DUPLICATE = 0.7
 OWNER_NEAR_DUPLICATE = 0.5
@@ -66,28 +122,50 @@ def jaccard(a: str, b: str) -> float:
 
 
 def uses() -> tuple[Counter, dict[str, set[str]]]:
-    """How often each term is read, and in which forms."""
+    """In how many sentences each term is read (a sentence counts once per term, however
+    many of its forms it has), and in which forms."""
     count: Counter = Counter()
     forms: dict[str, set[str]] = defaultdict(set)
     for s in sentences():
-        for hit in spelling().find_terms(s.text):
-            count[hit.term] += 1
+        hits = spelling().find_terms(s.text)
+        count.update({hit.term for hit in hits})
+        for hit in hits:
             forms[hit.term].add(hit.form)
     return count, forms
 
 
 def test_spelling_yaml_loads_without_contradictions():
     terms = spelling().terms
-    assert 40 <= len(terms) <= 75
+    assert MIN_TERMS <= len(terms) <= MAX_TERMS, len(terms)
     assert {"pull request", "PR", "deploy", "merge", "Claude Code", "GitHub"} <= {t.name for t in terms}
+
+
+def test_spelling_yaml_has_every_term_the_brief_names():
+    names = {t.name for t in spelling().terms}
+    missing = [
+        (group, term)
+        for group, terms in BRIEF_TERMS.items()
+        for term in terms
+        if not set(BRIEF_TERM_NAMES.get(term, (term,))) <= names
+    ]
+    assert missing == []
 
 
 def test_size_and_mix():
     rows = sentences()
-    assert 950 <= len(rows) <= 1050
+    # Run 12: about 200 terms in at least 8 sentences each, two or three terms to a sentence,
+    # and the 300 plain sentences: just over a thousand rows. More would be padding.
+    assert 1000 <= len(rows) <= 1100, len(rows)
     kinds = Counter(s.kind for s in rows)
     assert set(kinds) <= set(KINDS)
+    assert kinds["plain"] >= MIN_PLAIN
     assert 0.65 <= kinds["terms"] / len(rows) <= 0.75
+
+
+def test_sentence_lengths_keep_their_rhythm():
+    lengths = [word_count(s.text) for s in sentences()]
+    assert MEAN_WORDS[0] <= statistics.mean(lengths) <= MEAN_WORDS[1], statistics.mean(lengths)
+    assert MEDIAN_WORDS[0] <= statistics.median(lengths) <= MEDIAN_WORDS[1]
 
 
 def test_ids_run_in_order():
@@ -165,10 +243,24 @@ def test_only_conventional_spellings():
     assert [b for b in bad if b[1]] == []
 
 
+def test_names_and_abbreviations_keep_their_capitals():
+    """Matching ignores case, so a Danish word spelled like a name counts as the name ("teams"
+    as Teams, "rust" as Rust). The list writes every form with capitals exactly as listed, so
+    each hit is the name it means."""
+    bad = []
+    for s in sentences():
+        for hit in spelling().find_terms(s.text):
+            if hit.form != hit.form.lower() and s.text[hit.start : hit.end] != hit.form:
+                bad.append((s.id, s.text[hit.start : hit.end], hit.form))
+    assert bad == []
+
+
 def test_every_term_is_read_several_times_in_several_forms():
     count, forms = uses()
     rare = {t.name: count[t.name] for t in spelling().terms if count[t.name] < MIN_USES_PER_TERM}
     assert rare == {}
+    common = {t.name: count[t.name] for t in spelling().terms if count[t.name] > MAX_USES_PER_TERM}
+    assert common == {}
     one_form = [t.name for t in spelling().terms if len(t.forms) > 1 and len(forms[t.name]) < 2]
     assert one_form == []
     # Spread the forms: nearly every listed form is read at least once.
