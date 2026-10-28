@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -180,16 +181,37 @@ con.commit()
 // Run 12: the frozen test set's lock, one use of it from the terminal, and a stand-in for
 // `wt-train eval` (WT_STUDIO_EVAL) that writes down its arguments and, for the test set, logs a
 // use as the real one does (with the source the studio gave it).
-writeFileSync(
-  join(work, "test-lock.json"),
-  JSON.stringify({
-    created: "2026-10-28T21:04:00+01:00",
-    build: "first-frozen-encoder",
-    sentences: ["s0002", "s0005", "s0006"],
-    clips: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `c${n}`),
-    sha256: "ab".repeat(32),
-  }),
-);
+// The lock as testset.make_lock writes it: its parameters, a clip per take with its audio's hash,
+// and the sha256 of the rest as canonical JSON (sorted keys, no spaces), so read_lock accepts it.
+const canonical = (v: unknown): string =>
+  Array.isArray(v)
+    ? `[${v.map(canonical).join(",")}]`
+    : v !== null && typeof v === "object"
+      ? `{${Object.keys(v)
+          .sort()
+          .map(
+            (k) =>
+              `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`,
+          )
+          .join(",")}}`
+      : JSON.stringify(v);
+const lock: Record<string, unknown> = {
+  created: "2026-10-28T21:04:00+01:00",
+  build: "first-frozen-encoder",
+  params: {
+    seed: 1,
+    validation_fraction: 0.1,
+    test_fraction: 0.1,
+    held_out_terms: [],
+  },
+  sentences: ["s0002", "s0005", "s0006"],
+  clips: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
+    id: `c${n}`,
+    audio_sha256: "cd".repeat(32),
+  })),
+};
+lock.sha256 = createHash("sha256").update(canonical(lock)).digest("hex");
+writeFileSync(join(work, "test-lock.json"), JSON.stringify(lock));
 writeFileSync(
   join(work, "work", "test-uses.jsonl"),
   JSON.stringify({
