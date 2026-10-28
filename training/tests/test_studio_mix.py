@@ -70,13 +70,15 @@ def test_the_takes_of_the_pilot_and_the_recordings_both_count(tmp_path):
 
 @pytest.fixture
 def places(tmp_path, monkeypatch):
-    """The committed sentence list, plan and mix, copied: the studio deals on the copies."""
+    """The committed sentence list, plan, mix and split record, copied: the studio deals on the
+    copies, with the committed spelling.yaml the record was dealt with."""
     p = write_places(tmp_path, monkeypatch)
     data = tmp_path / "committed"
     data.mkdir()
-    for name in ("sentences.csv", "plan.csv", "mix.yaml"):
+    for name in ("sentences.csv", "plan.csv", "mix.yaml", "splits.csv", "split.yaml"):
         shutil.copyfile(paths.DATA / name, data / name)
-    return dataclasses.replace(p, sentences=data / "sentences.csv", plan=data / "plan.csv")
+    return dataclasses.replace(p, sentences=data / "sentences.csv", plan=data / "plan.csv",
+                               spelling=paths.SPELLING_YAML)
 
 
 def record_some(places, n=30):
@@ -143,8 +145,11 @@ def test_dealing_again_is_exactly_wt_train_plan_mix(server, places, tmp_path):
     record_some(places)
     cli = tmp_path / "cli"
     cli.mkdir()
-    for name in ("plan.csv", "mix.yaml"):
-        shutil.copyfile(places.plan.with_name(name), cli / name)
+    # The plan, its mix and the split record beside them (splits.py): the command line deals from
+    # the same record, so both come out the same.
+    for name in ("plan.csv", "mix.yaml", "splits.csv", "split.yaml"):
+        if places.plan.with_name(name).is_file():
+            shutil.copyfile(places.plan.with_name(name), cli / name)
     new = {"phone-whisper": 30, "phone-normal": 30, "mac-normal": 20, "mac-whisper": 20}
     preview = post(server, "/api/mix/preview", {"mix": new})[1]
     status, dealt = post(server, "/api/mix/deal", {"mix": new})

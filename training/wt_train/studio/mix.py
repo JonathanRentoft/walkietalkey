@@ -2,11 +2,11 @@
 and how long each condition takes to record.
 
 * The mix and the plan are the recorder's (``plan.py``: ``mix.yaml`` beside the plan).
-  Dealing again is exactly ``wt-train plan --mix``: ``plan.ensure(sentences, plan, mix=...,
-  recorded=plan.takes_of(recordings, sentences))``, so a sentence with a take keeps its
-  condition and every other one is dealt again to fit the new mix within each split.
-* A preview runs that same ``ensure`` on a copy of the plan and its mix in a temporary
-  folder, so it shows exactly what dealing would do and writes nothing of the owner's.
+  Dealing again is exactly ``wt-train plan --mix``: ``plan.prepare(..., mix=...)``, the split
+  record first, then the plan, for the list and his own sentences, so a sentence with a take
+  keeps its condition and every other one is dealt again to fit the new mix within each split.
+* A preview runs that same ``prepare`` with ``write=False``, so it shows exactly what dealing
+  would do and writes nothing of the owner's.
 * Dealing is refused while a recording is picked (its sentences would move under it).
 * The time a condition takes: the sentences left to record (planned, without a take that
   was kept) times the owner's pace in that condition, the median gap between two takes in
@@ -20,9 +20,7 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import statistics
-import tempfile
 import threading
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -218,23 +216,19 @@ class MixView:
                           for (a, b), n in sorted(pairs.items(), key=lambda kv: (-kv[1], order[kv[0][0]],
                                                                                  order[kv[0][1]]))]}
 
-    def _deal(self, mix: dict[str, int], plan_path: Path) -> dict[str, str]:
-        from ..plan import ensure
+    def _deal(self, mix: dict[str, int], *, write: bool) -> dict[str, str]:
+        """``wt-train plan --mix`` (``plan.prepare``): the split record first, then the plan, for
+        the list and his own sentences; ``write=False`` only computes (the preview)."""
+        from ..plan import prepare
 
-        plan, _ = ensure(self.sources.sentences(), plan_path, mix=mix, recorded=self._takes_of())
-        return plan
+        return prepare(self.places.sentences, Path(self.places.plan), spelling_path=self.places.spelling,
+                       recordings=self.places.recordings, mix=mix, write=write,
+                       local_dir=self.places.local).plan
 
     def preview(self, body: dict) -> dict:
-        from ..plan import mix_path
-
         mix = parse_body_mix(body.get("mix"))
         before = self.sources.plan()
-        with tempfile.TemporaryDirectory(prefix="wt-mix-") as tmp:
-            copy = Path(tmp) / Path(self.places.plan).name
-            for source, target in ((Path(self.places.plan), copy), (mix_path(self.places.plan), mix_path(copy))):
-                if source.is_file():
-                    shutil.copyfile(source, target)
-            after = self._deal(mix, copy)
+        after = self._deal(mix, write=False)
         return {**self._rows(mix, after), "moved": self.moved(before, after),
                 "changed": mix != self.sources.mix(), "recording": self._picked()}
 
@@ -245,6 +239,6 @@ class MixView:
                 raise StudioError(409, "recording", "a recording is picked; stop it before the sentences are "
                                                     "dealt again")
             before = self.sources.plan()
-            after = self._deal(mix, Path(self.places.plan))
+            after = self._deal(mix, write=True)
         return {**self._rows(self.sources.mix(), self.sources.plan()), "moved": self.moved(before, after),
                 "changed": False, "recording": False}
