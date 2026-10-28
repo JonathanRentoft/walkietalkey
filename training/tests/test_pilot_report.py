@@ -137,6 +137,16 @@ def test_a_quiet_setup_is_named_with_the_recorders_limit(tmp_path, monkeypatch):
     assert not any(n.startswith("svag") for n in report["setups"]["iphone-whisper"]["notes"])
 
 
+def test_speech_at_the_edge_says_plainly_what_to_do():
+    # Run 12: the owner's pilot found speech at the very start or end in most clips; the note
+    # says what that means and what to do, in his words.
+    audio = {"clips": 12, "level_dbfs": -20.0, "cut_clips": 8}
+    notes = pilot.setup_notes("normal", audio, {}, {})
+    assert notes == ["ordene rører kanten af optagelsen i 8 klip: start et øjeblik, før du taler, og stop "
+                     "først et øjeblik efter det sidste ord"]
+    assert not any("—" in n or "–" in n for n in notes)
+
+
 def test_the_page(tmp_path, monkeypatch):
     monkeypatch.setenv("WT_WORK_DIR", str(tmp_path / "work"))
     report = run(tmp_path)

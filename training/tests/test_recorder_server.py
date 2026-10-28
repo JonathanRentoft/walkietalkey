@@ -4,6 +4,7 @@ per-session token."""
 import base64
 import json
 import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -12,7 +13,7 @@ from fake_audio import app_take, pcm16
 from wt_train.conditions import condition
 from wt_train.recorder import main as recorder_main
 from wt_train.recorder.server import HOST, STATIC, make_server
-from wt_train.recorder.session import Session
+from wt_train.recorder.session import POST_ROLL_S, Session
 from wt_train.sentences import Sentence
 
 ROWS = [
@@ -218,12 +219,43 @@ def test_the_page_starts_and_stops_a_mac_take(tmp_path):
     thread.start()
     try:
         hello(srv, phones=())
-        assert page(srv, "POST", "/api/mac/start")[0] == 200
+        # Run 12: connected and idle, the session arms the Mac's input; the page shows it ready.
         cmds = json.loads(app(srv, "GET", "/app/v1/next?after=0&wait=0")[2])["commands"]
         assert cmds[-1]["type"] == "mac_start" and cmds[-1]["prompt"] == "s0001"
-        assert page(srv, "POST", "/api/mac/stop")[0] == 200
-        cmds = json.loads(app(srv, "GET", f"/app/v1/next?after={cmds[-1]['seq']}&wait=0")[2])["commands"]
-        assert cmds[-1]["type"] == "mac_stop"
+        assert json.loads(page(srv, "GET", "/api/state")[2])["session"]["recording"] is None
+        event = json.dumps({"type": "recording", "prompt": "s0001", "source": "mac"}).encode()
+        app(srv, "POST", "/app/v1/events", event, {"Content-Type": "application/json"})
+        # The press only notes the time: the app records already.
+        status, _, body = page(srv, "POST", "/api/mac/start")
+        assert status == 200 and json.loads(body)["session"]["recording"]["prompt"] == "s0001"
+        assert json.loads(app(srv, "GET", f"/app/v1/next?after={cmds[-1]['seq']}&wait=0")[2])["commands"] == []
+        # The release: "Gemmer ..." at once, mac_stop half a second later (the long poll wakes for it).
+        status, _, body = page(srv, "POST", "/api/mac/stop")
+        assert status == 200 and json.loads(body)["session"]["recording"]["stopping"]
+        t0 = time.monotonic()
+        stop = json.loads(app(srv, "GET", f"/app/v1/next?after={cmds[-1]['seq']}&wait=3")[2])["commands"]
+        assert [c["type"] for c in stop] == ["mac_stop"]
+        assert time.monotonic() - t0 >= POST_ROLL_S - 0.05
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_a_terminal_closed_or_a_kill_still_ends_the_session(tmp_path):
+    # Run 12: the Mac's input is armed while the recorder runs, so it must reach the app's cancel
+    # on its way out; SIGTERM and SIGHUP (the terminal window closed) end it as Ctrl+C does.
+    import os
+    import signal
+
+    from wt_train.recorder.server import stop_on_signals
+
+    before = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGHUP)}
+    try:
+        stop_on_signals()
+        for sig in before:
+            with pytest.raises(KeyboardInterrupt):
+                os.kill(os.getpid(), sig)
+                time.sleep(1)
+    finally:
+        for sig, handler in before.items():
+            signal.signal(sig, handler)

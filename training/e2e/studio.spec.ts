@@ -205,7 +205,8 @@ test("a Mac session: the space bar starts and stops a take, and it shows", async
   );
   await expect(current(page)).toHaveText(TEXT.s0004);
 
-  await page.keyboard.press("Space");
+  // Run 12: connected and idle, the session arms the Mac's input before any press; the app
+  // records, and the page still offers "Optag".
   const start = await mac.next("mac_start");
   expect(start.prompt).toBe("s0004");
   await mac.event({
@@ -214,10 +215,16 @@ test("a Mac session: the space bar starts and stops a take, and it shows", async
     source: "mac",
     input: "MacBook Pro-mikrofon",
   });
+  await expect(page.getByRole("button", { name: /^Optag$/ })).toBeVisible();
+  await page.keyboard.press("Space");
   await expect(
     page.getByRole("button", { name: /Stop optagelsen/ }),
   ).toBeVisible();
   await page.keyboard.press("Space");
+  // From the stop on the take is being saved; mac_stop follows half a second later.
+  await expect(
+    page.getByRole("button", { name: /Gemmer optagelsen/ }),
+  ).toBeDisabled();
   await mac.next("mac_stop");
   const r = await mac.take(
     {

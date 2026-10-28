@@ -197,8 +197,8 @@ class App:
                            "input": input_name}).encode()
         return self.call("POST", "/app/v1/hello", body, {"Content-Type": "application/json"})
 
-    def commands(self):
-        status, body = self.call("GET", f"/app/v1/next?after={self.after}&wait=0")
+    def commands(self, wait: float = 0):
+        status, body = self.call("GET", f"/app/v1/next?after={self.after}&wait={wait}")
         assert status == 200, body
         cmds = body["commands"]
         if cmds:

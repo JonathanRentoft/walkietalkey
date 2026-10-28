@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FakeApp, pcmOf } from "./fake-app";
+import { FakeApp, pcmOf, withMargins } from "./fake-app";
 
 /* The recorder page with the app played by the spec (see playwright.config.ts). */
 
@@ -87,9 +87,9 @@ test("a phone session: prompts, a saved take, a silent one, a redo, and resume @
       microphone: "iPhone-mikrofon",
       chunks: 15,
       missing: 0,
-      duration_ms: 3000,
+      duration_ms: 3800,
     },
-    pcmOf(speech, 0, 3),
+    withMargins(pcmOf(speech, 0, 3)),
   );
   expect(saved).toMatchObject({ saved: true, check: "ok", replaced: false });
   const next = await app.next("prompt", (c) => c.done === 1);
@@ -106,7 +106,7 @@ test("a phone session: prompts, a saved take, a silent one, a redo, and resume @
   expect([wav.format, wav.channels, wav.rate, wav.bits]).toEqual([
     1, 1, 16000, 16,
   ]);
-  expect(wav.frames).toBe(3 * 16000);
+  expect(wav.frames).toBe(3.8 * 16000);
   const meta = JSON.parse(
     readFileSync(join(recordings, "phone-whisper", "s0001.json"), "utf8"),
   );
@@ -147,11 +147,21 @@ test("a phone session: prompts, a saved take, a silent one, a redo, and resume @
     (c) =>
       (c.next as { prompt: string } | null)?.prompt === "s0001" && c.done === 1,
   );
+  // Run 12: this one is a slice taken mid-speech, the words touching both edges: kept, and the
+  // page says what to do; the phone hears it as "short" (PROTOCOL.md 8.4 has no "cut").
   const redo = await app.take(
     { prompt: "s0001", source: "phone", missing: 0, duration_ms: 2500 },
     pcmOf(speech, 3, 2.5),
   );
-  expect(redo).toMatchObject({ saved: true, replaced: true });
+  expect(redo).toMatchObject({ saved: true, replaced: true, check: "cut" });
+  await expect(page.locator("#last")).toHaveText(
+    "s0001: Ordene rører kanten af optagelsen. Start et øjeblik, før du taler, og stop først et øjeblik efter det sidste ord. Optag den igen.",
+  );
+  const told = await app.next(
+    "prompt",
+    (c) => (c.last as { prompt: string } | null)?.prompt === "s0001",
+  );
+  expect(told.last).toMatchObject({ prompt: "s0001", check: "short" });
   expect(
     readdirSync(join(recordings, ".replaced", "phone-whisper")).filter((n) =>
       n.endsWith(".wav"),
@@ -191,7 +201,8 @@ test("a Mac session: the page starts and stops a take on the app's input @mac", 
   );
   await expect(page.locator("#record")).toBeEnabled();
 
-  await page.keyboard.press("Space");
+  // Run 12: connected and idle, the recorder arms the Mac's input before any press; the app
+  // records, and the page still shows the ordinary ready state.
   const start = await app.next("mac_start");
   expect(start.prompt).toBe("s0003");
   await app.event({
@@ -200,8 +211,15 @@ test("a Mac session: the page starts and stops a take on the app's input @mac", 
     source: "mac",
     input: "MacBook Pro-mikrofon",
   });
+  await expect(page.locator("#hint")).toContainText(
+    "Tryk mellemrum for at optage",
+  );
+  await expect(page.locator("#record")).toHaveText("Optag");
+  await page.keyboard.press("Space");
   await expect(page.locator("#record")).toHaveText("Stop");
   await page.keyboard.press("Space");
+  // The stop says it is saving at once; mac_stop follows half a second later.
+  await expect(page.locator("#hint")).toHaveText("Gemmer ...");
   await app.next("mac_stop");
   const r = await app.take(
     {
@@ -229,6 +247,11 @@ test("a Mac session: the page starts and stops a take on the app's input @mac", 
     phone: null,
   });
   expect(meta.relay).toBeUndefined();
+  // What the take kept around the press (at most 0.3 s before it) and after the release.
+  expect(meta.post_roll_s).toBeGreaterThanOrEqual(0.5);
+  expect(meta.pre_roll_s).toBeGreaterThan(0);
+  expect(meta.pre_roll_s).toBeLessThanOrEqual(0.3);
+  expect(meta.trimmed_s).toBeGreaterThanOrEqual(0);
 });
 
 test("the app's API needs the session's token, and a web page cannot post to it @mac", async ({

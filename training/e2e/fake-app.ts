@@ -130,3 +130,10 @@ export function pcmOf(path: string, from = 0, length = 3): Buffer {
   }
   throw new Error(`${path}: no data chunk`);
 }
+
+/** `pcm` with `seconds` of silence before and after it: a slice of a clip taken mid-speech
+    touches its edges, which the recorder calls cut (run 12); a take has margins. */
+export function withMargins(pcm: Buffer, seconds = 0.4): Buffer {
+  const pad = Buffer.alloc(Math.round(seconds * 16000) * 2);
+  return Buffer.concat([pad, pcm, pad]);
+}
