@@ -28,16 +28,26 @@ class Sources:
     def __init__(self, places: StudioPaths):
         self.places = places
         self._lock = threading.Lock()
+        # One load at a time: preparing writes the split record and the plan, and the page's
+        # first requests come at once (two writers lost a file). Reentrant: a load may ask for
+        # another source.
+        self._loading = threading.RLock()
         self._cache: dict[str, tuple[tuple, object]] = {}
 
-    def _cached(self, name: str, key: tuple, load):
+    def _hit(self, name: str, key: tuple):
         with self._lock:
             hit = self._cache.get(name)
-            if hit is not None and hit[0] == key:
+            return hit if hit is not None and hit[0] == key else None
+
+    def _cached(self, name: str, key: tuple, load):
+        if (hit := self._hit(name, key)) is not None:
+            return hit[1]
+        with self._loading:
+            if (hit := self._hit(name, key)) is not None:
                 return hit[1]
-        value = load()
-        with self._lock:
-            self._cache[name] = (key, value)
+            value = load()
+            with self._lock:
+                self._cache[name] = (key, value)
         return value
 
     def prepared(self):
