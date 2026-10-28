@@ -58,14 +58,6 @@ PILOT_CSV = DATA / "pilot.csv"
 PILOT = DATA / "pilot"
 CONFIGS = TRAINING / "configs"
 RESULTS_CSV = TRAINING / "results.csv"
-# Run 12: the owner's own words and sentences (own-words.yaml, sentences.csv), git-ignored like the
-# recordings; ``WT_LOCAL_DIR`` names another folder (tests, the end-to-end run).
-LOCAL = Path(os.environ.get("WT_LOCAL_DIR") or DATA / "local")
-
-
-def local_dir() -> Path:
-    """:data:`LOCAL`, with ``WT_LOCAL_DIR`` read when called (a test may set it after import)."""
-    return Path(os.environ.get("WT_LOCAL_DIR") or DATA / "local")
 MODEL_CARD_TEMPLATE = TRAINING / "model-card" / "TEMPLATE.md"
 
 # The accuracy job's harness (normaliser, WER); imported, never copied.
