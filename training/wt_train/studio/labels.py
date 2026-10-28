@@ -97,7 +97,7 @@ def setup_label(name: str, style: str) -> str:
     return f"{SETUP_DEVICES.get(first, first)}, {STYLES.get(style, style)}"
 
 
-# TODO(copy): run 11's drafts, everything below (not approved yet).
+# Run 11's words, everything below (approved by the owner in run 12).
 
 # The evaluations' readable names (runs.eval_title): "<model> · <data>".
 EVAL_MODELS = {

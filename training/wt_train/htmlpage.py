@@ -226,7 +226,7 @@ def diff_html(ops: Sequence[Op]) -> str:
     return Raw(" ".join(out))
 
 
-# TODO(copy): run 11 drafted every Danish string in this file (the reports' shared words).
+# Run 11 wrote every Danish string in this file (the reports' shared words); the owner approved them in run 12.
 LEGEND = Raw('<div class="legend"><span><del class="w sub">sagt</del><ins class="w sub">skrevet</ins> '
              'erstattet</span><span><del class="w del">ord</del> mangler (udeladt)</span>'
              '<span><ins class="w ins">ord</ins> ekstra (tilføjet)</span></div>')

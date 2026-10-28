@@ -31,10 +31,10 @@ describe("strings", () => {
     expect(src).not.toMatch(/—/);
   });
 
-  it("carries no marker for run 9's drafts, which the owner approved in run 11", () => {
+  it("carries no copy marker: run 9's and run 11's drafts are approved, and run 12's text is final", () => {
     const src = readFileSync(join(process.cwd(), "src/strings.ts"), "utf8");
     expect(src).not.toMatch(/drafted in run 9/);
-    expect(src.split("\n")[0]).not.toMatch(/TODO\(copy\)/);
+    expect(src).not.toMatch(/TODO\(copy\)/);
   });
 
   it("has no empty string and no trailing space", () => {

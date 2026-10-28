@@ -44,15 +44,15 @@ def test_a_setup_is_named_where_and_how():
     assert labels.setup_label("mac-whisper", "whisper") == "Mac'en, hvisket"
 
 
-def test_the_files_with_new_danish_text_say_so_once():
+def test_the_files_with_danish_text_carry_no_copy_marker():
     from pathlib import Path
 
     studio = Path(labels.__file__).parent
-    for path in studio.glob("*.py"):
+    # Run 12: the owner approved run 11's drafts, and run 12's own text is final.
+    for path in [*studio.glob("*.py"), *(studio.parent / name for name in ("report.py", "pilot.py", "htmlpage.py"))]:
         text = path.read_text(encoding="utf-8")
-        assert text.count("TODO(copy)") <= 1, path.name
+        assert "TODO(copy)" not in text, path.name
         assert EM_DASH not in text, path.name
-        # Run 11: the owner approved run 9's drafts, so their markers are gone.
         assert "drafted in run 9" not in text, path.name
 
 

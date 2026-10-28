@@ -18,7 +18,6 @@ export const S = {
     evaluering: "Evaluering",
     versioner: "Versioner",
     journal: "Journal",
-    // TODO(copy): run 11's drafts.
     laer: "Lær det",
   },
 
@@ -91,7 +90,6 @@ export const S = {
     "use-failed": "WalkieTalkey kunne ikke skifte model.",
     text: "Noterne kunne ikke gemmes. Prøv igen.",
     exists: "Den findes allerede.",
-    // TODO(copy): run 11's drafts.
     "no-vscode":
       "VS Code er ikke fundet på Mac'en. Installér VS Code, og prøv igen.",
   } as Record<string, string>,
@@ -116,7 +114,6 @@ export const S = {
       unknown: "Kørslen eller siden findes ikke.",
       exists: "Der findes allerede en side for den kørsel.",
     },
-    // TODO(copy): run 11's drafts.
     learn: { unknown: "Notesbogen findes ikke længere. Hent siden igen." },
   } as Record<string, Record<string, string>>,
 
@@ -328,7 +325,6 @@ export const S = {
     },
     clips: (n: string) => `${n} klip`,
 
-    // TODO(copy): run 11's drafts: what each empty list says, and after which step.
     pilotNotes: "Noter fra sammenligningen",
     empty: {
       all: "Der er ingen sætninger i denne optagelse.",
@@ -393,7 +389,6 @@ export const S = {
     heldOut: "Holdt udenfor",
     yourSplits: "Dine optagelser",
 
-    // TODO(copy): run 11's drafts: the empty states.
     empty: {
       what: "Her kommer dine optagelser: minutterne pr. forhold og deres opdeling i træning, validering og test.",
       when: "De kommer efter den første optagelse på Optagelse.",
@@ -475,7 +470,6 @@ export const S = {
     failed: "Træningen fejlede. Se loggen.",
     stopped: "Træningen blev stoppet.",
 
-    // TODO(copy): run 11's drafts: the four settings first, the rest folded, the empty state.
     essentials: "Start med disse fire",
     essentialsHelp: (file: string) =>
       `Det er dem, du først skal prøve at ændre. Du ændrer dem i ${file}.`,
@@ -515,7 +509,6 @@ export const S = {
     comparing: "Sammenligner",
     sameRun: "Vælg to forskellige kørsler.",
 
-    // TODO(copy): run 11's drafts: the readable names, the groups and the empty state.
     slug: (name: string) => `Navn i MLflow og i terminalen: ${name}`,
     group: (n: string) => `Normalisering ${n}`,
     groupUnknown: "Normalisering uden nummer",
@@ -576,7 +569,6 @@ export const S = {
     exportFailed: "Eksporten fejlede. Se loggen.",
     exportStopped: "Eksporten blev stoppet.",
 
-    // TODO(copy): run 11's drafts: the empty states.
     emptyWhat: "Her kommer dine finjusterede versioner af Edda.",
     emptyWhen:
       "Den første kommer, når du har eksporteret en færdig træning nedenfor.",
@@ -613,7 +605,6 @@ export const S = {
     kindTrain: "Træning",
     kindEval: "Evaluering",
 
-    // TODO(copy): run 11's drafts: the empty states.
     pagesEmptyWhat: "Her kommer en side pr. kørsel med tallene og dine noter.",
     pagesEmptyWhen: "Skriv den første ud fra en kørsel nedenfor.",
     pagesEmptyNoRuns:
@@ -628,7 +619,6 @@ export const S = {
     home: "Til optagelsen",
   },
 
-  // TODO(copy): run 11's drafts: the Lær det screen.
   learn: {
     title: "Lær det",
     intro:

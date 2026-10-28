@@ -69,7 +69,7 @@ from .studio.labels import setup_label
 
 PHONE_PREFIXES = ("iphone", "phone", "android")
 WHISPER = "whisper"
-# TODO(copy): run 11 drafted every Danish string in this file (the pilot page and its notes).
+# Run 11 wrote every Danish string in this file (the pilot page and its notes); the owner approved them in run 12.
 # The recorder's checks, as a setup's notes count them ("optageren markerede 3 forvrængede").
 FLAGGED = {"quiet": "for svage", "clipped": "forvrængede", "cut": "skåret af", "silent": "uden tale",
            "short": "for korte", "gaps": "med huller", "loud": "kraftige", "noisy": "med støj",

@@ -71,7 +71,7 @@ from .studio.labels import eval_title, unique_titles
 WORST = 25
 FOLDER_TIME = "%Y%m%d-%H%M%S"  # wt-train eval's folder names start with the time it started
 
-# TODO(copy): run 11 drafted every Danish string in this file (the report pages' words).
+# Run 11 wrote every Danish string in this file (the report pages' words); the owner approved them in run 12.
 NO_CONDITION = "Alle klip (uden optageforhold)"
 OTHER_CONDITION = "Uden optageforhold"
 BACKENDS = {"hf": "Transformers", "lora": "Transformers med en LoRA-adapter", "gguf": "appens pipeline"}
