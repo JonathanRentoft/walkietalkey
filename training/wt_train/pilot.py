@@ -69,7 +69,8 @@ from .studio.labels import setup_label
 
 PHONE_PREFIXES = ("iphone", "phone", "android")
 WHISPER = "whisper"
-# Run 11 wrote every Danish string in this file (the pilot page and its notes); the owner approved them in run 12.
+# Run 11 wrote every Danish string in this file (the pilot page and its notes); the owner approved them in run 12,
+# which then rewrote the note and the flag on speech at the edge ("ordene rører kanten") to say what to do.
 # The recorder's checks, as a setup's notes count them ("optageren markerede 3 forvrængede").
 FLAGGED = {"quiet": "for svage", "clipped": "forvrængede", "cut": "skåret af", "silent": "uden tale",
            "short": "for korte", "gaps": "med huller", "loud": "kraftige", "noisy": "med støj",
@@ -249,7 +250,9 @@ def setup_notes(style: str, audio: dict, scores: dict, flagged: dict[str, int]) 
     if audio.get("clipped_clips"):
         out.append(f"forvrænget i {audio['clipped_clips']} af {clips} klip")
     if audio.get("cut_clips"):
-        out.append(f"tale helt i starten eller slutningen i {audio['cut_clips']} klip (start før, stop senere)")
+        # Run 12: what it means and what to do, in plain Danish.
+        out.append(f"ordene rører kanten af optagelsen i {audio['cut_clips']} klip: start et øjeblik, før du "
+                   "taler, og stop først et øjeblik efter det sidste ord")
     if audio.get("silent_clips"):
         out.append(f"ingen tale fundet i {audio['silent_clips']} klip")
     if scores.get("failed"):
@@ -346,7 +349,7 @@ def _clip(row: dict, wav: str) -> str:
     if au["clipped_samples"]:
         flags.append("forvrænget")
     if au["cut_start"] or au["cut_end"]:
-        flags.append("tale ved kanten")
+        flags.append("ordene rører kanten")
     if au["silent"]:
         flags.append("ingen tale fundet")
     flags += [f"optageren: {FLAGGED.get(p, p)}" for p in row.get("recorder_problems") or []]

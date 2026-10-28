@@ -2731,15 +2731,23 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         if (!rec.pick)
           return err(409, "no-pick", "nothing is picked to record");
         if (!rec.active) return err(409, "paused", "the session is paused");
-        if (!rec.recording) return ok(recordingState());
-        const row = rowById(rec.recording.prompt);
-        rec.recording = null;
-        if (row) finishTake(row, "mac");
-        rec.current = nextCurrent(row?.id ?? null);
+        if (!rec.recording || rec.recording.stopping)
+          return ok(recordingState());
+        // Run 12: the take is saved after the post-roll (half a second), as the recorder does.
+        const taking = { ...rec.recording, stopping: true };
+        rec.recording = taking;
         bump();
         setTimeout(() => {
-          if (eddaListens() > 0) bump();
-        }, 1500);
+          if (rec.recording !== taking) return;
+          const row = rowById(taking.prompt);
+          rec.recording = null;
+          if (row) finishTake(row, "mac");
+          rec.current = nextCurrent(row?.id ?? null);
+          bump();
+          setTimeout(() => {
+            if (eddaListens() > 0) bump();
+          }, 1500);
+        }, 500);
         return ok(recordingState());
       }
       case "/api/recording/mac/cancel": {

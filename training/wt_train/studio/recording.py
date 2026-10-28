@@ -5,7 +5,10 @@ a pilot setup (the pilot sentences). It is recorded through the recorder's own
 :class:`~wt_train.recorder.session.Session`, the same prompts, takes, checks and files
 as ``wt-train record`` and ``wt-train pilot record``, handed to the running app with
 ``app.handoff_training`` (or, for tests and the end-to-end run, its link written to a
-file). Each session has its own token: the app's requests with an older one get 401.
+file). Each session has its own token: the app's requests with an older one get 401, except
+that the app may still fetch the last commands of a session that ended (``next``): its end, and
+for a Mac session the cancel of its armed input before it (run 12, ``recorder/session.py``),
+which the app must carry out even when it was busy when the owner switched.
 
 * pause: the session ends (``end``; the app tells the phone, which returns to normal at
   once); the rows, takes and checks stay, and nothing can be recorded;
@@ -134,6 +137,8 @@ class Recorder:
         self.pick: Pick | None = None
         self.session: Session | None = None
         self.token: str | None = None
+        # Sessions that ended with commands the app has not fetched yet, with their tokens.
+        self._ended: list[tuple[str, Session]] = []
         self.paused = False
         self.link = {"status": "waiting", "detail": ""}
         # Every take seen, by its WAV's path, so a pick opened again reuses what was measured.
@@ -161,13 +166,19 @@ class Recorder:
 
     # --- the app's API (recorder/appapi.py) ---------------------------------------------
 
-    def app_session(self, authorization: str) -> Session | None:
+    def app_session(self, authorization: str, fetching: bool = False) -> Session | None:
+        """The session the app's token names; ``fetching`` (its ``next``) also reaches an ended
+        session until the app has fetched its last commands."""
         with self._lock:
             session, token = self.session, self.token
-        if session is None or token is None:
-            return None
-        if hmac.compare_digest(authorization.encode(), f"Bearer {token}".encode()):
+            self._ended = [(t, s) for t, s in self._ended if s.fetched < s.seq]
+            ended = list(self._ended) if fetching else []
+        given = authorization.encode()
+        if session is not None and token is not None and hmac.compare_digest(given, f"Bearer {token}".encode()):
             return session
+        for old_token, old in ended:
+            if hmac.compare_digest(given, f"Bearer {old_token}".encode()):
+                return old
         return None
 
     def app_link(self, status: str, detail: str) -> None:
@@ -242,6 +253,8 @@ class Recorder:
         if after is not None:
             snap = after.snapshot()
             session.resume_from(snap["current"], snap["skipped"])
+        if self.session is not None and self.token is not None and self.session.ended:
+            self._ended = [(t, s) for t, s in self._ended if s.fetched < s.seq][-3:] + [(self.token, self.session)]
         self.session = session
         self.token = secrets.token_urlsafe(32)
         self.paused = False
@@ -452,7 +465,8 @@ class Recorder:
             "microphone": microphone,
             "current": snap["current"],
             "recording": ({"prompt": recording.get("prompt"), "source": recording.get("source"),
-                           "since": _iso(recording.get("since"))} if recording else None),
+                           "since": _iso(recording.get("since")), "stopping": bool(recording.get("stopping"))}
+                          if recording else None),
             "counts": {"total": len(pick.items), **counts},
             "minutes": round(seconds / 60, 1),
             "limits": limits(pick.condition.style),

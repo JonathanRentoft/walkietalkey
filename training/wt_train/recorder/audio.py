@@ -4,7 +4,8 @@ The app hands over each take as 16-bit PCM, mono, 16 kHz: exactly what the model
 would hear, before VAD. From the phone that is the dictation capture after its
 +15 dB gain and look-ahead limiter (PHONE-30); from the Mac, the input the app
 records with (AudioRecordingManager, as for a key dictation). A take is saved as
-it came, untrimmed; :mod:`.checks` judges it.
+it came, untrimmed, except that a Mac take is kept from 0.3 s before the press (its
+input is armed ahead of it, run 12: :mod:`.session`); :mod:`.checks` judges it.
 
 Levels are measured on 10 ms frames (RMS in dBFS). Speech is found as in run 4's
 recorder: a frame is voiced above the room noise (the 10th percentile frame)

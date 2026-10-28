@@ -236,6 +236,8 @@ export const S = {
     macHintEsc: "annullerer.",
     record: "Optag",
     stopRecording: "Stop optagelsen",
+    // Run 12: the half second the Mac keeps recording after the stop, then the take is saved.
+    savingTake: "Gemmer optagelsen",
     cancelRecording: "Annullér",
     recordingNow: "Optager",
     recordingOnPhone: "Optager på telefonen",
@@ -302,6 +304,10 @@ export const S = {
       error: "Tjekket fejlede",
     } as Record<string, string>,
     problemOther: (kind: string) => `Andet: ${kind}`,
+    // Run 12: what to do about a problem, under the take and on its chip.
+    problemHelp: {
+      cut: "Ordene rører kanten af optagelsen, så et ord kan være skåret af. Start optagelsen et øjeblik, før du taler, og stop den først et øjeblik efter det sidste ord.",
+    } as Record<string, string>,
     checksLabel: "Lydtjekket",
     sendsBack: "Sendt tilbage",
     warning: "Advarsel",

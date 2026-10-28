@@ -88,11 +88,10 @@ WIDTH = 150
 # Louder than this for the style: a normal voice pressed against full scale, or a whisper at a
 # normal voice's level (a normal voice reaches about -20 dBFS, a whisper about -40).
 LOUD_DBFS = {"normal": -6.0, "whisper": -25.0}
-# The estimated SNR (speech level over the median pause) below which a take is noisy.
-NOISY_SNR_DB = {"normal": 15.0, "whisper": 10.0}
-# speech_bounds counts every frame within 15 dB of the speech level as voiced: in a take less
-# than this far above its noise, the noise reaches the edges and "cut off" cannot be told.
-CUT_MIN_SNR_DB = 15.0
+# The estimated SNR below which a take is noisy, and the one a take needs for "cut off" to be told:
+# the recorder's own (run 12: it flags a cut take right after it, with the same rule).
+NOISY_SNR_DB = checks.NOISY_SNR_DB
+CUT_MIN_SNR_DB = checks.CUT_MIN_SNR_DB
 MISMATCH_WER = 0.5
 MISMATCH_MIN_ERRORS = 2
 # Share of the sentence's words (normalised, counted with repeats) found in the transcript.
@@ -345,8 +344,8 @@ def audio_problems(stats: audiostats.AudioStats, result: checks.CheckResult, sty
         return {"silent": ""}
     out: dict[str, str] = {}
     noisy = "silent" in found or stats.snr_db < NOISY_SNR_DB[style]
-    if not stats.silent and not noisy and stats.snr_db >= CUT_MIN_SNR_DB and (stats.cut_start or stats.cut_end):
-        out["cut"] = " and ".join(e for e, cut in (("start", stats.cut_start), ("end", stats.cut_end)) if cut)
+    if cut := checks.cut_edges(stats, style, silent="silent" in found):
+        out["cut"] = cut
     if "clipped" in found:
         out["clipped"] = ""
     if "quiet" in found:

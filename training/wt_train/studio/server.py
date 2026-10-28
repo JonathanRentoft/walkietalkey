@@ -140,8 +140,8 @@ class StudioServer(ThreadingHTTPServer):
         return f"http://{HOST}:{self.server_address[1]}/"
 
     # The app's API (recorder/appapi.py).
-    def app_session(self, authorization: str):
-        return self.recorder.app_session(authorization)
+    def app_session(self, authorization: str, fetching: bool = False):
+        return self.recorder.app_session(authorization, fetching=fetching)
 
     def app_link(self, status: str, detail: str) -> None:
         self.recorder.app_link(status, detail)

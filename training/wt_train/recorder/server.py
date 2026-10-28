@@ -10,7 +10,9 @@ The page (static/index.html, app.js, style.css), in the owner's browser::
     POST /api/go?index=N
     POST /api/redo                  back to the sentence just recorded
     POST /api/skip                  pass over the current sentence this round ("Spring over")
-    POST /api/mac/start | stop | cancel   a take on the Mac's own input (the mac condition)
+    POST /api/mac/start | stop | cancel   a take on the Mac's own input (the mac condition): the
+                                    press, the release (mac_stop follows the post-roll) and
+                                    Escape; the input is armed ahead of the press (session.py)
     POST /api/connect               hand the session to the app again
     GET  /api/takes/<id>.wav        the current take of a sentence, to play it back
 
@@ -37,6 +39,7 @@ import argparse
 import hmac
 import re
 import secrets
+import signal
 import sys
 import threading
 import time
@@ -105,7 +108,7 @@ class RecorderServer(ThreadingHTTPServer):
 
     # The app's API (appapi.py) ------------------------------------------------
 
-    def app_session(self, authorization: str) -> Session | None:
+    def app_session(self, authorization: str, fetching: bool = False) -> Session | None:
         if hmac.compare_digest(authorization.encode(), f"Bearer {self.token}".encode()):
             return self.session
         return None
@@ -300,6 +303,19 @@ def main(argv: list[str] | None = None) -> int:
                           f"takes in {args.recordings}")  # fmt: skip
 
 
+def _interrupt(signum, frame) -> None:
+    raise KeyboardInterrupt
+
+
+def stop_on_signals() -> None:
+    """SIGTERM and SIGHUP (the terminal window closed) stop the recorder as Ctrl+C does, so the
+    session ends on the way out: a Mac session's armed input is cancelled in the app (run 12)."""
+    if threading.current_thread() is not threading.main_thread():
+        return
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, _interrupt)
+
+
 def serve(session: Session, *, port: int, progress, rows: list[dict] | None, app_bin: Path | None,
           app_url_file: Path | None, no_browser: bool, describe: str) -> int:
     """Run the page and the app's API for ``session`` until Ctrl+C, handing the session to the
@@ -328,6 +344,7 @@ def serve(session: Session, *, port: int, progress, rows: list[dict] | None, app
             print(f"WalkieTalkey: {detail}", file=sys.stderr, flush=True)
 
     server.connect = connect
+    stop_on_signals()
     page = f"http://{HOST}:{server.server_address[1]}/"
     print(f"Recorder: {page}  ({describe})")
     print("Ctrl+C stops it.", flush=True)

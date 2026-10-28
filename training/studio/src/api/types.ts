@@ -192,7 +192,13 @@ export interface RecordingState {
   } | null;
   microphone: { name: string | null; source: Device } | null;
   current: string | null;
-  recording: { prompt: string; source: Device; since: string } | null;
+  /** A take from the press on (never the Mac's armed input); `stopping` from the release on. */
+  recording: {
+    prompt: string;
+    source: Device;
+    since: string;
+    stopping?: boolean;
+  } | null;
   counts: Counts;
   minutes: number;
   /** null with nothing picked. */

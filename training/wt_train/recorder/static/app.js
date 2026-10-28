@@ -4,9 +4,11 @@
 // table shows the setups instead of the conditions. The audio never passes this page: the app
 // records it (on the phone through the pairing, or on the Mac's own input) and hands it to the
 // local server (wt_train/recorder/server.py). The page only polls that server and asks it to move
-// on, go back or start and stop a Mac take.
+// on, go back or start and stop a Mac take. Run 12: the server keeps the Mac's input open ahead of
+// the press (the page shows the ordinary ready state meanwhile) and half a second after the stop
+// ("Gemmer ..." from the stop on), so the take keeps a margin at either end.
 //
-// Every Danish string below was approved by the owner in run 8.
+// Every Danish string below was approved by the owner in run 8, except CHECKS.cut (run 12).
 
 const POLL_MS = 400;
 
@@ -50,13 +52,15 @@ const BADGES = {
   stale: "Teksten er ændret, optag igen",
 };
 
-// The check of the last take (wt_train/recorder/checks.py); the phone shows the same words.
+// The check of the last take (wt_train/recorder/checks.py); the phone shows the same words (for
+// "cut", which PROTOCOL.md 8.4 does not know, the phone is told "short"). Run 12 wrote "cut".
 const CHECKS = {
   ok: "Gemt.",
   quiet:
     "Optagelsen er svag. Tal lidt tættere på mikrofonen, og optag den igen.",
   clipped:
     "Lyden er for kraftig og forvrænget. Hold lidt mere afstand, og optag den igen.",
+  cut: "Ordene rører kanten af optagelsen. Start et øjeblik, før du taler, og stop først et øjeblik efter det sidste ord. Optag den igen.",
   short: "Optagelsen ser ud til at være skåret af. Optag den igen.",
   silent: "Hørte ikke noget. Optag den igen.",
   gaps: "Noget af lyden nåede ikke frem. Optag den igen.",
@@ -252,6 +256,8 @@ async function post(path) {
 
 async function toggleMac() {
   if (!isMac() || busy) return;
+  // The take is being saved (the half second after the stop): a press waits for it.
+  if (state.session.recording?.stopping) return;
   if (state.session.recording) await post("/api/mac/stop");
   else await post("/api/mac/start");
 }
@@ -306,7 +312,7 @@ document.addEventListener("keydown", async (e) => {
   } else if (key === "ArrowLeft") {
     e.preventDefault();
     await post("/api/prev");
-  } else if (key === "Escape") {
+  } else if (key === "Escape" && !state?.session.recording?.stopping) {
     await post("/api/mac/cancel");
   }
 });

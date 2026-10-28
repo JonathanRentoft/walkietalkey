@@ -125,10 +125,12 @@ Starts a session (replacing a running one) and hands it to the running app
 (`app.handoff_training`), which switches the phone into recording mode for a phone session.
 Answers the recording state. Errors: `unknown` (404, or 400 for a `kind` that is neither),
 `no-share` (409), `bad-setup` (400). `{"kind": "exam", "id": "<condition>"}` is the same as
-`"kind": "condition"` with `"exam": true`. The session replaced gets no `end`: its token is
-refused at once, which ends it in the app (and the new handoff replaces it there anyway). The
-new pick's takes are read before the running session ends: a pick that cannot open (an error)
-leaves that session running.
+`"kind": "condition"` with `"exam": true`. The session replaced ends (`end`; a Mac session's
+`mac_cancel` comes first, so the app closes the input it armed): its token is refused at once
+for everything but `GET /app/v1/next`, which still gets it those last commands, so the app ends it
+even when it was busy at the switch (run 12), and is refused for that too once it has them (the
+new handoff replaces it in the app anyway). The new pick's takes are read before the running
+session ends: a pick that cannot open (an error) leaves that session running.
 
 ### `POST /api/recording/pause`, `POST /api/recording/resume`, `POST /api/recording/stop`
 
@@ -167,7 +169,11 @@ A take on the Mac's own input, for a Mac session (the recorder's `mac_start` / `
 `mac_cancel`). The page binds them to its record button and to the space bar (press to start,
 press again to stop; Escape cancels). 409 `paused` while paused; `mac/start` answers 409
 `mac-not-ready` when no take can start (not a Mac pick, the app has not said hello, or a take is
-recording).
+recording). Run 12: the input is armed ahead of the press, so `mac/start` only notes the time
+(or, before the arm is confirmed, starts the take as before); `mac/stop` answers `stopping: true`
+and the recorder sends `mac_stop` half a second later; a second `mac/stop` meanwhile changes
+nothing. Pause, stop and a new pick cancel the arm; the take's metadata says what it kept
+(`pre_roll_s`, `post_roll_s`, `trimmed_s`).
 
 ### `GET /api/recording/state[?since=<version>]`
 
@@ -196,7 +202,8 @@ recording).
   "recording": {
     "prompt": "s0043",
     "source": "phone",
-    "since": "2026-10-27T10:01:02+01:00"
+    "since": "2026-10-27T10:01:02+01:00",
+    "stopping": false
   },
   "counts": {
     "total": 120,
@@ -259,6 +266,13 @@ recording).
 
 - `active`: a session runs; `paused`: a pick is there but its session ended. With nothing picked:
   `pick: null`, `rows: []`, `limits: null`, `current: null`, every count 0.
+- `recording` is a take from the press on (`since`), `null` otherwise. Run 12, a Mac session: while
+  it is idle the recorder has the app record already (it arms the Mac's input for the current
+  sentence, `recorder/session.py`), and that is never shown here: the page shows its ordinary
+  ready state ("Optag"). The press only notes the time, and the take is kept from 0.3 s before it.
+  From the stop on `stopping` is `true` ("Gemmer optagelsen"): the app records half a second more,
+  then the take is saved and `recording` is `null` again; a press meanwhile is ignored. A phone
+  take is never `stopping` (the phone keeps its own half second after the release).
 - `last`: what the session made of the latest take the app sent (`null` before one): its sentence,
   the recorder's check (`ok` or the first problem), whether it was kept. Its `problems` are the
   recorder's plain names (`["silent", "quiet"]`), not the rows' objects. A refused take (`silent`,
