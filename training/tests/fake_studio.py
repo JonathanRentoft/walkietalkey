@@ -1,7 +1,7 @@
 """Værkstedet in a test's tmp folder: its files, a stand-in for Edda, a server on a free
 port, and the page's and the app's requests. Nothing here touches training/data/, the
 journal, the real MLflow store or the WalkieTalkey app: the app's link goes to a file,
-the handoff is never called, and Edda is a stand-in."""
+the handoff is never called, VS Code is never opened, and Edda is a stand-in."""
 
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ class StandIn:
         return out
 
 
-def start_server(places, *, transcriber=None, find_app=None, caffeinate=None, handoff=None):
+def start_server(places, *, transcriber=None, find_app=None, caffeinate=None, handoff=None, launch=None):
     from wt_train.studio.server import StudioServer
 
     stand_in = transcriber if transcriber is not None else StandIn()
@@ -98,8 +98,12 @@ def start_server(places, *, transcriber=None, find_app=None, caffeinate=None, ha
     def no_handoff(url, app_bin):  # pragma: no cover - the link goes to a file in tests
         raise AssertionError("the tests never hand a session to the app")
 
+    def no_launch(argv):  # pragma: no cover - a test that opens a notebook passes its own
+        raise AssertionError(f"the tests never open VS Code: {argv}")
+
     srv = StudioServer(places, 0, transcriber=lambda: stand_in, handoff=handoff or no_handoff,
-                       find_app=find_app or (lambda: None), caffeinate=caffeinate or [])
+                       find_app=find_app or (lambda: None), caffeinate=caffeinate or [],
+                       launch=launch or no_launch)
     threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True).start()
     srv.stand_in = stand_in
     return srv

@@ -30,6 +30,11 @@ def unreadable(wav):
         return f"expected 16 kHz mono 16-bit PCM WAV, got {info.subtype}"
     return None
 
+def named_bad(wav):
+    # A clip named "bad" fails; its PCM copy keeps the stem before a "-<hash>" (audio.pcm16_copy), and a
+    # hash that happens to spell "bad" does not count.
+    return Path(wav).stem.split("-")[0] == "bad"
+
 def text_for(wav):
     txt = Path(wav).with_suffix(".txt")
     return txt.read_text(encoding="utf-8").strip().upper() if txt.is_file() else "hej"
@@ -63,7 +68,7 @@ if "--transcribe-list" in args and batch:
     for line in listing.read_text().splitlines():
         if not line.strip() or line.startswith("#"):
             continue
-        problem = "cannot open" if "bad" in Path(line).name else unreadable(line)
+        problem = "cannot open" if named_bad(line) else unreadable(line)
         if problem:
             print(json.dumps({"error": problem, "file": line}))
             failed = True
@@ -72,7 +77,7 @@ if "--transcribe-list" in args and batch:
     sys.exit(1 if failed else 0)
 if "-f" in args:
     wav = args[args.index("-f") + 1]
-    if "bad" in Path(wav).name or unreadable(wav):
+    if named_bad(wav) or unreadable(wav):
         print("error: cannot open", file=sys.stderr)
         sys.exit(1)
     print(json.dumps({"audio_secs": 0.5, "model": model, "text": text_for(wav), "transcribe_ms": [12]}))

@@ -1,5 +1,6 @@
 """``wt-train pilot report`` (run 7): every setup scored with the shipped Edda through the app,
-its audio measured, one self-contained page, and an MLflow run of kind ``pilot``."""
+its audio measured, one self-contained page, and an MLflow run of kind ``pilot``. Run 11: the
+page and the setups' notes are in Danish."""
 
 import json
 import os
@@ -119,7 +120,7 @@ def test_the_audio_numbers_per_setup(tmp_path, monkeypatch):
     assert s["peak_dbfs"] == pytest.approx(0.0, abs=0.1)
     assert w["seconds"] == pytest.approx(3 * 0.8 + 1.6 + 1.8 + 2.0, abs=0.01)
     notes = report["setups"]["studio"]["notes"]
-    assert "clipped in 3 of 3 clips" in notes and "the recorder flagged 3 clipped" in notes
+    assert "forvrænget i 3 af 3 klip" in notes and "optageren markerede 3 forvrængede" in notes
     assert report["setups"]["mac-normal"]["notes"] == []
 
 
@@ -130,10 +131,10 @@ def test_a_quiet_setup_is_named_with_the_recorders_limit(tmp_path, monkeypatch):
         report = run(tmp_path)
     finally:
         del SOUND["mac-quiet"]
-    assert any(n.startswith("quiet: speech at") and "-35 dBFS for a normal voice" in n
+    assert any(n.startswith("svag: talen ligger på") and "under optagerens \u221235 dBFS for almindelig stemme" in n
                for n in report["setups"]["mac-quiet"]["notes"])
     # A whisper at -40 dBFS is not quiet for a whisper (its limit is -50 dBFS).
-    assert not any(n.startswith("quiet") for n in report["setups"]["iphone-whisper"]["notes"])
+    assert not any(n.startswith("svag") for n in report["setups"]["iphone-whisper"]["notes"])
 
 
 def test_the_page(tmp_path, monkeypatch):
@@ -142,19 +143,22 @@ def test_the_page(tmp_path, monkeypatch):
     page = report["page"]
     assert page.parent == paths.reports_dir() and page.name.startswith("pilot-") and page.suffix == ".html"
     html = page.read_text(encoding="utf-8")
-    assert "<title>Pilot: the recording setups compared</title>" in html
-    for name in ("iphone-whisper", "mac-normal", "studio"):
-        assert f'<b style="white-space:nowrap">{name}</b>' in html and f"<h3>{name}</h3>" in html
-    assert "No takes yet, so skipped: airpods-normal." in html
-    for header in ("WER", "CER", "Terms right", "Speech level", "Peak", "Noise floor", "SNR", "Clipped", "Length"):
+    assert '<html lang="da">' in html and "<title>Piloten: opsætningerne sammenlignet</title>" in html
+    # Each setup by its Danish name, as Værkstedet shows it, with the setup's own name beside it.
+    for name, label in (("iphone-whisper", "iPhone, hvisket"), ("mac-normal", "Mac&#x27;en, almindelig stemme"),
+                        ("studio", "Studiemikrofon, almindelig stemme")):
+        assert f'<b style="white-space:nowrap">{label}</b>' in html and f"<h3>{label}</h3>" in html
+        assert f"<code>{name}</code>" in html
+    assert "Ingen optagelser endnu, så sprunget over: airpods-normal." in html
+    for header in ("WER", "CER", "Fagord rigtige", "Taleniveau", "Top", "Støjgulv", "SNR", "Forvrænget", "Længde"):
         assert f">{header}</th>" in html
-    assert "15.79 %" in html  # iphone-whisper's WER
-    assert "0 of 2 (any form 2)" in html and "the phone, whispered" in html
+    assert "15,79 %" in html  # iphone-whisper's WER
+    assert "0 af 2</span><br>" in html and "i enhver form: 2</span>" in html and "telefonen, hvisket" in html
     # Every clip with its player (embedded, self-contained) and its diff.
     assert html.count("<audio controls") == 9 and html.count('src="data:audio/') == 9
     assert '<del class="w sub">deployer</del><ins class="w sub">deployede</ins>' in html
     assert '<del class="w del">et</del>' in html
-    assert "Shure MV7" in html and "clipped in 3 of 3 clips" in html
+    assert "Shure MV7" in html and "forvrænget i 3 af 3 klip" in html and "Edda skrev" in html
     assert "http://" not in html and "https://" not in html
 
 

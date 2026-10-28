@@ -1,4 +1,3 @@
-// TODO(copy): drafted in run 9, the owner approves them
 /* Every text Værkstedet shows. Danish, du-form, short sentences, sentence case, no em dashes
    (test/strings.test.ts). Numbers come in already formatted (lib/format.ts). Where the recorder
    page (wt_train/recorder/static/app.js) already says a thing, the same words are used. */
@@ -19,6 +18,8 @@ export const S = {
     evaluering: "Evaluering",
     versioner: "Versioner",
     journal: "Journal",
+    // TODO(copy): run 11's drafts.
+    laer: "Lær det",
   },
 
   status: {
@@ -90,6 +91,9 @@ export const S = {
     "use-failed": "WalkieTalkey kunne ikke skifte model.",
     text: "Noterne kunne ikke gemmes. Prøv igen.",
     exists: "Den findes allerede.",
+    // TODO(copy): run 11's drafts.
+    "no-vscode":
+      "VS Code er ikke fundet på Mac'en. Installér VS Code, og prøv igen.",
   } as Record<string, string>,
 
   errorsIn: {
@@ -112,6 +116,8 @@ export const S = {
       unknown: "Kørslen eller siden findes ikke.",
       exists: "Der findes allerede en side for den kørsel.",
     },
+    // TODO(copy): run 11's drafts.
+    learn: { unknown: "Notesbogen findes ikke længere. Hent siden igen." },
   } as Record<string, Record<string, string>>,
 
   recording: {
@@ -217,7 +223,6 @@ export const S = {
     filterRedo: (n: string) => `Tag om (${n})`,
     filterWaiting: (n: string) => `Venter (${n})`,
     filterApproved: (n: string) => `Godkendt (${n})`,
-    filterEmpty: "Ingen sætninger her.",
 
     status: {
       waiting: "Venter",
@@ -307,12 +312,10 @@ export const S = {
     pilotSetups: "Opsætningerne",
     pilotCompare: "Sammenlign opsætningerne",
     pilotComparing: "Sammenligner opsætningerne",
-    pilotNone: "Opsætningerne er ikke sammenlignet endnu.",
     pilotFrom: (when: string) => `Sammenligning fra ${when}`,
     pilotModel: (model: string) => `Model: ${model}`,
     pilotReport: "Åbn hele pilotrapporten",
     pilotFailed: "Sammenligningen fejlede. Se loggen.",
-    pilotNotes: "Noter fra sammenligningen (på engelsk)",
     pilotMetrics: {
       wer: "Ordfejl (WER)",
       werHelp: "Lavere er bedre",
@@ -324,6 +327,22 @@ export const S = {
       clippedHelp: "Færre er bedre",
     },
     clips: (n: string) => `${n} klip`,
+
+    // TODO(copy): run 11's drafts: what each empty list says, and after which step.
+    pilotNotes: "Noter fra sammenligningen",
+    empty: {
+      all: "Der er ingen sætninger i denne optagelse.",
+      redo: "Ingen sætninger skal tages om. Her kommer dem, som tjekket eller du sender tilbage.",
+      waiting: "Ingen sætninger venter. Alle i denne runde er optaget.",
+      approved:
+        "Ingen sætninger er godkendt endnu. Her kommer dem, der består tjekket, når du har optaget dem.",
+      progress:
+        "Bjælkerne fyldes op, efterhånden som dine optagelser bliver godkendt. Start en optagelse ovenfor.",
+      pilot:
+        "Her kommer sammenligningen af opsætningerne: ordfejl, tale over støj, niveau og forvrængning.",
+      pilotWhen:
+        "Den kommer, når du har optaget piloten i mindst én opsætning og trykket Sammenlign opsætningerne.",
+    },
   },
 
   data: {
@@ -373,7 +392,14 @@ export const S = {
     } as Record<string, string>,
     heldOut: "Holdt udenfor",
     yourSplits: "Dine optagelser",
-    noConditions: "Der er ingen optagelser endnu.",
+
+    // TODO(copy): run 11's drafts: the empty states.
+    empty: {
+      what: "Her kommer dine optagelser: minutterne pr. forhold og deres opdeling i træning, validering og test.",
+      when: "De kommer efter den første optagelse på Optagelse.",
+      go: "Til Optagelse",
+      leakage: "Det kører, når der er optagelser at tjekke.",
+    },
   },
 
   training: {
@@ -433,7 +459,6 @@ export const S = {
     noPoints: "Ingen punkter endnu.",
     tooltipStep: (s: string) => `Trin ${s}`,
     runsTitle: "Tidligere træninger",
-    runsEmpty: "Der er ingen tidligere træninger endnu.",
     colRun: "Kørsel",
     colDate: "Dato",
     colBestEpoch: "Bedste epoke",
@@ -449,16 +474,26 @@ export const S = {
     noAdapter: "Ingen adapter",
     failed: "Træningen fejlede. Se loggen.",
     stopped: "Træningen blev stoppet.",
+
+    // TODO(copy): run 11's drafts: the four settings first, the rest folded, the empty state.
+    essentials: "Start med disse fire",
+    essentialsHelp: (file: string) =>
+      `Det er dem, du først skal prøve at ændre. Du ændrer dem i ${file}.`,
+    allSettings: (n: string) => `Alle indstillinger (${n})`,
+    allSettingsHelp:
+      "Resten kan blive, som de er, til du ved, hvad du vil ændre.",
+    runsEmptyWhat:
+      "Her kommer dine træninger med deres bedste epoke og ordfejl.",
+    runsEmptyWhen:
+      "Den første kommer, når en træning, du har startet ovenfor, er færdig.",
   },
 
   evaluation: {
     title: "Evaluering",
     intro:
       "Kørslerne fra MLflow. Ordfejl er andelen af ord, modellen skriver forkert; lavere er bedre.",
-    empty: "Der er ingen evalueringer endnu.",
     colRun: "Kørsel",
     colDate: "Dato",
-    colDataset: "Datasæt",
     colModel: "Model",
     colClips: "Klip",
     colWer: "Ordfejl (WER)",
@@ -479,6 +514,26 @@ export const S = {
     compare: "Sammenlign",
     comparing: "Sammenligner",
     sameRun: "Vælg to forskellige kørsler.",
+
+    // TODO(copy): run 11's drafts: the readable names, the groups and the empty state.
+    slug: (name: string) => `Navn i MLflow og i terminalen: ${name}`,
+    group: (n: string) => `Normalisering ${n}`,
+    groupUnknown: "Normalisering uden nummer",
+    since: {
+      "1": "Før 26. oktober 2026.",
+      "2": "Fra 26. oktober 2026. Det er den, der gælder nu.",
+    } as Record<string, string>,
+    unknownHelp:
+      "Målt med en ændret normalisering, der ikke har fået et nummer endnu. Tallene kan ikke sammenlignes med de andre.",
+    fixTitle: "Sammenlign kun inden for samme gruppe",
+    fixNote:
+      "Normaliseringen gør teksten ens, før ordfejlene tælles. Den blev rettet den 26. oktober. Det ændrede alle tallene, uden at modellen blev ændret.",
+    mixed:
+      "A og B er målt med hver sin normalisering. En del af forskellen kommer derfor fra rettelsen og ikke fra modellen.",
+    emptyWhat:
+      "Her kommer målingerne af modellerne: ordfejl, tegnfejl og hvor sikre tallene er.",
+    emptyWhen:
+      "De første kommer, når du har kørt en evaluering i terminalen, for eksempel af Edda på FLEURS:",
   },
 
   report: {
@@ -511,18 +566,24 @@ export const S = {
     colDate: "Dato",
     colWer: "Ordfejl på valideringen",
     versionN: (n: string) => `Version ${n}`,
-    empty:
-      "Der er ingen finjusterede versioner endnu. Eksportér en træning nedenfor.",
     exportTitle: "Eksportér en træning",
     exportHelp:
       "Laver en model, appen kan bruge, ud fra en færdig træning. Den lægges i listen ovenfor.",
     exportRun: "Træning",
-    exportNone: "Der er ingen træninger, der kan eksporteres.",
     export: "Eksportér",
     exporting: "Eksporterer",
     exported: "Eksporteret. Den nye version står i listen.",
     exportFailed: "Eksporten fejlede. Se loggen.",
     exportStopped: "Eksporten blev stoppet.",
+
+    // TODO(copy): run 11's drafts: the empty states.
+    emptyWhat: "Her kommer dine finjusterede versioner af Edda.",
+    emptyWhen:
+      "Den første kommer, når du har eksporteret en færdig træning nedenfor.",
+    exportEmptyWhat: "Her kommer de træninger, der kan eksporteres.",
+    exportEmptyWhen:
+      "De kommer, når en træning på Træning er færdig og har gemt en adapter.",
+    goTraining: "Til Træning",
   },
 
   journal: {
@@ -530,7 +591,6 @@ export const S = {
     intro:
       "En side pr. kørsel: tallene skrives ind af sig selv, og du skriver, hvad du forventede, og hvad du lærte.",
     pages: "Sider",
-    pagesEmpty: "Der er ingen sider endnu.",
     runs: "Kørsler uden side",
     runsEmpty: "Alle kørsler har en side.",
     write: "Skriv side",
@@ -552,12 +612,52 @@ export const S = {
     leave: "Du har tekst, der ikke er gemt. Vil du forlade siden alligevel?",
     kindTrain: "Træning",
     kindEval: "Evaluering",
+
+    // TODO(copy): run 11's drafts: the empty states.
+    pagesEmptyWhat: "Her kommer en side pr. kørsel med tallene og dine noter.",
+    pagesEmptyWhen: "Skriv den første ud fra en kørsel nedenfor.",
+    pagesEmptyNoRuns:
+      "Den første kan du skrive, når du har trænet eller evalueret en model.",
+    runsNoneWhat: "Her kommer dine kørsler fra MLflow.",
+    runsNoneWhen: "De kommer, når du har trænet eller evalueret en model.",
   },
 
   notFound: {
     title: "Siden findes ikke",
     body: "Den side kender Værkstedet ikke.",
     home: "Til optagelsen",
+  },
+
+  // TODO(copy): run 11's drafts: the Lær det screen.
+  learn: {
+    title: "Lær det",
+    intro:
+      "Fem små notesbøger om, hvordan Edda hører, hvordan den måles, og hvordan den finjusteres. Kør dem fra toppen i VS Code.",
+    setup:
+      "VS Code skal have udvidelserne Python og Jupyter. Spørger den efter en kerne, så vælg .venv i training.",
+    copies: (folder: string) =>
+      `Hver notesbog åbner som din egen kopi i ${folder}. Den originale ændrer sig aldrig.`,
+    listLabel: "Notesbøgerne",
+    minutes: (n: string) => `ca. ${n} min`,
+    open: "Åbn i VS Code",
+    opening: "Åbner",
+    openLabel: (title: string) => `Åbn ${title} i VS Code`,
+    opened: "Åbnet i VS Code.",
+    openedNew: "Åbnet i VS Code som din egen kopi.",
+    notOpened: "Ikke åbnet endnu",
+    saved: (when: string) => `Din kopi, gemt ${when}`,
+    ran: "Kørt",
+    notRun: "Ikke kørt endnu",
+    reset: "Start forfra",
+    resetLabel: (title: string) => `Start ${title} forfra`,
+    resetConfirm:
+      "Start forfra? Din kopi med dine ændringer og resultater lægges til side, og du får den originale notesbog igen.",
+    resetYes: "Ja, start forfra",
+    resetNo: "Behold min kopi",
+    resetting: "Starter forfra",
+    resetDone: "Startet forfra med den originale notesbog.",
+    emptyWhat: "Her kommer notesbøgerne, der viser dig, hvordan Edda virker.",
+    emptyWhen: "De kommer, når de ligger i training/notebooks.",
   },
 };
 
@@ -570,7 +670,8 @@ export type ErrorArea =
   | "training"
   | "evaluation"
   | "versions"
-  | "journal";
+  | "journal"
+  | "learn";
 
 /** The Danish text for an error code (API.md: the page names each code itself), by route. */
 export function errorText(

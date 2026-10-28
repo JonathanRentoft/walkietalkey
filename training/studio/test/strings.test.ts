@@ -31,12 +31,10 @@ describe("strings", () => {
     expect(src).not.toMatch(/—/);
   });
 
-  it("marks the file as drafted copy once", () => {
+  it("carries no marker for run 9's drafts, which the owner approved in run 11", () => {
     const src = readFileSync(join(process.cwd(), "src/strings.ts"), "utf8");
-    expect(src.match(/TODO\(copy\)/g)).toHaveLength(1);
-    expect(src.split("\n")[0]).toBe(
-      "// TODO(copy): drafted in run 9, the owner approves them",
-    );
+    expect(src).not.toMatch(/drafted in run 9/);
+    expect(src.split("\n")[0]).not.toMatch(/TODO\(copy\)/);
   });
 
   it("has no empty string and no trailing space", () => {
@@ -67,6 +65,7 @@ describe("strings", () => {
       "use-failed",
       "text",
       "exists",
+      "no-vscode",
     ];
     expect(codes.filter((c) => !S.errors[c])).toEqual([]);
     expect(errorText("busy", "training")).toBe(

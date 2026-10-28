@@ -3,7 +3,7 @@
    nobody has measured yet is left out of the page entirely, with a TODO(claim) comment where it would go.
 
    The owner approved this text in run 8 (it comes from the production front page and run 6's concepts B and C), so
-   it carries no TODO(copy) marker. Strings that are new or changed in run 10 carry TODO(copy) where they are written.
+   it carries no TODO(copy) marker. Run 10's new strings were approved in run 11.
 
    TODO(claim): whispering into the phone (the phone row and the questions) and how Edda writes English words inside
    Danish sentences (the word list row) stay off the page until they are measured (spec 2.6, DESK-67; the workbench
@@ -88,7 +88,7 @@ export const FEATURES: Record<FeatureKey, Feature> = {
     short:
       "Hold knappen på telefonen, tal, og slip. Teksten lander på din computer.",
     /* run 10 dropped "eller vil tale lavt": speaking quietly is not measured, like whispering */
-    body: "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt eller står ved tavlen.", // TODO(copy)
+    body: "Telefonappen er én stor knap. Hold den, tal, og slip, så ligger teksten klar på din computer. Godt, når du går rundt eller står ved tavlen.",
   },
   corrections: {
     key: "corrections",
@@ -259,12 +259,12 @@ export interface Showcase {
     0.92 s for 16 s and 0.99 s for a two-minute dictation (docs/MODELS.md, run 4; 1.03 s and 0.99 s in run 5).
     Nothing else is measured yet, so the sentence names the machine. */
 export const SPEED =
-  "Målt på en MacBook Pro med M1 Pro står teksten der omkring et sekund efter, at du slipper, også når du har talt i to minutter."; // TODO(copy)
+  "Målt på en MacBook Pro med M1 Pro står teksten der omkring et sekund efter, at du slipper, også når du har talt i to minutter.";
 
 /** DESK-67: the built-in list exists and is on from the start; what it does for English words is not measured
     (TODO(claim) in the header), so only that is said. */
 export const DEV_WORDS =
-  "Ordlisten Udviklerord med pull request, deploy, standup og andre engelske fagord er slået til fra start."; // TODO(copy)
+  "Ordlisten Udviklerord med pull request, deploy, standup og andre engelske fagord er slået til fra start.";
 
 export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
   fn: {
@@ -299,10 +299,10 @@ export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
   notify: {
     key: "notify",
     scene: "notifikation",
-    title: "Teksten kommer som en notifikation", // TODO(copy): a whole sentence for "Lander som en notifikation"
+    title: "Teksten kommer som en notifikation",
     text: "Du vælger selv, hvor teksten skal stå.",
     /* run 10 left out the last sentence, which the next row says ("Har du flere computere, ...") */
-    body: "Taler du i telefonen, lægger computeren teksten i udklipsholderen og viser en lille besked: Tekst klar til at indsætte. Tryk ⌘V, hvor du vil have den.", // TODO(copy)
+    body: "Taler du i telefonen, lægger computeren teksten i udklipsholderen og viser en lille besked: Tekst klar til at indsætte. Tryk ⌘V, hvor du vil have den.",
   },
   devices: {
     key: "devices",
@@ -310,7 +310,7 @@ export const SHOWCASE: Record<ShowcaseKey, Showcase> = {
     title: FEATURES.notify.title,
     text: "Den computer, du bruger, får teksten. De andre får den ikke.",
     /* spec 5.5, PHONE-40 */
-    body: "Er telefonen parret med flere computere, sender den til den, du sidst har brugt. Teksten findes kun på den computer og kopieres aldrig til de andre eller til telefonen.", // TODO(copy)
+    body: "Er telefonen parret med flere computere, sender den til den, du sidst har brugt. Teksten findes kun på den computer og kopieres aldrig til de andre eller til telefonen.",
   },
 };
 

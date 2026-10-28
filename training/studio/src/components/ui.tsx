@@ -9,6 +9,7 @@ import {
 import type { ApiError } from "../api/client";
 import type { Job } from "../api/types";
 import { dateTime } from "../lib/format";
+import { Link } from "../router";
 import { errorText, S, type ErrorArea } from "../strings";
 
 type Variant = "primary" | "secondary" | "quiet" | "danger";
@@ -140,6 +141,33 @@ export function ErrorBox({
         <Button size="sm" onClick={onRetry}>
           {S.common.retry}
         </Button>
+      )}
+    </div>
+  );
+}
+
+/** An empty list or panel (run 11): what will appear here, after which step, and a way there. */
+export function Empty({
+  what,
+  when,
+  code,
+  to,
+}: {
+  what: string;
+  when?: string;
+  /** A command to run in the terminal, shown whole on its own line. */
+  code?: string;
+  to?: { href: string; label: string };
+}) {
+  return (
+    <div className="empty empty-state">
+      <p className="empty-what">{what}</p>
+      {when && <p className="empty-when">{when}</p>}
+      {code && <code className="empty-code">{code}</code>}
+      {to && (
+        <Link className="btn btn--secondary btn--sm empty-go" href={to.href}>
+          {to.label}
+        </Link>
       )}
     </div>
   );

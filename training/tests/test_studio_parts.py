@@ -52,7 +52,8 @@ def test_the_files_with_new_danish_text_say_so_once():
         text = path.read_text(encoding="utf-8")
         assert text.count("TODO(copy)") <= 1, path.name
         assert EM_DASH not in text, path.name
-    assert labels.__file__ and Path(labels.__file__).read_text(encoding="utf-8").startswith("# TODO(copy)")
+        # Run 11: the owner approved run 9's drafts, so their markers are gone.
+        assert "drafted in run 9" not in text, path.name
 
 
 # --- the build ---------------------------------------------------------------------------

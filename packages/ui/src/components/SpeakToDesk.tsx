@@ -44,9 +44,7 @@ export interface SpeakToDeskLabels {
 
 export const SPEAK_TO_DESK_LABELS: Required<SpeakToDeskLabels> = {
   inUse: "I brug",
-  /* TODO(copy) */
   notInUse: "Ikke i brug",
-  /* TODO(copy) */
   description:
     "Du holder knappen nede i WalkieTalkey på telefonen og taler. Teksten lander kun på den computer, du sidder ved: {inUse}, som er i brug, viser Tekst klar til at indsætte, og teksten sættes ind. {other}, som ikke er i brug, forbliver tom.",
 };

@@ -1,6 +1,6 @@
 """``wt-train report`` (run 7): one HTML page per evaluation, or two compared (``--vs``),
 written to the reports folder and attached to the evaluation's MLflow run. Every
-``wt-train eval`` leaves one too."""
+``wt-train eval`` leaves one too. Run 11: the pages are in Danish, numbers and all."""
 
 import csv
 import json
@@ -119,18 +119,22 @@ def test_the_page_carries_the_summary_numbers(tmp_path, make_wav, spelling_file)
     folder = small_fleurs_run(tmp_path, make_wav)
     s = json.loads((folder / "summary.json").read_text())["results"][FLEURS]
     html = render(folder, tmp_path, "--spelling", str(spelling_file))
-    assert html.startswith("<!doctype html>")
+    assert html.startswith("<!doctype html>") and '<html lang="da">' in html
     assert htmlpage.pct(s["wer"]) in html and htmlpage.pct(s["cer"]) in html
+    assert "," in htmlpage.pct(s["wer"]), "a decimal comma"
     lo, hi = s["wer_ci95"]
-    assert f"95 %: {lo * 100:.2f} to {hi * 100:.2f}" in html
-    assert f"{s['reference_words']}" in html
+    assert f"95 %: {htmlpage.num(lo * 100, 2)} til {htmlpage.num(hi * 100, 2)}" in html
+    assert f"{s['reference_words']} ord i referencerne" in html
+    # The run's readable name, as Værkstedet lists it; the folder in the subtitle.
+    assert "<title>m i appen · FLEURS</title>" in html and folder.name in html
+    assert "Sådan er tallene lavet" in html and "normalisering 1" in html  # a 25 October folder
     # nothing from another origin
     assert not re.search(r"""(src|href)=["']https?://""", html)
 
 
 def test_the_wer_interval_is_the_summary_one_or_recomputed(tmp_path, make_wav):
     folder = small_fleurs_run(tmp_path, make_wav, summary_patch={"wer_ci95": [0.0123, 0.4567]})
-    assert "95 %: 1.23 to 45.67" in render(folder, tmp_path)
+    assert "95 %: 1,23 til 45,67" in render(folder, tmp_path)
     rows = rows_of(folder)
     counts = [Counts(sub=r["sub"], dele=r["del"], ins=r["ins"], ref=r["ref_words"]) for r in rows]
     assert report.stats(rows).wer_ci == pytest.approx(bootstrap_ci(counts))
@@ -143,7 +147,7 @@ def test_the_cer_gets_a_bootstrap_interval_over_clips(tmp_path, make_wav):
     want = align.bootstrap_ratio_ci([r["char_errors"] for r in rows], [r["ref_chars"] for r in rows])
     assert s.cer_ci == want
     assert s.cer == pytest.approx(sum(r["char_errors"] for r in rows) / sum(r["ref_chars"] for r in rows))
-    assert f"95 %: {want[0] * 100:.2f} to {want[1] * 100:.2f}" in render(folder, tmp_path)
+    assert f"95 %: {htmlpage.ci_text(want)}" in render(folder, tmp_path)
 
 
 def test_substitutions_deletions_and_insertions_with_their_share(tmp_path, make_wav, spelling_file):
@@ -153,10 +157,10 @@ def test_substitutions_deletions_and_insertions_with_their_share(tmp_path, make_
     assert (s.sub, s.dele, s.ins) == (3, 1, 1)  # c1: 1/1/1, c4 and c5: one sub each
     assert s.words == sum(r["ref_words"] for r in rows) == 22
     html = render(folder, tmp_path, "--spelling", str(spelling_file))
-    assert re.search(r'<td>Substitutions</td><td class="num">3</td><td class="num">13\.64 %</td>'
-                     r'<td class="num">60\.0 %</td>', html)
-    assert re.search(r'<td>Deletions</td><td class="num">1</td><td class="num">4\.55 %</td>', html)
-    assert re.search(r'<td>Insertions</td><td class="num">1</td><td class="num">4\.55 %</td>', html)
+    assert re.search(r'<td>Erstatninger</td><td class="num">3</td><td class="num">13,64 %</td>'
+                     r'<td class="num">60,0 %</td>', html)
+    assert re.search(r'<td>Udeladelser</td><td class="num">1</td><td class="num">4,55 %</td>', html)
+    assert re.search(r'<td>Tilføjelser</td><td class="num">1</td><td class="num">4,55 %</td>', html)
 
 
 def test_accuracy_per_english_term_strict_and_lenient(tmp_path, make_wav, spelling_file):
@@ -175,31 +179,32 @@ def test_accuracy_per_english_term_strict_and_lenient(tmp_path, make_wav, spelli
     html = render(folder, tmp_path, "--spelling", str(spelling_file))
     # most missed first
     assert html.index("<td>commit</td>") < html.index("<td>deploy</td>")
-    assert re.search(r'<td>deploy</td><td class="num">2</td><td class="num">2</td><td class="num">1 \(50\.0 %\)</td>'
-                     r'<td class="num">2 \(100\.0 %\)</td><td>deploye</td>', html)
+    assert re.search(r'<td>deploy</td><td class="num">2</td><td class="num">2</td><td class="num">1 \(50,0 %\)</td>'
+                     r'<td class="num">2 \(100,0 %\)</td><td>deploye</td>', html)
 
 
 def test_a_run_without_terms_says_so(tmp_path, make_wav, spelling_file):
     folder = write_run(tmp_path / "runs" / "r", [("a", "en to tre", "en to tre")], make_wav, dataset="takes")
-    assert "No English terms from spelling.yaml" in render(folder, tmp_path, "--spelling", str(spelling_file))
+    assert "ingen engelske fagord fra spelling.yaml" in render(folder, tmp_path, "--spelling", str(spelling_file))
 
 
 def test_fleurs_pages_show_no_term_accuracy(tmp_path, make_wav, spelling_file):
     # Run 8: the "terms" spelling.yaml finds in FLEURS are ordinary Danish words ("test", "bug").
     folder = small_fleurs_run(tmp_path, make_wav)  # its references hold "deployede" and "commits"
     html = render(folder, tmp_path, "--spelling", str(spelling_file))
-    for shown in ("English terms right", "Terms strict", "Terms lenient", "<td>deploy</td>", "Strict right"):
+    for shown in ("Engelske fagord rigtige", "Fagord, samme form", "Fagord, enhver form", "<td>deploy</td>",
+                  "Rigtige, samme form"):
         assert shown not in html
-    assert "not counted for FLEURS" in html
+    assert "tælles ikke på FLEURS" in html
     run_a, run_b = two_runs(tmp_path, make_wav)
     compared = render(run_a, tmp_path, "--vs", str(run_b), "--spelling", str(spelling_file))
-    for shown in ("English terms, strict", "Strict A", "Terms strict"):
+    for shown in ("Engelske fagord, samme form", "Samme form A", "Fagord, samme form"):
         assert shown not in compared
-    assert "not counted for FLEURS" in compared
+    assert "tælles ikke på FLEURS" in compared
     # the owner's takes keep theirs
     takes = small_fleurs_run(tmp_path, make_wav, name="20261026-100000-gguf-m", dataset="takes")
     own = render(takes, tmp_path, "--spelling", str(spelling_file))
-    assert "English terms right (strict)" in own and "Terms strict" in own and "<td>deploy</td>" in own
+    assert "Engelske fagord rigtige, samme form" in own and "Fagord, samme form" in own and "<td>deploy</td>" in own
 
 
 def test_one_row_per_recording_condition_or_one_group_for_fleurs(tmp_path, make_wav):
@@ -212,10 +217,11 @@ def test_one_row_per_recording_condition_or_one_group_for_fleurs(tmp_path, make_
     assert [g for g, _ in groups] == ["phone-whisper", "mac-normal"]  # conditions.IDS order
     want = per_condition.summaries(rows)
     html = render(folder, tmp_path)
-    assert html.index("<td>phone-whisper</td>") < html.index("<td>mac-normal</td>")
+    # Named in Danish, as the recorder names them.
+    assert html.index("<td>Telefonen, hvisket</td>") < html.index("<td>Mac&#x27;en, almindelig stemme</td>")
     assert htmlpage.pct(want["phone-whisper"]["wer"]) in html
     fleurs = small_fleurs_run(tmp_path, make_wav)
-    assert [g for g, _ in report.groups(rows_of(fleurs))] == ["all clips (no recording condition)"]
+    assert [g for g, _ in report.groups(rows_of(fleurs))] == ["Alle klip (uden optageforhold)"]
 
 
 # --- the clips ---------------------------------------------------------------------
@@ -246,7 +252,7 @@ def test_a_worst_clip_shows_reference_audio_and_the_coloured_diff(tmp_path, make
     assert '<del class="w sub">er</del><ins class="w sub">var</ins>' in html
     assert "Det er en god dag." in html and "Ja, det var en dag." in html  # as written, punctuation and all
     assert html.count("data:audio/mpeg;base64,") == 1
-    assert "(audio not found)" in html  # c2's WAV is gone; the clip is still shown
+    assert "(lyden blev ikke fundet)" in html  # c2's WAV is gone; the clip is still shown
     assert htmlpage.LEGEND in html
 
 
@@ -294,9 +300,9 @@ def test_the_comparison_page_side_by_side(tmp_path, make_wav):
     delta = report.paired_change(matched)
     assert delta.value == pytest.approx((14 - 15) / 60)
     assert delta.ci[0] <= delta.value <= delta.ci[1]
-    assert f"{delta.value * 100:+.2f} pp" in html
-    worse = html.index("Clips that got worse")
-    better = html.index("Clips that got better")
+    assert htmlpage.points(delta.value) in html and htmlpage.points(delta.value).startswith("\u2212")
+    worse = html.index("Klip, der blev værre")
+    better = html.index("Klip, der blev bedre")
     assert worse < better
     ids = clip_ids(html)
     assert ids == ["k3", "k0", "k5", "k1"]
@@ -304,9 +310,30 @@ def test_the_comparison_page_side_by_side(tmp_path, make_wav):
     k3 = html[html.index('id="clip-k3"'):html.index('id="clip-k0"')]
     assert k3.count('class="w sub"') >= 2 * 4 and "data:audio/mpeg;base64," in k3
     assert "1 → 4" in k3
-    assert "only in A" in html and "only in B" in html
-    for label in ("Substitutions", "Deletions", "Insertions"):
+    assert "kun i A" in html and "kun i B" in html
+    for label in ("Erstatninger", "Udeladelser", "Tilføjelser"):
         assert f"<td>{label}</td>" in html
+    # Two runs that would share a name are told apart by their day, in the title and the table.
+    assert "<title>m i appen · FLEURS · 25. okt. mod m i appen · FLEURS · 24. okt.</title>" in html
+    assert "<td>Navn</td><td>m i appen · FLEURS · 25. okt.</td><td>m i appen · FLEURS · 24. okt.</td>" in html
+    # Both from before 26 October: one normaliser, no warning.
+    assert "hver sin normalisering" not in html
+
+
+def test_a_comparison_across_the_normaliser_fix_says_so_under_the_verdict(tmp_path, make_wav):
+    # Run 11: 26 October's runs were counted by normaliser 2, 25 October's by 1.
+    plan = [("k0", 2, 1), ("k1", 3, 1)]
+    a = [(cid, *with_errors(10, ea, start=i * 10)) for i, (cid, _, ea) in enumerate(plan)]
+    b = [(cid, *with_errors(10, eb, start=i * 10)) for i, (cid, eb, _) in enumerate(plan)]
+    run_b = write_run(tmp_path / "runs" / "20261025-015628-gguf-m", b, make_wav)
+    run_a = write_run(tmp_path / "runs" / "20261026-170753-gguf-m", a, make_wav, summary_patch=None)
+    summary = json.loads((run_a / "summary.json").read_text())
+    summary["normaliser"] = 2
+    (run_a / "summary.json").write_text(json.dumps(summary))
+    html = render(run_a, tmp_path, "--vs", str(run_b))
+    warning = html.index("A og B er talt med hver sin normalisering (1 og 2)")
+    assert html.index("Intervallet er parret") < warning < html.index("<h2>De to kørsler</h2>")
+    assert "<td>Normalisering</td><td>2</td><td>1</td>" in html
 
 
 def test_the_comparison_needs_the_same_dataset(tmp_path, make_wav):
@@ -449,7 +476,7 @@ def test_wt_train_eval_writes_and_attaches_its_report(store, tmp_path, make_wav,
     (out,) = list(paths.eval_runs_dir().iterdir())
     page = paths.reports_dir() / f"{out.name}.html"
     html = page.read_text(encoding="utf-8")
-    assert "<td>deploy</td>" in html and "clips" in html
+    assert "<td>deploy</td>" in html and "Klip" in html
     (run,) = tracking.find_runs(kind="eval")
     assert run.data.tags["wt.eval_dir"] == str(out.resolve())
     assert artifacts(run.info.run_id) == [f"report/{out.name}.html"]

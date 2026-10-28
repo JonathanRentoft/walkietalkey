@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FakeApp, pcmOf, type Command } from "./fake-app";
 
 /* Værkstedet with the app played by the spec (see studio.config.ts). The tests run in order
-   against one server: a phone session, a Mac session, then the Data and Journal screens. */
+   against one server: a phone session, a Mac session, then the Data and Journal screens; run 11
+   adds Lær det (VS Code is a stand-in) and the screens that are still empty on a first start. */
 
 test.describe.configure({ mode: "serial" });
 
@@ -284,4 +285,88 @@ test("the Journal saves the hypothesis into the Markdown file", async ({
     `## Hypothesis\n\n${hypothesis}\n\n## What I changed\n\nIngenting.`,
   );
   expect(md).toContain("| test | 12 % |");
+});
+
+test("Lær det opens a working copy in VS Code, and starts over after a confirm", async ({
+  page,
+}) => {
+  await page.goto("/laer");
+  await expect(
+    page.getByRole("heading", { name: "Lær det", level: 1 }),
+  ).toBeVisible();
+  const list = page.getByRole("list", { name: "Notesbøgerne" });
+  await expect(list.getByRole("heading")).toHaveText([
+    "01 Lyden",
+    "02 Edda indefra",
+  ]);
+  const lyden = list.locator("li", { hasText: "Lyden" });
+  await expect(lyden).toContainText("Ikke åbnet endnu");
+
+  await lyden.getByRole("button", { name: "Åbn Lyden i VS Code" }).click();
+  await expect(lyden).toContainText("Åbnet i VS Code som din egen kopi.");
+  // The server resolves the work folder (/var is /private/var on macOS).
+  const copy = join(
+    realpathSync(join(work(), "work")),
+    "notebooks",
+    "01-lyden.ipynb",
+  );
+  expect(existsSync(copy)).toBe(true);
+  // By bundle id, with the training folder as the workspace and the copy as the file.
+  const args = readFileSync(join(work(), "open.log"), "utf8")
+    .trim()
+    .split("\n");
+  expect(args).toEqual([
+    "-b",
+    "com.microsoft.VSCode",
+    join(dirname(fileURLToPath(import.meta.url)), ".."),
+    copy,
+  ]);
+  await expect(lyden).toContainText("Ikke kørt endnu");
+
+  await lyden.getByRole("button", { name: "Start Lyden forfra" }).click();
+  await expect(lyden.getByRole("group")).toContainText("lægges til side");
+  await lyden.getByRole("button", { name: "Ja, start forfra" }).click();
+  await expect(lyden).toContainText(
+    "Startet forfra med den originale notesbog.",
+  );
+  expect(
+    readdirSync(join(work(), "work", "notebooks", ".replaced")),
+  ).toHaveLength(1);
+});
+
+test("a first start: Evaluering, Versioner and Træning say what comes, and after which step", async ({
+  page,
+}) => {
+  await page.goto("/evaluering");
+  await expect(
+    page.getByText(
+      "Her kommer målingerne af modellerne: ordfejl, tegnfejl og hvor sikre tallene er.",
+    ),
+  ).toBeVisible();
+  await page.goto("/versioner");
+  await expect(
+    page.getByText("Her kommer dine finjusterede versioner af Edda."),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Til Træning" })).toHaveAttribute(
+    "href",
+    "/traening",
+  );
+  await page.goto("/traening");
+  await expect(page.getByText("Start med disse fire")).toBeVisible();
+  await expect(page.locator(".essential .setting-key")).toHaveText([
+    "training.learning_rate",
+    "training.epochs",
+    "lora.rank",
+    "rehearsal.share",
+  ]);
+  const all = page.locator("details.all-settings");
+  await expect(all).not.toHaveAttribute("open", "");
+  await expect(all.locator(".settings")).toBeHidden();
+  await all.locator("summary").click();
+  await expect(all.locator(".settings")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Her kommer dine træninger med deres bedste epoke og ordfejl.",
+    ),
+  ).toBeVisible();
 });

@@ -1,13 +1,19 @@
-# TODO(copy): the Danish labels in this file were drafted in run 9; the owner approves them.
 """The few Danish words Værkstedet's server hands the page (the page holds the rest of its
 text): a one-line label for every setting of an experiment config (``config.py``), the
-pilot's recording setups, the leakage checks of the data screen and the jobs' titles.
+pilot's recording setups, the leakage checks of the data screen and the jobs' titles; run 11
+adds the evaluations' readable names and what the four first settings of Træning do.
 
 Every field of every dataclass in ``config.py`` has a label here (a test keeps it so);
 none has an em dash.
 """
 
 from __future__ import annotations
+
+import re
+from datetime import datetime
+
+from .. import paths
+from ..conditions import BY_ID
 
 # The sections of a config, as the training screen heads them.
 SECTIONS = {
@@ -89,3 +95,106 @@ def setup_label(name: str, style: str) -> str:
     """``iphone-whisper`` as "iPhone, hvisket"; a name of the owner's own keeps its first part."""
     first = name.split("-")[0]
     return f"{SETUP_DEVICES.get(first, first)}, {STYLES.get(style, style)}"
+
+
+# TODO(copy): run 11's drafts, everything below (not approved yet).
+
+# The evaluations' readable names (runs.eval_title): "<model> · <data>".
+EVAL_MODELS = {
+    "base": "Edda, original",
+    "app": "Appen",
+    "version": "Edda finjusteret v{n}",
+    "lora": "Edda finjusteret ({config})",
+    "in_app": "{model} i appen",
+    "unknown": "Ukendt model",
+}
+EVAL_DATA = {
+    "fleurs": "FLEURS",
+    "own": "Dine optagelser",
+    "validation": "Dine optagelser, validering",
+    "train": "Dine optagelser, træning",
+    "exam": "Dine optagelser, eksamen",
+}
+# A date in a name that would otherwise be shared: "24. okt.", then "24. okt. kl. 18.54".
+MONTHS = ("jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec.")
+
+# The four settings a beginner touches first on Træning, in this order, each with what turning
+# it up or down does. Every other setting is under "Alle indstillinger".
+ESSENTIALS = {
+    "training.learning_rate": "Højere: modellen lærer hurtigere, men kan blive ustabil og glemme almindeligt dansk. "
+                              "Lavere: roligere, men den skal bruge flere epoker.",
+    "training.epochs": "Flere: modellen lærer dine optagelser bedre, men kan lære dem udenad. "
+                       "Færre: hurtigere, men den lærer måske for lidt.",
+    "lora.rank": "Højere: adapteren kan lære mere, men lærer lettere udenad. "
+                 "Lavere: en mindre adapter, der ændrer Edda forsigtigt.",
+    "rehearsal.share": "Højere: Edda holder bedre fast i almindeligt dansk, men lærer dine fagord langsommere. "
+                       "Lavere: mere af træningen er dine egne optagelser.",
+}
+
+
+_VERSION_ID = re.compile(r"-v(\d+)$")
+_RUN_STAMP = re.compile(r"-\d{8}-\d{6}$")
+
+
+def _model_title(backend: str, model: str, train_run: str | None) -> str:
+    m = EVAL_MODELS
+    short = model.rsplit("/", 1)[-1].split("@")[0].removesuffix(".gguf")
+    if backend == "hf":
+        return m["base"] if model.startswith(paths.EDDA_REPO) else (short or m["unknown"])
+    if backend == "gguf":
+        if model == paths.SHIPPED_EDDA_ID or model.endswith(paths.SHIPPED_EDDA_FILE):
+            return m["app"]
+        version = _VERSION_ID.search(short)
+        if version:
+            return m["version"].format(n=int(version.group(1)))
+        return m["in_app"].format(model=short) if short else m["unknown"]
+    if backend == "lora":
+        run = train_run or model
+        return m["lora"].format(config=_RUN_STAMP.sub("", run)) if run else m["unknown"]
+    return short or m["unknown"]
+
+
+def _data_title(dataset: str) -> str:
+    d = EVAL_DATA
+    base, _, condition = dataset.partition("@")
+    if base.startswith("fleurs"):
+        out = d["fleurs"]
+    elif base == "exam":
+        out = d["exam"]
+    elif ":" in base:
+        split = base.rsplit(":", 1)[1]
+        out = {"validation": d["validation"], "train": d["train"]}.get(split, d["own"])
+    else:
+        return dataset or d["own"]
+    if condition in BY_ID:
+        out += f" ({BY_ID[condition].label})"
+    return out
+
+
+def eval_title(backend: str, model: str, dataset: str, train_run: str | None = None) -> str:
+    """An evaluation's readable name (run 11): the model, then the data. "Edda, original ·
+    FLEURS" (base Edda through Transformers), "Appen · FLEURS" (the shipped Edda Q8_0 through
+    the app), "Edda finjusteret v2 · Dine optagelser" (an exported version through the app),
+    "Edda finjusteret (first-frozen-encoder) · Dine optagelser" (a training run's adapter)."""
+    return f"{_model_title(backend or '', model or '', train_run)} · {_data_title(dataset or '')}"
+
+
+def _day(when: datetime) -> str:
+    return f"{when.day}. {MONTHS[when.month - 1]}"
+
+
+def unique_titles(rows: list[dict]) -> list[str]:
+    """Each row's ``title``, with its day added where two rows would share it, and its time too
+    where they share the day (``when``: the time it was measured, or None)."""
+    def counts(names):
+        out: dict[str, int] = {}
+        for n in names:
+            out[n] = out.get(n, 0) + 1
+        return out
+
+    titles = [r["title"] for r in rows]
+    shared = counts(titles)
+    dated = [f"{t} · {_day(r['when'])}" if shared[t] > 1 and r["when"] else t for t, r in zip(titles, rows)]
+    again = counts(dated)
+    return [f"{t} kl. {r['when']:%H.%M}" if again[t] > 1 and r["when"] and t != base else t
+            for t, base, r in zip(dated, titles, rows)]

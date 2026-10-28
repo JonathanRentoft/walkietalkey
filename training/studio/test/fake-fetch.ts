@@ -1,7 +1,11 @@
 /* fetch, answered by the fake studio (src/api/fixtures.ts) without its timers, with every call
    recorded so tests can check what the page sent. The long poll answers at once here. */
 import { vi } from "vitest";
-import { createFakeStudio, type FakeStudio } from "../src/api/fixtures";
+import {
+  createFakeStudio,
+  type FakeStudio,
+  type FakeStudioOptions,
+} from "../src/api/fixtures";
 
 export interface Call {
   method: string;
@@ -10,13 +14,13 @@ export interface Call {
   body: unknown;
 }
 
-export function fakeFetch(): {
+export function fakeFetch(options: FakeStudioOptions = {}): {
   studio: FakeStudio;
   calls: Call[];
   posts: (path?: string) => Call[];
   restore: () => void;
 } {
-  const studio = createFakeStudio({ simulate: false });
+  const studio = createFakeStudio({ simulate: false, ...options });
   const calls: Call[] = [];
   const original = globalThis.fetch;
   const fn = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {

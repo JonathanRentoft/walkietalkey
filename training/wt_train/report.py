@@ -39,6 +39,11 @@ then tagged ``wt.eval_dir`` so its name finds the folder from then on.
 ``wt-train eval`` writes and attaches its page at the end, without a browser
 (``after_eval``). A page is one file (``htmlpage.py``): styles inline, audio as MP3
 in data URLs for the clips shown only, nothing from another origin.
+
+Run 11: the page is in Danish, like Værkstedet, with Danish numbers ("6,32 %"); its title is the
+run's readable name ("Appen · FLEURS", ``studio.labels.eval_title``), and the method says which
+WER normaliser counted the numbers (``normaliser.py``: summary.json's ``normaliser``, else the
+day of the run).
 """
 
 from __future__ import annotations
@@ -53,20 +58,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
-from . import console, paths, tracking
+from . import console, normaliser, paths, tracking
 from .align import align, bootstrap_ratio_ci
-from .conditions import IDS
+from .conditions import BY_ID, IDS
 from .harness import Counts, bootstrap_ci
-from .htmlpage import (LEGEND, Raw, audio_tag, cards, change, clip_card, diff_html, esc, page, pct, pct_ci,
-                       table)
+from .htmlpage import (LEGEND, Raw, audio_tag, cards, change, ci_text, clip_card, count, diff_html, esc, num,
+                       page, pct, pct_ci, points, signed, table, when)
 from .metrics import counts_terms
 from .spelling import Spelling, load_spelling
+from .studio.labels import eval_title, unique_titles
 
 WORST = 25
-NO_CONDITION = "all clips (no recording condition)"
-OTHER_CONDITION = "no recording condition"
 FOLDER_TIME = "%Y%m%d-%H%M%S"  # wt-train eval's folder names start with the time it started
-BACKENDS = {"hf": "Transformers", "lora": "Transformers with a LoRA adapter", "gguf": "the app's pipeline"}
+
+# TODO(copy): run 11 drafted every Danish string in this file (the report pages' words).
+NO_CONDITION = "Alle klip (uden optageforhold)"
+OTHER_CONDITION = "Uden optageforhold"
+BACKENDS = {"hf": "Transformers", "lora": "Transformers med en LoRA-adapter", "gguf": "appens pipeline"}
 
 
 class ReportError(Exception):
@@ -239,6 +247,11 @@ def groups(rows: Sequence[dict]) -> list[tuple[str, list[dict]]]:
     return out
 
 
+def condition_label(group: str) -> str:
+    """A group as the tables name it: a condition's Danish name, else the group itself."""
+    return BY_ID[group].label if group in BY_ID else group
+
+
 def clip_errors(row: dict) -> int:
     return row["sub"] + row["del"] + row["ins"]
 
@@ -369,27 +382,36 @@ def paired_change(ch: Changes) -> Paired:
 
 
 def _ci_note(ci: Sequence[float]) -> str:
-    return f"95 %: {ci[0] * 100:.2f} to {ci[1] * 100:.2f}"
+    return f"95 %: {ci_text(ci)}"
 
 
 def _pp(delta: float) -> str:
-    return f"{delta * 100:+.2f} pp"
+    return points(delta)
 
 
 def _signed(n: int) -> str:
-    return f"{n:+,}" if n else "0"
+    return signed(n)
 
 
 def _share(part: int, whole: int, digits: int = 2) -> str:
-    return f"{part / whole * 100:.{digits}f} %" if whole else "–"
-
-
-def _short_model(model: str) -> str:
-    return model.rstrip("/").split("/")[-1] or model
+    return f"{num(part / whole * 100, digits)} %" if whole else "–"
 
 
 def _when(run: EvalRun) -> str:
-    return run.started.strftime("%Y-%m-%d %H:%M") if run.started else "–"
+    return when(run.started)
+
+
+def run_title(run: EvalRun) -> str:
+    """The run's readable name, as Værkstedet lists it: "Appen · FLEURS"."""
+    return eval_title(str(run.summary.get("backend") or ""), str(run.summary.get("model") or ""), run.dataset)
+
+
+def normaliser_of(run: EvalRun) -> int | None:
+    """Which normaliser counted the run: summary.json says so since run 11, else its day."""
+    stored = run.summary.get("normaliser")
+    if isinstance(stored, int):
+        return stored
+    return normaliser.of_date(run.started.date()) if run.started else None
 
 
 def find_wav(row: dict) -> Path | None:
@@ -408,91 +430,98 @@ def find_wav(row: dict) -> Path | None:
 def _terms_label(total: int, strict: int, lenient: int) -> tuple[str, str]:
     if not total:
         return ("–", "–")
-    return (f"{strict}/{total} ({strict / total * 100:.1f} %)", f"{lenient}/{total} ({lenient / total * 100:.1f} %)")
+    return (f"{strict}/{total} ({_share(strict, total, 1)})", f"{lenient}/{total} ({_share(lenient, total, 1)})")
 
 
 def headline(s: Stats, terms: Sequence[TermStat] | None) -> str:
-    items = [("WER, word error rate", pct(s.wer), _ci_note(s.wer_ci)),
-             ("CER, character error rate", pct(s.cer), _ci_note(s.cer_ci)),
-             ("Clips", f"{s.n:,}", f"{s.words:,} reference words"),
-             ("Word errors", f"{s.errors:,}", f"{s.sub:,} substituted, {s.dele:,} deleted, {s.ins:,} inserted")]
+    items = [("WER, andel forkerte ord", pct(s.wer), _ci_note(s.wer_ci)),
+             ("CER, andel forkerte tegn", pct(s.cer), _ci_note(s.cer_ci)),
+             ("Klip", count(s.n), f"{count(s.words)} ord i referencerne"),
+             ("Ordfejl", count(s.errors),
+              f"{count(s.sub)} erstattet, {count(s.dele)} udeladt, {count(s.ins)} tilføjet")]
     total, strict, lenient = term_totals(terms or [])
     if total:
-        items.append(("English terms right (strict)", _share(strict, total, 1),
-                      f"{strict} of {total}; any form: {lenient} ({_share(lenient, total, 1)})"))
+        items.append(("Engelske fagord rigtige, samme form", _share(strict, total, 1),
+                      f"{strict} af {total}; i enhver form: {lenient} ({_share(lenient, total, 1)})"))
     if s.failed or s.empty:
-        items.append(("Failed or empty", f"{s.failed} / {s.empty}", "clips the model failed on / gave no text"))
+        items.append(("Fejlede eller tomme", f"{s.failed} / {s.empty}",
+                      "klip, modellen fejlede på / ikke gav tekst for"))
     return cards(items)
 
 
 def datasets_table(run: EvalRun) -> str:
     if len(run.results) < 2:
         return ""
-    rows = [[name + (" (this page)" if name == run.dataset else ""), f"{s.get('n', 0):,}",
+    rows = [[name + (" (denne side)" if name == run.dataset else ""), count(s.get("n", 0)),
              pct_ci(s.get("wer"), s.get("wer_ci95")), pct(s.get("cer"))] for name, s in run.results.items()]
-    return ("<h2>Datasets in this run</h2>" + table(["Dataset", "Clips", "WER (95 %)", "CER"], rows, numeric=(1, 2, 3))
-            + '<p class="note">The others: <code>wt-train report &lt;run&gt; --dataset &lt;name&gt;</code>.</p>')
+    return ("<h2>Datasæt i denne kørsel</h2>"
+            + table(["Datasæt", "Klip", "WER (95 %)", "CER"], rows, numeric=(1, 2, 3))
+            + '<p class="note">De andre: <code>wt-train report &lt;kørsel&gt; --dataset &lt;navn&gt;</code>.</p>')
 
 
 def condition_table(rows: Sequence[dict], overall: Stats, spelling: Spelling | None, with_terms: bool = True) -> str:
     out = []
     for label, part in groups(rows):
         s = overall if len(part) == len(rows) else stats(part)
-        line = [label, f"{s.n:,}", f"{s.words:,}", pct_ci(s.wer, s.wer_ci), pct_ci(s.cer, s.cer_ci),
-                f"{s.sub:,}", f"{s.dele:,}", f"{s.ins:,}"]
+        line = [condition_label(label), count(s.n), count(s.words), pct_ci(s.wer, s.wer_ci), pct_ci(s.cer, s.cer_ci),
+                count(s.sub), count(s.dele), count(s.ins)]
         if with_terms:
             line += _terms_label(*term_totals(term_stats(part, spelling) if spelling else []))
         out.append(line)
-    headers = ["Condition", "Clips", "Words", "WER (95 %)", "CER (95 %)", "Subs", "Dels", "Ins"]
-    headers += ["Terms strict", "Terms lenient"] if with_terms else []
+    headers = ["Forhold", "Klip", "Ord", "WER (95 %)", "CER (95 %)", "Erstattet", "Udeladt", "Tilføjet"]
+    headers += ["Fagord, samme form", "Fagord, enhver form"] if with_terms else []
     return table(headers, out, numeric=tuple(range(1, len(headers))))
 
 
+EDIT_KINDS = ("Erstatninger", "Udeladelser", "Tilføjelser", "Alle ordfejl")
+
+
 def edits_table(s: Stats) -> str:
-    rows = [[label, f"{n:,}", _share(n, s.words), _share(n, s.errors, 1)]
-            for label, n in (("Substitutions", s.sub), ("Deletions", s.dele), ("Insertions", s.ins))]
-    rows.append(["All word errors", f"{s.errors:,}", _share(s.errors, s.words), _share(s.errors, s.errors, 1)])
-    return table(["Kind", "Count", "Share of reference words", "Share of errors"], rows, numeric=(1, 2, 3))
+    rows = [[label, count(n), _share(n, s.words), _share(n, s.errors, 1)]
+            for label, n in zip(EDIT_KINDS, (s.sub, s.dele, s.ins))]
+    rows.append([EDIT_KINDS[3], count(s.errors), _share(s.errors, s.words), _share(s.errors, s.errors, 1)])
+    return table(["Slags", "Antal", "Andel af referencens ord", "Andel af fejlene"], rows, numeric=(1, 2, 3))
 
 
-EDITS_NOTE = ('<p class="note">A substitution is a word heard as another word, a deletion a word the model '
-              'left out, an insertion a word it added (a repeat, a made-up phrase). Their shares of the '
-              'reference words add up to the WER.</p>')
+EDITS_NOTE = ('<p class="note">En erstatning er et ord, modellen hørte som et andet ord. En udeladelse er et ord, '
+              'den ikke skrev, og en tilføjelse et ord, den skrev ekstra (en gentagelse, en opdigtet vending). '
+              'Deres andele af referencens ord giver tilsammen WER.</p>')
 
 
 def _missed(t: TermStat) -> str:
     return ", ".join(f"{form} ×{n}" if n > 1 else form for form, n in t.missed.most_common()) or "–"
 
 
-NO_TERMS_ON_FLEURS = ('<p class="note">English-term accuracy is not counted for FLEURS: it is plain Danish read '
-                      'aloud, and the words spelling.yaml would find in it (test, bug) are ordinary Danish words. It is '
-                      'counted on the owner\'s own takes.</p>')
+NO_TERMS_ON_FLEURS = ('<p class="note">Engelske fagord tælles ikke på FLEURS: det er almindeligt dansk læst op, '
+                      'og de ord, spelling.yaml ville finde i det (test, bug), er almindelige danske ord. De '
+                      'tælles på dine egne optagelser.</p>')
 
 
 def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spelling | None) -> str:
-    head = "<h2>English terms</h2>"
+    head = "<h2>Engelske fagord</h2>"
     if not counts_terms(run.dataset):
         return head + NO_TERMS_ON_FLEURS
     if spelling is None:
-        return head + "<p>No spelling.yaml, so no term accuracy.</p>"
+        return head + "<p>Der er ingen spelling.yaml, så fagordene tælles ikke.</p>"
     if not terms:
-        return head + "<p>No English terms from spelling.yaml in these references.</p>"
-    rows = [[t.term, f"{t.clips:,}", f"{t.total:,}", f"{t.strict} ({t.strict / t.total * 100:.1f} %)",
-             f"{t.lenient} ({t.lenient / t.total * 100:.1f} %)", _missed(t)] for t in terms]
-    note = (f"Counted with today's spelling.yaml ({len(spelling.terms)} terms), as wt-train eval counts them: "
-            "strict means the same form as the reference (deployede for deployede), lenient any form of the "
-            "term (deployer for deployede). Missed forms are the reference forms the model's text lacked.")
+        return head + "<p>Der er ingen engelske fagord fra spelling.yaml i disse referencer.</p>"
+    rows = [[t.term, count(t.clips), count(t.total), f"{t.strict} ({_share(t.strict, t.total, 1)})",
+             f"{t.lenient} ({_share(t.lenient, t.total, 1)})", _missed(t)] for t in terms]
+    note = (f"Talt med den spelling.yaml, der gælder i dag ({len(spelling.terms)} fagord), som wt-train eval tæller: "
+            "samme form er præcis referencens form (deployede for deployede), enhver form er en hvilken som "
+            "helst form af ordet (deployer for deployede). Manglende former er de former fra referencen, som "
+            "modellens tekst ikke havde.")
     stored = run.dataset_summary.get("terms")
     total = term_totals(terms)[0]
     if stored is not None and stored != total:
-        note += f" summary.json counted {stored} occurrences, with the spelling.yaml of its day."
-    return (head + table(["Term", "Clips", "In references", "Strict right", "Lenient right", "Missed forms"], rows,
-                         numeric=(1, 2, 3, 4)) + f'<p class="note">{esc(note)}</p>')
+        note += f" summary.json talte {stored} forekomster, med den spelling.yaml, der gjaldt dengang."
+    return (head + table(["Fagord", "Klip", "I referencerne", "Rigtige, samme form", "Rigtige, enhver form",
+                          "Manglende former"], rows, numeric=(1, 2, 3, 4)) + f'<p class="note">{esc(note)}</p>')
 
 
 def _errors_fact(row: dict) -> str:
-    return (f"{clip_errors(row)} errors in {row['ref_words']} words ({row['sub']} S, {row['del']} D, "
-            f"{row['ins']} I)")
+    return (f"{clip_errors(row)} fejl i {row['ref_words']} ord ({row['sub']} erstattet, {row['del']} udeladt, "
+            f"{row['ins']} tilføjet)")
 
 
 def _diff(row: dict) -> str:
@@ -500,41 +529,71 @@ def _diff(row: dict) -> str:
 
 
 def clip_section(i: int, row: dict) -> str:
-    facts = [_errors_fact(row), f"WER {pct(clip_wer(row), 1)}"] + ([condition_of(row)] if condition_of(row) else [])
-    fields = [("Reference", row["reference"]), ("Diff", _diff(row)), ("Model wrote", row.get("hypothesis") or "")]
+    facts = [_errors_fact(row), f"WER {pct(clip_wer(row), 1)}"]
+    facts += [condition_label(condition_of(row))] if condition_of(row) else []
+    fields = [("Reference", row["reference"]), ("Forskel", _diff(row)),
+              ("Modellen skrev", row.get("hypothesis") or "")]
     if row.get("error"):
-        fields.append(("Failed", row["error"]))
+        fields.append(("Fejlede", row["error"]))
     return clip_card(str(row["id"]), f"#{i} {row['id']}", facts, fields, audio_tag(find_wav(row)))
 
 
 def worst_section(rows: Sequence[dict], n: int) -> str:
     chosen = worst(rows, n)
     if not chosen:
-        return "<h2>Worst clips</h2><p>Every clip came out right.</p>"
-    note = ('<p class="note">Most word errors first, then the highest WER. The diff is over the normalised words '
-            'the WER counts (lower case; numbers, fractions, abbreviations and ordinals as their spoken words; no '
-            'punctuation); "Model wrote" is the text as the model gave it.</p>')
-    return (f"<h2>The {len(chosen)} worst clips</h2>" + note + LEGEND
+        return "<h2>De værste klip</h2><p>Alle klip kom rigtigt ud.</p>"
+    note = ('<p class="note">Flest ordfejl først, derefter den højeste WER. Forskellen er vist over de normaliserede '
+            'ord, som WER tæller (små bogstaver; tal, brøker, forkortelser og ordenstal, som de udtales; ingen '
+            'tegnsætning). "Modellen skrev" er teksten, som modellen gav den.</p>')
+    return (f"<h2>De {len(chosen)} værste klip</h2>" + note + LEGEND
             + "".join(clip_section(i, r) for i, r in enumerate(chosen, 1)))
 
 
-METHOD = ("<h2>How the numbers are made</h2><p class=\"note\">Reference and model text are normalised as the "
-          "accuracy job does (models/eval: lower case; numbers, fractions, abbreviations, units, clock times and "
-          "ordinals written as their spoken words; punctuation dropped; a hyphenated compound joined where the "
-          "other text writes it closed), so the same speech scores the same however it is written. WER is the word edits (substitutions, deletions, insertions) summed over "
-          "the clips, divided by the reference words; CER the same over characters. The intervals are 95 % "
-          "percentile bootstraps over the clips (1,000 resamples, fixed seed): a new sample of sentences like "
-          "these would most likely land in that range. The WER interval is the one wt-train eval wrote to "
-          "summary.json.</p>")
+METHOD = ("<h2>Sådan er tallene lavet</h2><p class=\"note\">Referencen og modellens tekst normaliseres, som "
+          "nøjagtighedsjobbet gør (models/eval: små bogstaver; tal, brøker, forkortelser, enheder, klokkeslæt og "
+          "ordenstal skrevet, som de udtales; tegnsætning fjernet; et ord med bindestreg skrevet i ét, hvor den "
+          "anden tekst skriver det i ét), så den samme tale tæller ens, uanset hvordan den er skrevet. WER er "
+          "ordrettelserne (erstatninger, udeladelser, tilføjelser) lagt sammen over klippene og delt med "
+          "referencens ord; CER er det samme for tegn. Intervallerne er 95 %-bootstrap over klippene (1.000 "
+          "genudtræk med fast frø): en ny stikprøve af sætninger som disse ville med stor sandsynlighed lande i "
+          "intervallet. WER-intervallet er det, wt-train eval skrev i summary.json.</p>")
+
+
+def _versions(*runs: EvalRun) -> list[int]:
+    return sorted({v for v in (normaliser_of(r) for r in runs) if v is not None})
+
+
+def mixed_normalisers(a: EvalRun, b: EvalRun) -> str:
+    """A warning, right under the verdict, when A and B were counted by different normalisers."""
+    versions = _versions(a, b)
+    if len(versions) < 2:
+        return ""
+    return (f'<p class="worse">A og B er talt med hver sin normalisering ({" og ".join(map(str, versions))}). '
+            "En del af ændringen kommer derfor fra normaliseringen og ikke fra modellen: rettelsen den 26. "
+            "oktober 2026 ændrede alle tal uden at ændre modellen.</p>")
+
+
+def method(*runs: EvalRun) -> str:
+    """How the numbers are made, and which normaliser counted them."""
+    versions = _versions(*runs)
+    if not versions:
+        return METHOD
+    if len(versions) == 1:
+        text = (f"Tallene er talt med normalisering {versions[0]}. Tal fra en anden normalisering kan ikke "
+                "sammenlignes direkte: rettelsen den 26. oktober 2026 ændrede alle tal uden at ændre modellen.")
+    else:
+        text = ("A og B er talt med hver sin normalisering (" + " og ".join(str(v) for v in versions) + "), så "
+                "en del af forskellen kommer fra normaliseringen og ikke fra modellen.")
+    return METHOD + f'<p class="note">{esc(text)}</p>'
 
 
 def _consistency(run: EvalRun, s: Stats) -> str:
     want = run.dataset_summary
     notes = []
     if want.get("n") is not None and want["n"] != s.n:
-        notes.append(f"summary.json counts {want['n']} clips, the rows file {s.n}")
+        notes.append(f"summary.json tæller {want['n']} klip, rækkefilen {s.n}")
     if want.get("wer") is not None and abs(want["wer"] - s.wer) > 1e-9:
-        notes.append(f"summary.json says WER {pct(want['wer'])}, the clip rows give {pct(s.wer)}")
+        notes.append(f"summary.json siger WER {pct(want['wer'])}, klippenes rækker giver {pct(s.wer)}")
     return f'<p class="worse">{esc("; ".join(notes))}.</p>' if notes else ""
 
 
@@ -545,49 +604,58 @@ def single_page(run: EvalRun, spelling: Spelling | None, n_worst: int = WORST, t
     terms = term_stats(run.rows, spelling) if spelling and with_terms else None
     model = str(run.summary.get("model") or "?")
     backend = str(run.summary.get("backend") or "?")
-    title = f"{run.dataset}: {_short_model(model)}, {BACKENDS.get(backend, backend)}"
-    subtitle = (f"{backend} backend, model {model}. Eval run {run.folder.name}, started {_when(run)}"
-                + (f", tracked in MLflow as {tracked_as}" if tracked_as else "") + ".")
+    how = BACKENDS.get(backend, backend)
+    tracked = ""
+    if tracked_as:
+        tracked = ", sporet i MLflow" + (f" som {tracked_as}" if tracked_as != run.folder.name else "")
+    subtitle = (f"{how[:1].upper()}{how[1:]} ({backend}), model {model}, datasæt {run.dataset}. "
+                f"Evalueringskørsel {run.folder.name}, startet {_when(run)}{tracked}.")
     body = [headline(s, terms), _consistency(run, s), datasets_table(run),
-            "<h2>Per recording condition</h2>", condition_table(run.rows, s, spelling, with_terms),
-            "<h2>Substitutions, deletions and insertions</h2>", edits_table(s), EDITS_NOTE,
-            terms_section(run, terms, spelling), worst_section(run.rows, n_worst), METHOD]
-    return page(title, "".join(body), subtitle)
+            "<h2>Pr. optageforhold</h2>", condition_table(run.rows, s, spelling, with_terms),
+            "<h2>Erstatninger, udeladelser og tilføjelser</h2>", edits_table(s), EDITS_NOTE,
+            terms_section(run, terms, spelling), worst_section(run.rows, n_worst), method(run)]
+    return page(run_title(run), "".join(body), subtitle)
 
 
 # --- the comparison page -----------------------------------------------------------------
 
 
-def runs_table(a: EvalRun, b: EvalRun, tracked: tuple[str, str]) -> str:
-    def facts(run: EvalRun, name: str) -> list[str]:
-        return [run.folder.name, _when(run), str(run.summary.get("backend") or "?"), str(run.summary.get("model") or "?"),
-                name or "–", f"{len(run.rows):,}"]
+def runs_table(a: EvalRun, b: EvalRun, tracked: tuple[str, str], names: tuple[str, str] | None = None) -> str:
+    titles = names or (run_title(a), run_title(b))
 
-    labels = ["Eval run", "Started", "Backend", "Model", "MLflow run", "Clips"]
-    fa, fb = facts(a, tracked[0]), facts(b, tracked[1])
+    def facts(run: EvalRun, name: str, title: str) -> list[str]:
+        version = normaliser_of(run)
+        return [title, run.folder.name, _when(run), str(run.summary.get("backend") or "?"),
+                str(run.summary.get("model") or "?"), name or "–", count(len(run.rows)),
+                str(version) if version is not None else "–"]
+
+    labels = ["Navn", "Evalueringskørsel", "Startet", "Backend", "Model", "MLflow-kørsel", "Klip", "Normalisering"]
+    fa, fb = facts(a, tracked[0], titles[0]), facts(b, tracked[1], titles[1])
     return table(["", "A", "B"], [[label, x, y] for label, x, y in zip(labels, fa, fb)])
 
 
 def compare_cards(sa: Stats, sb: Stats, delta: Paired, ch: Changes) -> str:
     lo, hi = delta.ci
-    return cards([("WER of A", pct(sa.wer), _ci_note(sa.wer_ci)), ("WER of B", pct(sb.wer), _ci_note(sb.wer_ci)),
-                  ("Change in WER, A minus B", _pp(delta.value),
-                   f"95 %: {lo * 100:+.2f} to {hi * 100:+.2f} pp, paired over {delta.clips:,} clips"),
-                  ("Clips", f"{len(ch.worse):,} worse, {len(ch.better):,} better",
-                   f"{len(ch.same):,} with as many errors as before")])
+    return cards([("WER for A", pct(sa.wer), _ci_note(sa.wer_ci)), ("WER for B", pct(sb.wer), _ci_note(sb.wer_ci)),
+                  ("Ændring i WER, A minus B", _pp(delta.value),
+                   f"95 %: {points(lo).removesuffix(' point')} til {points(hi)}, parret over "
+                   f"{count(delta.clips)} klip"),
+                  ("Klip", f"{count(len(ch.worse))} værre, {count(len(ch.better))} bedre",
+                   f"{count(len(ch.same))} med lige så mange fejl som før")])
 
 
 def verdict(delta: Paired) -> str:
     lo, hi = delta.ci
     if hi < 0:
-        text = "The interval of the change lies below 0: A makes fewer word errors than B on these clips, beyond chance."
+        text = ("Ændringens interval ligger under 0: A laver færre ordfejl end B på disse klip, og det skyldes "
+                "ikke tilfældigheder.")
     elif lo > 0:
-        text = "The interval of the change lies above 0: A makes more word errors than B on these clips, beyond chance."
+        text = ("Ændringens interval ligger over 0: A laver flere ordfejl end B på disse klip, og det skyldes "
+                "ikke tilfældigheder.")
     else:
-        text = ("The interval of the change includes 0: on these clips the two runs cannot be told apart from "
-                "chance.")
-    return (f'<p class="note">{esc(text)} The interval is paired: both runs\' errors on the same clips are '
-            'resampled together, so the sentences\' own difficulty cancels out.</p>')
+        text = "Ændringens interval rummer 0: på disse klip kan de to kørsler ikke skelnes fra tilfældigheder."
+    return (f'<p class="note">{esc(text)} Intervallet er parret: begge kørslers fejl på de samme klip trækkes '
+            'sammen, så sætningernes egen sværhed går ud.</p>')
 
 
 def _pair_row(label: str, a: str, b: str, delta: float | int | None, text: str, lower_is_better: bool = True):
@@ -599,21 +667,21 @@ def overall_table(sa: Stats, sb: Stats, ta: Sequence[TermStat] | None, tb: Seque
                       _pp(sa.wer - sb.wer)),
             _pair_row("CER (95 %)", pct_ci(sa.cer, sa.cer_ci), pct_ci(sb.cer, sb.cer_ci), sa.cer - sb.cer,
                       _pp(sa.cer - sb.cer)),
-            _pair_row("Word errors", f"{sa.errors:,}", f"{sb.errors:,}", sa.errors - sb.errors,
+            _pair_row("Ordfejl", count(sa.errors), count(sb.errors), sa.errors - sb.errors,
                       _signed(sa.errors - sb.errors))]
     (na, sa_t, la), (nb, sb_t, lb) = term_totals(ta or []), term_totals(tb or [])
     if na or nb:
-        rows += [_pair_row("English terms, strict", _terms_label(na, sa_t, la)[0], _terms_label(nb, sb_t, lb)[0],
-                           sa_t - sb_t, _signed(sa_t - sb_t), lower_is_better=False),
-                 _pair_row("English terms, lenient", _terms_label(na, sa_t, la)[1], _terms_label(nb, sb_t, lb)[1],
-                           la - lb, _signed(la - lb), lower_is_better=False)]
-    rows += [_pair_row("Clips", f"{sa.n:,}", f"{sb.n:,}", None, ""),
-             _pair_row("Reference words", f"{sa.words:,}", f"{sb.words:,}", None, ""),
-             _pair_row("Failed clips", f"{sa.failed:,}", f"{sb.failed:,}", sa.failed - sb.failed,
+        rows += [_pair_row("Engelske fagord, samme form", _terms_label(na, sa_t, la)[0],
+                           _terms_label(nb, sb_t, lb)[0], sa_t - sb_t, _signed(sa_t - sb_t), lower_is_better=False),
+                 _pair_row("Engelske fagord, enhver form", _terms_label(na, sa_t, la)[1],
+                           _terms_label(nb, sb_t, lb)[1], la - lb, _signed(la - lb), lower_is_better=False)]
+    rows += [_pair_row("Klip", count(sa.n), count(sb.n), None, ""),
+             _pair_row("Ord i referencerne", count(sa.words), count(sb.words), None, ""),
+             _pair_row("Fejlede klip", count(sa.failed), count(sb.failed), sa.failed - sb.failed,
                        _signed(sa.failed - sb.failed)),
-             _pair_row("Empty transcripts", f"{sa.empty:,}", f"{sb.empty:,}", sa.empty - sb.empty,
+             _pair_row("Tomme udskrifter", count(sa.empty), count(sb.empty), sa.empty - sb.empty,
                        _signed(sa.empty - sb.empty))]
-    return table(["", "A", "B", "Change"], rows, numeric=(1, 2, 3))
+    return table(["", "A", "B", "Ændring"], rows, numeric=(1, 2, 3))
 
 
 def compare_conditions(a: EvalRun, b: EvalRun, sa: Stats, sb: Stats) -> str:
@@ -624,55 +692,54 @@ def compare_conditions(a: EvalRun, b: EvalRun, sa: Stats, sb: Stats) -> str:
         pa = sa if len(ga.get(label, [])) == len(a.rows) else (stats(ga[label]) if label in ga else None)
         pb = sb if len(gb.get(label, [])) == len(b.rows) else (stats(gb[label]) if label in gb else None)
         both = pa is not None and pb is not None
-        rows.append([label, f"{pa.n:,}" if pa else "–", f"{pb.n:,}" if pb else "–",
+        rows.append([condition_label(label), count(pa.n) if pa else "–", count(pb.n) if pb else "–",
                      pct(pa.wer) if pa else "–", pct(pb.wer) if pb else "–",
                      change(pa.wer - pb.wer, _pp(pa.wer - pb.wer)) if both else "–",
                      pct(pa.cer) if pa else "–", pct(pb.cer) if pb else "–",
                      change(pa.cer - pb.cer, _pp(pa.cer - pb.cer)) if both else "–"])
-    return table(["Condition", "Clips A", "Clips B", "WER A", "WER B", "Change", "CER A", "CER B", "Change"], rows,
+    return table(["Forhold", "Klip A", "Klip B", "WER A", "WER B", "Ændring", "CER A", "CER B", "Ændring"], rows,
                  numeric=tuple(range(1, 9)))
 
 
 def compare_edits(sa: Stats, sb: Stats) -> str:
     rows = []
-    for label, x, y in (("Substitutions", sa.sub, sb.sub), ("Deletions", sa.dele, sb.dele),
-                        ("Insertions", sa.ins, sb.ins), ("All word errors", sa.errors, sb.errors)):
-        rows.append([label, f"{x:,}", _share(x, sa.words), f"{y:,}", _share(y, sb.words), change(x - y, _signed(x - y))])
-    return table(["Kind", "A", "Share of words", "B", "Share of words", "Change"], rows, numeric=(1, 2, 3, 4, 5))
+    for label, x, y in zip(EDIT_KINDS, (sa.sub, sa.dele, sa.ins, sa.errors), (sb.sub, sb.dele, sb.ins, sb.errors)):
+        rows.append([label, count(x), _share(x, sa.words), count(y), _share(y, sb.words), change(x - y, _signed(x - y))])
+    return table(["Slags", "A", "Andel af ordene", "B", "Andel af ordene", "Ændring"], rows, numeric=(1, 2, 3, 4, 5))
 
 
 def compare_terms(ta: Sequence[TermStat] | None, tb: Sequence[TermStat] | None, spelling: Spelling | None,
                   with_terms: bool = True) -> str:
-    head = "<h2>English terms</h2>"
+    head = "<h2>Engelske fagord</h2>"
     if not with_terms:
         return head + NO_TERMS_ON_FLEURS
     if spelling is None:
-        return head + "<p>No spelling.yaml, so no term accuracy.</p>"
+        return head + "<p>Der er ingen spelling.yaml, så fagordene tælles ikke.</p>"
     da, db_ = {t.term: t for t in ta or []}, {t.term: t for t in tb or []}
     names = list(da) + [n for n in db_ if n not in da]
     if not names:
-        return head + "<p>No English terms from spelling.yaml in these references.</p>"
+        return head + "<p>Der er ingen engelske fagord fra spelling.yaml i disse referencer.</p>"
     zero = TermStat("")
     rows = []
     for n in names:
         x, y = da.get(n, zero), db_.get(n, zero)
-        rows.append([n, f"{x.total:,}", f"{x.strict}", f"{y.strict}", change(x.strict - y.strict, _signed(x.strict - y.strict),
-                                                                            lower_is_better=False),
+        rows.append([n, count(x.total), f"{x.strict}", f"{y.strict}",
+                     change(x.strict - y.strict, _signed(x.strict - y.strict), lower_is_better=False),
                      f"{x.lenient}", f"{y.lenient}"])
-    return (head + table(["Term", "In references (A)", "Strict A", "Strict B", "Change", "Lenient A", "Lenient B"], rows,
-                         numeric=(1, 2, 3, 4, 5, 6))
-            + '<p class="note">Counted with today\'s spelling.yaml in both runs, so they are counted alike.</p>')
+    return (head + table(["Fagord", "I referencerne (A)", "Samme form A", "Samme form B", "Ændring", "Enhver form A",
+                          "Enhver form B"], rows, numeric=(1, 2, 3, 4, 5, 6))
+            + '<p class="note">Talt med dagens spelling.yaml i begge kørsler, så de tælles ens.</p>')
 
 
 def pair_section(i: int, pair: tuple[dict, dict]) -> str:
     ra, rb = pair
     d = _delta(pair)
-    facts = [f"word errors {clip_errors(rb)} → {clip_errors(ra)} ({d:+d})",
-             f"WER {pct(clip_wer(rb), 1)} → {pct(clip_wer(ra), 1)}", f"{ra['ref_words']} words"]
-    facts += [condition_of(ra)] if condition_of(ra) else []
+    facts = [f"ordfejl {clip_errors(rb)} → {clip_errors(ra)} ({signed(d)})",
+             f"WER {pct(clip_wer(rb), 1)} → {pct(clip_wer(ra), 1)}", f"{ra['ref_words']} ord"]
+    facts += [condition_label(condition_of(ra))] if condition_of(ra) else []
     fields = [("Reference", ra["reference"]), ("B", _diff(rb)), ("A", _diff(ra))]
     if rb.get("reference") != ra.get("reference"):
-        fields.insert(1, ("Reference in B", rb.get("reference") or ""))
+        fields.insert(1, ("Reference i B", rb.get("reference") or ""))
     return clip_card(str(ra["id"]), f"#{i} {ra['id']}", facts, fields, audio_tag(find_wav(ra) or find_wav(rb)))
 
 
@@ -680,18 +747,18 @@ def _other_changes(pairs: Sequence[tuple[dict, dict]]) -> str:
     if not pairs:
         return ""
     rows = [[str(ra["id"]), f"{clip_errors(rb)}", f"{clip_errors(ra)}",
-             change(_delta((ra, rb)), f"{_delta((ra, rb)):+d}"),
+             change(_delta((ra, rb)), signed(_delta((ra, rb)))),
              (ra["reference"][:90] + "…") if len(ra["reference"]) > 90 else ra["reference"]] for ra, rb in pairs]
-    return ("<h3>The other changed clips</h3>"
-            + table(["Clip", "Errors B", "Errors A", "Change", "Reference"], rows, numeric=(1, 2, 3)))
+    return ("<h3>De andre ændrede klip</h3>"
+            + table(["Klip", "Fejl i B", "Fejl i A", "Ændring", "Reference"], rows, numeric=(1, 2, 3)))
 
 
 def changed_section(title: str, pairs: Sequence[tuple[dict, dict]], n: int, start: int) -> str:
     if not pairs:
-        return f"<h2>{esc(title)}</h2><p>None.</p>"
+        return f"<h2>{esc(title)}</h2><p>Ingen.</p>"
     shown = pairs[:n]
-    more = f", the {len(shown)} largest changes shown with audio" if len(pairs) > n else ""
-    return (f"<h2>{esc(title)} ({len(pairs):,}{more})</h2>" + LEGEND
+    more = f", de {len(shown)} største ændringer vist med lyd" if len(pairs) > n else ""
+    return (f"<h2>{esc(title)} ({count(len(pairs))}{more})</h2>" + LEGEND
             + "".join(pair_section(start + i, p) for i, p in enumerate(shown))
             + _other_changes(pairs[n:]))
 
@@ -705,24 +772,25 @@ def compare_page(a: EvalRun, b: EvalRun, spelling: Spelling | None, n_worst: int
     tb = term_stats(b.rows, spelling) if spelling and with_terms else None
     ch = changes(a.rows, b.rows)
     delta = paired_change(ch)
-    title = f"{a.dataset}: A against B"
-    subtitle = (f"A is {a.folder.name} ({_short_model(str(a.summary.get('model') or '?'))}, "
-                f"{a.summary.get('backend')}); B is {b.folder.name} "
-                f"({_short_model(str(b.summary.get('model') or '?'))}, {b.summary.get('backend')}). "
-                "A change is A minus B: below zero is fewer errors in A.")
+    name_a, name_b = unique_titles([{"title": run_title(a), "when": a.started},
+                                    {"title": run_title(b), "when": b.started}])
+    title = f"{name_a} mod {name_b}"
+    subtitle = (f"A er {name_a} ({a.folder.name}); B er {name_b} ({b.folder.name}); datasæt {a.dataset}. "
+                "En ændring er A minus B: under nul betyder færre fejl i A.")
     same_text = sum(1 for ra, rb in ch.same if (ra.get("hyp_norm") or "") != (rb.get("hyp_norm") or ""))
-    notes = [f"{len(ch.same):,} clips have as many word errors in both runs ({same_text:,} of them with other words)."]
+    notes = [f"{count(len(ch.same))} klip har lige så mange ordfejl i begge kørsler ({count(same_text)} af dem "
+             "med andre ord)."]
     if ch.only_a or ch.only_b:
-        notes.append(f"{len(ch.only_a):,} clips only in A and {len(ch.only_b):,} only in B are not compared.")
-    body = [compare_cards(sa, sb, delta, ch), verdict(delta), _consistency(a, sa), _consistency(b, sb),
-            "<h2>The two runs</h2>", runs_table(a, b, tracked),
-            "<h2>Overall</h2>", overall_table(sa, sb, ta, tb),
-            "<h2>Per recording condition</h2>", compare_conditions(a, b, sa, sb),
-            "<h2>Substitutions, deletions and insertions</h2>", compare_edits(sa, sb), EDITS_NOTE,
+        notes.append(f"{count(len(ch.only_a))} klip kun i A og {count(len(ch.only_b))} kun i B er ikke sammenlignet.")
+    body = [compare_cards(sa, sb, delta, ch), verdict(delta), mixed_normalisers(a, b), _consistency(a, sa),
+            _consistency(b, sb), "<h2>De to kørsler</h2>", runs_table(a, b, tracked, (name_a, name_b)),
+            "<h2>Samlet</h2>", overall_table(sa, sb, ta, tb),
+            "<h2>Pr. optageforhold</h2>", compare_conditions(a, b, sa, sb),
+            "<h2>Erstatninger, udeladelser og tilføjelser</h2>", compare_edits(sa, sb), EDITS_NOTE,
             compare_terms(ta, tb, spelling, with_terms),
-            changed_section("Clips that got worse", ch.worse, n_worst, 1),
-            changed_section("Clips that got better", ch.better, n_worst, len(ch.worse[:n_worst]) + 1),
-            f'<p class="note">{esc(" ".join(notes))}</p>', METHOD]
+            changed_section("Klip, der blev værre", ch.worse, n_worst, 1),
+            changed_section("Klip, der blev bedre", ch.better, n_worst, len(ch.worse[:n_worst]) + 1),
+            f'<p class="note">{esc(" ".join(notes))}</p>', method(a, b)]
     return page(title, "".join(body), subtitle)
 
 

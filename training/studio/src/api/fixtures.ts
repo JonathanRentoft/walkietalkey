@@ -11,6 +11,8 @@ import type {
   Journal,
   JournalPage,
   LastTake,
+  LearnListing,
+  LearnNotebook,
   Limits,
   Overview,
   Pick,
@@ -739,47 +741,79 @@ const CONFIG_SETTINGS = (
   ],
 });
 
+/* The four settings a beginner touches first (labels.ESSENTIALS, run 11). */
+export const ESSENTIALS: Record<string, string> = {
+  "training.learning_rate":
+    "Højere: modellen lærer hurtigere, men kan blive ustabil og glemme almindeligt dansk. Lavere: roligere, men den skal bruge flere epoker.",
+  "training.epochs":
+    "Flere: modellen lærer dine optagelser bedre, men kan lære dem udenad. Færre: hurtigere, men den lærer måske for lidt.",
+  "lora.rank":
+    "Højere: adapteren kan lære mere, men lærer lettere udenad. Lavere: en mindre adapter, der ændrer Edda forsigtigt.",
+  "rehearsal.share":
+    "Højere: Edda holder bedre fast i almindeligt dansk, men lærer dine fagord langsommere. Lavere: mere af træningen er dine egne optagelser.",
+};
+
+function withEssentials(c: TrainingConfig): TrainingConfig {
+  return {
+    ...c,
+    essentials: Object.keys(ESSENTIALS),
+    settings: c.settings.map((s) => ({
+      ...s,
+      help: ESSENTIALS[s.key] ?? null,
+    })),
+  };
+}
+
 export const TRAINING_CONFIGS: TrainingConfig[] = [
   CONFIG_SETTINGS("first-frozen-encoder", 5, 0.0002, true, 0.1),
   CONFIG_SETTINGS("smoke", 1, 0.0005, true, 0.2),
   CONFIG_SETTINGS("top4-encoder", 6, 0.0001, false, 0.1),
-];
+].map(withEssentials);
+
+const evalRun = (
+  r: Omit<EvalRun, "kind" | "change" | "report"> & {
+    kind?: string;
+    change?: string | null;
+    report?: string | null;
+  },
+): EvalRun => ({ kind: "eval", change: "pipeline", report: null, ...r });
 
 export const EVAL_RUNS: EvalRun[] = [
-  {
+  evalRun({
     id: "8f0c2a",
     name: "lora-test-split-2026-10-27",
-    kind: "eval",
+    title: "Edda finjusteret (first-frozen-encoder) · Dine optagelser",
+    normaliser: 2,
     date: "2026-10-27T12:42:10+01:00",
-    dataset: "dine optagelser, test",
-    model: "first-frozen-encoder-20261026-2112",
+    dataset: "first-frozen-encoder-20261026-2112:test",
+    model: "first-frozen-encoder-20261026-2112 (LoRA)",
     backend: "lora",
     clips: 104,
     wer: 0.1192,
     wer_ci: [0.0954, 0.1431],
     cer: 0.0512,
-    change: "lora",
-    report: null,
-  },
-  {
+    change: "model",
+  }),
+  evalRun({
     id: "7b91d4",
     name: "gguf-test-split-2026-10-27",
-    kind: "eval",
+    title: "Appen · Dine optagelser",
+    normaliser: 2,
     date: "2026-10-27T12:30:02+01:00",
-    dataset: "dine optagelser, test",
+    dataset: "first-frozen-encoder-20261026-2112:test",
     model: "edda-v0.2 (app)",
     backend: "gguf",
     clips: 104,
     wer: 0.2034,
     wer_ci: [0.1712, 0.2356],
     cer: 0.0921,
-    change: "baseline",
     report: "/reports/eval-7b91d4.html",
-  },
-  {
+  }),
+  evalRun({
     id: "5a17e3",
-    name: "gguf-fleurs-da_dk-test-2026-10-26",
-    kind: "eval",
+    name: "20261026-170753-gguf-walkietalkey-edda-v0-2-gguf-edda-v0-2-q8-0-gguf",
+    title: "Appen · FLEURS · 26. okt.",
+    normaliser: 2,
     date: "2026-10-26T17:07:53+01:00",
     dataset: "fleurs-da_dk-test",
     model: "edda-v0.2 (app)",
@@ -788,38 +822,123 @@ export const EVAL_RUNS: EvalRun[] = [
     wer: 0.0672,
     wer_ci: [0.0626, 0.0718],
     cer: 0.024,
-    change: "pipeline",
     report: "/reports/eval-5a17e3.html",
-  },
-  {
-    id: "3c44b0",
-    name: "hf-fleurs-da_dk-test-2026-10-25",
-    kind: "eval",
-    date: "2026-10-25T21:15:40+02:00",
+  }),
+  evalRun({
+    id: "4d22c1",
+    name: "20261026-165446-hf-danish-foundation-models-edda-v0-2-698f8d04b597",
+    title: "Edda, original · FLEURS · 26. okt.",
+    normaliser: 2,
+    date: "2026-10-26T16:54:46+01:00",
     dataset: "fleurs-da_dk-test",
-    model: "edda-v0.2 (Hugging Face)",
+    model: "edda-v0.2@698f8d04b597 (Transformers)",
     backend: "hf",
     clips: 930,
-    wer: 0.0701,
-    wer_ci: [0.0652, 0.075],
-    cer: 0.0253,
-    change: "fair-fleurs",
-    report: "/reports/eval-3c44b0.html",
-  },
-  {
-    id: "1e09aa",
-    name: "gguf-exam-2026-10-24",
-    kind: "eval",
-    date: "2026-10-24T10:02:11+02:00",
-    dataset: "eksamen",
+    wer: 0.0632,
+    wer_ci: [0.0586, 0.0679],
+    cer: 0.0229,
+    report: "/reports/eval-4d22c1.html",
+  }),
+  evalRun({
+    id: "3c44b0",
+    name: "gguf-fleurs-da_dk-test-2026-10-25",
+    title: "Appen · FLEURS · 25. okt.",
+    normaliser: 1,
+    date: "2026-10-25T02:16:19+02:00",
+    dataset: "fleurs-da_dk-test",
     model: "edda-v0.2 (app)",
     backend: "gguf",
-    clips: 32,
-    wer: 0.1588,
-    wer_ci: [0.1203, 0.1974],
-    cer: 0.0688,
-    change: null,
-    report: null,
+    clips: 930,
+    wer: 0.0763,
+    wer_ci: [0.071, 0.0818],
+    cer: 0.0275,
+    report: "/reports/eval-3c44b0.html",
+  }),
+  evalRun({
+    id: "1e09aa",
+    name: "gguf-fleurs-da_dk-test-2026-10-24",
+    title: "Appen · FLEURS · 24. okt.",
+    normaliser: 1,
+    kind: "baseline",
+    date: "2026-10-24T18:54:51+02:00",
+    dataset: "fleurs-da_dk-test",
+    model: "edda-v0.2 (app)",
+    backend: "gguf",
+    clips: 930,
+    wer: 0.0844,
+    wer_ci: [0.0784, 0.0905],
+    cer: 0.0342,
+  }),
+  evalRun({
+    id: "0b7f19",
+    name: "hf-fleurs-da_dk-test-2026-10-24",
+    title: "Edda, original · FLEURS · 24. okt.",
+    normaliser: 1,
+    kind: "baseline",
+    change: "model",
+    date: "2026-10-24T18:17:11+02:00",
+    dataset: "fleurs-da_dk-test",
+    model: "edda-v0.2@698f8d04b597 (Transformers)",
+    backend: "hf",
+    clips: 930,
+    wer: 0.0721,
+    wer_ci: [0.0666, 0.0778],
+    cer: 0.0261,
+  }),
+];
+
+/* The learning notebooks (run 11), as GET /api/learn lists them. */
+export const NOTEBOOKS: LearnNotebook[] = [
+  {
+    name: "01-lyden",
+    number: 1,
+    title: "Lyden",
+    summary:
+      "Hør og se en optagelse, som Edda får den: bølgen, spektret og mel-billedet.",
+    minutes: 4,
+    copy: true,
+    ran: true,
+    saved: "2026-10-27T20:14:00+01:00",
+  },
+  {
+    name: "02-edda-indefra",
+    number: 2,
+    title: "Edda indefra",
+    summary: "Følg en sætning gennem encoderen og decoderen, ord for ord.",
+    minutes: 5,
+    copy: true,
+    ran: false,
+    saved: "2026-10-28T09:02:00+01:00",
+  },
+  {
+    name: "03-maaling",
+    number: 3,
+    title: "Måling",
+    summary: "Sådan tælles ordfejl, og hvorfor normaliseringen ændrer tallene.",
+    minutes: 3,
+    copy: false,
+    ran: false,
+    saved: null,
+  },
+  {
+    name: "04-lora",
+    number: 4,
+    title: "LoRA",
+    summary: "Se, hvor lidt en LoRA-adapter ændrer, og hvorfor det er nok.",
+    minutes: 6,
+    copy: false,
+    ran: false,
+    saved: null,
+  },
+  {
+    name: "05-fejlanalyse",
+    number: 5,
+    title: "Fejlanalyse",
+    summary: "Find de sætninger, Edda tager fejl af, og se mønstret i fejlene.",
+    minutes: 4,
+    copy: false,
+    ran: false,
+    saved: null,
   },
 ];
 
@@ -876,6 +995,10 @@ export interface FakeStudioOptions {
   /** Let a phone session record by itself and a training draw its loss (default true). */
   simulate?: boolean;
   now?: () => number;
+  /** Run 11: a first start, before anything was recorded, trained or evaluated. */
+  empty?: boolean;
+  /** Run 11: false when no VS Code can be found (POST /api/learn/open answers no-vscode). */
+  vscode?: boolean;
 }
 
 interface RecState {
@@ -912,6 +1035,7 @@ const ok = (json: unknown): FakeResponse => ({ status: 200, json });
 export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
   const now = opts.now ?? (() => Date.now());
   const simulate = opts.simulate ?? true;
+  const empty = opts.empty ?? false;
   const t0 = now();
 
   /* ---- recording ---- */
@@ -944,6 +1068,19 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     },
     error: null,
   };
+  if (empty) {
+    // A first start: nothing picked, nothing recorded.
+    sessions.clear();
+    Object.assign(rec, {
+      active: false,
+      pick: null,
+      link: { status: "waiting", detail: "" },
+      current: null,
+      recording: null,
+      rows: [],
+      last: null,
+    });
+  }
   const waiters = new Set<() => void>();
   function bump() {
     rec.version++;
@@ -1251,6 +1388,10 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     result: null,
   };
   jobs.set(trainJob.id, trainJob);
+  if (empty) {
+    jobs.delete(trainJob.id);
+    trainJob = null;
+  }
   let progress: TrainingProgress | null = {
     config: "first-frozen-encoder",
     run: "first-frozen-encoder-20261027-120000",
@@ -1275,6 +1416,7 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     best_validation_wer: null,
     message: null,
   };
+  if (empty) progress = null;
   const runs: TrainingRun[] = [
     {
       name: "first-frozen-encoder-20261026-2112",
@@ -1295,6 +1437,8 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
       adapter: true,
     },
   ];
+
+  if (empty) runs.length = 0;
 
   function trainTick() {
     if (!progress || !trainJob || trainJob.status !== "running") return;
@@ -1447,6 +1591,8 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     ],
   };
 
+  if (empty) comparison = null;
+
   /* ---- versions ---- */
   const versions: Versions = {
     app: { found: true, version: "0.2.2", use: true },
@@ -1491,6 +1637,11 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
       },
     ],
   };
+  if (empty) {
+    versions.in_app = versions.base.id;
+    versions.versions = [];
+    versions.exportable = [];
+  }
   let exportJob: Job | null = null;
 
   /* ---- journal ---- */
@@ -1525,31 +1676,35 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     "",
     "",
   );
-  const journalRuns = () => [
-    {
-      run: "first-frozen-encoder-20261026-2112",
-      id: "a91f",
-      kind: "train",
-      date: "2026-10-26T21:12:00+01:00",
-      page: "2026-10-26-first-frozen-encoder-20261026-2112",
-    },
-    {
-      run: "smoke-20261026-1840",
-      id: "c2d0",
-      kind: "train",
-      date: "2026-10-26T18:40:00+01:00",
-      page: "2026-10-26-smoke-20261026-1840",
-    },
-    ...EVAL_RUNS.slice(0, 3).map((e) => ({
-      run: e.name,
-      id: e.id,
-      kind: "eval",
-      date: e.date,
-      page:
-        [...pages.values()].find((p) => p.markdown.includes(e.name))?.name ??
-        null,
-    })),
-  ];
+  if (empty) pages.clear();
+  const journalRuns = () =>
+    empty
+      ? []
+      : [
+          {
+            run: "first-frozen-encoder-20261026-2112",
+            id: "a91f",
+            kind: "train",
+            date: "2026-10-26T21:12:00+01:00",
+            page: "2026-10-26-first-frozen-encoder-20261026-2112",
+          },
+          {
+            run: "smoke-20261026-1840",
+            id: "c2d0",
+            kind: "train",
+            date: "2026-10-26T18:40:00+01:00",
+            page: "2026-10-26-smoke-20261026-1840",
+          },
+          ...EVAL_RUNS.slice(0, 3).map((e) => ({
+            run: e.name,
+            id: e.id,
+            kind: "eval",
+            date: e.date,
+            page:
+              [...pages.values()].find((p) => p.markdown.includes(e.name))
+                ?.name ?? null,
+          })),
+        ];
   function section(md: string, heading: string, text: string): string {
     const lines = md.split("\n");
     const start = lines.findIndex((l) => l.trim() === `## ${heading}`);
@@ -1803,6 +1958,66 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     };
   }
 
+  /* ---- Lær det ---- */
+  const notebooks: LearnNotebook[] = empty
+    ? []
+    : NOTEBOOKS.map((n) => ({ ...n }));
+  const COPIES =
+    "/Users/jonathan/Desktop/CODING/Business/walkietalkey-app/training/work/notebooks";
+  function learnListing(): LearnListing {
+    return { notebooks: notebooks.map((n) => ({ ...n })), copies: COPIES };
+  }
+  function notebookAction(kind: "open" | "reset", name: unknown): FakeResponse {
+    const nb = notebooks.find((n) => n.name === name);
+    if (!nb) return err(404, "unknown", `no notebook ${String(name)}`);
+    const had = nb.copy;
+    nb.copy = true;
+    nb.saved = iso(now());
+    if (kind === "reset") {
+      nb.ran = false;
+      return ok({
+        notebook: { ...nb },
+        kept: had
+          ? `${COPIES}/.replaced/${nb.name}-20261028-101500.ipynb`
+          : null,
+      });
+    }
+    if (opts.vscode === false)
+      return err(409, "no-vscode", "VS Code was not found");
+    return ok({ notebook: { ...nb }, created: !had, with: "open" });
+  }
+
+  /* ---- data before the first session ---- */
+  function emptyData(view: DataView): DataView {
+    return {
+      ...view,
+      sentences: { ...view.sentences, recorded: 0 },
+      // As the server answers before the first take: every condition, none with a take.
+      conditions: view.conditions.map((c) => ({
+        ...c,
+        takes: 0,
+        minutes: 0,
+        split: {
+          train: { takes: 0, minutes: 0 },
+          validation: { takes: 0, minutes: 0 },
+          test: { takes: 0, minutes: 0 },
+        },
+      })),
+      skipped: [],
+      leakage: {
+        ran: false,
+        ok: null,
+        checks: view.leakage.checks.map((c) => ({
+          ...c,
+          ok: null,
+          overlap: null,
+          detail: "no takes yet",
+        })),
+        message: null,
+      },
+    };
+  }
+
   function trainingState(): TrainingState {
     return { job: trainJob, progress, runs };
   }
@@ -1831,21 +2046,41 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         if (since !== null) await waitFor(Number(since), 20_000);
         return ok(recordingState());
       }
-      if (p === "/api/progress") return ok(progressView());
+      if (p === "/api/progress") {
+        const pv = progressView();
+        return ok(
+          empty
+            ? {
+                ...pv,
+                minutes: 0,
+                conditions: pv.conditions.map((c) => ({
+                  ...c,
+                  done: 0,
+                  redo: 0,
+                  minutes: 0,
+                  exam_done: 0,
+                })),
+              }
+            : pv,
+        );
+      }
       if (p === "/api/pilot")
         return ok({
           sentences: PILOT_SENTENCES.length,
-          setups: PILOT_SETUPS,
+          setups: empty
+            ? PILOT_SETUPS.map((x) => ({ ...x, done: 0 }))
+            : PILOT_SETUPS,
           comparison,
           job: pilotJob?.status === "running" ? pilotJob : null,
         } satisfies Pilot);
       if (p === "/api/data") {
         const d = dataView(u.searchParams.get("config"));
-        return "status" in d ? d : ok(d);
+        return "status" in d ? d : ok(empty ? emptyData(d) : d);
       }
       if (p === "/api/training/configs") return ok(TRAINING_CONFIGS);
       if (p === "/api/training/state") return ok(trainingState());
-      if (p === "/api/eval/runs") return ok(EVAL_RUNS);
+      if (p === "/api/eval/runs") return ok(empty ? [] : EVAL_RUNS);
+      if (p === "/api/learn") return ok(learnListing());
       if (p === "/api/versions") return ok(versions);
       if (p === "/api/journal") {
         const list: Journal = {
@@ -2190,6 +2425,10 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         timers.push(t);
         return ok(job);
       }
+      case "/api/learn/open":
+        return notebookAction("open", b.name);
+      case "/api/learn/reset":
+        return notebookAction("reset", b.name);
       case "/api/journal": {
         const run = String(b.run ?? "");
         const r = journalRuns().find((x) => x.run === run || x.id === run);

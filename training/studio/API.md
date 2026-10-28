@@ -31,14 +31,14 @@ base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. Report pages
 
 ## Files
 
-| Path                                                                      | What                                                                                                                      |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `GET /` and any path that is not `/api/`, `/app/`, `/reports/`, `/files/` | `index.html` of the built page (`training/studio/dist/`), so the page's own routes (`/optag`, `/data`, ...) reload        |
-| `GET /assets/<file>`                                                      | the built page's assets                                                                                                   |
-| `GET /api/takes/<folder>/<id>.wav`                                        | the current take of a sentence; `<folder>` is a condition id, `exam-<condition>` (its exam paragraphs) or `pilot-<setup>` |
-| `GET /reports/<file>.html`                                                | an HTML report from `paths.reports_dir()` (evaluation, `--vs`, pilot)                                                     |
-| `GET /files/journal/<path>`                                               | a file next to a journal page (its plots)                                                                                 |
-| `GET /api/ping`                                                           | `{"studio": true, "pid": 4242}`: the single-instance check (and the launcher) asks the running server                     |
+| Path                                                                      | What                                                                                                                        |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `GET /` and any path that is not `/api/`, `/app/`, `/reports/`, `/files/` | `index.html` of the built page (`training/studio/dist/`), so the page's own routes (`/optag`, `/data`, ..., `/laer`) reload |
+| `GET /assets/<file>`                                                      | the built page's assets                                                                                                     |
+| `GET /api/takes/<folder>/<id>.wav`                                        | the current take of a sentence; `<folder>` is a condition id, `exam-<condition>` (its exam paragraphs) or `pilot-<setup>`   |
+| `GET /reports/<file>.html`                                                | an HTML report from `paths.reports_dir()` (evaluation, `--vs`, pilot)                                                       |
+| `GET /files/journal/<path>`                                               | a file next to a journal page (its plots)                                                                                   |
+| `GET /api/ping`                                                           | `{"studio": true, "pid": 4242}`: the single-instance check (and the launcher) asks the running server                       |
 
 ## Polling
 
@@ -387,14 +387,15 @@ when it is the current one, and never as a take or as recording. No app change i
 `comparison` is `null` until it has run once. `POST /api/pilot/compare` starts
 `wt-train pilot report --json-out <work>/studio/pilot-comparison.json` as a job (see Jobs; 409
 `busy` while one runs) and answers the job; when it is done, `GET /api/pilot` has the new
-comparison, and the job's `result` is the comparison too. `notes` are English, from
-`pilot.setup_notes`. `job` is the latest pilot job since the server started. The setups (here,
-in the options and in the comparison) also carry `label`, the Danish name ("iPhone, hvisket").
-In the comparison `terms` is the strict term accuracy, `clipped` the clips with clipping,
-`seconds` the mean length of a clip, and `report` is `null` when the page is outside
-`<work>/reports/`. A take marked for a new take (`review.status` `redo`) is not scored, as the
-dataset builder leaves it out; `left_out` lists them: `[{"id": "pilot-03.iphone-whisper",
-"reason": "marked for a new take"}]`.
+comparison, and the job's `result` is the comparison too. `notes` are Danish (run 11; they are
+on the pilot's HTML page too), from `pilot.setup_notes`. `job` is the latest pilot job since
+the server started. The setups (here, in the options and in the comparison) also carry `label`,
+the Danish name ("iPhone, hvisket"). In the comparison `terms` is the strict term accuracy,
+`clipped` the clips with clipping, `seconds` the mean length of a clip, and `report` is `null`
+when the page is outside `<work>/reports/` (or from before run 11, see Evaluation). A take
+marked for a new take (`review.status` `redo`) is not scored, as the dataset builder leaves it
+out; `left_out` lists them: `[{"id": "pilot-03.iphone-whisper", "reason": "marked for a new
+take"}]`.
 
 ## Data
 
@@ -481,12 +482,20 @@ downloaded) its check has `"ok": null` and a `detail`.
   {
     "name": "first-frozen-encoder",
     "file": "configs/first-frozen-encoder.yaml",
+    "essentials": [
+      "training.learning_rate",
+      "training.epochs",
+      "lora.rank",
+      "rehearsal.share"
+    ],
     "settings": [
       {
         "key": "training.learning_rate",
         "section": "training",
         "value": 0.0002,
-        "label": "Hvor store skridt modellen tager, når den lærer"
+        "label": "Hvor store skridt modellen tager, når den lærer",
+        "section_label": "Træning",
+        "help": "Højere: modellen lærer hurtigere, men kan blive ustabil og glemme almindeligt dansk. Lavere: roligere, men den skal bruge flere epoker."
       }
     ]
   }
@@ -497,6 +506,11 @@ Every setting of the resolved config (`config.to_dict`), in the config's order, 
 one-line Danish label (`studio/labels.py`, which has a label for every field in `config.py`) and
 `section_label`, the Danish heading of its section (`"Træning"`; `null` for `name`, whose
 `section` is `null`). A config that does not load is listed with `"error"` and no settings.
+
+Run 11: `essentials` names, in order, the four settings a beginner touches first
+(`labels.ESSENTIALS`); the page shows them first and every other setting under "Alle
+indstillinger". Each of the four has `help`, one or two Danish sentences on what turning it up
+or down does; every other setting has `"help": null`.
 
 ### `POST /api/training/start` `{"config": "first-frozen-encoder"}`
 
@@ -574,7 +588,9 @@ of `runs` also says `finished` (it has `run.json`) and `adapter` (it kept one).
 [
   {
     "id": "<mlflow run id>",
-    "name": "gguf-fleurs-da_dk-test-2026-10-26",
+    "name": "20261026-170753-gguf-walkietalkey-edda-v0-2-gguf-edda-v0-2-q8-0-gguf",
+    "title": "Appen · FLEURS · 26. okt.",
+    "normaliser": 2,
     "kind": "eval",
     "date": "2026-10-26T17:07:53+01:00",
     "dataset": "fleurs-da_dk-test",
@@ -590,18 +606,94 @@ of `runs` also says `finished` (it has `run.json`) and `adapter` (it kept one).
 ]
 ```
 
-Newest first. `report` is `null` when no page exists yet. `model` is a short name: `edda-v0.2
-(app)`, `<file> (app)`, `edda-v0.2@698f8d04b597 (Transformers)`, `<training run> (LoRA)`.
-`kind` is `eval` or `baseline` (an imported `results.csv` row). Empty when tracking is off.
+Newest first (by `date`). `report` is `null` when no page exists yet. `model` is a short name:
+`edda-v0.2 (app)`, `<file> (app)`, `edda-v0.2@698f8d04b597 (Transformers)`, `<training run>
+(LoRA)`. `kind` is `eval` or `baseline` (an imported `results.csv` row). Empty when tracking is
+off.
+
+Run 11:
+
+- `name` is the MLflow run's name (the slug the command line takes); `title` is its readable
+  Danish name, `<model> · <data>` (`labels.eval_title`): the model is "Edda, original" (backend
+  `hf`, the base Edda), "Appen" (`gguf`, the shipped Edda Q8_0 through the app), "Edda
+  finjusteret v<n>" (`gguf`, an exported version `edda-ft-<slug>-v<n>`), "Edda finjusteret
+  (<config>)" (`lora`, a training run's adapter); the data is "FLEURS", "Dine optagelser" (a
+  run's test split; "..., validering", "..., træning", "..., eksamen", and a condition in
+  brackets). Two runs that would share a title get the day they were measured ("· 24. okt."),
+  and the time too when they share the day ("· 25. okt. kl. 02.16").
+- `normaliser` is the version of the WER normaliser that counted the run
+  (`wt_train/normaliser.py`): the run's tag `wt.normaliser`, which every run tracked since run 11
+  carries (with the normaliser files' hash as `wt.normaliser_sha`), else the day it was measured
+  (before 26 October 2026: 1; from then: 2). `null` for a normaliser without a number (an edit
+  not yet given one). The page groups the runs by it: run 8's fix on 26 October changed every
+  number without changing the model, so only runs in one group compare.
+- `date` is when the run was measured: an imported `results.csv` row's own `timestamp`, not when
+  it was imported; else the run's start.
 
 ### `POST /api/eval/report` `{"run": "<id>"}` and `POST /api/eval/compare` `{"a": "<id>", "b": "<id>"}`
 
 Write the run's page (`wt-train report`, or `--vs`) without opening a browser, and answer `{"url":
-"/reports/<file>.html"}`. Pages that exist are reused. The page opens it inside Værkstedet.
+"/reports/<file>.html"}`. Pages that exist are reused. The page opens it inside Værkstedet. Since
+run 11 the pages (and the pilot's) are in Danish, with Danish numbers ("6,32 %"), titled by the
+runs' readable names; a page from before (in English, without the `<meta name="generator"
+content="wt-train page 2">` of today's pages) counts as missing: `report` is `null`, and asking
+for it writes it again.
 A page is written as a job of kind `report` that the request waits for; the answer then also
 has `"job": "<id>"`. Errors: `tracking-off` (409), `unknown` (404), `no-folder` (404: an imported
 baseline whose clips are not in an eval folder), `not-comparable` (409: B has no results for
 A's dataset), `report-failed` (500).
+
+## Lær det (run 11)
+
+The learning notebooks (`training/notebooks/*.ipynb`, `--notebooks`), each opened in VS Code as
+the owner's working copy in `<work>/notebooks/` (git-ignored), so the committed notebooks never
+get his outputs or edits.
+
+### `GET /api/learn`
+
+```json
+{
+  "notebooks": [
+    {
+      "name": "01-lyden",
+      "number": 1,
+      "title": "Lyden",
+      "summary": "Hør og se en optagelse, som Edda får den.",
+      "minutes": 4,
+      "copy": true,
+      "ran": false,
+      "saved": "2026-10-28T10:02:11+01:00"
+    }
+  ],
+  "copies": "/Users/.../training/work/notebooks"
+}
+```
+
+In number order. Read by the notebooks' contract (`training/tests/test_notebooks.py`): `title` is
+the first markdown cell's heading after the "·" (`# 01 · Lyden`), else the whole heading, else
+the file's name; `summary` and `minutes` are `metadata.wt` (`null` when missing); `number` is
+`metadata.wt.number`, else the heading's, else the name's. A file that does not parse as a
+notebook (not JSON, no `cells`) is left out, and so is a name that is not letters, digits, `-`
+and `_`. `copy`: the working copy exists; `ran`: one of its code cells has outputs; `saved`: the
+copy's last change (`null` without a copy). Empty (`"notebooks": []`) while the folder has none.
+
+### `POST /api/learn/open` `{"name": "01-lyden"}`
+
+Copies the notebook to `<work>/notebooks/<name>.ipynb` when that copy is missing (an existing copy
+is never overwritten), then opens VS Code with the training folder as the workspace and the copy
+as the file: `open -b com.microsoft.VSCode <training> <copy>` (by bundle id, wherever VS Code
+lives), else `code <training> <copy>` with a `code` command on the `PATH`. `WT_OPEN` and `WT_CODE`
+name other programs for them (`WT_CODE=""`: none; tests and the end-to-end run use stand-ins and
+never open VS Code). `training/.vscode/settings.json` makes the workbench's `.venv` the
+interpreter and the notebook's own folder its working folder. Answers `{"notebook": <as in the
+list>, "created": true, "with": "open"}` (`with`: `open` or `code`). Errors: `unknown` (404, no
+such notebook), `no-vscode` (409: neither way found VS Code; the copy is made all the same).
+
+### `POST /api/learn/reset` `{"name": "01-lyden"}`
+
+"Start forfra": the working copy becomes the original again. The copy it replaces is kept as
+`<work>/notebooks/.replaced/<name>-<time>.ipynb`. Answers `{"notebook": ..., "kept": "<that
+path>"}` (`kept` is `null` when there was no copy; then one is made). 404 `unknown`.
 
 ## Versions
 
@@ -767,8 +859,9 @@ phone returns to normal), jobs are stopped, then it exits.
   earlier build is served with a warning; with none it exits 1.
 - Every path is a flag, so tests and the end-to-end run use temporary folders: `--recordings`,
   `--pilot-dir`, `--sentences`, `--plan`, `--exam-file`, `--pilot-sentences`, `--spelling`,
-  `--configs`, `--journal`, `--dist`, `--app-bin`, `--app-url-file` (the app's link with its
-  token goes to that file instead of a handoff). The work folder is `WT_WORK_DIR`.
+  `--configs`, `--journal`, `--notebooks`, `--dist`, `--app-bin`, `--app-url-file` (the app's
+  link with its token goes to that file instead of a handoff). The work folder is `WT_WORK_DIR`.
+  `WT_OPEN` and `WT_CODE` replace the programs that open VS Code (see Lær det).
 
 `wt-train studio --install-app` builds "WalkieTalkey Værksted.app" in `~/Applications` (see
 `training/studio/launcher/`).

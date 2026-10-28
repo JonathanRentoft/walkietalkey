@@ -40,6 +40,9 @@ minutes, not after hours of recording.
 
 Pilot takes are never trained on: the dataset builder never reads ``pilot/``, and its
 leakage check refuses any pilot sentence, take or file in a split (``dataset.py``).
+
+Run 11: the page is in Danish, like Værkstedet, with Danish numbers ("15,79 %", "−38,2 dBFS"),
+and so are a setup's notes (``setup_notes``), which Værkstedet shows beside its charts.
 """
 
 from __future__ import annotations
@@ -57,14 +60,21 @@ from . import audiostats, console, paths, per_condition, tracking
 from .align import align
 from .audio import file_sha256
 from .conditions import Condition, condition, condition_id
-from .htmlpage import LEGEND, Raw, audio_tag, cards, db, diff_html, esc, page, pct, table
+from .htmlpage import LEGEND, Raw, audio_tag, cards, db, diff_html, esc, num, page, pct, table, when as when_da
 from .metrics import summarize
 from .recorder.checks import LIMITS
 from .recorder.takes import REDO_REASON, SAFE_SETUP, SESSIONS_LOG, TakeStore, review_status
 from .sentences import Sentence, load_sentences
+from .studio.labels import setup_label
 
 PHONE_PREFIXES = ("iphone", "phone", "android")
 WHISPER = "whisper"
+# TODO(copy): run 11 drafted every Danish string in this file (the pilot page and its notes).
+# The recorder's checks, as a setup's notes count them ("optageren markerede 3 forvrængede").
+FLAGGED = {"quiet": "for svage", "clipped": "forvrængede", "cut": "skåret af", "silent": "uden tale",
+           "short": "for korte", "gaps": "med huller", "loud": "kraftige", "noisy": "med støj",
+           "mismatch": "med noget andet hørt", "error": "med fejl i tjekket"}
+KINDS = {"terms": "med fagord", "plain": "almindeligt dansk"}
 
 
 # --- setups --------------------------------------------------------------------------
@@ -85,6 +95,11 @@ class Setup:
     def describe(self) -> str:
         where = "the phone" if self.device == "phone" else "the Mac's input"
         return f"{where}, {'whispered' if self.style == WHISPER else 'normal voice'}"
+
+    def describe_da(self) -> str:
+        """The page's words for it: "telefonen, hvisket", "Mac'ens input, almindelig stemme"."""
+        where = "telefonen" if self.device == "phone" else "Mac'ens input"
+        return f"{where}, {'hvisket' if self.style == WHISPER else 'almindelig stemme'}"
 
 
 def parse_setup(name: str) -> Setup:
@@ -229,18 +244,19 @@ def setup_notes(style: str, audio: dict, scores: dict, flagged: dict[str, int]) 
     clips = audio.get("clips", 0)
     out = []
     if clips and audio["level_dbfs"] < limits.quiet_dbfs:
-        out.append(f"quiet: speech at {audio['level_dbfs']:.1f} dBFS, below the recorder's {limits.quiet_dbfs:.0f} "
-                   f"dBFS for a {'whisper' if style == WHISPER else 'normal voice'}")
+        out.append(f"svag: talen ligger på {num(audio['level_dbfs'], 1)} dBFS, under optagerens "
+                   f"{num(limits.quiet_dbfs, 0)} dBFS for {'hvisken' if style == WHISPER else 'almindelig stemme'}")
     if audio.get("clipped_clips"):
-        out.append(f"clipped in {audio['clipped_clips']} of {clips} clips")
+        out.append(f"forvrænget i {audio['clipped_clips']} af {clips} klip")
     if audio.get("cut_clips"):
-        out.append(f"speech at the very start or end in {audio['cut_clips']} clips (start sooner, stop later)")
+        out.append(f"tale helt i starten eller slutningen i {audio['cut_clips']} klip (start før, stop senere)")
     if audio.get("silent_clips"):
-        out.append(f"no speech found in {audio['silent_clips']} clips")
+        out.append(f"ingen tale fundet i {audio['silent_clips']} klip")
     if scores.get("failed"):
-        out.append(f"{scores['failed']} clips failed in the app")
+        out.append(f"{scores['failed']} klip fejlede i appen")
     if flagged:
-        out.append("the recorder flagged " + ", ".join(f"{n} {problem}" for problem, n in sorted(flagged.items())))
+        out.append("optageren markerede " + ", ".join(f"{n} {FLAGGED.get(problem, problem)}"
+                                                       for problem, n in sorted(flagged.items())))
     return out
 
 
@@ -298,20 +314,27 @@ def metrics_for_logging(result: dict) -> dict[str, float]:
 def _terms(s: dict) -> str:
     if not s["terms"]:
         return "–"
-    return f"{s['terms_strict']} of {s['terms']} (any form {s['terms_lenient']})"
+    return Raw(f'<span style="white-space:nowrap">{s["terms_strict"]} af {s["terms"]}</span><br>'
+               f'<span class="muted" style="white-space:nowrap">i enhver form: {s["terms_lenient"]}</span>')
+
+
+def _label(name: str) -> str:
+    """A setup as Værkstedet names it: "iPhone, hvisket"."""
+    return setup_label(name, parse_setup(name).style)
 
 
 def _setup_table(result: dict) -> str:
-    headers = ["Setup", "Microphone", "Clips", "WER", "CER", "Terms right", "Speech level", "Peak", "Noise floor",
-               "SNR", "Clipped", "Length", "Notes"]
+    headers = ["Opsætning", "Mikrofon", "Klip", "WER", "CER", "Fagord rigtige", "Taleniveau", "Top", "Støjgulv",
+               "SNR", "Forvrænget", "Længde", "Noter"]
     rows = []
     for name, s in result["setups"].items():
         sc, au = s["scores"], s["audio"]
-        rows.append([Raw(f'<b style="white-space:nowrap">{esc(name)}</b><br><span class="muted">{esc(parse_setup(name).describe())}</span>'),
+        rows.append([Raw(f'<b style="white-space:nowrap">{esc(_label(name))}</b><br><span class="muted">'
+                         f'<code>{esc(name)}</code>, {esc(parse_setup(name).describe_da())}</span>'),
                      ", ".join(s["microphones"]) or "–", sc["n"], pct(sc["wer"]), pct(sc["cer"]), _terms(sc),
                      db(au["level_dbfs"]), db(au["peak_dbfs"]), db(au["noise_dbfs"]), db(au["snr_db"], "dB"),
-                     f"{au['clipped_clips']} of {au['clips']}", f"{au['seconds']:.1f} s",
-                     "; ".join(s["notes"]) or "none"])
+                     f"{au['clipped_clips']} af {au['clips']}", f"{num(au['seconds'], 1)} s",
+                     "; ".join(s["notes"]) or "ingen"])
     return table(headers, rows, numeric=(2, 3, 4, 6, 7, 8, 9, 10, 11))
 
 
@@ -321,22 +344,23 @@ def _clip(row: dict, wav: str) -> str:
     wer = errors / row["ref_words"] if row["ref_words"] else 0.0
     flags = []
     if au["clipped_samples"]:
-        flags.append("clipped")
+        flags.append("forvrænget")
     if au["cut_start"] or au["cut_end"]:
-        flags.append("speech at the edge")
+        flags.append("tale ved kanten")
     if au["silent"]:
-        flags.append("no speech found")
-    flags += [f"recorder: {p}" for p in row.get("recorder_problems") or []]
-    head = (f"<header><b>{esc(row['sentence'])}</b><span>{esc(row.get('kind') or '')}</span>"
-            f"<span>WER {pct(wer, 1)} ({errors} of {row['ref_words']} words)</span>"
-            f"<span>level {db(au['level_dbfs'])} · noise {db(au['noise_dbfs'])} · SNR {db(au['snr_db'], 'dB')} · "
-            f"peak {db(au['peak_dbfs'])} · {au['seconds']:.1f} s</span>"
+        flags.append("ingen tale fundet")
+    flags += [f"optageren: {FLAGGED.get(p, p)}" for p in row.get("recorder_problems") or []]
+    kind = row.get("kind") or ""
+    head = (f"<header><b>{esc(row['sentence'])}</b><span>{esc(KINDS.get(kind, kind))}</span>"
+            f"<span>WER {pct(wer, 1)} ({errors} af {row['ref_words']} ord)</span>"
+            f"<span>niveau {db(au['level_dbfs'])} · støj {db(au['noise_dbfs'])} · SNR {db(au['snr_db'], 'dB')} · "
+            f"top {db(au['peak_dbfs'])} · {num(au['seconds'], 1)} s</span>"
             + "".join(f'<span class="worse">{esc(f)}</span>' for f in flags) + "</header>")
     ops = align(row["ref_norm"].split(), row["hyp_norm"].split())
     wrote = esc(row["hypothesis"]) if not row.get("error") else f'<span class="worse">{esc(row["error"])}</span>'
-    details = [("Read", esc(row["reference"])), ("Edda wrote", wrote), ("Diff", diff_html(ops) or "–")]
+    details = [("Læst op", esc(row["reference"])), ("Edda skrev", wrote), ("Forskel", diff_html(ops) or "–")]
     if row.get("terms_missed"):
-        details.append(("Terms missed", esc(", ".join(row["terms_missed"]))))
+        details.append(("Manglende fagord", esc(", ".join(row["terms_missed"]))))
     dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in details)
     return f'<div class="clip">{head}{audio_tag(wav)}<dl>{dl}</dl></div>'
 
@@ -347,32 +371,34 @@ def render(result: dict, *, model: str, app: str, when: datetime, sentences_csv:
     clips = sum(s["scores"]["n"] for s in setups.values())
     best = min(setups.items(), key=lambda kv: (kv[1]["scores"]["wer"], kv[0]))
     quietest_room = max(setups.items(), key=lambda kv: (kv[1]["audio"]["snr_db"], kv[0]))
-    body = [cards([("setups", str(len(setups))), ("clips", str(clips)),
-                   ("lowest WER", f"{best[0]}: {pct(best[1]['scores']['wer'], 1)}"),
-                   ("highest SNR", f"{quietest_room[0]}: {db(quietest_room[1]['audio']['snr_db'], 'dB')}")])]
-    body.append("<h2>Setups</h2>")
+    body = [cards([("Opsætninger", str(len(setups))), ("Klip", str(clips)),
+                   ("Laveste WER", f"{_label(best[0])}: {pct(best[1]['scores']['wer'], 1)}"),
+                   ("Højeste SNR", f"{_label(quietest_room[0])}: {db(quietest_room[1]['audio']['snr_db'], 'dB')}")])]
+    body.append("<h2>Opsætningerne</h2>")
     body.append(_setup_table(result))
     if result["skipped"]:
-        body.append(f'<p class="muted">No takes yet, so skipped: {esc(", ".join(result["skipped"]))}.</p>')
+        body.append(f'<p class="muted">Ingen optagelser endnu, så sprunget over: {esc(", ".join(result["skipped"]))}.</p>')
     body.append(
-        '<p class="muted">WER and CER: word and character errors against the sentence as read, after the accuracy '
-        "job's normaliser. Terms right: English terms in the same form (spelling.yaml); any form counts any ending. "
-        "Speech level: the 97th percentile 10 ms frame, the recorder's measure (median over the clips). Noise floor: "
-        "the median frame in the pauses. SNR: level minus noise. Peak: the loudest sample of any clip. Clipped: clips "
-        "with samples at full scale. Length: all clips together. Notes use the recorder's limits for the style.</p>")
-    body.append("<h2>Every clip</h2>")
+        '<p class="muted">WER og CER: ord- og tegnfejl mod sætningen, som den blev læst op, efter nøjagtighedsjobbets '
+        "normalisering. Fagord rigtige: engelske fagord i samme form (spelling.yaml); i enhver form tæller enhver "
+        "endelse. Taleniveau: den 97. percentil af 10 ms-stykker, optagerens mål (medianen over klippene). Støjgulv: "
+        "medianen af stykkerne i pauserne. SNR: niveau minus støj. Top: den kraftigste prøve i et klip. Forvrænget: "
+        "klip med prøver helt oppe ved loftet. Længde: alle klip tilsammen. Noterne bruger optagerens grænser for "
+        "stemmen.</p>")
+    body.append("<h2>Alle klip</h2>")
     body.append(LEGEND)
     wavs = {r["id"]: r["wav"] for r in result["rows"]}
     for name, s in setups.items():
-        mics = ", ".join(s["microphones"]) or "microphone not named"
-        body.append(f"<h3>{esc(name)}</h3><p class=\"sub\">{esc(parse_setup(name).describe())} · {esc(mics)} · "
-                    f"WER {pct(s['scores']['wer'])} · speech {db(s['audio']['level_dbfs'])} · "
+        mics = ", ".join(s["microphones"]) or "mikrofonen har intet navn"
+        body.append(f"<h3>{esc(_label(name))}</h3><p class=\"sub\"><code>{esc(name)}</code>, "
+                    f"{esc(parse_setup(name).describe_da())} · {esc(mics)} · "
+                    f"WER {pct(s['scores']['wer'])} · tale {db(s['audio']['level_dbfs'])} · "
                     f"SNR {db(s['audio']['snr_db'], 'dB')}</p>")
         for row in (r for r in result["rows"] if r["setup"] == name):
             body.append(_clip(row, wavs[row["id"]]))
-    subtitle = (f"{when:%Y-%m-%d %H:%M} · the shipped Edda ({model}) through the app ({app}) · "
-                f"{clips} clips of {sentences_csv.name}, never trained on")
-    return page("Pilot: the recording setups compared", "".join(body), subtitle)
+    subtitle = (f"{when_da(when)} · den Edda, appen leveres med ({model}), gennem appen ({app}) · "
+                f"{clips} klip fra {sentences_csv.name}, aldrig brugt til træning")
+    return page("Piloten: opsætningerne sammenlignet", "".join(body), subtitle)
 
 
 def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
@@ -407,7 +433,7 @@ def report_main(argv: list[str], *, transcriber=None, log=console.log) -> dict:
         # Nothing to transcribe: the app is not started at all.
         log(f"no pilot takes in {a.pilot_dir}; record a setup with: wt-train pilot record --setup <name>")
         return {"exit_code": 1, "page": None, "setups": {}, "rows": [], "skipped": names or known_setups(a.pilot_dir)}
-    app_name = "a stand-in transcriber"
+    app_name = "en stedfortræder for appen"
     if transcriber is None:
         from .app import find_app
         from .evaluate import AppTranscriber

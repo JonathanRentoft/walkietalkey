@@ -12,7 +12,7 @@ import fake_app
 from conftest import write_fleurs
 from fake_studio import App, get, good, post, request, start_server, stop_server, write_places
 from wt_train import paths
-from wt_train.studio import notebook
+from wt_train.studio import labels, notebook
 from wt_train.studio.training import read_progress
 
 
@@ -106,7 +106,9 @@ def test_every_setting_of_a_config_with_its_label(server):
     assert by_key["training.learning_rate"] == {"key": "training.learning_rate", "section": "training",
                                                 "value": 0.0001,
                                                 "label": "Hvor store skridt modellen tager, når den lærer",
-                                                "section_label": "Træning"}
+                                                "section_label": "Træning",
+                                                "help": labels.ESSENTIALS["training.learning_rate"]}
+    assert by_key["data.seed"]["help"] is None
     assert by_key["training.epochs"]["value"] == 1 and by_key["name"]["section"] is None
     assert by_key["lora.decoder"]["value"] == ["self_attn", "cross_attn", "ffn"]
     assert all(s["label"] != s["key"] for s in tiny["settings"])

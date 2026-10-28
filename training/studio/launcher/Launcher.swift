@@ -18,7 +18,7 @@ import AppKit
 import Darwin
 import Foundation
 
-// TODO(copy): every Danish string the launcher shows (this enum) is a draft.
+// Every Danish string the launcher shows (approved by the owner in run 11).
 enum Words {
     static let open = "Åbn Værkstedet"
     static let quit = "Afslut WalkieTalkey Værksted"

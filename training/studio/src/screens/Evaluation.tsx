@@ -1,5 +1,7 @@
 /* Evaluering: the MLflow runs with their key numbers, a run's report inside Værkstedet, and two
-   runs compared (the --vs page). Reports open on the report screen (Report.tsx). */
+   runs compared (the --vs page). Reports open on the report screen (Report.tsx). Run 11: each run
+   under its readable name (the slug small, for the command line), grouped by the normaliser that
+   counted it, since run 8's fix on 26 October changed every number without changing the model. */
 import { useState } from "react";
 import { ApiError, api, paths } from "../api/client";
 import { sleep, usePoll, useResource } from "../api/hooks";
@@ -7,9 +9,11 @@ import type { EvalRun, Job, Overview, ReportAnswer } from "../api/types";
 import {
   Button,
   Card,
+  Empty,
   ErrorBox,
   JobPanel,
   Loading,
+  Notice,
   PageHeader,
   Section,
 } from "../components/ui";
@@ -18,6 +22,31 @@ import { navigate, reportHref } from "../router";
 import { errorText, S } from "../strings";
 
 const E = S.evaluation;
+/** A first evaluation that needs nothing but the workbench: base Edda on FLEURS (a command, not copy). */
+const EVAL_EXAMPLE = "wt-train eval --backend hf";
+
+export interface Group {
+  /** The normaliser's version; null for one without a number. */
+  version: number | null;
+  runs: EvalRun[];
+}
+
+/** The runs by normaliser, the newest normaliser first (one without a number last), each group
+    newest run first as the server lists them. */
+export function byNormaliser(runs: EvalRun[]): Group[] {
+  const groups = new Map<number | null, EvalRun[]>();
+  for (const r of runs) {
+    const v = typeof r.normaliser === "number" ? r.normaliser : null;
+    groups.set(v, [...(groups.get(v) ?? []), r]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === null ? 1 : b === null ? -1 : b - a))
+    .map(([version, list]) => ({ version, runs: list }));
+}
+
+function groupTitle(version: number | null): string {
+  return version === null ? E.groupUnknown : E.group(int(version));
+}
 
 /** WER with its 95 % interval as a dot and whisker on a scale shared by every row. */
 function IntervalMark({ run, max }: { run: EvalRun; max: number }) {
@@ -113,13 +142,33 @@ export function EvaluationScreen() {
   }
 
   const list = runs.data ?? [];
+  const groups = byNormaliser(list);
   // A clean scale shared by every row: 0 to the next 5 % above the widest interval.
   const max =
     Math.ceil(
       (Math.max(0.05, ...list.map((r) => r.wer_ci?.[1] ?? r.wer ?? 0)) * 100) /
         5,
     ) * 0.05;
-  const label = (r: EvalRun) => `${r.name} (${pct(r.wer, 1)})`;
+  const label = (r: EvalRun) => `${r.title ?? r.name} (${pct(r.wer, 1)})`;
+  const runA = list.find((r) => r.id === a);
+  const runB = list.find((r) => r.id === b);
+  const mixed =
+    !!runA && !!runB && a !== b && runA.normaliser !== runB.normaliser;
+
+  const picker = (value: string, set: (v: string) => void) => (
+    <select value={value} onChange={(e) => set(e.target.value)}>
+      <option value="">{E.choose}</option>
+      {groups.map((g) => (
+        <optgroup key={String(g.version)} label={groupTitle(g.version)}>
+          {g.runs.map((r) => (
+            <option key={r.id} value={r.id}>
+              {label(r)}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
 
   return (
     <>
@@ -134,101 +183,111 @@ export function EvaluationScreen() {
       {!runs.data ? (
         !runs.error && <Loading />
       ) : list.length === 0 ? (
-        <p className="empty">{E.empty}</p>
+        <Empty what={E.emptyWhat} when={E.emptyWhen} code={EVAL_EXAMPLE} />
       ) : (
         <>
-          <Card className="table-card">
-            <table className="table table--eval">
-              <thead>
-                <tr>
-                  <th scope="col">{E.colRun}</th>
-                  <th scope="col">{E.colDataset}</th>
-                  <th scope="col" className="num">
-                    {E.colClips}
-                  </th>
-                  <th scope="col" className="num">
-                    {E.colWer}
-                  </th>
-                  <th scope="col" className="ci-col">
-                    {E.colInterval}
-                    <span className="run-meta">{E.scale(pct(max, 0))}</span>
-                  </th>
-                  <th scope="col" className="num">
-                    {E.colCer}
-                  </th>
-                  <th scope="col">
-                    <span className="sr">{E.open}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((r) => (
-                  <tr key={r.id}>
-                    <th scope="row">
-                      <span className="run-name">{r.name}</span>
-                      <span className="run-meta">
-                        {dateTime(r.date)}
-                        {r.model && <> · {r.model}</>}
-                        {r.change && (
-                          <>
-                            {" "}
-                            · <code>{r.change}</code>
-                          </>
-                        )}
-                      </span>
-                    </th>
-                    <td>{r.dataset ?? S.common.none}</td>
-                    <td className="num">
-                      {r.clips !== null ? int(r.clips) : S.common.none}
-                    </td>
-                    <td className="num">
-                      <strong>{pct(r.wer)}</strong>
-                      <span className="run-meta">{interval(r.wer_ci)}</span>
-                    </td>
-                    <td className="ci-col">
-                      <IntervalMark run={r} max={max} />
-                    </td>
-                    <td className="num">{pct(r.cer)}</td>
-                    <td className="actions">
-                      <Button
-                        size="sm"
-                        onClick={() => open(r)}
-                        disabled={opening !== null}
-                        busy={opening === r.id}
-                        aria-label={E.openLabel(r.name)}
-                      >
-                        {opening === r.id ? E.opening : E.open}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+          {groups.length > 1 && (
+            <Notice>
+              <p>
+                <strong className="block">{E.fixTitle}</strong>
+                {E.fixNote}
+              </p>
+            </Notice>
+          )}
+          {groups.map((g) => (
+            <Section
+              key={String(g.version)}
+              id={`normaliser-${g.version ?? "unknown"}`}
+              title={groupTitle(g.version)}
+              help={
+                g.version === null
+                  ? E.unknownHelp
+                  : (E.since[String(g.version)] ?? undefined)
+              }
+              className="eval-group"
+            >
+              <Card className="table-card">
+                <table className="table table--eval">
+                  <thead>
+                    <tr>
+                      <th scope="col">{E.colRun}</th>
+                      <th scope="col" className="num">
+                        {E.colClips}
+                      </th>
+                      <th scope="col" className="num">
+                        {E.colWer}
+                      </th>
+                      <th scope="col" className="ci-col">
+                        {E.colInterval}
+                        <span className="run-meta">{E.scale(pct(max, 0))}</span>
+                      </th>
+                      <th scope="col" className="num">
+                        {E.colCer}
+                      </th>
+                      <th scope="col">
+                        <span className="sr">{E.open}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.runs.map((r) => (
+                      <tr key={r.id}>
+                        <th scope="row">
+                          <span className="run-name">{r.title ?? r.name}</span>
+                          <span className="run-meta">
+                            {dateTime(r.date)}
+                            {r.title && (
+                              <>
+                                {" · "}
+                                <code
+                                  className="run-slug"
+                                  title={E.slug(r.name)}
+                                >
+                                  {r.name}
+                                </code>
+                              </>
+                            )}
+                          </span>
+                        </th>
+                        <td className="num">
+                          {r.clips !== null ? int(r.clips) : S.common.none}
+                        </td>
+                        <td className="num">
+                          <strong>{pct(r.wer)}</strong>
+                          <span className="run-meta">{interval(r.wer_ci)}</span>
+                        </td>
+                        <td className="ci-col">
+                          <IntervalMark run={r} max={max} />
+                        </td>
+                        <td className="num">{pct(r.cer)}</td>
+                        <td className="actions">
+                          <Button
+                            size="sm"
+                            onClick={() => open(r)}
+                            disabled={opening !== null}
+                            busy={opening === r.id}
+                            aria-label={E.openLabel(r.title ?? r.name)}
+                          >
+                            {opening === r.id ? E.opening : E.open}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </Section>
+          ))}
 
           <Section id="compare" title={E.compareTitle} help={E.compareHelp}>
             <Card className="compare">
               <label className="field">
                 <span>{E.a}</span>
-                <select value={a} onChange={(e) => setA(e.target.value)}>
-                  <option value="">{E.choose}</option>
-                  {list.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {label(r)}
-                    </option>
-                  ))}
-                </select>
+                {picker(a, setA)}
               </label>
               <label className="field">
                 <span>{E.b}</span>
-                <select value={b} onChange={(e) => setB(e.target.value)}>
-                  <option value="">{E.choose}</option>
-                  {list.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {label(r)}
-                    </option>
-                  ))}
-                </select>
+                {picker(b, setB)}
               </label>
               <Button
                 variant="primary"
@@ -239,6 +298,11 @@ export function EvaluationScreen() {
                 {opening === "compare" ? E.comparing : E.compare}
               </Button>
               {a && b && a === b && <p className="inline-error">{E.sameRun}</p>}
+              {mixed && (
+                <p className="compare-note" role="status">
+                  {E.mixed}
+                </p>
+              )}
             </Card>
           </Section>
         </>

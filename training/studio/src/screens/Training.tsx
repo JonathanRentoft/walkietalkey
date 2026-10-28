@@ -1,5 +1,7 @@
 /* Træning: choose a config, see every setting with its Danish label, start, and watch the train
-   and validation loss draw live; stop with a confirm. Earlier runs below. */
+   and validation loss draw live; stop with a confirm. Earlier runs below. Run 11: the four
+   settings a beginner touches first come first, each saying what turning it up or down does;
+   every other setting is under "Alle indstillinger", folded. */
 import { useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "../api/client";
 import { usePoll, useResource } from "../api/hooks";
@@ -15,6 +17,7 @@ import { IconAwake, IconStop } from "../components/icons";
 import {
   Button,
   Card,
+  Empty,
   ErrorBox,
   JobPanel,
   Loading,
@@ -65,6 +68,56 @@ export function grouped(
     m.set(key, group);
   }
   return [...m.values()];
+}
+
+/** The config's four first settings in their order, and every other one. */
+export function split(config: TrainingConfig): {
+  first: ConfigSetting[];
+  rest: ConfigSetting[];
+} {
+  const keys = config.essentials ?? [];
+  const byKey = new Map(config.settings.map((s) => [s.key, s]));
+  const first = keys.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
+  const chosen = new Set(first.map((s) => s.key));
+  return { first, rest: config.settings.filter((s) => !chosen.has(s.key)) };
+}
+
+function Essentials({ settings }: { settings: ConfigSetting[] }) {
+  return (
+    <ul className="essentials">
+      {settings.map((s) => (
+        <li key={s.key} className="essential">
+          <p className="essential-label">{s.label}</p>
+          <p className="essential-value">{settingValue(s.value)}</p>
+          <code className="setting-key">{s.key}</code>
+          {s.help && <p className="essential-help">{s.help}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AllSettings({ settings }: { settings: ConfigSetting[] }) {
+  return (
+    <div className="settings">
+      {grouped(settings).map(({ key: section, title, items }) => (
+        <div key={section} className="settings-group">
+          <h3>{title}</h3>
+          <dl>
+            {items.map((s) => (
+              <div key={s.key} className="setting">
+                <dt>
+                  {s.label}
+                  <code className="setting-key">{s.key}</code>
+                </dt>
+                <dd>{settingValue(s.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function TrainingScreen() {
@@ -166,26 +219,26 @@ export function TrainingScreen() {
                 </p>
               </div>
             )}
-            <div className="settings">
-              {grouped(config.settings).map(
-                ({ key: section, title, items }) => (
-                  <div key={section} className="settings-group">
-                    <h3>{title}</h3>
-                    <dl>
-                      {items.map((s) => (
-                        <div key={s.key} className="setting">
-                          <dt>
-                            {s.label}
-                            <code className="setting-key">{s.key}</code>
-                          </dt>
-                          <dd>{settingValue(s.value)}</dd>
-                        </div>
-                      ))}
-                    </dl>
+            {(() => {
+              const { first, rest } = split(config);
+              if (first.length === 0) return <AllSettings settings={rest} />;
+              return (
+                <>
+                  <div className="essentials-head">
+                    <h3>{T.essentials}</h3>
+                    <p className="help">{T.essentialsHelp(config.file)}</p>
                   </div>
-                ),
-              )}
-            </div>
+                  <Essentials settings={first} />
+                  {rest.length > 0 && (
+                    <details className="all-settings">
+                      <summary>{T.allSettings(int(rest.length))}</summary>
+                      <p className="help">{T.allSettingsHelp}</p>
+                      <AllSettings settings={rest} />
+                    </details>
+                  )}
+                </>
+              );
+            })()}
           </Card>
         )}
       </Section>
@@ -471,7 +524,7 @@ function Runs({
   return (
     <Section id="runs" title={T.runsTitle}>
       {runs.length === 0 ? (
-        <p className="empty">{T.runsEmpty}</p>
+        <Empty what={T.runsEmptyWhat} when={T.runsEmptyWhen} />
       ) : (
         <Card className="table-card">
           <table className="table">

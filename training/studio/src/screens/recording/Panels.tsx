@@ -13,6 +13,7 @@ import { Bars, Legend, type BarRow } from "../../components/charts";
 import {
   Button,
   Card,
+  Empty,
   ErrorBox,
   JobPanel,
   Loading,
@@ -79,6 +80,9 @@ export function ProgressPanel({
               int(progress.sentences),
             )}
           </p>
+          {progress.conditions.every((c) => c.done === 0) && (
+            <p className="help">{R.empty.progress}</p>
+          )}
         </Card>
       )}
     </Section>
@@ -320,7 +324,7 @@ export function PilotPanel({
               {cmp.setups.some((s) => s.notes.length > 0) && (
                 <details className="notes">
                   <summary>{R.pilotNotes}</summary>
-                  <ul lang="en">
+                  <ul>
                     {cmp.setups.flatMap((s) =>
                       s.notes.map((n, i) => (
                         <li key={`${s.name}-${i}`}>
@@ -336,7 +340,7 @@ export function PilotPanel({
               )}
             </Card>
           ) : (
-            <p className="empty">{R.pilotNone}</p>
+            <Empty what={R.empty.pilot} when={R.empty.pilotWhen} />
           )}
         </>
       )}

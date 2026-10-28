@@ -11,6 +11,7 @@ import { IconArrowLeft, IconCheck } from "../components/icons";
 import {
   Button,
   Card,
+  Empty,
   ErrorBox,
   Loading,
   PageHeader,
@@ -90,7 +91,10 @@ function JournalList() {
         <>
           <Section id="pages" title={J.pages}>
             {j.pages.length === 0 ? (
-              <p className="empty">{J.pagesEmpty}</p>
+              <Empty
+                what={J.pagesEmptyWhat}
+                when={j.runs.length > 0 ? J.pagesEmptyWhen : J.pagesEmptyNoRuns}
+              />
             ) : (
               <ul className="page-list">
                 {j.pages.map((p) => (
@@ -124,7 +128,9 @@ function JournalList() {
             )}
           </Section>
           <Section id="runs" title={J.runs}>
-            {without.length === 0 ? (
+            {j.runs.length === 0 ? (
+              <Empty what={J.runsNoneWhat} when={J.runsNoneWhen} />
+            ) : without.length === 0 ? (
               <p className="empty">{J.runsEmpty}</p>
             ) : (
               <Card className="table-card">
