@@ -109,10 +109,23 @@ def test_what_spelling_yaml_covers_is_left_out(spelling):
 
 def test_a_phrase_needs_two_hits_and_no_punctuation_between():
     words, _ = found(["Vi har code review her.", "Den code review tager tid.", "Se den code. Review den."])
-    assert words["code review"].count == 2 and words["code"].count == 3
+    assert words["code review"].count == 2
+    # Inside the listed phrase, its words are the phrase: each counts only where said on its own.
+    assert words["code"].count == 1 and words["review"].count == 1
     # Only English-looking words make a phrase: "flag" is Danish.
     words, _ = found(["En feature flag her.", "Den feature flag igen."])
     assert "feature flag" not in words and words["feature"].count == 2
+
+
+def test_a_word_said_only_inside_a_listed_phrase_is_not_listed_again():
+    words, _ = found(["Vi har code freeze nu.", "Husk code freeze i morgen.", "Er der code freeze?",
+                      "Den load balancer er nede.", "Vores load balancer svarer ikke.",
+                      "Kør load balancer config nu.", "Ret load balancer config igen."])
+    assert words["code freeze"].count == 3 and "code" not in words and "freeze" not in words
+    # A two-word phrase inside a listed three-word one counts only on its own too.
+    assert words["load balancer config"].count == 2 and words["load balancer"].count == 2
+    assert "load" not in words and "balancer" not in words and "config" not in words
+    assert words["load balancer"].dictations == 2
 
 
 def test_an_apostrophe_ending_belongs_to_the_word():

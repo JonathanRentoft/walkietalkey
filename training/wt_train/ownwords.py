@@ -29,7 +29,10 @@ How a word is judged
       (PR'en, API'et), a bare one when the stem is seen on its own too (Dockeren with
       Docker), and -en or -et after a vowel always (Grafanaen with Grafana).
     * A phrase is two or three English-looking words next to each other (no punctuation
-      between), said at least :data:`MIN_PHRASE` times.
+      between), said at least :data:`MIN_PHRASE` times. A word, or a two-word phrase, said only
+      inside a listed longer phrase is not listed again: "code freeze" said eight times lists
+      neither "code" nor "freeze" unless he also says them on their own, and then with only
+      those times.
     * Whatever ``spelling.yaml`` covers is left out: its forms and ``also`` spellings are
       cut out of each text before anything is counted, case-insensitive, and a word or
       phrase that is exactly one of them is dropped.
@@ -309,35 +312,62 @@ def find(texts: Iterable[str], vocab: frozenset[str] | set[str], spelling=None, 
             if looks_english(t.base, vocab, at_start=t.at_start):
                 keys.add(_fold(_stem(t.base, english)))
 
-    counts: Counter = Counter()
-    where: dict[str, set[int]] = defaultdict(set)
     spelled: dict[str, Counter] = defaultdict(Counter)
-    phrases: Counter = Counter()
-    phrase_where: dict[tuple, set[int]] = defaultdict(set)
-    for n, d in enumerate(dictations):
+    # Each dictation's runs: English-looking words next to each other, no punctuation between.
+    runs: list[list[list[str]]] = []
+    for d in dictations:
+        mine: list[list[str]] = []
         run: list[str] = []
         for t in d:
             stem = _stem(t.base, english)
             key = _fold(stem)
             if key not in keys or is_danish(t.base, vocab):
+                if run:
+                    mine.append(run)
                 run = []
                 continue
-            counts[key] += 1
-            where[key].add(n)
             spelled[key][stem] += 1
-            run = (run if t.joined else []) + [key]
+            if run and not t.joined:
+                mine.append(run)
+                run = []
+            run.append(key)
+        if run:
+            mine.append(run)
+        runs.append(mine)
+
+    def windows(run: list[str], length: int):
+        return (tuple(run[i:i + length]) for i in range(len(run) - length + 1))
+
+    phrases: Counter = Counter()
+    for mine in runs:
+        for run in mine:
             for length in PHRASE_LENGTHS:
-                if len(run) >= length:
-                    phrase = tuple(run[-length:])
-                    phrases[phrase] += 1
-                    phrase_where[phrase].add(n)
+                phrases.update(windows(run, length))
+    kept = {p for p, c in phrases.items() if c >= min_phrase}
+
+    # A word or a phrase counts where it is said on its own: inside a listed longer phrase
+    # ("code" in "code freeze") it is that phrase, which is listed already.
+    counts: Counter = Counter()
+    where: dict[tuple, set[int]] = defaultdict(set)
+    for n, mine in enumerate(runs):
+        for run in mine:
+            longest = [1] * len(run)
+            for length in PHRASE_LENGTHS:
+                for i, window in enumerate(windows(run, length)):
+                    if window in kept:
+                        for j in range(i, i + length):
+                            longest[j] = max(longest[j], length)
+            for length in (1, *PHRASE_LENGTHS):
+                for i, window in enumerate(windows(run, length)):
+                    if (length == 1 or window in kept) and min(longest[i:i + length]) == length:
+                        counts[window] += 1
+                        where[window].add(n)
 
     def shown(key: str) -> str:
         return spelled[key].most_common(1)[0][0]
 
-    found = [Found(shown(k), c, len(where[k])) for k, c in counts.items()]
-    found += [Found(" ".join(shown(k) for k in p), c, len(phrase_where[p]), phrase=True)
-              for p, c in phrases.items() if c >= min_phrase]
+    found = [Found(" ".join(shown(k) for k in w), c, len(where[w]), phrase=len(w) > 1)
+             for w, c in counts.items() if len(w) == 1 or c >= min_phrase]
     if spelling is not None:
         found = [f for f in found if not spelling.covers(f.word)]
     found.sort(key=lambda f: (-f.count, -f.dictations, _fold(f.word)))
