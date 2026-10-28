@@ -1,8 +1,8 @@
-"""What Værkstedet records from, read again whenever a file changes: the sentence list,
-the plan and its mix (``plan.ensure``, as ``wt-train record`` runs it at start), the exam
-paragraphs and the pilot sentences; and per folder of takes, which sentences have a
-current take, its length and its review (cached by the folder's modification time, so
-the progress screens stay cheap to poll).
+"""What Værkstedet records from, read again whenever a file changes: the sentence list and
+the owner's own sentences, the split record and the plan with its mix (``plan.prepare``, as
+``wt-train record`` runs it at start; run 12), the exam paragraphs and the pilot sentences;
+and per folder of takes, which sentences have a current take, its length and its review
+(cached by the folder's modification time, so the progress screens stay cheap to poll).
 """
 
 from __future__ import annotations
@@ -40,18 +40,28 @@ class Sources:
             self._cache[name] = (key, value)
         return value
 
-    def sentences(self) -> list:
-        from ..sentences import load_sentences
+    def prepared(self):
+        """Run 12: the split record, then the plan, for the list and the owner's own sentences
+        (``plan.prepare``, as ``wt-train record`` runs it at start), written back when they changed."""
+        from .. import paths, splits
+        from ..plan import mix_path, prepare
+        from ..testset import lock_path
 
-        path = self.places.sentences
-        return self._cached("sentences", (_mtime(path),), lambda: load_sentences(path))
+        p, own = self.places, paths.local_dir()
+        record = splits.record_path(p.plan)
+        key = tuple(_mtime(f) for f in (p.sentences, p.plan, mix_path(p.plan), record, splits.params_path(record),
+                                        p.spelling, lock_path(Path(p.plan).parent), own / "sentences.csv",
+                                        own / "plan.csv", own / "splits.csv"))
+        return self._cached("prepared", key, lambda: prepare(p.sentences, p.plan, spelling_path=p.spelling,
+                                                             recordings=p.recordings))
+
+    def sentences(self) -> list:
+        """The sentence list, then the owner's own sentences (``local.py``)."""
+        return self.prepared().sentences
 
     def plan(self) -> dict[str, str]:
-        """The plan for the sentence list, written back when the list changed (``plan.ensure``)."""
-        from ..plan import ensure
-
-        key = (_mtime(self.places.sentences), _mtime(self.places.plan))
-        return self._cached("plan", key, lambda: ensure(self.sentences(), self.places.plan)[0])
+        """The plan for the sentence list and the owner's own sentences."""
+        return self.prepared().plan
 
     def mix(self) -> dict[str, int]:
         from ..plan import mix_path, read_mix

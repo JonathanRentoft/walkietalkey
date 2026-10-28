@@ -48,7 +48,11 @@ def test_the_data_a_config_would_train_on(server, places):
     assert status == 200
     assert d["config"] == "tiny" and d["configs"] == ["tiny"]
     assert d["fractions"] == {"validation": 0.25, "test": 0.25}
-    assert d["sentences"] == {"total": 4, "plain": 2, "terms": 2, "recorded": 2}
+    assert d["sentences"] == {"total": 4, "plain": 2, "terms": 2, "recorded": 2, "own": 0}
+    # Run 12: the split record as the config would deal it (nothing is written by looking).
+    assert d["split"]["params"] == {"seed": 3, "validation_fraction": 0.25, "test_fraction": 0.25,
+                                    "held_out_terms": []}
+    assert sum(d["split"]["sentences"].values()) == 4 and d["split"]["locked"] is False
     pw = {c["id"]: c for c in d["conditions"]}["phone-whisper"]
     assert pw["takes"] == 2 and pw["label"] == "Telefonen, hvisket"
     assert sum(s["takes"] for s in pw["split"].values()) == 2

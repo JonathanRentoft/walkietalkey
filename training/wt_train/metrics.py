@@ -30,12 +30,19 @@ Its docstring lists the known limits.
   FLEURS is plain Danish read aloud, and what spelling.yaml finds there
   ("test", "bug") are ordinary Danish words, so a FLEURS dataset leaves every
   term number empty (``without_terms``).
+  Run 12, seen and unseen: with held-out terms (``data.held_out_terms`` of the
+  run's or build's config, never trained on), each clip also counts the terms
+  among them (``terms_unseen``, ``terms_unseen_strict``, ``terms_unseen_lenient``),
+  and a summary carries ``seen`` and ``unseen`` blocks (terms, strict and lenient
+  hits and accuracies). Both counts add up per term, so seen is the total minus
+  unseen. Without held-out terms everything is seen and there are no blocks.
 """
 
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from typing import Collection
 
 from .harness import Counts, bootstrap_ci, corpus_wer, normalize_pair, word_errors
 from .spelling import Spelling
@@ -51,8 +58,20 @@ def counts_terms(dataset: str) -> bool:
 
 
 def without_terms(summary: dict) -> dict:
-    """``summary`` with every term number empty (None): a FLEURS summary."""
-    return {**summary, **{key: None for key in TERM_KEYS}}
+    """``summary`` with every term number empty (None) and no seen/unseen blocks: a FLEURS summary."""
+    out = {k: v for k, v in summary.items() if k not in TERM_BLOCKS}
+    return {**out, **{key: None for key in TERM_KEYS}}
+
+
+# Run 12: the blocks a summary has when terms were held out.
+TERM_BLOCKS = ("seen", "unseen")
+UNSEEN_KEYS = ("terms_unseen", "terms_unseen_strict", "terms_unseen_lenient")
+
+
+def term_block(terms: int, strict: int, lenient: int) -> dict:
+    return {"terms": terms, "terms_strict": strict, "terms_lenient": lenient,
+            "term_accuracy_strict": strict / terms if terms else None,
+            "term_accuracy_lenient": lenient / terms if terms else None}
 
 
 def edit_distance(a: str, b: str) -> int:
@@ -80,11 +99,16 @@ class TermCounts:
         return TermCounts(0, 0, 0, ())
 
 
-def term_counts(spelling: Spelling | None, reference: str, hypothesis: str) -> TermCounts:
+def term_counts(spelling: Spelling | None, reference: str, hypothesis: str,
+                only: Collection[str] | None = None) -> TermCounts:
+    """The reference's terms and how many the hypothesis has; ``only`` limits it to those terms."""
     if spelling is None:
         return TermCounts.zero()
     ref = spelling.find_terms(reference)
     hyp = spelling.find_terms(spelling.apply(hypothesis))
+    if only is not None:
+        ref = [h for h in ref if h.term in only]
+        hyp = [h for h in hyp if h.term in only]
     ref_forms = Counter(h.form.casefold() for h in ref)
     hyp_forms = Counter(h.form.casefold() for h in hyp)
     ref_terms = Counter(h.term for h in ref)
@@ -104,12 +128,13 @@ def term_counts(spelling: Spelling | None, reference: str, hypothesis: str) -> T
 
 
 def score_clip(clip_id: str, reference: str, hypothesis: str, spelling: Spelling | None = None,
-               error: str | None = None) -> dict:
-    """One per-clip row: normalised texts, word and character edits, term counts."""
+               error: str | None = None, unseen: Collection[str] = ()) -> dict:
+    """One per-clip row: normalised texts, word and character edits, term counts (and, with
+    held-out terms in ``unseen``, the counts of those alone)."""
     ref_norm, hyp_norm = normalize_pair(reference, hypothesis)
     words = word_errors(ref_norm.split(), hyp_norm.split())
     terms = term_counts(spelling, reference, hypothesis)
-    return {
+    row = {
         "id": clip_id, "reference": reference, "hypothesis": hypothesis,
         "ref_norm": ref_norm, "hyp_norm": hyp_norm,
         "sub": words.sub, "del": words.dele, "ins": words.ins, "ref_words": words.ref,
@@ -117,6 +142,10 @@ def score_clip(clip_id: str, reference: str, hypothesis: str, spelling: Spelling
         "terms": terms.total, "terms_strict": terms.strict, "terms_lenient": terms.lenient,
         "terms_missed": list(terms.missed), "error": error,
     }
+    if unseen:
+        held = term_counts(spelling, reference, hypothesis, only=frozenset(unseen))
+        row.update(terms_unseen=held.total, terms_unseen_strict=held.strict, terms_unseen_lenient=held.lenient)
+    return row
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -125,7 +154,7 @@ def summarize(rows: list[dict]) -> dict:
     terms = sum(r["terms"] for r in rows)
     strict = sum(r["terms_strict"] for r in rows)
     lenient = sum(r["terms_lenient"] for r in rows)
-    return {
+    out = {
         "n": len(rows),
         "wer": corpus_wer(counts),
         "wer_ci95": list(bootstrap_ci(counts)),
@@ -139,3 +168,8 @@ def summarize(rows: list[dict]) -> dict:
         "failed": sum(1 for r in rows if r.get("error")),
         "empty": sum(1 for r in rows if not r["hypothesis"]),
     }
+    if any(UNSEEN_KEYS[0] in r for r in rows):
+        u = [sum(r.get(k, 0) for r in rows) for k in UNSEEN_KEYS]
+        out["seen"] = term_block(terms - u[0], strict - u[1], lenient - u[2])
+        out["unseen"] = term_block(*u)
+    return out

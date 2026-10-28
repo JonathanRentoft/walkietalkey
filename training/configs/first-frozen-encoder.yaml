@@ -29,12 +29,19 @@ data:
   spelling: null
   # Share of the sentences held out for validation (picks the best epoch) and
   # for test (scored only by `wt-train eval`, never seen in training). A
-  # sentence is in exactly one split; its split follows from a hash of its
-  # normalised text and the seed, so it keeps its split when you record more.
+  # sentence is in exactly one split, the one in training/data/splits.csv: it
+  # is dealt so that every term has at least 2 test and 1 validation
+  # sentences and the kinds keep their shares, so the fractions are targets
+  # (test may come out a little larger). A sentence with a take keeps its
+  # split; the first `wt-train eval --dataset test` freezes the test set
+  # (training/data/test-lock.json).
   validation_fraction: 0.1
   test_fraction: 0.1
-  # Changing the seed reshuffles which sentences are held out.
+  # Changing the seed deals the sentences without a take again.
   seed: 1
+  # Terms of spelling.yaml (their names there) whose sentences go to test only
+  # and are never trained on; `wt-train eval` scores them apart as unseen.
+  held_out_terms: []
 
 rehearsal:
   # Plain Danish from FLEURS da_dk train mixed in, so the model does not forget

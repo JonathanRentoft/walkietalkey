@@ -466,7 +466,7 @@ mix within each split). Answers the new view with `moved` (what moved) and `chan
   "config": "first-frozen-encoder",
   "configs": ["first-frozen-encoder", "smoke", "top4-encoder"],
   "fractions": { "validation": 0.1, "test": 0.1 },
-  "sentences": { "total": 1041, "plain": 600, "terms": 441, "recorded": 120 },
+  "sentences": { "total": 1041, "plain": 300, "terms": 741, "recorded": 120, "own": 0 },
   "conditions": [
     {
       "id": "phone-whisper",
@@ -484,6 +484,13 @@ mix within each split). Answers the new view with `moved` (what moved) and `chan
     { "id": "s0007.phone-whisper", "reason": "marked for a new take" }
   ],
   "rehearsal": { "share": 0.3, "validation_share": 0.3 },
+  "split": {
+    "params": { "seed": 1, "validation_fraction": 0.1, "test_fraction": 0.1, "held_out_terms": [] },
+    "sentences": { "train": 833, "validation": 104, "test": 104 },
+    "locked": false,
+    "moved": 0,
+    "warnings": []
+  },
   "leakage": {
     "ran": true,
     "ok": true,
@@ -518,9 +525,18 @@ mix within each split). Answers the new view with `moved` (what moved) and `chan
 }
 ```
 
-The splits follow `dataset.split_by_sentence` with the config's fractions and seed, on the
-takes `dataset.load_recordings` would use (so a take marked for redo is left out). The leakage
-check is `dataset.check_leakage` against the held-out sets; when one cannot be loaded (FLEURS not
+Run 12: the splits follow the split record (`training/data/splits.csv`, `wt_train/splits.py`)
+as it would be dealt for the config's seed, fractions and `held_out_terms` (`plan.prepare`
+without writing anything: looking at a config never changes the record), on the takes
+`dataset.load_recordings` would use (so a take marked for redo is left out, and so is a take of a
+train or validation sentence with a held-out term; both are in `skipped`). `split` says what the
+record would hold: its `params`, the `sentences` per split, whether the test set is `locked`
+(`training/data/test-lock.json`), how many sentences without a take would move to another split
+(`moved`), and the coverage `warnings` (English; a term with fewer than 2 test or 1 validation
+sentences); `null` when the sentence list cannot be read. `sentences.total` counts the list and
+the owner's own sentences (`training/data/local/sentences.csv`), `sentences.own` the latter. The
+leakage check is `dataset.check_leakage` against the held-out sets, with the owner's own
+sentences checked by id (`dataset.own_problems`); when one cannot be loaded (FLEURS not
 downloaded) its check has `"ok": null` and a `detail`.
 
 - The checks are `dataset.leakage_problems`, grouped by check; `overlap` is the number of
@@ -529,9 +545,10 @@ downloaded) its check has `"ok": null` and a `detail`.
 - `ran` is `false` with no takes yet: every check is then `ok: null` with `detail`.
 - When the server was started with other folders (`--recordings`, `--sentences`, `--spelling`:
   tests, the end-to-end run) they replace the config's `data` paths.
-- Errors: `unknown` (404, no such config), `config` (400, it does not load), `no-configs` (404).
-  The answer is cached until a config, the sentence list or a folder of takes changes; the first
-  look hashes every take's audio and can take a few seconds.
+- Errors: `unknown` (404, no such config), `config` (400, it does not load, or a held-out term
+  is not in spelling.yaml), `no-configs` (404). The answer is cached until a config, the sentence
+  list, the split record, the test lock, the owner's own files or a folder of takes changes; the
+  first look hashes every take's audio and can take a few seconds.
 
 ## Dine egne ord (run 12)
 

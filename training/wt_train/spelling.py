@@ -98,7 +98,9 @@ class Spelling:
                     )
                 also_of[key] = term.name
                 self._also[key] = form
-        self._forms_re = _pattern(list(self._form_of_original()))
+        # No terms at all (an empty spelling.yaml): nothing to find, and an empty pattern would
+        # match everywhere.
+        self._forms_re = _pattern(list(self._form_of_original())) if self._form_of else None
         self._also_re = _pattern(list(self._also_original())) if self._also else None
 
     def _form_of_original(self) -> list[str]:
@@ -126,6 +128,8 @@ class Spelling:
     def find_terms(self, text: str) -> list[TermHit]:
         """Every conventional form in ``text``, left to right, longest match first."""
         hits = []
+        if self._forms_re is None:
+            return hits
         for m in self._forms_re.finditer(text):
             name, form = self._form_of[_squash(m.group(0))]
             hits.append(TermHit(term=name, form=form, start=m.start(), end=m.end()))

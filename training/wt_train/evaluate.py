@@ -51,6 +51,30 @@ when the default is wrong (a rescoring with a new normaliser is a pipeline
 change, even for the Transformers backend), ``--notes`` becomes the run's MLflow
 note, and the run is tagged with the results.csv rows it appended, so
 ``wt-train ui`` does not import them as runs a second time.
+
+Run 12:
+
+* Seen and unseen terms: the held-out terms of the run's config (``--run``) or the
+  build's (``--build``), ``data.held_out_terms``, are never trained on; English-term
+  accuracy is reported for them (unseen) and for the rest (seen) apart, overall and
+  per condition, in summary.json (``seen`` and ``unseen`` blocks in each summary,
+  ``metrics.py``), in the tracked metrics (``<dataset>/unseen/term_accuracy_strict``,
+  ...), in the console table and on the report page. Without held-out terms
+  everything is seen and there are no blocks. results.csv keeps its header.
+* The owner's own words (``training/data/local/own-words.yaml``, ``local.py``) count
+  as terms with the spelling.
+* The frozen test set (``testset.py``): ``--dataset test`` from ``--run`` or
+  ``--build`` is the owner's test split. The first such evaluation writes
+  ``training/data/test-lock.json`` (beside the build's sentence list) from the whole
+  split; later ones first check that split and its takes on disk against the lock
+  and stop with :class:`testset.TestSetChanged` when anything differs. Every one is
+  logged, once it has scored, in ``<work>/test-uses.jsonl`` (``source`` from
+  ``WT_TEST_USE_SOURCE``, ``cli`` by default).
+* summary.json says what was measured: ``split`` is ``"test"``, ``"validation"`` or
+  ``"train"`` for a split of ``--run`` or ``--build`` and ``null`` for anything else
+  (FLEURS, the exam, a manifest or a folder); ``build`` names that build;
+  ``held_out_terms`` lists the unseen terms; ``test_lock`` is the lock's sha256 when
+  the split is test.
 """
 
 from __future__ import annotations
@@ -243,7 +267,7 @@ def merged_lora_model(run: Path, base, dtype, device: str):
 
 
 def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: str, log=console.log,
-          respell_references: bool = True):
+          respell_references: bool = True, unseen=()):
     started = time.time()
     next_report = [0.0]
 
@@ -260,7 +284,8 @@ def score(transcriber, clips: list[EvalClip], spelling: Spelling | None, label: 
     else:
         def reference(text: str) -> str:
             return text
-    rows = [{**score_clip(c.id, reference(c.reference), text, spelling if c.terms else None, error),
+    rows = [{**score_clip(c.id, reference(c.reference), text, spelling if c.terms else None, error,
+                          unseen=unseen if spelling is not None else ()),
              "wav": str(c.wav), "condition": c.condition} for c, (text, error) in zip(clips, results)]
     summary = summarize(rows)
     summary["seconds"] = round(time.time() - started, 1)
@@ -340,14 +365,22 @@ def format_table(entries: list[tuple[str, dict]]) -> str:
 
         lines.append(f"{name[:34]:<34} {s['n']:>5} {s['wer'] * 100:>6.2f} {_ci(s):>15} {s['cer'] * 100:>6.2f} "
                      f"{terms('terms_strict'):>16} {terms('terms_lenient'):>16}")
+        if isinstance(s.get("unseen"), dict):
+            def part(block: dict) -> str:
+                if not block["terms"]:
+                    return "none"
+                return f"{block['terms_strict']}/{block['terms']} ({block['term_accuracy_strict'] * 100:.1f} %)"
+
+            lines.append(f"  terms strict, seen in training: {part(s['seen'])}; held out (unseen): {part(s['unseen'])}")
         if s.get("failed"):
             lines.append(f"  {s['failed']} clip(s) failed (empty transcript counted)")
     return "\n".join(lines)
 
 
-def term_table(rows: list[dict], spelling: Spelling) -> str:
+def term_table(rows: list[dict], spelling: Spelling, unseen=()) -> str:
     """Per English term: how often the references hold it, how often the hypothesis had the
-    same form (strict), and the accuracy; the most missed first."""
+    same form (strict), and the accuracy; the most missed first. A held-out term (``unseen``)
+    is marked."""
     seen: dict[str, int] = {}
     missed: dict[str, int] = {}
     for r in rows:
@@ -359,7 +392,8 @@ def term_table(rows: list[dict], spelling: Spelling) -> str:
     lines = ["| term | in references | right | missed | accuracy |", "|---|---:|---:|---:|---:|"]
     for term in sorted(seen, key=lambda t: (-missed.get(t, 0), t)):
         n, m = seen[term], min(missed.get(term, 0), seen[term])
-        lines.append(f"| {term} | {n} | {n - m} | {m} | {(n - m) / n * 100:.1f} % |")
+        name = f"{term} (held out)" if term in unseen else term
+        lines.append(f"| {name} | {n} | {n - m} | {m} | {(n - m) / n * 100:.1f} % |")
     return "\n".join(lines) + "\n"
 
 
@@ -387,6 +421,109 @@ def _load_run_config(run: Path) -> dict:
     return json.loads((run / "config.json").read_text(encoding="utf-8"))
 
 
+# --- the owner's splits (run 12) ------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class OwnerSplit:
+    """A split of a training run's or a build's dataset: which build, its summary, its manifest."""
+
+    split: str
+    build: str
+    summary: dict
+    manifest: Path
+
+
+def owner_split(spec: str, run: Path | None, build: str | None) -> OwnerSplit | None:
+    """The owner's split ``--dataset`` names (test, validation, train from ``--run`` or ``--build``),
+    or None for anything else."""
+    if spec not in SPLITS or (run is None and build is None):
+        return None
+    if run is not None:
+        info_file = run / "dataset.json"
+        if not info_file.is_file():
+            raise ValueError(f"{run.name} has no dataset.json, so its build and its {spec} split are unknown")
+        info = json.loads(info_file.read_text(encoding="utf-8"))
+        return OwnerSplit(spec, Path(info["build"]).name, info.get("summary") or {},
+                          run / "dataset" / f"{spec}.jsonl")
+    folder = Path(build) if Path(build).is_dir() else paths.builds_dir() / build
+    summary_file = folder / "summary.json"
+    summary = json.loads(summary_file.read_text(encoding="utf-8")) if summary_file.is_file() else {}
+    return OwnerSplit(spec, folder.name, summary, folder / f"{spec}.jsonl")
+
+
+def held_out_terms(run_config: dict | None, owner: OwnerSplit | None) -> tuple[str, ...]:
+    """The unseen terms: ``data.held_out_terms`` of the run's config, else of the build's."""
+    data = (run_config or {}).get("config", {}).get("data") if run_config else None
+    if data is None and owner is not None:
+        data = owner.summary.get("data")
+    return tuple(sorted((data or {}).get("held_out_terms") or ()))
+
+
+def _test_lock(owner: OwnerSplit) -> tuple[Path, dict | None, dict]:
+    """(lock file, lock or None, the split parameters of the build)."""
+    from . import testset
+
+    inputs = owner.summary.get("inputs") or {}
+    if not inputs.get("sentences"):
+        raise ValueError(f"the build {owner.build} has no summary that names its sentence list, so its test set "
+                         "cannot be checked against the lock; run wt-train build again")
+    sentences = Path(inputs["sentences"])
+    record = owner.summary.get("split_record") or {}
+    data = owner.summary.get("data") or {}
+    params = record.get("params") or {"seed": data.get("seed"), "validation_fraction": data.get("validation_fraction"),
+                                      "test_fraction": data.get("test_fraction"),
+                                      "held_out_terms": list(data.get("held_out_terms") or [])}
+    lock_file = testset.lock_path(sentences.parent)
+    return lock_file, testset.read_lock(lock_file), params
+
+
+def check_test_set(owner: OwnerSplit) -> dict | None:
+    """Stop (``TestSetChanged``) when the build's test split, or its takes on disk, differ from the
+    lock; returns the lock (None when there is none yet)."""
+    from . import testset
+
+    lock_file, lock, _ = _test_lock(owner)
+    if lock is None:
+        return None
+    inputs = owner.summary.get("inputs") or {}
+    sentences_csv = Path(inputs["sentences"]) if inputs.get("sentences") else None
+    listed = None
+    if sentences_csv is not None and sentences_csv.is_file():
+        from .sentences import load_sentences
+
+        listed = {s.id: s.text for s in load_sentences(sentences_csv)}
+    spelling_file = Path(inputs["spelling"]) if inputs.get("spelling") else None
+    spelling = load_spelling(spelling_file) if spelling_file is not None and spelling_file.is_file() else None
+    current, missing = testset.on_disk(read_manifest(owner.manifest))
+    changed = testset.changes(lock, clips=current, sentences=listed, skipped=missing, spelling=spelling)
+    if changed:
+        raise testset.TestSetChanged(testset.stop_message(lock_file, lock, changed))
+    return lock
+
+
+def lock_test_set(owner: OwnerSplit, log=console.log) -> dict:
+    """The first evaluation on the owner's test split locks it: the whole split of the build, its
+    takes as they are on disk (a take changed since the build means: build again first)."""
+    from . import testset
+
+    lock_file, lock, params = _test_lock(owner)
+    if lock is not None:
+        return lock
+    items = read_manifest(owner.manifest)
+    current, missing = testset.on_disk(items)
+    built = {i.id: i.audio_sha256 for i in items}
+    stale = [m["id"] for m in missing] + [c.id for c in current if c.audio_sha256 != built[c.id]]
+    if stale:
+        raise ValueError(f"the build {owner.build} is older than its takes ({', '.join(stale[:5])} changed since); "
+                         "run wt-train build again before the first evaluation on test")
+    lock = testset.make_lock(build=owner.build, params=params, clips=items)
+    testset.write_lock(lock_file, lock)
+    log(f"test set locked: {len(lock['sentences'])} sentences, {len(lock['clips'])} takes -> {lock_file} "
+        "(commit it; every later evaluation on test checks against it)")
+    return lock
+
+
 def gguf_model_id(model: str | None, run: Path | None) -> str:
     if model:
         # Catalog ids end in .gguf too ("walkietalkey/edda-v0.2-gguf/edda-v0.2-Q8_0.gguf"),
@@ -407,7 +544,13 @@ def gguf_model_id(model: str | None, run: Path | None) -> str:
 
 
 def main(argv: list[str], log=console.log) -> int:
-    report = run(argv, log)
+    from .testset import TestSetChanged
+
+    try:
+        report = run(argv, log)
+    except TestSetChanged as e:
+        print(f"wt-train eval: {e}", file=sys.stderr)
+        return 1
     run_id = tracking.log_eval(report)
     # Run 7: every evaluation leaves its HTML page (wt-train report), attached to its run.
     from . import report as report_page
@@ -454,7 +597,20 @@ def run(argv: list[str], log=console.log) -> dict:
     if a.live and a.backend != "gguf":
         p.error("--live goes through the app: --backend gguf")
     spelling = load_spelling(a.spelling) if a.spelling and Path(a.spelling).is_file() else None
+    if spelling is not None:
+        from .local import spelling_with_own_words
+
+        # Run 12: the owner's own words count as terms too.
+        spelling = spelling_with_own_words(spelling)
     run_config = _load_run_config(run) if run is not None else None
+    # Run 12: the owner's split of a run or a build, its held-out terms, and the frozen test set,
+    # checked before anything is loaded.
+    owner = owner_split(a.dataset, run, a.build)
+    # The exam or a FLEURS run with --build still has that build's held-out terms.
+    context = owner or (owner_split("test", None, a.build) if a.build else None)
+    unseen = held_out_terms(run_config, context)
+    if owner is not None and owner.split == "test":
+        check_test_set(owner)
 
     if a.backend == "gguf":
         from .app import find_app
@@ -485,19 +641,20 @@ def run(argv: list[str], log=console.log) -> dict:
         log(f"{a.backend} on {device} ({str(dtype).replace('torch.', '')}): {label}")
         transcriber = HFTranscriber(model, base, device, batch_size=a.batch_size)
 
+    test_lock = lock_test_set(owner, log) if owner is not None and owner.split == "test" else None
     out = paths.eval_runs_dir() / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{a.backend}-{_slug(label)}"
     out.mkdir(parents=True, exist_ok=True)
     name, clips = load_dataset(a.dataset, run=run, build=a.build, limit=a.limit, recordings=a.recordings)
     terms_here = counts_terms(name)
     rows, main_summary = score(transcriber, clips, spelling if terms_here else None, name, log,
-                               respell_references=name != FLEURS_TEST)
+                               respell_references=name != FLEURS_TEST, unseen=unseen)
     if not terms_here:
         main_summary = without_terms(main_summary)
     by_condition = per_condition.summaries(rows)
     entries = [(name, main_summary)]
     _write_rows(out / f"{_slug(name)}.jsonl", rows)
     if spelling is not None and terms_here:
-        (out / "terms.md").write_text(term_table(rows, spelling), encoding="utf-8")
+        (out / "terms.md").write_text(term_table(rows, spelling, unseen), encoding="utf-8")
     (out / "side-by-side.md").write_text(side_by_side(rows), encoding="utf-8")
     fleurs_summary = None
     if name == FLEURS_TEST:
@@ -513,10 +670,19 @@ def run(argv: list[str], log=console.log) -> dict:
         metrics.update(per_condition.for_logging(fleurs_summary, {}, FLEURS_TEST))
     from . import normaliser
 
-    # Run 11: the normaliser's version too, so the report page says which one counted.
+    # Run 11: the normaliser's version too, so the report page says which one counted. Run 12: which
+    # split of whose build was measured, the held-out terms, and the frozen test set's sha256.
     (out / "summary.json").write_text(json.dumps(
         {"backend": a.backend, "model": label, "results": dict(entries), "by_condition": by_condition,
-         "metrics": metrics, "normaliser": normaliser.current()}, indent=2, ensure_ascii=False) + "\n")
+         "metrics": metrics, "normaliser": normaliser.current(),
+         "split": owner.split if owner is not None else None, "build": owner.build if owner is not None else None,
+         "held_out_terms": list(unseen), "test_lock": test_lock["sha256"] if test_lock is not None else None},
+        indent=2, ensure_ascii=False) + "\n")
+    if test_lock is not None:
+        from . import testset
+
+        testset.log_use(runs=[run.name if run is not None else label], backend=a.backend, build=owner.build,
+                        eval_run=out.name)
 
     appended = [result_row(backend=a.backend, model=label, dataset=name, main=main_summary, fleurs=fleurs_summary,
                            run_config=run_config, notes=a.notes)]

@@ -37,6 +37,8 @@ SETTINGS = {
     "data.validation_fraction": "Andel af sætningerne, der bruges til at vælge den bedste epoke",
     "data.test_fraction": "Andel af sætningerne, der gemmes til den endelige test",
     "data.seed": "Tal, der bestemmer, hvordan sætningerne fordeles",
+    # Run 12's draft, like run 11's below (not approved yet).
+    "data.held_out_terms": "Fagord, der holdes ude af træningen og kun testes",
     "rehearsal.share": "Andel af træningen, der er almindeligt dansk fra FLEURS",
     "rehearsal.validation_share": "Andel af valideringen, der er almindeligt dansk fra FLEURS",
     "lora.rank": "Hvor meget adapteren kan lære (dens størrelse)",

@@ -33,6 +33,26 @@ def untracked(monkeypatch):
     monkeypatch.setenv("WT_TRACKING", "0")
 
 
+COMMITTED_DATA = ("plan.csv", "mix.yaml", "splits.csv", "split.yaml", "test-lock.json")
+
+
+def _committed_data() -> dict[str, bytes | None]:
+    from wt_train import paths
+
+    return {name: (paths.DATA / name).read_bytes() if (paths.DATA / name).is_file() else None
+            for name in COMMITTED_DATA}
+
+
+@pytest.fixture(autouse=True, scope="session")
+def committed_data_untouched():
+    """Run 12: no test writes the committed plan, split record or test lock in training/data/
+    (a test that does, through a default path, fails the run here)."""
+    before = _committed_data()
+    yield
+    changed = [name for name, body in _committed_data().items() if body != before[name]]
+    assert not changed, f"a test wrote training/data/{', '.join(changed)}; give it a temporary folder"
+
+
 @pytest.fixture(autouse=True)
 def no_own_data(tmp_path_factory, monkeypatch):
     """Run 12: no test reads the app's real dictation history or the owner's own words and

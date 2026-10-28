@@ -17,15 +17,32 @@ Inputs
     (``recordings/exam/``) is never read here, nor the pilot (``training/data/pilot/``,
     run 7): a recordings folder inside the pilot's is refused.
 
-Splits are by sentence
+Splits are by sentence, from the split record (run 12)
     A sentence is its text after the accuracy job's normaliser (case,
     punctuation and number spelling do not make two sentences different). Each
     sentence goes to exactly one split, with every recording of it (all
-    conditions, the browser take, a redo), chosen by a hash of the seed and its
-    normalised text: below ``test_fraction`` it is test, below ``test_fraction
-    + validation_fraction`` validation, otherwise train. The split of a sentence
-    therefore never changes when more takes are recorded, so test results from
-    different days stay comparable. The fractions hold on average, not exactly.
+    conditions, the browser take, a redo): the split the record beside the
+    sentence list gives it (``training/data/splits.csv``, ``splits.py``), which
+    the build brings up to date first with the config's ``data.seed``, fractions
+    and ``data.held_out_terms`` (``plan.prepare``; the plan beside it follows). The
+    deal gives every term of spelling.yaml at least 2 test and 1 validation
+    sentence and keeps the kinds' shares in each split; once a sentence has a take
+    its split never changes, so test results from different days stay comparable.
+    A take of a train or validation sentence that holds a held-out term (recorded
+    before the term was held out) is left out and listed as skipped, never moved.
+    The summary says, per split, which terms have fewer recorded sentences than
+    the deal asks for (``terms_below``: 2 in test, 1 in validation, 1 in train).
+
+The frozen test set (run 12, ``testset.py``)
+    Once the first ``wt-train eval --dataset test`` has locked the test set
+    (``training/data/test-lock.json``), a build whose test split differs from it
+    stops with :class:`testset.TestSetChanged`, naming what changed.
+
+The owner's own sentences (run 12, ``local.py``)
+    ``training/data/local/sentences.csv`` (git-ignored) is read on top of the list
+    and dealt to train or validation only; ``own-words.yaml`` adds terms for the
+    term accounting. An own sentence equal to a listed, pilot, exam or FLEURS test
+    sentence fails the leakage check by its id; no own text is ever printed.
 
 Rehearsal
     Plain Danish from FLEURS da_dk train, so the model keeps its plain Danish.
@@ -61,7 +78,6 @@ referenced by path, never copied.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import itertools
 import json
 import os
@@ -78,7 +94,7 @@ from .conditions import BROWSER_CONDITION, BY_ID, IDS
 from .config import Config, load_config, to_dict, with_overrides
 from .harness import normalize
 from .recorder.takes import REDO_REASON, review_status
-from .sentences import load_sentences
+from .sentences import Sentence, load_sentences
 from .spelling import Spelling, load_spelling
 
 SPLITS = ("train", "validation", "test")
@@ -121,10 +137,11 @@ def sentence_key(text: str) -> str:
 # --- the owner's takes ---------------------------------------------------------
 
 
-def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
+def load_recordings(folder: Path, sentences_csv: Path | list[Sentence], spelling: Spelling,
                     pilot_dir: Path | None = None) -> tuple[list[Item], list[dict]]:
     """(usable takes, skipped takes with a reason): run 4's browser takes in the top folder,
-    then each condition's folder. The pilot's folder (``pilot_dir``) is never read."""
+    then each condition's folder. ``sentences_csv`` is the sentence list, or the sentences
+    themselves (the list and the owner's own). The pilot's folder (``pilot_dir``) is never read."""
     folder = Path(folder)
     pilot_dir = Path(pilot_dir) if pilot_dir is not None else paths.PILOT
     if folder.resolve().is_relative_to(pilot_dir.resolve()):
@@ -132,7 +149,8 @@ def load_recordings(folder: Path, sentences_csv: Path, spelling: Spelling,
                          "and never enter a split; build from the recordings (training/data/recordings)")
     if not folder.is_dir():
         raise FileNotFoundError(f"no recordings folder at {folder}; record takes with: wt-train record")
-    kinds = {s.id: s.kind for s in load_sentences(sentences_csv)}
+    listed = sentences_csv if isinstance(sentences_csv, list) else load_sentences(sentences_csv)
+    kinds = {s.id: s.kind for s in listed}
     items, skipped = [], []
     browser = BY_ID[BROWSER_CONDITION]
     places = [(folder, browser.id, "browser")] + [(folder / cid, cid, "app") for cid in IDS]
@@ -175,25 +193,49 @@ def _meta(path: Path) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def split_of(key: str, seed: int, validation_fraction: float, test_fraction: float) -> str:
-    """The split of one sentence: a uniform number from a hash of seed and text."""
-    digest = hashlib.sha256(f"{seed}\0{key}".encode("utf-8")).digest()
-    u = int.from_bytes(digest[:8], "big") / 2**64
-    if u < test_fraction:
-        return "test"
-    if u < test_fraction + validation_fraction:
-        return "validation"
-    return "train"
-
-
-def split_by_sentence(items: list[Item], validation_fraction: float, test_fraction: float,
-                      seed: int) -> dict[str, list[Item]]:
+def split_by_record(items: list[Item], record: dict[str, str], *, held_out_terms=(),
+                    spelling: Spelling | None = None) -> tuple[dict[str, list[Item]], list[dict]]:
+    """Every take in the split of its sentence in the split record (``splits.py``), and the
+    takes left out with a reason: a take of a train or validation sentence that holds a
+    held-out term, and a take whose sentence the record does not know."""
+    held = set(held_out_terms)
     splits: dict[str, list[Item]] = {s: [] for s in SPLITS}
+    skipped: list[dict] = []
     for item in items:
-        splits[split_of(item.key, seed, validation_fraction, test_fraction)].append(item)
+        split = record.get(item.sentence or item.id)
+        if split is None:
+            skipped.append({"id": item.id, "reason": "its sentence is not in the split record"})
+            continue
+        if held and spelling is not None and split != "test":
+            hit = sorted({h.term for h in spelling.find_terms(item.text)} & held)
+            if hit:
+                skipped.append({"id": item.id, "reason": f"holds the held-out term {hit[0]} "
+                                                         f"(its sentence is in {split})"})
+                continue
+        splits[split].append(item)
     for split in splits.values():
         split.sort(key=lambda i: i.id)
-    return splits
+    return splits, skipped
+
+
+def terms_below(items: list[Item], spelling: Spelling, wanted: int, held_out=(), *,
+                with_held_out: bool = True) -> list[dict]:
+    """The terms of ``spelling`` with fewer than ``wanted`` recorded sentences in ``items``
+    (``{"term", "sentences"}``, fewest first); held-out terms are left out unless
+    ``with_held_out``."""
+    held = set(held_out)
+    found: dict[str, set[str]] = {t.name: set() for t in spelling.terms}
+    for i in items:
+        if i.source != SOURCE_RECORDING:
+            continue
+        for h in spelling.find_terms(i.text):
+            found.setdefault(h.term, set()).add(i.sentence or i.id)
+    return [{"term": t, "sentences": len(s)} for t, s in sorted(found.items(), key=lambda x: (len(x[1]), x[0]))
+            if len(s) < wanted and (with_held_out or t not in held)]
+
+
+# What the deal asks of each split per term (splits.py), as the summary checks the recordings.
+WANTED = {"train": 1, "validation": 1, "test": 2}
 
 
 # --- rehearsal -------------------------------------------------------------------
@@ -306,11 +348,19 @@ def leakage_problems(splits: dict[str, list[Item]], held_out: HeldOut | None, ex
     """Every leak as ``(check, problem)``; the checks are :data:`LEAKAGE_CHECKS`: within the
     splits (a sentence in two, the same audio twice, an id twice), and against each held-out
     set that is given (Værkstedet, run 9, shows them one by one)."""
+    from .local import is_own
+
     problems: list[tuple[str, str]] = []
+    # Run 12: the owner's own sentences are named by id, never by their text.
+    own_keys = {i.key: i.sentence for items in splits.values() for i in items if is_own(i.sentence)}
 
     def examples(values) -> str:
         values = sorted(values)
-        return ", ".join(repr(v) for v in values[:3]) + (" ..." if len(values) > 3 else "")
+        shown = [f"own sentence {own_keys[v]}" if v in own_keys else repr(v) for v in values[:3]]
+        return ", ".join(shown) + (" ..." if len(values) > 3 else "")
+
+    def text(item: Item) -> str:
+        return "" if is_own(item.sentence) else f": {item.text!r}"
 
     keys = {name: {i.key for i in items} for name, items in splits.items()}
     for a, b in itertools.combinations(splits, 2):
@@ -334,7 +384,7 @@ def leakage_problems(splits: dict[str, list[Item]], held_out: HeldOut | None, ex
         where = f"{item.id} ({name})"
         if held_out is not None:
             if name != "test" and item.key in held_out.keys:
-                problems.append(("fleurs-test", f"FLEURS test text in {name}: {where}: {item.text!r}"))
+                problems.append(("fleurs-test", f"FLEURS test text in {name}: {where}{text(item)}"))
             if item.audio_sha256 in held_out.hashes:
                 problems.append(("fleurs-test", f"FLEURS test audio in {name}: {where}"))
             if Path(item.audio).resolve().is_relative_to(held_out.folder):
@@ -348,7 +398,7 @@ def leakage_problems(splits: dict[str, list[Item]], held_out: HeldOut | None, ex
                 problems.append(("exam", f"an exam file in {name}: {item.audio}"))
         if pilot is not None:
             if item.key in pilot.keys:
-                problems.append(("pilot", f"a pilot sentence in {name}: {where}: {item.text!r}"))
+                problems.append(("pilot", f"a pilot sentence in {name}: {where}{text(item)}"))
             if item.audio_sha256 in pilot.hashes:
                 problems.append(("pilot", f"pilot audio in {name}: {where}"))
             if Path(item.audio).resolve().is_relative_to(pilot.folder):
@@ -356,10 +406,37 @@ def leakage_problems(splits: dict[str, list[Item]], held_out: HeldOut | None, ex
     return problems
 
 
+def own_problems(own: list[Sentence], listed: list[Sentence], held_out: HeldOut | None = None,
+                 exam: Exam | None = None, pilot: Pilot | None = None,
+                 spelling: Spelling | None = None) -> list[tuple[str, str]]:
+    """Run 12: the owner's own sentences (``local.py``) against the sentence list and the
+    held-out sets, by their text, recorded or not: ``(check, problem)`` naming ids only, under
+    the check that guards that set (a listed sentence: ``splits``)."""
+    def key(s: Sentence) -> str:
+        return sentence_key(spelling.apply(s.text) if spelling is not None else s.text)
+
+    listed_keys: dict[str, str] = {}
+    for s in listed:
+        listed_keys.setdefault(key(s), s.id)
+    out = []
+    for s in own:
+        k = key(s)
+        if k in listed_keys:
+            out.append(("splits", f"own sentence {s.id} is the same sentence as {listed_keys[k]} in sentences.csv"))
+        if held_out is not None and k in held_out.keys:
+            out.append(("fleurs-test", f"own sentence {s.id} is a FLEURS test sentence"))
+        if exam is not None and k in exam.keys:
+            out.append(("exam", f"own sentence {s.id} is an exam paragraph (exam.yaml)"))
+        if pilot is not None and k in pilot.keys:
+            out.append(("pilot", f"own sentence {s.id} is a pilot sentence (pilot.csv)"))
+    return out
+
+
 def check_leakage(splits: dict[str, list[Item]], held_out: HeldOut, exam: Exam | None = None,
-                  pilot: Pilot | None = None) -> dict:
-    """Raise LeakageError listing every problem; otherwise a short report."""
-    problems = [text for _, text in leakage_problems(splits, held_out, exam, pilot)]
+                  pilot: Pilot | None = None, extra: list[tuple[str, str]] = ()) -> dict:
+    """Raise LeakageError listing every problem (and ``extra`` ones, such as :func:`own_problems`);
+    otherwise a short report."""
+    problems = [text for _, text in list(extra) + leakage_problems(splits, held_out, exam, pilot)]
     every = [(name, item) for name, items in splits.items() for item in items]
 
     if problems:
@@ -428,20 +505,47 @@ def _split_summary(items: list[Item], manifest: Path) -> dict:
 
 def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None = None,
           exam_yaml: Path | None = None, pilot_dir: Path | None = None, pilot_csv: Path | None = None,
-          log=console.log) -> Build:
+          local_dir: Path | None = None, log=console.log) -> Build:
     """Build, check and write the splits for one experiment config. The pilot (``pilot_dir``,
-    ``pilot_csv``: training/data/pilot/ and pilot.csv by default) is held out."""
-    spelling = load_spelling(cfg.data.path("spelling"))
-    own, skipped = load_recordings(cfg.data.path("recordings"), cfg.data.path("sentences"), spelling, pilot_dir)
+    ``pilot_csv``: training/data/pilot/ and pilot.csv by default) is held out. The split record
+    and the plan beside the sentence list are brought up to date first (``plan.prepare``); the
+    owner's own sentences and words are read from ``local_dir`` (``paths.local_dir()``)."""
+    from . import local, plan, splits as split_record, testset
+
+    sentences_csv, spelling_yaml = cfg.data.path("sentences"), cfg.data.path("spelling")
+    recordings = cfg.data.path("recordings")
+    params = split_record.Params.of(cfg.data)
+    listed_spelling = load_spelling(spelling_yaml)
+    split_record.check_held_out(params, listed_spelling, spelling_yaml)
+    # Own words count as terms in the transcripts (never in the split, which follows spelling.yaml).
+    spelling = local.spelling_with_own_words(listed_spelling, local_dir)
+    # The takes first: without any, nothing is built and the split record is left as it is.
+    takes, skipped = load_recordings(recordings, load_sentences(sentences_csv) + local.load_sentences(local_dir),
+                                     spelling, pilot_dir)
+    if not takes:
+        raise ValueError(f"no usable takes in {recordings}; record with: wt-train record")
+    prepared = plan.prepare(sentences_csv, sentences_csv.with_name("plan.csv"), spelling_path=spelling_yaml,
+                            recordings=recordings, params=params, local_dir=local_dir)
+    if prepared.dealt.written or (prepared.own_dealt is not None and prepared.own_dealt.written):
+        for line in prepared.describe():
+            log(line)
     pilot = pilot_held_out(pilot_dir, pilot_csv)
-    if not own:
-        raise ValueError(f"no usable takes in {cfg.data.path('recordings')}; record with: wt-train record")
-    splits = split_by_sentence(own, cfg.data.validation_fraction, cfg.data.test_fraction, cfg.data.seed)
+    splits, left_out = split_by_record(takes, prepared.splits, held_out_terms=params.held_out_terms,
+                                       spelling=listed_spelling)
+    skipped += left_out
+
+    lock = prepared.lock
+    if lock is not None:
+        changed = testset.changes(lock, clips=splits["test"], sentences={s.id: s.text for s in prepared.listed},
+                                  record=prepared.dealt.assignment, skipped=skipped, spelling=listed_spelling)
+        if changed:
+            raise testset.TestSetChanged(testset.stop_message(prepared.lock_path, lock, changed))
     for name, fraction in (("validation", cfg.data.validation_fraction), ("test", cfg.data.test_fraction)):
         if fraction > 0 and not splits[name]:
-            raise ValueError(f"no sentence landed in {name} ({len(own)} takes); record more or change data.seed")
+            raise ValueError(f"no recorded sentence in {name} yet ({len(takes)} takes; the split record "
+                             f"{prepared.dealt.path} says which sentences are); record more")
     if not splits["train"]:
-        raise ValueError("no sentence landed in train; lower the validation and test fractions")
+        raise ValueError("no recorded sentence in train yet; record more, or lower the validation and test fractions")
 
     if fleurs_root is None:
         fleurs_root = paths.fleurs_dir()
@@ -453,13 +557,15 @@ def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None 
     if n_train or n_val:
         if not fleurs.is_ready("train", fleurs_root):
             fleurs.ensure("train", fleurs_root)
-        exclude = {i.key for i in own} | set(held_out.keys) | set(pilot.keys)
+        exclude = {i.key for i in takes} | set(held_out.keys) | set(pilot.keys)
         reh_train, reh_val = sample_rehearsal(fleurs.load_split("train", fleurs_root), n_train, n_val,
                                               exclude, cfg.data.seed, spelling)
         splits["train"] = sorted(splits["train"] + reh_train, key=lambda i: i.id)
         splits["validation"] = sorted(splits["validation"] + reh_val, key=lambda i: i.id)
 
-    report = check_leakage(splits, held_out, exam_held_out(cfg.data.path("recordings"), exam_yaml), pilot)
+    exam = exam_held_out(recordings, exam_yaml)
+    own = own_problems(prepared.own, prepared.listed, held_out, exam, pilot, listed_spelling)
+    report = check_leakage(splits, held_out, exam, pilot, extra=own)
 
     out = Path(out_dir) if out_dir is not None else paths.builds_dir() / cfg.name
     out.mkdir(parents=True, exist_ok=True)
@@ -471,26 +577,41 @@ def build(cfg: Config, *, out_dir: Path | None = None, fleurs_root: Path | None 
         items = splits[name]
         return round(sum(i.source == SOURCE_REHEARSAL for i in items) / len(items), 4) if items else 0.0
 
-    sentences_csv, spelling_yaml = cfg.data.path("sentences"), cfg.data.path("spelling")
+    def split_summary(name: str) -> dict:
+        items = splits[name]
+        return {**_split_summary(items, out / f"{name}.jsonl"),
+                "terms_below": terms_below(items, listed_spelling, WANTED[name], params.held_out_terms,
+                                           with_held_out=name == "test")}
+
+    dealt = prepared.dealt
     summary = {
         "name": cfg.name,
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "inputs": {
-            "recordings": str(cfg.data.path("recordings")),
-            "takes_used": len(own),
+            "recordings": str(recordings),
+            "takes_used": len(takes),
             "skipped": skipped,
             "sentences": str(sentences_csv),
             "sentences_sha256": file_sha256(sentences_csv),
             "spelling": str(spelling_yaml),
             "spelling_sha256": file_sha256(spelling_yaml),
+            # Run 12: the owner's own sentences and words, as counts only.
+            "local": {"sentences": len(prepared.own), "own_words": len(spelling.terms) - len(listed_spelling.terms)},
             "fleurs": str(Path(fleurs_root).resolve()),
             "fleurs_revision": paths.FLEURS_REVISION,
         },
         "data": to_dict(cfg)["data"],
+        "split_record": {
+            "path": str(dealt.path), "params": dealt.params.as_dict(), "sentences": dealt.sizes(),
+            "added": len(dealt.added), "removed": len(dealt.removed), "moved": len(dealt.moved),
+            "moved_ids": sorted(dealt.moved), "warnings": dealt.warnings, "locked": lock is not None,
+            "test_lock": lock["sha256"] if lock is not None else None,
+            "own_sentences": prepared.own_dealt.sizes() if prepared.own_dealt is not None else None,
+        },
         "rehearsal": {**to_dict(cfg)["rehearsal"], "train_clips": n_train, "validation_clips": n_val,
                       "train_share_actual": actual_share("train"),
                       "validation_share_actual": actual_share("validation")},
-        "splits": {name: _split_summary(items, out / f"{name}.jsonl") for name, items in splits.items()},
+        "splits": {name: split_summary(name) for name in splits},
         "leakage_check": report,
     }
     _write(out / "summary.json", json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
@@ -508,6 +629,25 @@ def format_summary(b: Build) -> str:
         mix = b.summary["splits"][name].get("by_condition") or {}
         if mix:
             lines.append(f"  {name}: " + ", ".join(f"{cid} {n}" for cid, n in mix.items()))
+    record = b.summary.get("split_record")
+    if record:
+        sizes, params = record["sentences"], record["params"]
+        held = params["held_out_terms"]
+        lines.append(f"split record {record['path']}: seed {params['seed']}, validation "
+                     f"{params['validation_fraction'] * 100:g} %, test {params['test_fraction'] * 100:g} %"
+                     + (f", held out {', '.join(held)}" if held else "")
+                     + f"; {sizes['train']} train, {sizes['validation']} validation, {sizes['test']} test sentences"
+                     + ("; the test set is locked" if record["locked"] else ""))
+        if record["moved"]:
+            lines.append(f"  {record['moved']} sentence(s) dealt to another split: "
+                         + ", ".join(record["moved_ids"][:8]) + (" ..." if record["moved"] > 8 else ""))
+        lines += [f"  warning: {w}" for w in record["warnings"]]
+    for name in SPLITS:
+        below = b.summary["splits"][name].get("terms_below") or []
+        if below:
+            lines.append(f"  {name}: {len(below)} term(s) below {WANTED[name]} recorded sentence(s): "
+                         + ", ".join(f"{t['term']} ({t['sentences']})" for t in below[:8])
+                         + (" ..." if len(below) > 8 else ""))
     skipped = b.summary["inputs"]["skipped"]
     if skipped:
         lines.append(f"skipped {len(skipped)} take(s): " + ", ".join(f"{s['id']} ({s['reason']})" for s in skipped[:5])
@@ -525,7 +665,13 @@ def main(argv: list[str]) -> int:
     cfg = load_config(a.config)
     if a.recordings:
         cfg = with_overrides(cfg, data={"recordings": str(a.recordings.resolve())})
-    b = build(cfg)
+    from .testset import TestSetChanged
+
+    try:
+        b = build(cfg)
+    except TestSetChanged as e:
+        print(f"wt-train build: {e}", file=sys.stderr)
+        return 1
     print(f"build {cfg.name} -> {b.dir}")
     print(format_summary(b))
     return 0

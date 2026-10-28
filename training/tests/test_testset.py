@@ -158,7 +158,7 @@ def locked_take(owner) -> tuple[str, str]:
 
 def change_text(owner, sid, cond):
     lines = owner.sentences.read_text(encoding="utf-8").splitlines()
-    lines = [line.replace("nummer", "nr.") if line.startswith(sid + ",") else line for line in lines]
+    lines = [line.replace("nummer", "tal") if line.startswith(sid + ",") else line for line in lines]
     owner.sentences.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

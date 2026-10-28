@@ -18,9 +18,11 @@ data:
   spelling: null
   validation_fraction: 0.1
   test_fraction: 0.1
-  # Same seed as the first experiment: the same sentences are held out, so the
-  # two experiments are scored on the same test split.
+  # The same split parameters as the first experiment, so both are scored on
+  # the same test split (training/data/splits.csv); other ones would deal the
+  # sentences without a take again.
   seed: 1
+  held_out_terms: []
 
 rehearsal:
   share: 0.3
