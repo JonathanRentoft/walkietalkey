@@ -1,0 +1,9 @@
+# The parameters splits.csv beside this file was dealt with (training/wt_train/splits.py):
+# the seed, the validation and test fractions and the held-out terms of an experiment config.
+# Written by `wt-train plan`, `wt-train record`, Værkstedet and `wt-train build`. A config with
+# other parameters deals every sentence without a take again and rewrites both files; a
+# sentence with a take keeps its split. Do not edit by hand.
+seed: 1
+validation_fraction: 0.1
+test_fraction: 0.1
+held_out_terms: []
