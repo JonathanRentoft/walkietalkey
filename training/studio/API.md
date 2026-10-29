@@ -31,14 +31,14 @@ base-uri 'none'; form-action 'none'; frame-ancestors 'none'`. Report pages
 
 ## Files
 
-| Path                                                                      | What                                                                                                                        |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `GET /` and any path that is not `/api/`, `/app/`, `/reports/`, `/files/` | `index.html` of the built page (`training/studio/dist/`), so the page's own routes (`/optag`, `/data`, ..., `/laer`) reload |
-| `GET /assets/<file>`                                                      | the built page's assets                                                                                                     |
-| `GET /api/takes/<folder>/<id>.wav`                                        | the current take of a sentence; `<folder>` is a condition id, `exam-<condition>` (its exam paragraphs) or `pilot-<setup>`   |
-| `GET /reports/<file>.html`                                                | an HTML report from `paths.reports_dir()` (evaluation, `--vs`, pilot)                                                       |
-| `GET /files/journal/<path>`                                               | a file next to a journal page (its plots)                                                                                   |
-| `GET /api/ping`                                                           | `{"studio": true, "pid": 4242}`: the single-instance check (and the launcher) asks the running server                       |
+| Path                                                                      | What                                                                                                                                |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /` and any path that is not `/api/`, `/app/`, `/reports/`, `/files/` | `index.html` of the built page (`training/studio/dist/`), so the page's own routes (`/optag`, `/data`, `/ord`, ..., `/laer`) reload |
+| `GET /assets/<file>`                                                      | the built page's assets                                                                                                             |
+| `GET /api/takes/<folder>/<id>.wav`                                        | the current take of a sentence; `<folder>` is a condition id, `exam-<condition>` (its exam paragraphs) or `pilot-<setup>`           |
+| `GET /reports/<file>.html`                                                | an HTML report from `paths.reports_dir()` (evaluation, `--vs`, pilot)                                                               |
+| `GET /files/journal/<path>`                                               | a file next to a journal page (its plots)                                                                                           |
+| `GET /api/ping`                                                           | `{"studio": true, "pid": 4242}`: the single-instance check (and the launcher) asks the running server                               |
 
 ## Polling
 
@@ -125,10 +125,12 @@ Starts a session (replacing a running one) and hands it to the running app
 (`app.handoff_training`), which switches the phone into recording mode for a phone session.
 Answers the recording state. Errors: `unknown` (404, or 400 for a `kind` that is neither),
 `no-share` (409), `bad-setup` (400). `{"kind": "exam", "id": "<condition>"}` is the same as
-`"kind": "condition"` with `"exam": true`. The session replaced gets no `end`: its token is
-refused at once, which ends it in the app (and the new handoff replaces it there anyway). The
-new pick's takes are read before the running session ends: a pick that cannot open (an error)
-leaves that session running.
+`"kind": "condition"` with `"exam": true`. The session replaced ends (`end`; a Mac session's
+`mac_cancel` comes first, so the app closes the input it armed): its token is refused at once
+for everything but `GET /app/v1/next`, which still gets it those last commands, so the app ends it
+even when it was busy at the switch (run 12), and is refused for that too once it has them (the
+new handoff replaces it in the app anyway). The new pick's takes are read before the running
+session ends: a pick that cannot open (an error) leaves that session running.
 
 ### `POST /api/recording/pause`, `POST /api/recording/resume`, `POST /api/recording/stop`
 
@@ -167,7 +169,11 @@ A take on the Mac's own input, for a Mac session (the recorder's `mac_start` / `
 `mac_cancel`). The page binds them to its record button and to the space bar (press to start,
 press again to stop; Escape cancels). 409 `paused` while paused; `mac/start` answers 409
 `mac-not-ready` when no take can start (not a Mac pick, the app has not said hello, or a take is
-recording).
+recording). Run 12: the input is armed ahead of the press, so `mac/start` only notes the time
+(or, before the arm is confirmed, starts the take as before); `mac/stop` answers `stopping: true`
+and the recorder sends `mac_stop` half a second later; a second `mac/stop` meanwhile changes
+nothing. Pause, stop and a new pick cancel the arm; the take's metadata says what it kept
+(`pre_roll_s`, `post_roll_s`, `trimmed_s`).
 
 ### `GET /api/recording/state[?since=<version>]`
 
@@ -196,7 +202,8 @@ recording).
   "recording": {
     "prompt": "s0043",
     "source": "phone",
-    "since": "2026-10-27T10:01:02+01:00"
+    "since": "2026-10-27T10:01:02+01:00",
+    "stopping": false
   },
   "counts": {
     "total": 120,
@@ -259,6 +266,13 @@ recording).
 
 - `active`: a session runs; `paused`: a pick is there but its session ended. With nothing picked:
   `pick: null`, `rows: []`, `limits: null`, `current: null`, every count 0.
+- `recording` is a take from the press on (`since`), `null` otherwise. Run 12, a Mac session: while
+  it is idle the recorder has the app record already (it arms the Mac's input for the current
+  sentence, `recorder/session.py`), and that is never shown here: the page shows its ordinary
+  ready state ("Optag"). The press only notes the time, and the take is kept from 0.3 s before it.
+  From the stop on `stopping` is `true` ("Gemmer optagelsen"): the app records half a second more,
+  then the take is saved and `recording` is `null` again; a press meanwhile is ignored. A phone
+  take is never `stopping` (the phone keeps its own half second after the release).
 - `last`: what the session made of the latest take the app sent (`null` before one): its sentence,
   the recorder's check (`ok` or the first problem), whether it was kept. Its `problems` are the
   recorder's plain names (`["silent", "quiet"]`), not the rows' objects. A refused take (`silent`,
@@ -397,6 +411,66 @@ marked for a new take (`review.status` `redo`) is not scored, as the dataset bui
 out; `left_out` lists them: `[{"id": "pilot-03.iphone-whisper", "reason": "marked for a new
 take"}]`.
 
+## The mix (run 12)
+
+On the recording screen, under the progress: the share of each condition, what a new mix would
+deal, and how long each condition takes to record.
+
+### `GET /api/mix`
+
+```json
+{
+  "mix": {
+    "phone-whisper": 40,
+    "phone-normal": 40,
+    "mac-normal": 20,
+    "mac-whisper": 0
+  },
+  "sentences": 1041,
+  "conditions": [
+    {
+      "id": "phone-whisper",
+      "label": "Telefonen, hvisket",
+      "share": 40,
+      "planned": 416,
+      "done": 17,
+      "left": 399,
+      "pace": { "seconds": 7.6, "source": "takes", "gaps": 34 },
+      "minutes": 50.5
+    }
+  ],
+  "minutes": 128.3,
+  "recording": false
+}
+```
+
+- `done`: planned sentences with a current take that was not sent back; `left` = `planned` -
+  `done`; `minutes` = `left` x `pace.seconds` / 60 (and their sum at the top).
+- `pace`: the owner's own seconds per sentence in that condition, the median gap between two
+  takes in a row of one session (`recorded_at` and `session` in the takes' `.json`, in the
+  recordings and in the pilot's setups; the exam is left out), leaving out gaps over 60 s (a
+  break); `source` `takes`. With fewer than 5 gaps the pilot's measured medians stand in, `source`
+  `pilot`: phone-whisper 8 s, phone-normal 11 s, mac-normal 8 s, mac-whisper 5 s. `gaps` is how
+  many gaps were found.
+- `recording`: a pick is open (recording or paused); dealing again waits until it is stopped.
+
+### `POST /api/mix/preview` `{"mix": {"phone-whisper": 30, "phone-normal": 40, "mac-normal": 20, "mac-whisper": 10}}`
+
+What dealing that mix would do, written nowhere: `plan.ensure` runs on a copy of the plan and
+its `mix.yaml` in a temporary folder. Answers the same shape as `GET /api/mix` for that mix, plus
+`"changed"` (it differs from `mix.yaml`) and `"moved": {"total": 104, "pairs": [{"from":
+"phone-whisper", "to": "mac-whisper", "n": 103}]}` (the sentences that change condition, most
+first). A mix is every condition's whole percent from 0 to 100 (one left out is 0), adding up to
+100; anything else is 400 `mix`.
+
+### `POST /api/mix/deal` `{"mix": {...}}`
+
+Deals again exactly as `wt-train plan --mix` does: `plan.ensure(sentences, plan, mix=...,
+recorded=plan.takes_of(recordings, sentences))` writes `plan.csv` and `mix.yaml` (the server's
+`--plan`; a sentence with a take keeps its condition, every other one is dealt again to fit the
+mix within each split). Answers the new view with `moved` (what moved) and `changed: false`.
+409 `recording` while a pick is open; 400 `mix`.
+
 ## Data
 
 `GET /api/data?config=<config name>` (default: the first config in `training/configs/` by name)
@@ -406,7 +480,13 @@ take"}]`.
   "config": "first-frozen-encoder",
   "configs": ["first-frozen-encoder", "smoke", "top4-encoder"],
   "fractions": { "validation": 0.1, "test": 0.1 },
-  "sentences": { "total": 1041, "plain": 600, "terms": 441, "recorded": 120 },
+  "sentences": {
+    "total": 1041,
+    "plain": 300,
+    "terms": 741,
+    "recorded": 120,
+    "own": 0
+  },
   "conditions": [
     {
       "id": "phone-whisper",
@@ -424,6 +504,18 @@ take"}]`.
     { "id": "s0007.phone-whisper", "reason": "marked for a new take" }
   ],
   "rehearsal": { "share": 0.3, "validation_share": 0.3 },
+  "split": {
+    "params": {
+      "seed": 1,
+      "validation_fraction": 0.1,
+      "test_fraction": 0.1,
+      "held_out_terms": []
+    },
+    "sentences": { "train": 833, "validation": 104, "test": 104 },
+    "locked": false,
+    "moved": 0,
+    "warnings": []
+  },
   "leakage": {
     "ran": true,
     "ok": true,
@@ -458,9 +550,18 @@ take"}]`.
 }
 ```
 
-The splits follow `dataset.split_by_sentence` with the config's fractions and seed, on the
-takes `dataset.load_recordings` would use (so a take marked for redo is left out). The leakage
-check is `dataset.check_leakage` against the held-out sets; when one cannot be loaded (FLEURS not
+Run 12: the splits follow the split record (`training/data/splits.csv`, `wt_train/splits.py`)
+as it would be dealt for the config's seed, fractions and `held_out_terms` (`plan.prepare`
+without writing anything: looking at a config never changes the record), on the takes
+`dataset.load_recordings` would use (so a take marked for redo is left out, and so is a take of a
+train or validation sentence with a held-out term; both are in `skipped`). `split` says what the
+record would hold: its `params`, the `sentences` per split, whether the test set is `locked`
+(`training/data/test-lock.json`), how many sentences without a take would move to another split
+(`moved`), and the coverage `warnings` (English; a term with fewer than 2 test or 1 validation
+sentences); `null` when the sentence list cannot be read. `sentences.total` counts the list and
+the owner's own sentences (`training/data/local/sentences.csv`), `sentences.own` the latter. The
+leakage check is `dataset.check_leakage` against the held-out sets, with the owner's own
+sentences checked by id (`dataset.own_problems`); when one cannot be loaded (FLEURS not
 downloaded) its check has `"ok": null` and a `detail`.
 
 - The checks are `dataset.leakage_problems`, grouped by check; `overlap` is the number of
@@ -469,9 +570,97 @@ downloaded) its check has `"ok": null` and a `detail`.
 - `ran` is `false` with no takes yet: every check is then `ok: null` with `detail`.
 - When the server was started with other folders (`--recordings`, `--sentences`, `--spelling`:
   tests, the end-to-end run) they replace the config's `data` paths.
-- Errors: `unknown` (404, no such config), `config` (400, it does not load), `no-configs` (404).
-  The answer is cached until a config, the sentence list or a folder of takes changes; the first
-  look hashes every take's audio and can take a few seconds.
+- Errors: `unknown` (404, no such config), `config` (400, it does not load, or a held-out term
+  is not in spelling.yaml), `no-configs` (404). The answer is cached until a config, the sentence
+  list, the split record, the test lock, the owner's own files or a folder of takes changes; the
+  first look hashes every take's audio and can take a few seconds.
+
+## Dine egne ord (run 12)
+
+The English words and phrases of the owner's own dictations that `spelling.yaml` does not cover
+yet (`wt_train/ownwords.py`), from the WalkieTalkey app's history on this Mac.
+
+- The history is `history.db` beside the app's models folder (on macOS `~/Library/Application
+Support/WalkieTalkey/history.db`), `WT_APP_HISTORY_DB` or `--history-db`. It is opened
+  read-only (SQLite `mode=ro`, else `immutable=1`), never written and never copied. Each
+  dictation counts once, as its `post_processed_text` when there is one, else its
+  `transcription_text`.
+- No sentence from the history is shown, stored or logged: the answers carry the words and their
+  counts only; a word travels in a POST body only, never in a URL or a query string; nothing is
+  written but the owner's own two files in the git-ignored `training/data/local/` (`WT_LOCAL_DIR`):
+  the ticked words, `own-words.yaml` (a comment, then `words: [Grafana, Terraform]`), and his
+  sentences, `sentences.csv` (`id,text,kind`, ids `own-0001`, `own-0002`, ..., kind `terms`). The
+  analysis is kept in memory until the history, the spelling, the sentence list or FLEURS change.
+
+### `GET /api/ownwords`
+
+```json
+{
+  "history": {
+    "found": true,
+    "readable": true,
+    "path": "/Users/.../WalkieTalkey/history.db",
+    "dictations": 812
+  },
+  "found": 11,
+  "words": [
+    {
+      "word": "Grafana",
+      "count": 14,
+      "dictations": 9,
+      "share": 0.0111,
+      "phrase": false
+    }
+  ],
+  "more": 0,
+  "ticked": [
+    {
+      "word": "Sentry",
+      "count": 7,
+      "dictations": 6,
+      "share": 0.0074,
+      "phrase": false,
+      "sentences": [{ "id": "own-0001", "text": "Sentry sender en mail, ..." }]
+    }
+  ],
+  "files": {
+    "words": "/Users/.../training/data/local/own-words.yaml",
+    "sentences": "/Users/.../training/data/local/sentences.csv"
+  }
+}
+```
+
+- `words`: the words and phrases not ticked, most often said first (`count`: times said;
+  `dictations`: in how many; `share`: that of all dictations); at most 300, `more` says how many
+  more. A phrase (`phrase: true`) is two or three English-looking words next to each other, said
+  at least twice. `found` counts every word and phrase found, the ticked ones too: `found: 0`
+  means the history has no new words; `words: []` with `found > 0` means every word is ticked.
+- `ticked`: the words of `own-words.yaml` in their order, with their counts (`null` when the
+  history has them no more) and the owner's sentences that have the word in them.
+- `history.found: false`: there is no history at `path` (the app has not been used on this Mac);
+  `readable: false`: it is there but cannot be read (locked, broken).
+- How a word is judged (the module's docstring has it whole): Danish when it, or its stem without
+  a Danish ending, is in the vocabulary (the plain sentences of the sentence list, FLEURS da_dk's
+  transcripts in the work folder, a built-in list), or has æ, ø or å; English-looking with a cue
+  (c, q, w, x, z, th, sh, ee, oo ..., -ing, -tion, CamelCase, ALLCAPS of two to five letters, a
+  dot inside, a digit, + or #, a capital where no sentence starts, a common developer word);
+  Danish endings on an English stem fold into it (PR'en, Grafanaen with Grafana).
+
+### `POST /api/ownwords/tick` `{"word": "Grafana", "ticked": true}`
+
+Adds the word to `own-words.yaml` (`ticked: false` takes it out; case does not count). Answers
+the view. 400 `word` (not a string of 1 to 64 characters, or `ticked` not a boolean); 409
+`own-words` when the file is there but cannot be read (it is never overwritten then).
+
+### `POST /api/ownwords/sentence` `{"word": "Grafana", "text": "Vi tjekker Grafana, før vi går hjem."}`
+
+Appends a sentence of the owner's own to `sentences.csv` (spaces squeezed, the next `own-NNNN`
+id, kind `terms`), checked like the public list: 400 `length` (not 4 to 20 words, or over 300
+characters), 400 `dash` (an em or en dash), 400 `no-word` (the word is not in it), 409
+`duplicate` (the same sentence, case and punctuation aside, is in `sentences.csv` or his own
+list), 400 `text`; 409 `own-sentences` when his file has another header. Answers the view with
+`"sentence": {"id": "own-0001", "text": "...", "kind": "terms"}`. Error messages never name the
+word or the sentence.
 
 ## Training
 
@@ -629,6 +818,91 @@ Run 11:
   number without changing the model, so only runs in one group compare.
 - `date` is when the run was measured: an imported `results.csv` row's own `timestamp`, not when
   it was imported; else the run's start.
+
+Run 12: `split` says what the run measured on: `test`, `validation` or `train` (a split of the
+owner's takes), `fleurs`, `exam`, or `null`. The run's `summary.json` gives it when it has a
+`split`; else the dataset's name does (`<run or build>:test`, `fleurs-da_dk-test`, `exam@<c>`).
+The page marks a test result as test, and its comparison offers the validation results first.
+
+### `GET /api/eval/measure`
+
+```json
+{
+  "runs": [
+    {
+      "name": "first-frozen-encoder-20261026-2112",
+      "title": "Edda finjusteret (first-frozen-encoder)",
+      "date": "2026-10-26T21:12:00+01:00",
+      "best_validation_wer": 0.12,
+      "validation": true,
+      "test": true
+    }
+  ],
+  "configs": [
+    { "name": "first-frozen-encoder", "validation": true, "test": true },
+    { "name": "smoke", "validation": false, "test": false }
+  ],
+  "base": "Edda, original",
+  "job": null
+}
+```
+
+What can be measured: the training runs with an adapter (`validation`, `test`: the run kept that
+split in `<run>/dataset/`), and for Edda the configs, each with whether its build
+(`<work>/builds/<config>/`, `wt-train build`) has the split. `job` is the latest measurement
+since the server started.
+
+### `POST /api/eval/measure`
+
+```json
+{"backend": "lora", "run": "first-frozen-encoder-20261026-2112", "dataset": "validation", "fleurs": true}
+{"backend": "hf", "build": "first-frozen-encoder", "dataset": "validation", "fleurs": false}
+{"backend": "lora", "run": "...", "dataset": "test", "fleurs": true, "confirm": true}
+```
+
+Starts `wt-train eval --backend lora --run <run>` (a training run) or `--backend hf --build
+<config>` (Edda), with `--dataset validation|test --spelling <spelling.yaml>` and `--no-fleurs`
+when `fleurs` is `false`, as a job of kind `eval` (one at a time: 409 `busy`). Its title is
+"Måling på valideringen: <model>" or "Måling på testsættet: <model>". Every such job gets
+`WT_TEST_USE_SOURCE=studio`, so a use of the test set is logged as Værkstedet's. Its result
+joins `GET /api/eval/runs` through MLflow, as every `wt-train eval` does. `dataset` is
+`validation` by default; `test` needs `"confirm": true` (409 `confirm` otherwise: the page asks
+first, saying the test set is for the final measurement and that every use is written down).
+Errors: 400 `dataset`, 400 `backend`, 404 `unknown` (no such run with an adapter, a bad name),
+409 `no-split` (the run kept no such split), 409 `no-build` (the config's build has no such
+split; `wt-train build configs/<config>.yaml` makes it). `WT_STUDIO_EVAL` names a program run
+instead of `wt-train eval` (the end-to-end run's stand-in).
+
+### `GET /api/eval/testset`
+
+```json
+{
+  "lock": {
+    "created": "2026-10-28T21:04:00+01:00",
+    "build": "first-frozen-encoder",
+    "sentences": 104,
+    "clips": 312,
+    "sha256": "4f1c..."
+  },
+  "uses": [
+    {
+      "at": "2026-10-27T12:42:10+01:00",
+      "runs": ["first-frozen-encoder-20261026-2112"],
+      "backend": "lora",
+      "build": null,
+      "eval_run": "20261027-124210-lora-first-frozen-encoder-20261026-2112",
+      "source": "cli"
+    }
+  ],
+  "count": 1
+}
+```
+
+`lock` is the frozen test set, `training/data/test-lock.json` (`--test-lock`), read as it is:
+`sentences` and `clips` are counted when they are lists; `null` without a lock. `uses` is every
+use of the test set, newest first, from `<work>/test-uses.jsonl` (one JSON object per line, which
+`wt-train eval` appends: `at`, `runs`, `backend`, `build`, `eval_run`, `source` `cli` or
+`studio`); a missing file is no use, and a line that is not a use is skipped.
 
 ### `POST /api/eval/report` `{"run": "<id>"}` and `POST /api/eval/compare` `{"a": "<id>", "b": "<id>"}`
 
@@ -834,7 +1108,7 @@ Long work runs as a job: a child process of the server, its output kept (the las
 `status`: `running`, `done`, `failed`, `stopped`. `POST /api/jobs/<id>/stop` stops one (SIGINT,
 SIGTERM after 15 s, SIGKILL after 10 s more). A job runs in its own session, and the signals go
 to its whole process group, so what it started (the app's batch, an export's tools) ends too;
-a job is `done`/`failed`/`stopped` once its output is closed and it has exited. Kinds: `train`, `export`, `pilot`, `report`. Jobs
+a job is `done`/`failed`/`stopped` once its output is closed and it has exited. Kinds: `train`, `export`, `pilot`, `report`, `eval` (run 12). Jobs
 end when the server stops (the launcher's quit stops the server, which stops its jobs). Ids are
 `j1`, `j2`, ... from the server's start; `title` is Danish; `result` is the pilot comparison for
 a `pilot` job, else `null`.
@@ -860,8 +1134,11 @@ phone returns to normal), jobs are stopped, then it exits.
 - Every path is a flag, so tests and the end-to-end run use temporary folders: `--recordings`,
   `--pilot-dir`, `--sentences`, `--plan`, `--exam-file`, `--pilot-sentences`, `--spelling`,
   `--configs`, `--journal`, `--notebooks`, `--dist`, `--app-bin`, `--app-url-file` (the app's
-  link with its token goes to that file instead of a handoff). The work folder is `WT_WORK_DIR`.
-  `WT_OPEN` and `WT_CODE` replace the programs that open VS Code (see Lær det).
+  link with its token goes to that file instead of a handoff), and since run 12 `--history-db`
+  (the app's history, also `WT_APP_HISTORY_DB`) and `--test-lock`. The work folder is
+  `WT_WORK_DIR`; the owner's own words and sentences are in `WT_LOCAL_DIR` (default
+  `training/data/local/`). `WT_OPEN` and `WT_CODE` replace the programs that open VS Code (see Lær
+  det), `WT_STUDIO_EVAL` the one that measures (see Evaluation).
 
 `wt-train studio --install-app` builds "WalkieTalkey Værksted.app" in `~/Applications` (see
 `training/studio/launcher/`).

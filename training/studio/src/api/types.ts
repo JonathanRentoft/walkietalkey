@@ -7,7 +7,7 @@ export type Device = "phone" | "mac";
 export type Style = "whisper" | "normal";
 
 export type JobStatus = "running" | "done" | "failed" | "stopped";
-export type JobKind = "train" | "export" | "pilot" | "report";
+export type JobKind = "train" | "export" | "pilot" | "report" | "eval";
 
 export interface Job {
   id: string;
@@ -192,7 +192,13 @@ export interface RecordingState {
   } | null;
   microphone: { name: string | null; source: Device } | null;
   current: string | null;
-  recording: { prompt: string; source: Device; since: string } | null;
+  /** A take from the press on (never the Mac's armed input); `stopping` from the release on. */
+  recording: {
+    prompt: string;
+    source: Device;
+    since: string;
+    stopping?: boolean;
+  } | null;
   counts: Counts;
   minutes: number;
   /** null with nothing picked. */
@@ -381,6 +387,153 @@ export interface EvalRun {
   cer: number | null;
   change: string | null;
   report: string | null;
+  /** Run 12: what it measured on; a test result is marked as test. */
+  split?: EvalSplit | null;
+}
+
+export type EvalSplit = "train" | "validation" | "test" | "fleurs" | "exam";
+
+/** Run 12: GET /api/eval/measure, what can be measured. */
+export interface MeasureRun {
+  name: string;
+  title: string;
+  date: string | null;
+  best_validation_wer: number | null;
+  validation: boolean;
+  test: boolean;
+}
+
+export interface MeasureConfig {
+  name: string;
+  validation: boolean;
+  test: boolean;
+}
+
+export interface MeasureTargets {
+  runs: MeasureRun[];
+  configs: MeasureConfig[];
+  /** The base model's readable name ("Edda, original"). */
+  base: string;
+  job: Job | null;
+}
+
+export interface MeasureBody {
+  backend: "lora" | "hf";
+  /** lora: the training run. */
+  run?: string;
+  /** hf: the config whose build it measures on. */
+  build?: string;
+  dataset: "validation" | "test";
+  fleurs: boolean;
+  confirm?: boolean;
+}
+
+/** Run 12: GET /api/eval/testset, the frozen test set and every use of it. */
+export interface TestLock {
+  created: string | null;
+  build: string | null;
+  sentences: number | null;
+  clips: number | null;
+  sha256: string | null;
+}
+
+export interface TestUse {
+  at: string;
+  runs: string[];
+  backend: string | null;
+  build: string | null;
+  eval_run: string | null;
+  source: "cli" | "studio" | null;
+}
+
+export interface TestSet {
+  lock: TestLock | null;
+  uses: TestUse[];
+  count: number;
+}
+
+/* ------------------------------------------------------------------------ Mix */
+
+export type MixShares = Record<string, number>;
+
+export interface Pace {
+  /** Seconds per sentence. */
+  seconds: number;
+  /** takes: his own median gap; pilot: the pilot's measured median. */
+  source: "takes" | "pilot";
+  gaps: number;
+}
+
+export interface MixCondition {
+  id: string;
+  label: string;
+  share: number;
+  planned: number;
+  done: number;
+  left: number;
+  pace: Pace;
+  /** Expected recording time for the sentences left, in minutes. */
+  minutes: number;
+}
+
+export interface MixView {
+  mix: MixShares;
+  sentences: number;
+  conditions: MixCondition[];
+  minutes: number;
+  /** A recording is picked: dealing again waits until it is stopped. */
+  recording: boolean;
+}
+
+export interface MixMoved {
+  total: number;
+  pairs: { from: string; to: string; n: number }[];
+}
+
+export interface MixPreview extends MixView {
+  moved: MixMoved;
+  /** The mix differs from the one in mix.yaml. */
+  changed: boolean;
+}
+
+/* -------------------------------------------------------------- Dine egne ord */
+
+export interface OwnWord {
+  word: string;
+  count: number;
+  dictations: number;
+  /** Of all dictations, the share that has it (a fraction). */
+  share: number | null;
+  phrase: boolean;
+}
+
+export interface TickedWord {
+  word: string;
+  count: number | null;
+  dictations: number | null;
+  share: number | null;
+  phrase: boolean;
+  sentences: { id: string; text: string }[];
+}
+
+export interface OwnWordsView {
+  history: {
+    found: boolean;
+    readable: boolean;
+    path: string;
+    dictations: number;
+  };
+  /** How many words and phrases were found, the ticked ones included. */
+  found: number;
+  words: OwnWord[];
+  /** Found but not listed (the list stops at 300). */
+  more: number;
+  ticked: TickedWord[];
+  files: { words: string; sentences: string };
+}
+
+export interface OwnSentenceAnswer extends OwnWordsView {
+  sentence: { id: string; text: string; kind: string };
 }
 
 /* ------------------------------------------------------------------- Versions */

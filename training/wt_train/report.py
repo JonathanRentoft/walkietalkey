@@ -15,7 +15,11 @@ so the page shows the numbers and the clips behind them:
   ``metrics.term_counts`` counts them all together, with the current spelling.yaml;
   not on FLEURS (run 8, ``metrics.counts_terms``): its "terms" are ordinary Danish
   words such as "test" and "bug", so a FLEURS page has no term card, columns or
-  table, only a line that says why;
+  table, only a line that says why; run 12: when the measured model's config held
+  terms out of training (summary.json's ``held_out_terms``), the cards, the
+  per-condition columns and the term table show the seen ("kendte") and unseen
+  ("nye") terms apart; without held-out terms there is no unseen block. The owner's
+  own words (``local.py``) count as terms, as ``wt-train eval`` counts them;
 * the 25 worst clips (most word errors, then highest WER), each with its audio,
   the reference, the model's text as written and a word diff coloured the way the
   WER counts it (``align.py``).
@@ -71,7 +75,12 @@ from .studio.labels import eval_title, unique_titles
 WORST = 25
 FOLDER_TIME = "%Y%m%d-%H%M%S"  # wt-train eval's folder names start with the time it started
 
-# TODO(copy): run 11 drafted every Danish string in this file (the report pages' words).
+# Run 11 wrote every Danish string in this file (the report pages' words); the owner approved them in
+# run 12. Run 12's words for the seen and unseen terms ("kendte" and "nye fagord") are final.
+SEEN_CARD = "Kendte fagord rigtige, samme form"
+UNSEEN_CARD = "Nye fagord rigtige, samme form"
+UNSEEN_NOTE = ("Nye fagord er holdt ude af træningen (data.held_out_terms i forsøgets config): modellen har aldrig "
+               "hørt dem, så de viser, hvordan den klarer fagord, den ikke er trænet på. Kendte fagord er resten.")
 NO_CONDITION = "Alle klip (uden optageforhold)"
 OTHER_CONDITION = "Uden optageforhold"
 BACKENDS = {"hf": "Transformers", "lora": "Transformers med en LoRA-adapter", "gguf": "appens pipeline"}
@@ -433,7 +442,18 @@ def _terms_label(total: int, strict: int, lenient: int) -> tuple[str, str]:
     return (f"{strict}/{total} ({_share(strict, total, 1)})", f"{lenient}/{total} ({_share(lenient, total, 1)})")
 
 
-def headline(s: Stats, terms: Sequence[TermStat] | None) -> str:
+def held_out(run: EvalRun) -> frozenset[str]:
+    """Run 12: the terms the measured model never trained on (summary.json's ``held_out_terms``)."""
+    return frozenset(run.summary.get("held_out_terms") or ())
+
+
+def split_terms(terms: Sequence[TermStat] | None, unseen: frozenset[str]) -> tuple[list[TermStat], list[TermStat]]:
+    """(seen, unseen) term stats."""
+    terms = list(terms or [])
+    return [t for t in terms if t.term not in unseen], [t for t in terms if t.term in unseen]
+
+
+def headline(s: Stats, terms: Sequence[TermStat] | None, unseen: frozenset[str] = frozenset()) -> str:
     items = [("WER, andel forkerte ord", pct(s.wer), _ci_note(s.wer_ci)),
              ("CER, andel forkerte tegn", pct(s.cer), _ci_note(s.cer_ci)),
              ("Klip", count(s.n), f"{count(s.words)} ord i referencerne"),
@@ -443,6 +463,11 @@ def headline(s: Stats, terms: Sequence[TermStat] | None) -> str:
     if total:
         items.append(("Engelske fagord rigtige, samme form", _share(strict, total, 1),
                       f"{strict} af {total}; i enhver form: {lenient} ({_share(lenient, total, 1)})"))
+    if total and unseen:
+        for label, part in zip((SEEN_CARD, UNSEEN_CARD), split_terms(terms, unseen)):
+            n, st, le = term_totals(part)
+            items.append((label, _share(st, n, 1) if n else "–",
+                          f"{st} af {n}; i enhver form: {le} ({_share(le, n, 1)})" if n else "ingen i referencerne"))
     if s.failed or s.empty:
         items.append(("Fejlede eller tomme", f"{s.failed} / {s.empty}",
                       "klip, modellen fejlede på / ikke gav tekst for"))
@@ -459,17 +484,27 @@ def datasets_table(run: EvalRun) -> str:
             + '<p class="note">De andre: <code>wt-train report &lt;kørsel&gt; --dataset &lt;navn&gt;</code>.</p>')
 
 
-def condition_table(rows: Sequence[dict], overall: Stats, spelling: Spelling | None, with_terms: bool = True) -> str:
+def condition_table(rows: Sequence[dict], overall: Stats, spelling: Spelling | None, with_terms: bool = True,
+                    unseen: frozenset[str] = frozenset()) -> str:
     out = []
     for label, part in groups(rows):
         s = overall if len(part) == len(rows) else stats(part)
         line = [condition_label(label), count(s.n), count(s.words), pct_ci(s.wer, s.wer_ci), pct_ci(s.cer, s.cer_ci),
                 count(s.sub), count(s.dele), count(s.ins)]
         if with_terms:
-            line += _terms_label(*term_totals(term_stats(part, spelling) if spelling else []))
+            stats_here = term_stats(part, spelling) if spelling else []
+            if unseen:
+                for half in split_terms(stats_here, unseen):
+                    line += _terms_label(*term_totals(half))
+            else:
+                line += _terms_label(*term_totals(stats_here))
         out.append(line)
     headers = ["Forhold", "Klip", "Ord", "WER (95 %)", "CER (95 %)", "Erstattet", "Udeladt", "Tilføjet"]
-    headers += ["Fagord, samme form", "Fagord, enhver form"] if with_terms else []
+    if with_terms and unseen:
+        headers += ["Kendte fagord, samme form", "Kendte fagord, enhver form", "Nye fagord, samme form",
+                    "Nye fagord, enhver form"]
+    elif with_terms:
+        headers += ["Fagord, samme form", "Fagord, enhver form"]
     return table(headers, out, numeric=tuple(range(1, len(headers))))
 
 
@@ -497,7 +532,16 @@ NO_TERMS_ON_FLEURS = ('<p class="note">Engelske fagord tælles ikke på FLEURS: 
                       'tælles på dine egne optagelser.</p>')
 
 
-def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spelling | None) -> str:
+def _term_rows(terms: Sequence[TermStat]) -> list[list[str]]:
+    return [[t.term, count(t.clips), count(t.total), f"{t.strict} ({_share(t.strict, t.total, 1)})",
+             f"{t.lenient} ({_share(t.lenient, t.total, 1)})", _missed(t)] for t in terms]
+
+
+TERM_HEADERS = ["Fagord", "Klip", "I referencerne", "Rigtige, samme form", "Rigtige, enhver form", "Manglende former"]
+
+
+def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spelling | None,
+                  unseen: frozenset[str] = frozenset()) -> str:
     head = "<h2>Engelske fagord</h2>"
     if not counts_terms(run.dataset):
         return head + NO_TERMS_ON_FLEURS
@@ -505,8 +549,6 @@ def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spel
         return head + "<p>Der er ingen spelling.yaml, så fagordene tælles ikke.</p>"
     if not terms:
         return head + "<p>Der er ingen engelske fagord fra spelling.yaml i disse referencer.</p>"
-    rows = [[t.term, count(t.clips), count(t.total), f"{t.strict} ({_share(t.strict, t.total, 1)})",
-             f"{t.lenient} ({_share(t.lenient, t.total, 1)})", _missed(t)] for t in terms]
     note = (f"Talt med den spelling.yaml, der gælder i dag ({len(spelling.terms)} fagord), som wt-train eval tæller: "
             "samme form er præcis referencens form (deployede for deployede), enhver form er en hvilken som "
             "helst form af ordet (deployer for deployede). Manglende former er de former fra referencen, som "
@@ -515,8 +557,17 @@ def terms_section(run: EvalRun, terms: Sequence[TermStat] | None, spelling: Spel
     total = term_totals(terms)[0]
     if stored is not None and stored != total:
         note += f" summary.json talte {stored} forekomster, med den spelling.yaml, der gjaldt dengang."
-    return (head + table(["Fagord", "Klip", "I referencerne", "Rigtige, samme form", "Rigtige, enhver form",
-                          "Manglende former"], rows, numeric=(1, 2, 3, 4)) + f'<p class="note">{esc(note)}</p>')
+    numeric = (1, 2, 3, 4)
+    if not unseen:
+        return head + table(TERM_HEADERS, _term_rows(terms), numeric=numeric) + f'<p class="note">{esc(note)}</p>'
+    seen_part, unseen_part = split_terms(terms, unseen)
+    body = [head, f'<p class="note">{esc(UNSEEN_NOTE)}</p>', "<h3>Kendte fagord</h3>"]
+    body.append(table(TERM_HEADERS, _term_rows(seen_part), numeric=numeric) if seen_part
+                else "<p>Ingen kendte fagord i disse referencer.</p>")
+    body.append("<h3>Nye fagord, holdt ude af træningen</h3>")
+    body.append(table(TERM_HEADERS, _term_rows(unseen_part), numeric=numeric) if unseen_part
+                else "<p>Ingen af de nye fagord er i disse referencer.</p>")
+    return "".join(body) + f'<p class="note">{esc(note)}</p>'
 
 
 def _errors_fact(row: dict) -> str:
@@ -610,10 +661,11 @@ def single_page(run: EvalRun, spelling: Spelling | None, n_worst: int = WORST, t
         tracked = ", sporet i MLflow" + (f" som {tracked_as}" if tracked_as != run.folder.name else "")
     subtitle = (f"{how[:1].upper()}{how[1:]} ({backend}), model {model}, datasæt {run.dataset}. "
                 f"Evalueringskørsel {run.folder.name}, startet {_when(run)}{tracked}.")
-    body = [headline(s, terms), _consistency(run, s), datasets_table(run),
-            "<h2>Pr. optageforhold</h2>", condition_table(run.rows, s, spelling, with_terms),
+    unseen = held_out(run) if with_terms else frozenset()
+    body = [headline(s, terms, unseen), _consistency(run, s), datasets_table(run),
+            "<h2>Pr. optageforhold</h2>", condition_table(run.rows, s, spelling, with_terms, unseen),
             "<h2>Erstatninger, udeladelser og tilføjelser</h2>", edits_table(s), EDITS_NOTE,
-            terms_section(run, terms, spelling), worst_section(run.rows, n_worst), method(run)]
+            terms_section(run, terms, spelling, unseen), worst_section(run.rows, n_worst), method(run)]
     return page(run_title(run), "".join(body), subtitle)
 
 
@@ -887,7 +939,12 @@ def open_page(path: Path) -> None:
 
 
 def _spelling(path) -> Spelling | None:
-    return load_spelling(Path(path)) if path and Path(path).is_file() else None
+    """spelling.yaml and, as ``wt-train eval`` counts them, the owner's own words (run 12)."""
+    if not path or not Path(path).is_file():
+        return None
+    from .local import spelling_with_own_words
+
+    return spelling_with_own_words(load_spelling(Path(path)))
 
 
 def after_eval(result: dict, run_id: str = "", log=console.log) -> Path | None:

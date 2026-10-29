@@ -14,7 +14,16 @@ import type {
   LearnListing,
   LearnNotebook,
   Limits,
+  MeasureTargets,
+  MixMoved,
+  MixPreview,
+  MixView,
   Overview,
+  OwnWord,
+  OwnWordsView,
+  TestLock,
+  TestSet,
+  TestUse,
   Pick,
   Pilot,
   PilotComparison,
@@ -770,13 +779,65 @@ export const TRAINING_CONFIGS: TrainingConfig[] = [
   CONFIG_SETTINGS("top4-encoder", 6, 0.0001, false, 0.1),
 ].map(withEssentials);
 
+/** Run 12: what a run measured on, from its dataset's name (as the server infers it). */
+export function splitOf(dataset: string | null): EvalRun["split"] {
+  const base = (dataset ?? "").split("@")[0];
+  if (base.startsWith("fleurs")) return "fleurs";
+  if (base.startsWith("exam")) return "exam";
+  const split = base.includes(":") ? base.split(":").pop() : null;
+  return split === "test" || split === "validation" || split === "train"
+    ? split
+    : null;
+}
+
 const evalRun = (
   r: Omit<EvalRun, "kind" | "change" | "report"> & {
     kind?: string;
     change?: string | null;
     report?: string | null;
   },
-): EvalRun => ({ kind: "eval", change: "pipeline", report: null, ...r });
+): EvalRun => ({
+  kind: "eval",
+  change: "pipeline",
+  report: null,
+  split: splitOf(r.dataset),
+  ...r,
+});
+
+/* Run 12: two measurements on the validation, made in Værkstedet (newer than EVAL_RUNS). */
+export const VALIDATION_RUNS: EvalRun[] = [
+  evalRun({
+    id: "9a3e51",
+    name: "20261028-141500-lora-first-frozen-encoder-20261026-2112",
+    title:
+      "Edda finjusteret (first-frozen-encoder) · Dine optagelser, validering",
+    normaliser: 2,
+    date: "2026-10-28T14:15:00+01:00",
+    dataset: "first-frozen-encoder-20261026-2112:validation",
+    model: "first-frozen-encoder-20261026-2112 (LoRA)",
+    backend: "lora",
+    clips: 104,
+    wer: 0.1203,
+    wer_ci: [0.0962, 0.1444],
+    cer: 0.0518,
+    change: "model",
+  }),
+  evalRun({
+    id: "9a3e50",
+    name: "20261028-140200-hf-danish-foundation-models-edda-v0-2-698f8d04b597",
+    title: "Edda, original · Dine optagelser, validering",
+    normaliser: 2,
+    date: "2026-10-28T14:02:00+01:00",
+    dataset: "first-frozen-encoder:validation",
+    model: "edda-v0.2@698f8d04b597 (Transformers)",
+    backend: "hf",
+    clips: 104,
+    wer: 0.2031,
+    wer_ci: [0.1711, 0.2351],
+    cer: 0.0917,
+    change: "model",
+  }),
+];
 
 export const EVAL_RUNS: EvalRun[] = [
   evalRun({
@@ -885,6 +946,74 @@ export const EVAL_RUNS: EvalRun[] = [
     wer_ci: [0.0666, 0.0778],
     cer: 0.0261,
   }),
+];
+
+/* Run 12: the English words of a made-up history (812 dictations), most often said first. */
+export const OWN_WORDS: OwnWord[] = [
+  { word: "Grafana", count: 14, dictations: 9, share: 0.0111, phrase: false },
+  { word: "Terraform", count: 11, dictations: 8, share: 0.0099, phrase: false },
+  { word: "Playwright", count: 9, dictations: 6, share: 0.0074, phrase: false },
+  { word: "code freeze", count: 6, dictations: 5, share: 0.0062, phrase: true },
+  { word: "OAuth", count: 5, dictations: 4, share: 0.0049, phrase: false },
+  { word: "Datadog", count: 4, dictations: 3, share: 0.0037, phrase: false },
+  { word: "Storybook", count: 3, dictations: 3, share: 0.0037, phrase: false },
+  {
+    word: "load balancer",
+    count: 3,
+    dictations: 2,
+    share: 0.0025,
+    phrase: true,
+  },
+  { word: "Kafka", count: 2, dictations: 2, share: 0.0025, phrase: false },
+  { word: "Zod", count: 1, dictations: 1, share: 0.0012, phrase: false },
+];
+
+/* Run 12: his pace per condition (his own where he has recorded enough, else the pilot's). */
+export const PACE: Record<
+  string,
+  { seconds: number; source: "takes" | "pilot"; gaps: number }
+> = {
+  "phone-whisper": { seconds: 7.6, source: "takes", gaps: 34 },
+  "phone-normal": { seconds: 10.2, source: "takes", gaps: 30 },
+  "mac-normal": { seconds: 8, source: "pilot", gaps: 2 },
+  "mac-whisper": { seconds: 5, source: "pilot", gaps: 0 },
+};
+
+/* Run 12: what can be measured, the frozen test set and its uses. */
+export const MEASURE_RUNS: MeasureTargets["runs"] = [
+  {
+    name: "first-frozen-encoder-20261026-2112",
+    title: "Edda finjusteret (first-frozen-encoder)",
+    date: "2026-10-26T21:12:00+01:00",
+    best_validation_wer: 0.12,
+    validation: true,
+    test: true,
+  },
+];
+export const TEST_LOCK: TestLock = {
+  created: "2026-10-28T21:04:00+01:00",
+  build: "first-frozen-encoder",
+  sentences: 104,
+  clips: 312,
+  sha256: "4f1c0a9e7d2b5c8f3a6e1d0b9c8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a",
+};
+export const TEST_USES: TestUse[] = [
+  {
+    at: "2026-10-27T12:42:10+01:00",
+    runs: ["first-frozen-encoder-20261026-2112"],
+    backend: "lora",
+    build: null,
+    eval_run: "lora-test-split-2026-10-27",
+    source: "cli",
+  },
+  {
+    at: "2026-10-27T12:30:02+01:00",
+    runs: [],
+    backend: "gguf",
+    build: "first-frozen-encoder",
+    eval_run: "gguf-test-split-2026-10-27",
+    source: "cli",
+  },
 ];
 
 /* The learning notebooks (run 11), as GET /api/learn lists them. */
@@ -999,6 +1128,8 @@ export interface FakeStudioOptions {
   empty?: boolean;
   /** Run 11: false when no VS Code can be found (POST /api/learn/open answers no-vscode). */
   vscode?: boolean;
+  /** Run 12, Dine egne ord: the history as found (default "full"; "none" with `empty`). */
+  ownWords?: "full" | "none" | "unreadable" | "no-words" | "all-ticked";
 }
 
 interface RecState {
@@ -1037,6 +1168,14 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
   const simulate = opts.simulate ?? true;
   const empty = opts.empty ?? false;
   const t0 = now();
+
+  /* ---- run 12: the mix (each fake its own, so a deal in one test stays there) ---- */
+  const mixShares: Record<string, number> = Object.fromEntries(
+    CONDITIONS.map((c) => [c.id, c.share]),
+  );
+  let mixPlanned: Record<string, number> = Object.fromEntries(
+    CONDITIONS.map((c) => [c.id, c.planned]),
+  );
 
   /* ---- recording ---- */
   const sessions = new Map<string, Row[]>();
@@ -1264,7 +1403,7 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     if (kind === "condition") {
       const c = CONDITIONS.find((x) => x.id === id);
       if (!c) return err(404, "unknown", `no condition ${id}`);
-      if (c.share === 0)
+      if ((mixShares[c.id] ?? 0) === 0)
         return err(409, "no-share", `${id} has no share in the mix`);
       const exam = body.exam === true;
       pick = {
@@ -1821,8 +1960,8 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
           label: c.label,
           device: c.device,
           style: c.style,
-          share: c.share,
-          planned: c.planned,
+          share: mixShares[c.id] ?? 0,
+          planned: mixPlanned[c.id] ?? 0,
           done,
           redo:
             c.id === "phone-whisper"
@@ -1848,7 +1987,7 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
   function progressView(): Progress {
     const o = options();
     return {
-      mix: Object.fromEntries(CONDITIONS.map((c) => [c.id, c.share])),
+      mix: { ...mixShares },
       sentences: 1041,
       minutes: round(
         o.conditions.reduce((s, c) => s + c.minutes, 0),
@@ -2018,6 +2157,343 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
     };
   }
 
+  /* ---- run 12: Dine egne ord ---- */
+  const ownMode = opts.ownWords ?? (empty ? "none" : "full");
+  const ownFound: OwnWord[] =
+    ownMode === "full" || ownMode === "all-ticked"
+      ? OWN_WORDS.map((w) => ({ ...w }))
+      : [];
+  let ownTicked: string[] =
+    ownMode === "all-ticked"
+      ? ownFound.map((w) => w.word)
+      : ownMode === "full"
+        ? ["Sentry"]
+        : [];
+  const ownSentences: { id: string; text: string }[] =
+    ownMode === "full"
+      ? [
+          {
+            id: "own-0001",
+            text: "Sentry sender en mail, hver gang buildet fejler.",
+          },
+        ]
+      : [];
+  const key = (w: string) => w.trim().toLowerCase();
+  const mentions = (text: string, word: string) =>
+    text.toLowerCase().includes(word.toLowerCase());
+  function ownView(): OwnWordsView {
+    const chosen = new Set(ownTicked.map(key));
+    const all = [
+      ...ownFound,
+      ...(ownMode === "full"
+        ? [
+            {
+              word: "Sentry",
+              count: 7,
+              dictations: 6,
+              share: 0.0074,
+              phrase: false,
+            },
+          ]
+        : []),
+    ];
+    return {
+      history: {
+        found: ownMode !== "none",
+        readable: ownMode !== "none" && ownMode !== "unreadable",
+        path: "/Users/jonathan/Library/Application Support/WalkieTalkey/history.db",
+        dictations: ownMode === "none" || ownMode === "unreadable" ? 0 : 812,
+      },
+      found: all.length,
+      words: all.filter((w) => !chosen.has(key(w.word))),
+      more: 0,
+      ticked: ownTicked.map((word) => {
+        const f = all.find((w) => key(w.word) === key(word));
+        return {
+          word,
+          count: f?.count ?? null,
+          dictations: f?.dictations ?? null,
+          share: f?.share ?? null,
+          phrase: word.includes(" "),
+          sentences: ownSentences.filter((s) => mentions(s.text, word)),
+        };
+      }),
+      files: {
+        words:
+          "/Users/jonathan/Desktop/CODING/Business/walkietalkey-app/training/data/local/own-words.yaml",
+        sentences:
+          "/Users/jonathan/Desktop/CODING/Business/walkietalkey-app/training/data/local/sentences.csv",
+      },
+    };
+  }
+  function ownTick(b: Record<string, unknown>): FakeResponse {
+    const word = typeof b.word === "string" ? b.word.trim() : "";
+    if (!word || word.length > 64 || typeof b.ticked !== "boolean")
+      return err(400, "word", "name a word and ticked");
+    const rest = ownTicked.filter((w) => key(w) !== key(word));
+    ownTicked = b.ticked ? [...rest, word] : rest;
+    return ok(ownView());
+  }
+  function ownSentence(b: Record<string, unknown>): FakeResponse {
+    const word = typeof b.word === "string" ? b.word.trim() : "";
+    if (!word || typeof b.text !== "string")
+      return err(400, "text", "word and text");
+    const text = b.text.split(/\s+/).filter(Boolean).join(" ");
+    const words = text.split(" ").length;
+    if (words < 4 || words > 20) return err(400, "length", "4 to 20 words");
+    if (/[—–]/.test(text)) return err(400, "dash", "no dash");
+    if (!mentions(text, word)) return err(400, "no-word", "no word");
+    const squash = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .join(" ");
+    if (
+      [...SENTENCES.map(([s]) => s), ...ownSentences.map((s) => s.text)].some(
+        (s) => squash(s) === squash(text),
+      )
+    )
+      return err(409, "duplicate", "there already");
+    const sentence = {
+      id: `own-${String(ownSentences.length + 1).padStart(4, "0")}`,
+      text,
+    };
+    ownSentences.push(sentence);
+    return ok({ sentence: { ...sentence, kind: "terms" }, ...ownView() });
+  }
+
+  /* ---- run 12: the mix ---- */
+  const TOTAL = 1041;
+  function mixDone(): Record<string, number> {
+    return Object.fromEntries(options().conditions.map((c) => [c.id, c.done]));
+  }
+  /** Planned sentences for a mix: the shares of the total, never fewer than the recorded ones. */
+  function plannedFor(mix: Record<string, number>): Record<string, number> {
+    const done = mixDone();
+    const out = Object.fromEntries(
+      CONDITIONS.map((c) => [
+        c.id,
+        Math.max(done[c.id] ?? 0, Math.floor((TOTAL * (mix[c.id] ?? 0)) / 100)),
+      ]),
+    );
+    let left = TOTAL - Object.values(out).reduce((s, v) => s + v, 0);
+    for (const c of CONDITIONS)
+      if (left > 0 && (mix[c.id] ?? 0) > 0) {
+        out[c.id] += 1;
+        left -= 1;
+      }
+    return out;
+  }
+  function mixRows(
+    mix: Record<string, number>,
+    planned: Record<string, number>,
+  ) {
+    const done = mixDone();
+    const conditions = CONDITIONS.map((c) => {
+      const pace = PACE[c.id];
+      const left = Math.max(0, planned[c.id] - (done[c.id] ?? 0));
+      return {
+        id: c.id,
+        label: c.label,
+        share: mix[c.id] ?? 0,
+        planned: planned[c.id],
+        done: done[c.id] ?? 0,
+        left,
+        pace,
+        minutes: round((left * pace.seconds) / 60, 1),
+      };
+    });
+    return {
+      mix: { ...mix },
+      sentences: TOTAL,
+      conditions,
+      minutes: round(
+        conditions.reduce((s, c) => s + c.minutes, 0),
+        1,
+      ),
+      recording: rec.pick !== null,
+    };
+  }
+  function movedBetween(
+    before: Record<string, number>,
+    after: Record<string, number>,
+  ): MixMoved {
+    const losers = CONDITIONS.map((c) => ({
+      id: c.id,
+      n: Math.max(0, before[c.id] - after[c.id]),
+    })).filter((x) => x.n > 0);
+    const gainers = CONDITIONS.map((c) => ({
+      id: c.id,
+      n: Math.max(0, after[c.id] - before[c.id]),
+    })).filter((x) => x.n > 0);
+    const pairs: MixMoved["pairs"] = [];
+    for (const g of gainers)
+      for (const l of losers) {
+        const n = Math.min(g.n, l.n);
+        if (n <= 0) continue;
+        pairs.push({ from: l.id, to: g.id, n });
+        g.n -= n;
+        l.n -= n;
+      }
+    pairs.sort((a, b) => b.n - a.n);
+    return { total: pairs.reduce((s, x) => s + x.n, 0), pairs };
+  }
+  function parseMix(value: unknown): Record<string, number> | FakeResponse {
+    if (!value || typeof value !== "object")
+      return err(400, "mix", "mix must be an object");
+    const mix: Record<string, number> = Object.fromEntries(
+      CONDITIONS.map((c) => [c.id, 0]),
+    );
+    for (const [k, v] of Object.entries(value)) {
+      if (
+        !(k in mix) ||
+        typeof v !== "number" ||
+        !Number.isInteger(v) ||
+        v < 0 ||
+        v > 100
+      )
+        return err(400, "mix", `bad share for ${k}`);
+      mix[k] = v;
+    }
+    if (Object.values(mix).reduce((s, v) => s + v, 0) !== 100)
+      return err(400, "mix", "the shares do not add up to 100");
+    return mix;
+  }
+  function mixPreview(b: Record<string, unknown>): FakeResponse {
+    const mix = parseMix(b.mix);
+    if ("status" in mix) return mix as FakeResponse;
+    const same = CONDITIONS.every((c) => mix[c.id] === mixShares[c.id]);
+    const after = same ? mixPlanned : plannedFor(mix);
+    return ok({
+      ...mixRows(mix, after),
+      moved: movedBetween(mixPlanned, after),
+      changed: !same,
+    } satisfies MixPreview);
+  }
+  function mixDeal(b: Record<string, unknown>): FakeResponse {
+    const mix = parseMix(b.mix);
+    if ("status" in mix) return mix as FakeResponse;
+    if (rec.pick !== null)
+      return err(409, "recording", "stop the recording first");
+    const same = CONDITIONS.every((c) => mix[c.id] === mixShares[c.id]);
+    const after = same ? mixPlanned : plannedFor(mix);
+    const moved = movedBetween(mixPlanned, after);
+    Object.assign(mixShares, mix);
+    mixPlanned = after;
+    return ok({
+      ...mixRows(mixShares, mixPlanned),
+      moved,
+      changed: false,
+    } satisfies MixPreview);
+  }
+
+  /* ---- run 12: measuring, and the test set ---- */
+  const evalRuns: EvalRun[] = empty
+    ? []
+    : [...VALIDATION_RUNS, ...EVAL_RUNS].map((r) => ({ ...r }));
+  const testUses: TestUse[] = empty ? [] : TEST_USES.map((u) => ({ ...u }));
+  let evalJob: Job | null = null;
+  /** Without the simulation, a job ends when it is next asked for (the page polls it). */
+  const endOnNextLook = new Map<string, () => void>();
+  function measureTargets(): MeasureTargets {
+    return {
+      runs: empty ? [] : MEASURE_RUNS.map((r) => ({ ...r })),
+      configs: TRAINING_CONFIGS.map((c) => ({
+        name: c.name,
+        validation: !empty && c.name === "first-frozen-encoder",
+        test: !empty && c.name === "first-frozen-encoder",
+      })),
+      base: "Edda, original",
+      job: evalJob,
+    };
+  }
+  function measure(b: Record<string, unknown>): FakeResponse {
+    const dataset = b.dataset ?? "validation";
+    if (dataset !== "validation" && dataset !== "test")
+      return err(400, "dataset", "validation or test");
+    if (dataset === "test" && b.confirm !== true)
+      return err(409, "confirm", "confirm the test set");
+    const targets = measureTargets();
+    let what: string;
+    let runName: string;
+    if (b.backend === "lora") {
+      const run = targets.runs.find((r) => r.name === b.run);
+      if (!run) return err(404, "unknown", "no such run");
+      what = run.title;
+      runName = run.name;
+    } else if (b.backend === "hf") {
+      const cfg = targets.configs.find((c) => c.name === b.build);
+      if (!cfg) return err(404, "unknown", "no such build");
+      if (!cfg[dataset]) return err(409, "no-build", "not built");
+      what = `Edda, original · ${cfg.name}`;
+      runName = cfg.name;
+    } else return err(400, "backend", "lora or hf");
+    if (evalJob?.status === "running")
+      return err(409, "busy", "a measurement runs");
+    const job = newJob(
+      "eval",
+      `${dataset === "test" ? "Måling på testsættet" : "Måling på valideringen"}: ${what}`,
+    );
+    evalJob = job;
+    const lines = [
+      `eval: ${b.backend} on mps (float16): ${runName}`,
+      `eval: ${dataset}: 104 clips`,
+      ...(b.fleurs === false ? [] : ["eval: fleurs-da_dk-test: 930 clips"]),
+      "per-clip rows written",
+    ];
+    const finish = () => {
+      job.log.push(...lines.slice(job.log.length));
+      endJob(job, "done", 0);
+      const stamp = iso(now());
+      evalRuns.unshift(
+        evalRun({
+          id: `m${job.id}`,
+          name: `measured-${job.id}`,
+          title: `${what.split(" · ")[0]} · Dine optagelser${dataset === "validation" ? ", validering" : ""}`,
+          normaliser: 2,
+          date: stamp,
+          dataset: `${runName}:${dataset}`,
+          model: String(runName),
+          backend: String(b.backend),
+          clips: 104,
+          wer: 0.1188,
+          wer_ci: [0.0951, 0.1425],
+          cer: 0.0507,
+          change: "model",
+        }),
+      );
+      if (dataset === "test")
+        testUses.unshift({
+          at: stamp,
+          runs: b.backend === "lora" ? [runName] : [],
+          backend: String(b.backend),
+          build: b.backend === "hf" ? runName : null,
+          eval_run: `measured-${job.id}`,
+          source: "studio",
+        });
+    };
+    if (simulate) {
+      const t = setInterval(() => {
+        if (job.log.length < lines.length) job.log.push(lines[job.log.length]);
+        else {
+          clearInterval(t);
+          finish();
+        }
+      }, 900);
+      timers.push(t);
+    } else endOnNextLook.set(job.id, finish);
+    return ok(job);
+  }
+  function testSet(): TestSet {
+    return {
+      lock: empty ? null : { ...TEST_LOCK },
+      uses: testUses.map((u) => ({ ...u })),
+      count: testUses.length,
+    };
+  }
+
   function trainingState(): TrainingState {
     return { job: trainJob, progress, runs };
   }
@@ -2079,7 +2555,12 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
       }
       if (p === "/api/training/configs") return ok(TRAINING_CONFIGS);
       if (p === "/api/training/state") return ok(trainingState());
-      if (p === "/api/eval/runs") return ok(empty ? [] : EVAL_RUNS);
+      if (p === "/api/eval/runs") return ok(evalRuns);
+      if (p === "/api/eval/measure") return ok(measureTargets());
+      if (p === "/api/eval/testset") return ok(testSet());
+      if (p === "/api/ownwords") return ok(ownView());
+      if (p === "/api/mix")
+        return ok(mixRows(mixShares, mixPlanned) satisfies MixView);
       if (p === "/api/learn") return ok(learnListing());
       if (p === "/api/versions") return ok(versions);
       if (p === "/api/journal") {
@@ -2105,7 +2586,10 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
       }
       const job = p.match(/^\/api\/jobs\/([^/]+)$/);
       if (job) {
-        const j = jobs.get(decodeURIComponent(job[1]));
+        const id = decodeURIComponent(job[1]);
+        endOnNextLook.get(id)?.();
+        endOnNextLook.delete(id);
+        const j = jobs.get(id);
         return j ? ok(j) : err(404, "unknown", "no such job");
       }
       const takeM = p.match(/^\/api\/takes\/([^/]+)\/([^/]+)\.wav$/);
@@ -2247,15 +2731,23 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         if (!rec.pick)
           return err(409, "no-pick", "nothing is picked to record");
         if (!rec.active) return err(409, "paused", "the session is paused");
-        if (!rec.recording) return ok(recordingState());
-        const row = rowById(rec.recording.prompt);
-        rec.recording = null;
-        if (row) finishTake(row, "mac");
-        rec.current = nextCurrent(row?.id ?? null);
+        if (!rec.recording || rec.recording.stopping)
+          return ok(recordingState());
+        // Run 12: the take is saved after the post-roll (half a second), as the recorder does.
+        const taking = { ...rec.recording, stopping: true };
+        rec.recording = taking;
         bump();
         setTimeout(() => {
-          if (eddaListens() > 0) bump();
-        }, 1500);
+          if (rec.recording !== taking) return;
+          const row = rowById(taking.prompt);
+          rec.recording = null;
+          if (row) finishTake(row, "mac");
+          rec.current = nextCurrent(row?.id ?? null);
+          bump();
+          setTimeout(() => {
+            if (eddaListens() > 0) bump();
+          }, 1500);
+        }, 500);
         return ok(recordingState());
       }
       case "/api/recording/mac/cancel": {
@@ -2348,15 +2840,15 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         return ok(trainJob);
       }
       case "/api/eval/report": {
-        const run = EVAL_RUNS.find((r) => r.id === b.run);
+        const run = evalRuns.find((r) => r.id === b.run);
         if (!run) return err(404, "unknown", "no run");
         if (run.report) return ok({ url: run.report });
         run.report = `/reports/eval-${run.id}.html`;
         return ok({ url: run.report, job: reportJob(run.name).id });
       }
       case "/api/eval/compare": {
-        const a = EVAL_RUNS.find((r) => r.id === b.a);
-        const bb = EVAL_RUNS.find((r) => r.id === b.b);
+        const a = evalRuns.find((r) => r.id === b.a);
+        const bb = evalRuns.find((r) => r.id === b.b);
         if (!a || !bb) return err(404, "unknown", "no run");
         if (a.dataset !== bb.dataset)
           return err(409, "not-comparable", "B has no results for A's dataset");
@@ -2425,6 +2917,16 @@ export function createFakeStudio(opts: FakeStudioOptions = {}): FakeStudio {
         timers.push(t);
         return ok(job);
       }
+      case "/api/ownwords/tick":
+        return ownTick(b);
+      case "/api/ownwords/sentence":
+        return ownSentence(b);
+      case "/api/mix/preview":
+        return mixPreview(b);
+      case "/api/mix/deal":
+        return mixDeal(b);
+      case "/api/eval/measure":
+        return measure(b);
       case "/api/learn/open":
         return notebookAction("open", b.name);
       case "/api/learn/reset":

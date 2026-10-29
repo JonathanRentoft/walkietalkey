@@ -77,6 +77,26 @@ def test_a_take_cut_too_short_for_its_sentence():
     assert judge(x, text="Ja tak.").check == "ok"
 
 
+@pytest.mark.parametrize("parts, edge", [
+    ([("speech", 2.0), ("silence", 0.6)], "start"),
+    ([("silence", 0.6), ("speech", 2.0)], "end"),
+])
+def test_speech_at_an_edge_is_cut_off_kept_and_offered_for_a_redo(parts, edge):
+    # Run 12: the same rule as wt-train check and Værkstedet (speech within 50 ms of an edge, in a
+    # take clear enough of its noise to tell), so the owner hears of it right after the take.
+    r = judge(app_take(parts))
+    assert r.check == "cut" and r.saved and r.problems == ("cut",), (edge, r)
+    # Too close to the room noise to tell where the speech ends: not called cut.
+    noisy = judge(app_take(parts, noise_dbfs=-30))
+    assert "cut" not in noisy.problems
+
+
+def test_cut_names_the_check_before_quiet_and_short():
+    x = app_take([("speech", 0.5), ("silence", 0.3)], level_dbfs=-40, noise_dbfs=-70)
+    r = judge(x, text="Det her er en ret lang sætning med mange ord i, som tager tid at sige.")
+    assert r.check == "cut" and set(r.problems) == {"cut", "quiet", "short"}
+
+
 def test_missing_blocks_refuse_the_take():
     x = app_take([("silence", 0.5), ("speech", 2.0), ("silence", 0.5)])
     r = judge(x, missing=2)

@@ -98,7 +98,9 @@ class Spelling:
                     )
                 also_of[key] = term.name
                 self._also[key] = form
-        self._forms_re = _pattern(list(self._form_of_original()))
+        # No terms at all (an empty spelling.yaml): nothing to find, and an empty pattern would
+        # match everywhere.
+        self._forms_re = _pattern(list(self._form_of_original())) if self._form_of else None
         self._also_re = _pattern(list(self._also_original())) if self._also else None
 
     def _form_of_original(self) -> list[str]:
@@ -126,6 +128,8 @@ class Spelling:
     def find_terms(self, text: str) -> list[TermHit]:
         """Every conventional form in ``text``, left to right, longest match first."""
         hits = []
+        if self._forms_re is None:
+            return hits
         for m in self._forms_re.finditer(text):
             name, form = self._form_of[_squash(m.group(0))]
             hits.append(TermHit(term=name, form=form, start=m.start(), end=m.end()))
@@ -136,6 +140,20 @@ class Spelling:
         if self._also_re is None:
             return []
         return [m.group(0) for m in self._also_re.finditer(text)]
+
+    def spans(self, text: str) -> list[tuple[int, int]]:
+        """Run 12: where ``text`` holds a form or an ``also`` spelling, as (start, end), the
+        same whole-word, case-insensitive matching as :meth:`find_terms`."""
+        found = [(m.start(), m.end()) for m in self._forms_re.finditer(text)]
+        if self._also_re is not None:
+            found += [(m.start(), m.end()) for m in self._also_re.finditer(text)]
+        return sorted(found)
+
+    def covers(self, spelling: str) -> bool:
+        """Run 12: whether ``spelling`` is exactly a form or an ``also`` spelling (case and
+        runs of spaces do not count)."""
+        key = _squash(spelling.strip())
+        return key in self._form_of or key in self._also
 
 
 def _squash(spelling: str) -> str:

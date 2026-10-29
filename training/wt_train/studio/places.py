@@ -5,7 +5,8 @@ The defaults are the workbench's (``wt_train.paths``): the recordings and the pi
 takes in ``training/data/``, the configs, the journal, the learning notebooks, and the work
 folder (``WT_WORK_DIR``) with the reports, the runs, the notebooks' working copies and
 Værkstedet's own files in ``<work>/studio/`` (``server.json``, the training progress, the
-pilot comparison).
+pilot comparison). Run 12 adds the app's dictation history (read-only), the owner's own words
+and sentences (``paths.LOCAL``), the test set's lock and the log of its uses.
 """
 
 from __future__ import annotations
@@ -44,6 +45,11 @@ class StudioPaths:
     # workspace (training/, with .vscode/settings.json and the .venv).
     notebooks: Path = paths.TRAINING / "notebooks"
     workspace: Path = paths.TRAINING
+    # Run 12: the app's dictation history ("Dine egne ord" reads it, read-only), the owner's own
+    # words and sentences (git-ignored), and the frozen test set's lock file.
+    history_db: Path = field(default_factory=paths.app_history_db)
+    local: Path = field(default_factory=paths.local_dir)
+    test_lock: Path = paths.DATA / "test-lock.json"
 
     @property
     def own(self) -> Path:
@@ -54,6 +60,11 @@ class StudioPaths:
     def notebook_copies(self) -> Path:
         """The owner's working copies of the notebooks (git-ignored, as the whole work folder)."""
         return self.work / "notebooks"
+
+    @property
+    def test_uses(self) -> Path:
+        """Run 12: every use of the test set, one JSON line each (``wt-train eval`` writes it)."""
+        return self.work / "test-uses.jsonl"
 
     @property
     def reports(self) -> Path:

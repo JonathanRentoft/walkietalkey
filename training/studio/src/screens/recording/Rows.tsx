@@ -100,6 +100,9 @@ export const RowItem = memo(function RowItem({
             ) : (
               <p className="heard heard--none">{R.waitingForEdda}</p>
             )}
+            {take.problems.some((p) => p.kind === "cut") && (
+              <p className="row-note">{R.problemHelp.cut}</p>
+            )}
             {note && <p className="row-note">{note}</p>}
           </div>
         )}

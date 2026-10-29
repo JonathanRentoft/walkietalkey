@@ -74,7 +74,7 @@ export function ProblemChips({ problems }: { problems: readonly Problem[] }) {
           <li
             key={`${p.kind}-${i}`}
             className={`chip ${back ? "chip--back" : "chip--warn"}`}
-            title={p.detail ?? undefined}
+            title={S.recording.problemHelp[p.kind] ?? p.detail ?? undefined}
           >
             {back ? <IconRedo size={13} /> : <IconWarn size={13} />}
             <span className="sr">

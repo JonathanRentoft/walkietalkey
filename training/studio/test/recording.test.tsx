@@ -7,10 +7,12 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Row } from "../src/api/types";
+import type { Row, Take } from "../src/api/types";
 import type { RecordingState } from "../src/api/types";
 import { RecordingScreen } from "../src/screens/Recording";
+import { RowItem } from "../src/screens/recording/Rows";
 import { CurrentSentence } from "../src/screens/recording/Session";
+import { S } from "../src/strings";
 import { reconcileRows } from "../src/screens/recording/useRecording";
 import { fakeFetch, type Call } from "./fake-fetch";
 
@@ -83,6 +85,58 @@ describe("the recording screen's rows", () => {
         name: "Afspil optagelsen af s0001",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("says in plain Danish what to do about a take cut at an edge", async () => {
+    const take: Take = {
+      n: 1,
+      url: "/api/takes/mac-normal/s0042.wav",
+      seconds: 3.1,
+      recorded_at: null,
+      microphone: null,
+      level_dbfs: -21,
+      peak_dbfs: -6,
+      noise_dbfs: -60,
+      snr_db: 39,
+      envelope: null,
+      problems: [{ kind: "cut", detail: "start" }],
+      transcribing: false,
+      heard: null,
+      wer: null,
+      diff: null,
+      edda_error: null,
+      review: { status: "redo", by: "check" },
+    };
+    const cut: Row = {
+      id: "s0042",
+      text: "Vi merger PR'en, når buildet er grønt.",
+      kind: "terms",
+      status: "redo",
+      skipped: false,
+      take,
+    };
+    const none = () => undefined;
+    render(
+      <ul>
+        <RowItem
+          row={cut}
+          n={1}
+          current={false}
+          limits={null}
+          actions={{ redo: none, approve: none, go: none }}
+          locked={false}
+        />
+      </ul>,
+    );
+    const help = S.recording.problemHelp.cut;
+    expect(help).toMatch(/kanten af optagelsen/);
+    expect(help).toMatch(/før du taler/);
+    expect(help).toMatch(/efter det sidste ord/);
+    expect(screen.getByText(help)).toBeInTheDocument();
+    expect(screen.getByText("Skåret af").closest(".chip")).toHaveAttribute(
+      "title",
+      help,
+    );
   });
 
   it("offers 'Godkend alligevel' only for a take the check sent back", async () => {
@@ -276,6 +330,38 @@ describe("a Mac session", () => {
       fake.posts("/api/recording/mac/stop")[0],
       "/api/recording/mac/stop",
       {},
+    );
+  });
+
+  it("says the take is being saved from the release on, and the space bar waits for it", async () => {
+    // Run 12: the recorder keeps the input open half a second after the release (the post-roll).
+    await startMac();
+    act(() => {
+      fireEvent.keyDown(window, { key: " ", code: "Space" });
+    });
+    await screen.findByRole("button", { name: /Stop optagelsen/ });
+    act(() => {
+      fireEvent.keyDown(window, { key: " ", code: "Space" });
+    });
+    const saving = await screen.findByRole("button", {
+      name: /Gemmer optagelsen/,
+    });
+    expect(saving).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Annullér/ })).toBeNull();
+    act(() => {
+      fireEvent.keyDown(window, { key: " ", code: "Space" });
+      fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
+    });
+    expect(fake.posts("/api/recording/mac/stop")).toHaveLength(1);
+    expect(fake.posts("/api/recording/mac/start")).toHaveLength(1);
+    expect(fake.posts("/api/recording/mac/cancel")).toHaveLength(0);
+    // Then the take is in, and the next one can start.
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: /^Optag$/ }),
+        ).toBeInTheDocument(),
+      { timeout: 3000 },
     );
   });
 

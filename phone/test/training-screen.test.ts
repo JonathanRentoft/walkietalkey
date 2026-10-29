@@ -129,6 +129,19 @@ describe("the training screen's buttons", () => {
     ]);
   });
 
+  it("shows a take on its way from the release, its last half second too: no recording look, the button free (PHONE-50)", () => {
+    // The controller records on for TRAINING_TAIL_MS after the release; the phase is "send" then.
+    const { html } = buttons(view("s0017", null), "send");
+    expect(html).toContain("wt-app--send");
+    expect(html).toContain("Sender til MacBook");
+    expect(html).not.toContain("wt-app-meter--level");
+    const hold = /<button([^>]*class="wt-app-btn wt-hold"[^>]*)>/.exec(html);
+    expect(hold, html).not.toBeNull();
+    expect(hold![1]).toContain('aria-pressed="false"');
+    // A press then ends the take's tail at once and records the next one.
+    expect(hold![1]).not.toMatch(/\sdisabled=""/);
+  });
+
   it("does nothing while the prompt is stale, a take records or is on its way", () => {
     const both = [
       ["Tag om", true],

@@ -18,6 +18,7 @@ models/edda, so the same paths are used here):
     runs/train/<run>/             training runs (adapter, metrics, plot)
     runs/eval/<run>/              per-clip evaluation rows
     exports/<model id>/           merged model and GGUF files while exporting
+    test-uses.jsonl               run 12: one line per evaluation on the owner's test split
 """
 
 from __future__ import annotations
@@ -37,6 +38,16 @@ PLAN_CSV = DATA / "plan.csv"
 # Run 7: the share of the sentences each condition gets (wt-train plan --mix), committed next
 # to the plan; a plan elsewhere keeps its own mix.yaml beside it.
 MIX_YAML = DATA / "mix.yaml"
+# Run 12: which split each sentence is in (splits.py) and the parameters it was dealt with,
+# committed next to the plan; a plan elsewhere keeps its own beside it.
+SPLITS_CSV = DATA / "splits.csv"
+SPLIT_YAML = DATA / "split.yaml"
+# Run 12: the frozen test set, written by the first `wt-train eval --dataset test` (testset.py);
+# committed by the owner. Every use of the test set is logged in <work>/test-uses.jsonl.
+TEST_LOCK = DATA / "test-lock.json"
+# Run 12: the owner's own words and sentences (local.py), git-ignored and never committed;
+# ``local_dir()`` (``WT_LOCAL_DIR``) is where they are read.
+LOCAL = DATA / "local"
 # The long-form exam paragraphs: read once per condition, never trained on.
 EXAM_YAML = DATA / "exam.yaml"
 # Git-ignored; the owner's voice never leaves this Mac.
@@ -71,6 +82,17 @@ TRANSCRIBE_CPP_VERSION = "0.4.0"
 def work_dir() -> Path:
     """The git-ignored folder for downloads, caches, runs and exports."""
     return Path(os.environ.get("WT_WORK_DIR") or TRAINING / "work").resolve()
+
+
+def local_dir() -> Path:
+    """The owner's own words and sentences: ``training/data/local/`` (git-ignored), or
+    ``WT_LOCAL_DIR`` (the tests always point it at an empty temporary folder)."""
+    return Path(os.environ.get("WT_LOCAL_DIR") or LOCAL).resolve()
+
+
+def test_uses_log() -> Path:
+    """Run 12: one line per use of the owner's test split (testset.py)."""
+    return work_dir() / "test-uses.jsonl"
 
 
 def hf_home() -> Path:
@@ -138,3 +160,12 @@ def app_models_dir() -> Path:
     if sys.platform == "win32":
         return Path(os.environ["LOCALAPPDATA"]) / "WalkieTalkey" / "models"
     return Path.home() / ".local" / "share" / "WalkieTalkey" / "models"
+
+
+def app_history_db() -> Path:
+    """Run 12: the app's dictation history (``history.db``, beside its models folder), which
+    Værkstedet's "Dine egne ord" reads, read-only. ``WT_APP_HISTORY_DB`` overrides it."""
+    override = os.environ.get("WT_APP_HISTORY_DB")
+    if override:
+        return Path(override)
+    return app_models_dir().parent / "history.db"

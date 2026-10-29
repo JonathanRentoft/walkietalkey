@@ -174,7 +174,10 @@ def main(argv: list[str]) -> int:
         run_dir = timed("train", lambda: train.run(cfg, build=b), describe_run)
 
         def eval_lora():
-            code = evaluate.main(["--backend", "lora", "--run", str(run_dir), "--dataset", "test",
+            # Run 12: the stand-ins' test split by its manifest, not --dataset test, which is the
+            # owner's frozen test set: the smoke run neither locks it nor counts as a use of it.
+            code = evaluate.main(["--backend", "lora", "--run", str(run_dir),
+                                  "--dataset", str(run_dir / "dataset" / "test.jsonl"),
                                   "--fleurs-limit", str(FLEURS_EVAL_CLIPS), "--results", str(results),
                                   "--notes", "smoke"])
             if code != 0:

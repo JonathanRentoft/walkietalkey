@@ -54,6 +54,8 @@ describe("the evaluations", () => {
     const names = (r: HTMLElement) =>
       [...r.querySelectorAll(".run-name")].map((n) => n.textContent);
     expect(names(now)).toEqual([
+      "Edda finjusteret (first-frozen-encoder) · Dine optagelser, validering",
+      "Edda, original · Dine optagelser, validering",
       "Edda finjusteret (first-frozen-encoder) · Dine optagelser",
       "Appen · Dine optagelser",
       "Appen · FLEURS · 26. okt.",
@@ -84,7 +86,12 @@ describe("the evaluations", () => {
     fake = fakeFetch();
     render(<EvaluationScreen />);
     await screen.findByRole("region", { name: "Normalisering 2" });
-    const [a, b] = screen.getAllByRole("combobox");
+    // Run 12: the picker offers the validation results first; these are on FLEURS.
+    fireEvent.click(screen.getByRole("radio", { name: "Alle" }));
+    const compare = screen.getByRole("region", {
+      name: "Sammenlign to kørsler",
+    });
+    const [a, b] = within(compare).getAllByRole("combobox");
     // The picker groups the runs the same way.
     expect(
       [...a.querySelectorAll("optgroup")].map((g) => g.getAttribute("label")),

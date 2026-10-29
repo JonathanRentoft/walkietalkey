@@ -70,9 +70,15 @@ export const PRESENCE_WAIT_MS = 1000;
 export const LINKS_SETTLE_MS = 3000;
 /**
  * PHONE-30: the warm microphone closes after this long without a dictation or a touch (the
- * screen usually locks sooner, which closes it too).
+ * screen usually locks sooner, which closes it too); never while the training screen shows.
  */
 export const MIC_IDLE_MS = 3 * 60 * 1000;
+/**
+ * PHONE-50 (run 12): a training take records on for this long after the release, so the last
+ * word never touches the end of the take (the owner's pilot found speech at the very edge of many
+ * takes). The screen shows the take on its way at once. Dictations stop at the release.
+ */
+export const TRAINING_TAIL_MS = 500;
 
 export interface ComputerView {
   roomId: string;
@@ -199,6 +205,15 @@ export class PhoneController {
   private training: TrainingView | null = null;
   private readonly trainingOver = new Set<string>();
   private trainingTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * A training take's last TRAINING_TAIL_MS after the release: the microphone still records for
+   * it, and `finish` ends it as a dictation ends on release. At most one; never while recording.
+   */
+  private tail: {
+    sid: string;
+    timer: ReturnType<typeof setTimeout>;
+    finish: () => void;
+  } | null = null;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -400,6 +415,10 @@ export class PhoneController {
         t.skipped = was.skipped;
       this.clearTrainingTimer();
       this.training = t;
+      // PHONE-50: the training screen keeps the microphone warm (it opens it again if it went idle
+      // on the main screen), so every take starts with the pre-roll.
+      this.micIdle = false;
+      this.micPolicy(true);
       // Takes go to the computer that asked for them.
       if (t.roomId !== this.target && !this.busy()) this.setTarget(t.roomId);
     } else if (p.type === "training_end") {
@@ -427,6 +446,8 @@ export class PhoneController {
   private endTraining(): void {
     this.clearTrainingTimer();
     this.training = null;
+    // The warm microphone's idle time counts from the training screen's end (PHONE-30).
+    this.micPolicy(true);
     // The last take's "Gemt" is not a dictation's "Klar på": the main screen starts afresh.
     const phase = this.machine.phase;
     if (
@@ -562,6 +583,8 @@ export class PhoneController {
    * with the 300 ms before the press (src/audio/capture.ts). It closes when the page is hidden,
    * after MIC_IDLE_MS without a dictation or a touch, and when no computer is paired. Audio
    * between dictations stays in that short ring in memory and is never sent (PHONE-33).
+   * While the training screen shows it never goes idle (PHONE-50, run 12): the first take after a
+   * quiet spell over a sentence starts with the pre-roll too.
    */
   private micWanted(): boolean {
     return (
@@ -584,6 +607,8 @@ export class PhoneController {
         });
       }
     } else if (this.micOpen && !this.recording()) {
+      // A training take's tail ends first, so the take keeps its last block.
+      this.endTail();
       this.micOpen = false;
       // After the last block of a dictation that is still stopping; unless it was wanted again.
       this.recChain = this.recChain.then(() => {
@@ -596,10 +621,10 @@ export class PhoneController {
   private armMicIdle(): void {
     if (this.micIdleTimer) clearTimeout(this.micIdleTimer);
     this.micIdleTimer = null;
-    if (!this.micOpen || this.recording()) return;
+    if (!this.micOpen || this.recording() || this.training) return;
     this.micIdleTimer = setTimeout(() => {
       this.micIdleTimer = null;
-      if (this.recording()) return;
+      if (this.recording() || this.training) return;
       this.micIdle = true;
       this.micPolicy();
     }, this.deps.micIdleMs ?? MIC_IDLE_MS);
@@ -615,6 +640,8 @@ export class PhoneController {
   hidden(): void {
     this.visible = false;
     if (this.recording()) this.dispatch({ type: "hidden" });
+    // A training take goes at once too, without the rest of its tail.
+    this.endTail();
     this.micPolicy();
   }
 
@@ -711,18 +738,42 @@ export class PhoneController {
     const s = this.sessions.get(sid);
     const entry = s ? this.rooms.get(s.roomId) : undefined;
     if (!s || !entry) return;
-    this.recChain = this.recChain.then(async () => {
-      await this.deps.recorder.stop();
-      if (s.cancelled) return;
-      if (s.blocks.length === 0) {
-        await entry.streamer.cancel(s);
-        this.sessions.delete(sid);
-        this.dispatch({ type: "empty", sessionId: sid });
-        return;
-      }
-      await entry.streamer.end(s, this.now());
-      this.armResultTimer(s);
-    });
+    const finish = () => {
+      this.recChain = this.recChain.then(async () => {
+        await this.deps.recorder.stop();
+        if (s.cancelled) return;
+        if (s.blocks.length === 0) {
+          await entry.streamer.cancel(s);
+          this.sessions.delete(sid);
+          this.dispatch({ type: "empty", sessionId: sid });
+          return;
+        }
+        await entry.streamer.end(s, this.now());
+        this.armResultTimer(s);
+      });
+    };
+    if (!s.training) {
+      finish();
+      return;
+    }
+    // PHONE-50: a training take records on for TRAINING_TAIL_MS (the screen already shows it on
+    // its way, the level meter is down), then ends as a dictation does. A press, the page going
+    // to the background or the microphone closing ends the tail at once (endTail).
+    this.endTail();
+    this.tail = {
+      sid,
+      timer: setTimeout(() => this.endTail(), TRAINING_TAIL_MS),
+      finish,
+    };
+  }
+
+  /** A training take's tail is over (or cut short): stop the microphone and send the take's end. */
+  private endTail(): void {
+    const t = this.tail;
+    if (!t) return;
+    this.tail = null;
+    clearTimeout(t.timer);
+    t.finish();
   }
 
   private cancelCapture(sid: string): void {
@@ -790,6 +841,8 @@ export class PhoneController {
     if (!s) return;
     this.prime();
     this.activity();
+    // A press during a training take's tail ends that take now; the new one starts after it.
+    this.endTail();
     this.pendingSession = s;
     this.dispatch({ type: "down", sessionId: s.sid, at: this.now() });
     this.pendingSession = null;
@@ -817,6 +870,8 @@ export class PhoneController {
     if (!s) return false;
     this.prime();
     this.activity();
+    // As a press: a training take's tail ends now.
+    this.endTail();
     this.pendingSession = s;
     this.dispatch({ type: "shell_start", sessionId: s.sid, at: this.now() });
     this.pendingSession = null;
@@ -836,10 +891,12 @@ export class PhoneController {
     if (this.maxTimer) clearTimeout(this.maxTimer);
     if (this.noConnTimer) clearTimeout(this.noConnTimer);
     if (this.micIdleTimer) clearTimeout(this.micIdleTimer);
+    if (this.tail) clearTimeout(this.tail.timer);
     this.clearTrainingTimer();
     this.maxTimer = null;
     this.noConnTimer = null;
     this.micIdleTimer = null;
+    this.tail = null;
   }
 
   slide(inside: boolean): void {
@@ -1096,6 +1153,8 @@ export class PhoneController {
       this.sessions.delete(s.sid);
       this.clearResultTimer(s.sid);
     }
+    // A training take in its tail goes with the room: the microphone stops for it now.
+    if (this.tail && !this.sessions.has(this.tail.sid)) this.endTail();
     await this.deps.storage.deleteRoom(roomId);
     if (this.training?.roomId === roomId) this.endTraining();
     if (notify)

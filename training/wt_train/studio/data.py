@@ -2,9 +2,14 @@
 
 For a config in ``training/configs/``, the owner's takes as the dataset builder reads
 them (``dataset.load_recordings``: a take marked for a new take is left out and listed),
-split by sentence with the config's fractions and seed (``dataset.split_by_sentence``),
-per recording condition; and the leakage check (``dataset.leakage_problems``) within the
-splits and against each held-out set on its own: FLEURS da_dk test, the exam, the pilot.
+split by sentence as the split record would deal them for the config's seed, fractions
+and held-out terms (run 12: ``plan.prepare`` without writing, ``dataset.split_by_record``;
+a take of a train or validation sentence with a held-out term is left out and listed),
+per recording condition; and the leakage check (``dataset.leakage_problems``, and the
+owner's own sentences by id, ``dataset.own_problems``) within the splits and against each
+held-out set on its own: FLEURS da_dk test, the exam, the pilot. ``split`` says what the
+record holds for that config: its parameters, the sentences per split, whether the test
+set is locked, and the coverage warnings (``splits.py``).
 A held-out set that cannot be loaded (FLEURS not downloaded) leaves its check unknown
 (``ok: null``) and the others still run. Rehearsal clips are not drawn here; the build
 adds them when it trains.
@@ -81,9 +86,17 @@ class DataView:
         except ConfigError as e:
             raise StudioError(400, "config", str(e)) from None
         recordings, sentences, spelling = self.inputs(cfg)
+        from .. import splits as split_record
+        from ..testset import lock_path
+
+        plan_path = self.plan_path(sentences)
+        record = split_record.record_path(plan_path)
+        own = paths.local_dir()
         key = (_mtime(path), _mtime(sentences), _mtime(spelling), _tree(recordings), _tree(self.places.pilot),
                _mtime(self.places.exam), _mtime(self.places.pilot_sentences),
-               _mtime(paths.fleurs_dir() / ".complete"), tuple(names))
+               _mtime(paths.fleurs_dir() / ".complete"), tuple(names), _mtime(record),
+               _mtime(split_record.params_path(record)), _mtime(lock_path(plan_path.parent)),
+               _mtime(own / "sentences.csv"), _mtime(own / "own-words.yaml"), _mtime(own / "splits.csv"))
         with self._lock:
             hit = self._cache.get(name)
             if hit is not None and hit[0] == key:
@@ -93,22 +106,42 @@ class DataView:
             self._cache[name] = (key, out)
         return out
 
+    def plan_path(self, sentences: Path) -> Path:
+        """The plan (and the split record beside it) of a sentence list: the studio's, when the list
+        is the studio's, else the one beside the config's list."""
+        return Path(self.places.plan) if Path(sentences) == Path(self.places.sentences) \
+            else Path(sentences).with_name("plan.csv")
+
     def _compute(self, name: str, names: list[str], cfg, recordings: Path, sentences: Path, spelling: Path) -> dict:
-        from .. import dataset
-        from ..sentences import load_sentences
+        from .. import dataset, local, splits as split_record
+        from ..config import ConfigError
+        from ..plan import prepare
         from ..spelling import load_spelling
 
-        listed = load_sentences(sentences) if Path(sentences).is_file() else []
         error = None
+        prepared = None
+        spell = None
+        items, skipped = [], []
         try:
             spell = load_spelling(spelling)
-            items, skipped = dataset.load_recordings(recordings, sentences, spell, self.places.pilot)
+            prepared = prepare(sentences, self.plan_path(sentences), spelling_path=spelling, recordings=recordings,
+                               params=split_record.Params.of(cfg.data), write=False)
+            with_own = local.spelling_with_own_words(spell)
+            items, skipped = dataset.load_recordings(recordings, prepared.sentences, with_own, self.places.pilot)
+        except ConfigError as e:
+            raise StudioError(400, "config", str(e)) from None
         except FileNotFoundError:
             items, skipped = [], []
         except ValueError as e:
             items, skipped, error = [], [], str(e)
         d = cfg.data
-        splits = dataset.split_by_sentence(items, d.validation_fraction, d.test_fraction, d.seed)
+        listed = prepared.sentences if prepared is not None else []
+        if prepared is not None:
+            splits, left_out = dataset.split_by_record(items, prepared.splits, held_out_terms=d.held_out_terms,
+                                                       spelling=spell)
+            skipped = skipped + left_out
+        else:
+            splits = {s: [] for s in dataset.SPLITS}
         conditions = []
         for cid in IDS:
             own = [i for i in items if i.condition == cid]
@@ -122,14 +155,26 @@ class DataView:
             "fractions": {"validation": d.validation_fraction, "test": d.test_fraction},
             "sentences": {"total": len(listed), "plain": sum(s.kind == "plain" for s in listed),
                           "terms": sum(s.kind == "terms" for s in listed),
-                          "recorded": len({i.sentence for i in items})},
+                          "recorded": len({i.sentence for i in items}),
+                          "own": len(prepared.own) if prepared is not None else 0},
             "conditions": conditions,
             "skipped": skipped,
             "rehearsal": {"share": cfg.rehearsal.share, "validation_share": cfg.rehearsal.validation_share},
-            "leakage": self._leakage(splits, items, recordings, error),
+            "split": self._split(prepared),
+            "leakage": self._leakage(splits, items, recordings, error, prepared, spell),
         }
 
-    def _leakage(self, splits: dict, items: list, recordings: Path, error: str | None) -> dict:
+    @staticmethod
+    def _split(prepared) -> dict | None:
+        """What the split record holds for this config (run 12)."""
+        if prepared is None:
+            return None
+        dealt = prepared.dealt
+        return {"params": dealt.params.as_dict(), "sentences": dealt.sizes(), "locked": prepared.lock is not None,
+                "moved": len(dealt.moved), "warnings": dealt.warnings}
+
+    def _leakage(self, splits: dict, items: list, recordings: Path, error: str | None, prepared=None,
+                 spelling=None) -> dict:
         from .. import dataset
 
         checks = {cid: {"id": cid, "label": labels.LEAKAGE[cid]} for cid in dataset.LEAKAGE_CHECKS}
@@ -153,6 +198,8 @@ class DataView:
         except (ValueError, OSError) as e:
             missing["pilot"] = f"the pilot could not be read: {e}"
         found = dataset.leakage_problems(splits, held, exam, pilot)
+        if prepared is not None:
+            found = dataset.own_problems(prepared.own, prepared.listed, held, exam, pilot, spelling) + found
         for cid, c in checks.items():
             if cid in missing:
                 c.update(ok=None, overlap=None, detail=missing[cid])

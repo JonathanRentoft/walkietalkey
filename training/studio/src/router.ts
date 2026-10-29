@@ -11,6 +11,7 @@ import {
 export type Screen =
   | "optag"
   | "data"
+  | "ord"
   | "traening"
   | "evaluering"
   | "versioner"
@@ -19,10 +20,12 @@ export type Screen =
   | "rapport"
   | "ukendt";
 
-/** The seven screens of the navigation, in order (run 11: Lær det after Journal). */
+/** The eight screens of the navigation, in order (run 11: Lær det after Journal; run 12: Dine
+    egne ord after Data). */
 export const SCREENS = [
   "optag",
   "data",
+  "ord",
   "traening",
   "evaluering",
   "versioner",

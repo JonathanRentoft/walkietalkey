@@ -37,6 +37,8 @@ SETTINGS = {
     "data.validation_fraction": "Andel af sætningerne, der bruges til at vælge den bedste epoke",
     "data.test_fraction": "Andel af sætningerne, der gemmes til den endelige test",
     "data.seed": "Tal, der bestemmer, hvordan sætningerne fordeles",
+    # Run 12's draft, like run 11's below (not approved yet).
+    "data.held_out_terms": "Fagord, der holdes ude af træningen og kun testes",
     "rehearsal.share": "Andel af træningen, der er almindeligt dansk fra FLEURS",
     "rehearsal.validation_share": "Andel af valideringen, der er almindeligt dansk fra FLEURS",
     "lora.rank": "Hvor meget adapteren kan lære (dens størrelse)",
@@ -77,7 +79,9 @@ SETUP_DEVICES = {
 STYLES = {"whisper": "hvisket", "normal": "almindelig stemme"}
 
 # The jobs' titles on the page ("Træning: first-frozen-encoder").
-JOBS = {"train": "Træning", "export": "Eksport", "pilot": "Pilotens sammenligning", "report": "Rapport"}
+JOBS = {"train": "Træning", "export": "Eksport", "pilot": "Pilotens sammenligning", "report": "Rapport",
+        # Run 12: a measurement (kind eval) on the validation, or on the test set.
+        "eval": "Måling på valideringen", "test": "Måling på testsættet"}
 
 LEAKAGE = {
     "splits": "Træning, validering og test deler ingen sætninger",
@@ -97,7 +101,7 @@ def setup_label(name: str, style: str) -> str:
     return f"{SETUP_DEVICES.get(first, first)}, {STYLES.get(style, style)}"
 
 
-# TODO(copy): run 11's drafts, everything below (not approved yet).
+# Run 11's words, everything below (approved by the owner in run 12).
 
 # The evaluations' readable names (runs.eval_title): "<model> · <data>".
 EVAL_MODELS = {
@@ -152,6 +156,11 @@ def _model_title(backend: str, model: str, train_run: str | None) -> str:
         run = train_run or model
         return m["lora"].format(config=_RUN_STAMP.sub("", run)) if run else m["unknown"]
     return short or m["unknown"]
+
+
+def model_title(backend: str, model: str, train_run: str | None = None) -> str:
+    """The model half of an evaluation's readable name (run 12: a measurement's job title)."""
+    return _model_title(backend or "", model or "", train_run)
 
 
 def _data_title(dataset: str) -> str:

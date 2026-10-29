@@ -13,20 +13,21 @@ import {
 } from "../src/router";
 
 describe("parseRoute", () => {
-  it("knows the seven screens, with / as the recording screen", () => {
+  it("knows the eight screens, with / as the recording screen", () => {
     expect(parseRoute("/").screen).toBe("optag");
-    const seven = [
+    const eight = [
       "optag",
       "data",
+      "ord",
       "traening",
       "evaluering",
       "versioner",
       "journal",
       "laer",
     ];
-    for (const s of seven) expect(parseRoute(`/${s}`).screen).toBe(s);
-    // Run 11: Lær det comes after the journal in the navigation.
-    expect([...SCREENS]).toEqual(seven);
+    for (const s of eight) expect(parseRoute(`/${s}`).screen).toBe(s);
+    // Run 11: Lær det comes after the journal; run 12: Dine egne ord after Data.
+    expect([...SCREENS]).toEqual(eight);
     expect(parseRoute("/data/").screen).toBe("data");
   });
 

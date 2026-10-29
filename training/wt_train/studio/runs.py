@@ -15,6 +15,9 @@ Their pages are ``wt-train report`` (``--vs`` for two), written as a job into
 ``htmlpage.FORMAT``: an English page from before run 11 is written again). MLflow loads slowly, so
 it is only imported here, never on the recording screen's polls.
 
+Run 12: each evaluation also says what it measured on (``split``: the test set, the validation,
+FLEURS ...), so the page marks a test result and compares validation results by default.
+
 Run 11: each evaluation also has a readable Danish ``title`` (``labels.eval_title``; a day, then a
 time, tells two apart that would share one), the ``normaliser`` that counted its WER
 (``wt_train.normaliser``: its tag, else the day it was measured), and its ``date`` is when it
@@ -106,6 +109,28 @@ def _measured(run) -> datetime | None:
     return datetime.fromtimestamp(ms / 1000).astimezone() if ms else None
 
 
+SPLITS = ("train", "validation", "test", "fleurs", "exam")
+
+
+def split_of(dataset: str, summary: dict | None = None) -> str | None:
+    """Run 12: what an evaluation measured on: ``test``, ``validation``, ``train`` (a split of the
+    owner's takes), ``fleurs`` or ``exam``. The run's ``summary.json`` says so when it carries a
+    ``split``; else the dataset's name does (``<run>:test``, ``fleurs-da_dk-test``, ``exam@<c>``)."""
+    said = summary.get("split") if isinstance(summary, dict) else None
+    if isinstance(said, str) and said:
+        said = said.lower()
+        return "fleurs" if said.startswith("fleurs") else (said if said in SPLITS else None)
+    base = (dataset or "").partition("@")[0]
+    if base.startswith("fleurs"):
+        return "fleurs"
+    if base == "exam" or base.startswith("exam:"):
+        return "exam"
+    if ":" in base:
+        split = base.rsplit(":", 1)[1]
+        return split if split in SPLITS else None
+    return None
+
+
 def model_label(backend: str, model: str, train_run: str | None) -> str:
     if backend == "gguf":
         name = "edda-v0.2" if model == paths.SHIPPED_EDDA_ID else model.rsplit("/", 1)[-1].removesuffix(".gguf")
@@ -151,7 +176,8 @@ class Runs:
             low, high = pct("wer_ci95_low_pct"), pct("wer_ci95_high_pct")
         folder = self._folder(run)
         when = _measured(run)
-        return {"id": run.info.run_id, "name": run.info.run_name,
+        summary = _json(folder / "summary.json") if folder is not None else None
+        return {"id": run.info.run_id, "name": run.info.run_name, "split": split_of(dataset, summary),
                 "title": eval_title(params.get("backend") or "", params.get("model") or "", dataset,
                                     params.get("train_run")),
                 "normaliser": normaliser.of_run(tags, when), "kind": tags.get("wt.kind"),

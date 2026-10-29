@@ -61,6 +61,10 @@ class DataConfig:
     validation_fraction: float = 0.1
     test_fraction: float = 0.1
     seed: int = 1
+    # Run 12: terms of spelling.yaml whose sentences are tested only, never trained on, so the
+    # evaluation measures how the model does on terms it never heard (splits.py; the names
+    # are checked against spelling.yaml where the split is dealt).
+    held_out_terms: tuple[str, ...] = ()
 
     def check(self, where: str) -> None:
         _require(0 < self.validation_fraction < 1, f"{where}.validation_fraction",
@@ -69,6 +73,9 @@ class DataConfig:
         _require(self.validation_fraction + self.test_fraction < 1, f"{where}",
                  "validation_fraction + test_fraction must leave something to train on")
         _require(self.seed >= 0, f"{where}.seed", "must be at least 0")
+        _require(all(t.strip() for t in self.held_out_terms), f"{where}.held_out_terms", "lists an empty name")
+        _require(len(set(self.held_out_terms)) == len(self.held_out_terms), f"{where}.held_out_terms",
+                 "lists a term twice")
 
     def path(self, name: str) -> Path:
         value = getattr(self, name)

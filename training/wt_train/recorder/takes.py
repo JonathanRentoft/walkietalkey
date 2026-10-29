@@ -3,10 +3,12 @@ never leaves this Mac).
 
 Layout::
 
-    <condition>/<id>.wav          16 kHz mono 16-bit PCM, as the app received it (before VAD)
+    <condition>/<id>.wav          16 kHz mono 16-bit PCM, as the app received it (before VAD);
+                                  a Mac take from 0.3 s before the press (run 12, session.py)
     <condition>/<id>.txt          the text exactly as shown, plus a newline
     <condition>/<id>.json         its metadata (``Session._meta``: device, microphone, style,
-                                  session, take number, time, check results, ...)
+                                  session, take number, time, check results, ...; a Mac
+                                  take's margins: pre_roll_s, post_roll_s, trimmed_s)
     exam/<condition>/<id>.*       the exam paragraphs, the same three files
     .replaced/<condition>/<id>.<UTC time>.wav|txt|json    every earlier take of a sentence
     .replaced/exam/<condition>/...

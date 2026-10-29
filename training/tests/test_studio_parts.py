@@ -44,15 +44,15 @@ def test_a_setup_is_named_where_and_how():
     assert labels.setup_label("mac-whisper", "whisper") == "Mac'en, hvisket"
 
 
-def test_the_files_with_new_danish_text_say_so_once():
+def test_the_files_with_danish_text_carry_no_copy_marker():
     from pathlib import Path
 
     studio = Path(labels.__file__).parent
-    for path in studio.glob("*.py"):
+    # Run 12: the owner approved run 11's drafts, and run 12's own text is final.
+    for path in [*studio.glob("*.py"), *(studio.parent / name for name in ("report.py", "pilot.py", "htmlpage.py"))]:
         text = path.read_text(encoding="utf-8")
-        assert text.count("TODO(copy)") <= 1, path.name
+        assert "TODO(copy)" not in text, path.name
         assert EM_DASH not in text, path.name
-        # Run 11: the owner approved run 9's drafts, so their markers are gone.
         assert "drafted in run 9" not in text, path.name
 
 
@@ -270,3 +270,39 @@ def test_the_launcher_waits_20_seconds_before_sigkill():
     assert "addingTimeInterval(20)" in swift and "within 20 s" in swift and "addingTimeInterval(8)" not in swift
     readme = (launcher / "README.md").read_text(encoding="utf-8")
     assert "wait up to 20 s" in readme and "8 s" not in readme
+
+
+# --- the sources (run 12) ----------------------------------------------------------------
+
+
+def test_the_sources_are_prepared_once_when_the_page_asks_from_many_threads_at_once(tmp_path, monkeypatch):
+    # The first page load asks for the plan, the mix's progress and the options at once; preparing
+    # writes the split record and the plan, and two writers at once lost a file (the e2e found it).
+    import threading
+
+    from fake_studio import write_places
+    from wt_train import plan as plan_module
+    from wt_train.studio.sources import Sources
+
+    sources = Sources(write_places(tmp_path, monkeypatch))
+    real, calls, errors = plan_module.prepare, [], []
+
+    def slow(*args, **kwargs):
+        calls.append(1)
+        time.sleep(0.05)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(plan_module, "prepare", slow)
+
+    def ask():
+        try:
+            sources.plan()
+        except Exception as e:  # noqa: BLE001 - the test lists them
+            errors.append(e)
+
+    threads = [threading.Thread(target=ask) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert errors == [] and len(calls) == 1

@@ -1,6 +1,8 @@
 /* The running session: the pick, the link in plain Danish, the microphone, Pause / Fortsæt / Stop,
    the progress, and the current sentence in large text. A Mac session records with a big button
-   and the space bar (press to start, press again to stop; Escape cancels). */
+   and the space bar (press to start, press again to stop; Escape cancels). Run 12: the recorder
+   keeps the Mac's input open a moment before the press and half a second after the stop; from
+   the stop on the button says the take is being saved, and the keys wait for it. */
 import { useEffect, useRef, useState } from "react";
 import type { ApiError } from "../../api/client";
 import type { RecordingState } from "../../api/types";
@@ -208,10 +210,11 @@ export function CurrentSentence({
       const s = stateRef.current;
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
-        if (e.repeat) return;
+        // The take is being saved (the post-roll): a press waits for it.
+        if (e.repeat || s.recording?.stopping) return;
         if (s.recording) void run("/api/recording/mac/stop");
         else if (s.current) void run("/api/recording/mac/start");
-      } else if (e.key === "Escape" && s.recording) {
+      } else if (e.key === "Escape" && s.recording && !s.recording.stopping) {
         e.preventDefault();
         void run("/api/recording/mac/cancel");
       }
@@ -266,7 +269,17 @@ export function CurrentSentence({
           <p className="hint">{R.pausedHint}</p>
         ) : mac ? (
           <div className="mac-rec">
-            {state.recording ? (
+            {state.recording?.stopping ? (
+              <Button
+                variant="danger"
+                size="lg"
+                className="rec-button on"
+                disabled
+              >
+                <span className="loading-dot" aria-hidden="true" />
+                {R.savingTake}
+              </Button>
+            ) : state.recording ? (
               <>
                 <Button
                   variant="danger"

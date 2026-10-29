@@ -1,6 +1,6 @@
 """Værkstedet in a test's tmp folder: its files, a stand-in for Edda, a server on a free
 port, and the page's and the app's requests. Nothing here touches training/data/, the
-journal, the real MLflow store or the WalkieTalkey app: the app's link goes to a file,
+journal, the real MLflow store, the app's own history or the WalkieTalkey app: the app's link goes to a file,
 the handoff is never called, VS Code is never opened, and Edda is a stand-in."""
 
 from __future__ import annotations
@@ -31,6 +31,45 @@ data:
 training:
   epochs: 1
 """
+
+
+# Run 12: the app's dictation history as history.rs makes it (its four migrations).
+HISTORY_SCHEMA = """
+CREATE TABLE transcription_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    saved BOOLEAN NOT NULL DEFAULT 0,
+    title TEXT NOT NULL,
+    transcription_text TEXT NOT NULL
+);
+ALTER TABLE transcription_history ADD COLUMN post_processed_text TEXT;
+ALTER TABLE transcription_history ADD COLUMN post_process_prompt TEXT;
+ALTER TABLE transcription_history ADD COLUMN post_process_requested BOOLEAN NOT NULL DEFAULT 0;
+"""
+
+
+def write_history(path: Path, rows, *, post_processing: bool = True) -> Path:
+    """A fake history.db: ``rows`` are a dictation's text, or (transcript, post-processed text)."""
+    import sqlite3
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(path)
+    schema = HISTORY_SCHEMA if post_processing else HISTORY_SCHEMA.split("ALTER")[0]
+    con.executescript(schema)
+    for n, row in enumerate(rows):
+        raw, post = (row, None) if isinstance(row, str) else row
+        if post_processing:
+            con.execute("INSERT INTO transcription_history (file_name, timestamp, title, transcription_text, "
+                        "post_processed_text) VALUES (?, ?, ?, ?, ?)", (f"wt-{n}.wav", 1761600000 + n, f"#{n}", raw,
+                                                                          post))
+        else:
+            con.execute("INSERT INTO transcription_history (file_name, timestamp, title, transcription_text) "
+                        "VALUES (?, ?, ?, ?)", (f"wt-{n}.wav", 1761600000 + n, f"#{n}", raw))
+    con.commit()
+    con.close()
+    return path
 
 
 def write_places(tmp_path: Path, monkeypatch):
@@ -65,7 +104,9 @@ def write_places(tmp_path: Path, monkeypatch):
     return StudioPaths(recordings=tmp_path / "recordings", pilot=tmp_path / "pilot", sentences=data / "sentences.csv",
                        plan=data / "plan.csv", exam=data / "exam.yaml", pilot_sentences=data / "pilot.csv",
                        spelling=data / "spelling.yaml", configs=configs, journal=tmp_path / "journal", dist=dist,
-                       app_bin=tmp_path / "no-app", app_url_file=tmp_path / "app-url")
+                       app_bin=tmp_path / "no-app", app_url_file=tmp_path / "app-url",
+                       history_db=tmp_path / "app" / "history.db", local=tmp_path / "local",
+                       test_lock=data / "test-lock.json")
 
 
 class StandIn:
@@ -156,8 +197,8 @@ class App:
                            "input": input_name}).encode()
         return self.call("POST", "/app/v1/hello", body, {"Content-Type": "application/json"})
 
-    def commands(self):
-        status, body = self.call("GET", f"/app/v1/next?after={self.after}&wait=0")
+    def commands(self, wait: float = 0):
+        status, body = self.call("GET", f"/app/v1/next?after={self.after}&wait={wait}")
         assert status == 200, body
         cmds = body["commands"]
         if cmds:

@@ -14,10 +14,13 @@ data:
   recordings: null
   sentences: null
   spelling: null
-  # 20 sentences: about 4 for validation, 4 for test, 12 to train on.
+  # 20 sentences: 4 for validation, 4 for test, 12 to train on. The split
+  # record and the plan go to the temporary folder with the sentence list,
+  # never to training/data/.
   validation_fraction: 0.2
   test_fraction: 0.2
   seed: 1
+  held_out_terms: []
 
 rehearsal:
   share: 0.25

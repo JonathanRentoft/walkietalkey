@@ -316,12 +316,33 @@ def test_stop_forgets_the_pick(server, places):
 
 def test_a_new_pick_replaces_the_running_session(server, places):
     app = start_phone(server, places)
+    app.commands()
     status, st = post(server, "/api/recording/start", {"kind": "pilot", "id": "iphone-normal"})
     assert status == 200 and st["pick"]["label"] == "iPhone, almindelig stemme"
-    # The old session's token is refused at once: the app ends that session (the new handoff
-    # replaces it too), and the phone returns to normal.
-    assert app.call("GET", "/app/v1/next?after=0&wait=0")[0] == 401
+    # The old session's token is refused at once for anything but fetching that session's last
+    # commands, so the app ends it (and the phone returns to normal) even when it was busy at the
+    # switch; once it has them, it is refused for those too.
+    assert app.hello()[0] == 401
+    assert [c["type"] for c in app.commands()] == ["end"]
+    assert app.call("GET", f"/app/v1/next?after={app.after}&wait=0")[0] == 401
     assert App(server, places).token != app.token
+
+
+def test_a_new_pick_cancels_the_mac_arm_of_the_session_it_replaces(server, places):
+    # Run 12: the app keeps its input open when a session ends; the old session's cancel comes
+    # before its end, and reaches the app through the old token.
+    post(server, "/api/recording/start", {"kind": "condition", "id": "mac-normal"})
+    app = App(server, places)
+    app.hello(phones=())
+    assert [c["type"] for c in app.commands()] == ["prompt", "mac_start"]
+    post(server, "/api/recording/start", {"kind": "condition", "id": "phone-whisper"})
+    assert [c["type"] for c in app.commands()] == ["mac_cancel", "end"]
+    post(server, "/api/recording/start", {"kind": "condition", "id": "mac-normal"})
+    mac = App(server, places)
+    mac.hello(phones=())
+    mac.commands()
+    status, st = post(server, "/api/recording/pause")
+    assert st["paused"] and [c["type"] for c in mac.commands()] == ["mac_cancel", "end"]
 
 
 def test_the_rows_are_the_same_after_a_restart_and_unchecked_takes_are_checked(places):
@@ -390,16 +411,30 @@ def test_a_phone_session_needs_a_paired_phone(server, places):
 
 
 def test_mac_takes_from_the_page(server, places):
+    from wt_train.recorder.session import POST_ROLL_S
+
     post(server, "/api/recording/start", {"kind": "condition", "id": "mac-normal"})
     app = App(server, places)
     app.hello(phones=())
+    # Run 12: connected and idle, the session arms the Mac's input; the page shows it ready.
+    assert app.commands()[-1] == {"seq": app.after, "type": "mac_start", "prompt": "s0004"}
+    app.event(type="recording", prompt="s0004", source="mac", input="MacBook Pro-mikrofon")
+    st = state(server)
+    assert st["recording"] is None and rows(server)["s0004"]["status"] == "waiting"
     status, st = post(server, "/api/recording/mac/start")
     assert status == 200 and st["recording"]["source"] == "mac" and st["recording"]["since"]
-    assert app.commands()[-1] == {"seq": app.after, "type": "mac_start", "prompt": "s0004"}
-    assert post(server, "/api/recording/mac/stop")[0] == 200
-    assert app.commands()[-1]["type"] == "mac_stop"
+    assert st["recording"]["stopping"] is False and rows(server)["s0004"]["status"] == "recording"
+    assert app.commands() == [], "the press sends nothing: the app records already"
+    # The release says "saving" at once; mac_stop follows the post-roll.
+    status, st = post(server, "/api/recording/mac/stop")
+    assert status == 200 and st["recording"]["stopping"] is True
+    t0 = time.monotonic()
+    assert [c["type"] for c in app.commands(wait=3)] == ["mac_stop"]
+    assert time.monotonic() - t0 >= POST_ROLL_S - 0.05
     status, result = app.take("s0004", good(style="normal"), source="mac", input="MacBook Pro-mikrofon")
     assert result["saved"]
+    meta = json.loads((places.recordings / "mac-normal" / "s0004.json").read_text(encoding="utf-8"))
+    assert meta["post_roll_s"] >= POST_ROLL_S and meta["trimmed_s"] == 0.0
     assert post(server, "/api/recording/mac/cancel")[0] == 200
     assert {r["id"]: r for r in settle(server)["rows"]}["s0004"]["status"] == "approved"
 

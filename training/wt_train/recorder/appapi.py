@@ -16,8 +16,10 @@ handed, ``http://127.0.0.1:<port>/app/v1#<token>``; every request carries
     POST /app/v1/events             recording, cancelled, mac_failed, phone, bye, error
 
 A server using :class:`LocalHandler` provides ``origins`` (the Host values it answers
-to), ``app_session(authorization)`` (the session that token belongs to, or None: 401)
-and ``app_link(status, detail)`` (what the page says about the link). The app's API
+to), ``app_session(authorization, fetching=False)`` (the session that token belongs to,
+or None: 401; ``fetching`` for ``next``, which may also reach a session that ended with
+commands the app has not fetched yet, run 12) and ``app_link(status, detail)`` (what
+the page says about the link). The app's API
 refuses any request with an ``Origin``, which a browser sends with every POST and
 every cross-origin request, and any Host but the server's own (no DNS rebinding).
 """
@@ -30,10 +32,11 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlsplit
 
 from . import audio
-from .session import AppRefused
+from .session import ARM_MAX_S, AppRefused
 
-# The phone stops at 5 minutes (PHONE-29); a little slack for the pre-roll.
-MAX_TAKE_S = 330
+# The phone stops at 5 minutes (PHONE-29); a little slack for the pre-roll; and a Mac take
+# holds up to a minute armed before the press until it is trimmed (session.py, run 12).
+MAX_TAKE_S = 330 + int(ARM_MAX_S)
 MAX_BODY = MAX_TAKE_S * audio.TARGET_RATE * 2
 MAX_JSON = 64 * 1024
 LONG_POLL_S = 20.0
@@ -103,12 +106,12 @@ class LocalHandler(BaseHTTPRequestHandler):
 
     # The app ----------------------------------------------------------------
 
-    def _app_session(self):
+    def _app_session(self, fetching: bool = False):
         """The session the app's token names, or None after answering 403 or 401."""
         if not self._host_ok() or self.headers.get("Origin") is not None:
             self._error(403, "forbidden", "the app's API is for the WalkieTalkey app only")
             return None
-        session = self.server.app_session(self.headers.get("Authorization", ""))
+        session = self.server.app_session(self.headers.get("Authorization", ""), fetching=fetching)
         if session is None:
             self._error(401, "forbidden", "the app's API needs the session's token")
         return session
@@ -116,7 +119,7 @@ class LocalHandler(BaseHTTPRequestHandler):
     def app_get(self) -> None:
         """``GET /app/...``."""
         url = urlsplit(self.path)
-        session = self._app_session()
+        session = self._app_session(fetching=url.path == "/app/v1/next")
         if session is None:
             return
         if url.path == "/app/v1/next":

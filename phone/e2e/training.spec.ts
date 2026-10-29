@@ -13,6 +13,7 @@ import {
   label,
   pairByLink,
   preparePage,
+  press,
   test,
 } from "./helpers";
 
@@ -120,6 +121,67 @@ test.describe("training takes (PRIV-05)", () => {
     );
     expect(computer.sessions.size).toBe(before + 1);
     expect(dictation.training).toBeUndefined();
+  });
+
+  test("a take keeps its margins: the 300 ms before the press and half a second after the release (PHONE-30, PHONE-50)", async ({
+    page,
+    browserName,
+    newComputer,
+  }) => {
+    const computer = await newComputer("MacBook");
+    await preparePage(page, browserName);
+    await pairByLink(page, computer);
+    const training = randomBytes(16);
+    await computer.toPhone(prompt(training, ["s0042", SENTENCE], null, 0));
+    await expect(text(page)).toHaveText(SENTENCE);
+    // How long the button was down, and what the screen shows 150 ms after the release, while
+    // the take still records, measured in the page.
+    await page.evaluate(() => {
+      const w = window as unknown as { __press: number[]; __afterUp: string[] };
+      w.__press = [];
+      w.__afterUp = [];
+      document.addEventListener(
+        "pointerdown",
+        () => w.__press.push(performance.now()),
+        { capture: true },
+      );
+      document.addEventListener(
+        "pointerup",
+        () => {
+          w.__press.push(performance.now());
+          setTimeout(() => {
+            const read = (sel: string, attr?: string) => {
+              const el = document.querySelector(sel);
+              return (attr ? el?.getAttribute(attr) : el?.textContent) ?? "";
+            };
+            w.__afterUp.push(
+              read("main.wt-training", "data-phase"),
+              read(".wt-app-label > span:last-child"),
+              read("button.wt-hold", "aria-pressed"),
+            );
+          }, 150);
+        },
+        { capture: true },
+      );
+    });
+    const p = await press(page);
+    await expect(label(page)).toHaveText("Slip for at sende");
+    await page.waitForTimeout(1000);
+    await p.release();
+    const s = await computer.waitEnded();
+    const seen = await page.evaluate(() => {
+      const w = window as unknown as { __press: number[]; __afterUp: string[] };
+      return { press: w.__press, afterUp: w.__afterUp };
+    });
+    const [down, up] = seen.press;
+    const held = up! - down!;
+    // Most of the 300 ms pre-roll, everything held, and the 500 ms after the release
+    // (TRAINING_TAIL_MS in src/core/controller.ts).
+    expect(s.end!.durationMs).toBeGreaterThanOrEqual(held + 200 + 450);
+    expect(s.end!.durationMs).toBeLessThan(held + 1500);
+    // The screen showed the take on its way at once, not the recording look.
+    expect(seen.afterUp).toEqual(["send", "Sender til MacBook", "false"]);
+    await expect(label(page)).toHaveText("Gemt");
   });
 
   test("Spring over: an empty training take for skip:<prompt>, then the computer's next sentence (PHONE-52)", async ({

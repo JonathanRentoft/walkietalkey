@@ -24,6 +24,12 @@ Measured with the phone's +15 dB gain in place: a normal voice reaches about
 * **clipped** (kept, redo offered): on the Mac, 3 samples at full scale; on the
   phone, whose limiter keeps every sample under -1 dBFS (PHONE-30), 0.2 % of the
   samples pressed against that ceiling, which flattens a far too loud voice.
+* **cut** (kept, redo offered; run 12): speech within 50 ms of the start or the end
+  (``audiostats``), so a word may be cut: the button went down after the first word
+  began, or up before the last ended. Judged only in a take :data:`CUT_MIN_SNR_DB`
+  clear of its noise and not noisy, as ``wt-train check`` and Værkstedet judge it
+  (:func:`cut_edges`, shared with them), so the owner hears of it right after the
+  take. PROTOCOL.md 8.4 has no ``cut``: the phone is told ``short`` (session.py).
 * **short** (kept, redo offered): the speech is shorter than 0.12 s per word of
   the text (and 0.4 s), so the button was probably let go too soon.
 * **gaps** (refused): the phone's resend did not fill every 200 ms block
@@ -42,6 +48,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 
 from . import audio
+from .. import audiostats
 from ..sentences import word_count
 
 
@@ -65,8 +72,13 @@ MAC_CLIPPED_SAMPLES = 3
 LEVEL_PERCENTILE = audio.LOUD_PERCENTILE
 MIN_SPEECH_S = 0.4
 SECONDS_PER_WORD = 0.12
+# speech_bounds counts every frame within 15 dB of the speech level as voiced: in a take less
+# than this far above its noise, the noise reaches the edges and "cut" cannot be told.
+CUT_MIN_SNR_DB = 15.0
+# The estimated SNR (speech level over the median pause) below which a take is noisy (wt-train check).
+NOISY_SNR_DB = {"normal": 15.0, "whisper": 10.0}
 
-ORDER = ("gaps", "silent", "clipped", "quiet", "short")
+ORDER = ("gaps", "silent", "clipped", "cut", "quiet", "short")
 REFUSED = frozenset({"gaps", "silent"})
 
 
@@ -90,6 +102,15 @@ class CheckResult:
             if isinstance(v, float):
                 d[k] = round(v, 3 if k.endswith("seconds") else 1)
         return d
+
+
+def cut_edges(stats: audiostats.AudioStats, style: str, *, silent: bool = False) -> str:
+    """Where the speech touches the take's edge: ``"start"``, ``"end"``, ``"start and end"``, or
+    ``""`` (none, or a take too noisy, or ``silent``, to tell)."""
+    noisy = silent or stats.snr_db < NOISY_SNR_DB[style]
+    if stats.silent or noisy or stats.snr_db < CUT_MIN_SNR_DB:
+        return ""
+    return " and ".join(edge for edge, cut in (("start", stats.cut_start), ("end", stats.cut_end)) if cut)
 
 
 def check_take(samples: np.ndarray, *, style: str, device: str, text: str, missing: int = 0,
@@ -125,6 +146,8 @@ def check_take(samples: np.ndarray, *, style: str, device: str, text: str, missi
         problems.append("quiet")
     if bounds is not None and speech < max(MIN_SPEECH_S, SECONDS_PER_WORD * word_count(text)):
         problems.append("short")
+    if "silent" not in problems and cut_edges(audiostats.measure_samples(x, rate), style):
+        problems.append("cut")
     problems.sort(key=ORDER.index)
     check = problems[0] if problems else "ok"
     return CheckResult(

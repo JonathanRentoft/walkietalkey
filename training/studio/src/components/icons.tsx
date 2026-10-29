@@ -64,6 +64,13 @@ export const IconLearn = () => (
     <path d="M12 6.5v13" />
   </Icon>
 );
+/** Dine egne ord (run 12): a speech bubble with two lines of words. */
+export const IconWords = () => (
+  <Icon>
+    <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v9a1.5 1.5 0 0 1-1.5 1.5h-8.5L6 20v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5z" />
+    <path d="M7.5 9h9M7.5 12.5h5.5" />
+  </Icon>
+);
 export const IconPlay = ({ size = 16 }: { size?: number }) => (
   <Icon size={size}>
     <path d="M8 5.5v13l10.5-6.5L8 5.5z" />
