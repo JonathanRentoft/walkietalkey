@@ -60,7 +60,7 @@ objc2-user-notifications = { version = "0.3", default-features = false, features
 # stamp is a SHA-256. Never the keychain (run 5).
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-sha2 = "0.10"
+sha2 = "0.11"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray"] }
