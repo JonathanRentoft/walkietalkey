@@ -102,7 +102,7 @@ wt-relay-client = { path = "../crates/wt-relay-client" }
 # OS keychain, private clipboard, notifications, managed settings, presence.
 wt-native = { path = "../crates/wt-native" }
 zeroize = "1"
-qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+qrcode = { version = "0.15", default-features = false, features = ["svg"] }
 
 # WalkieTalkey: Ekko PnC punctuation (DESK-41) through ONNX Runtime. pyke's
 # prebuilt static ONNX Runtime exists for Apple Silicon and Windows x64, not
